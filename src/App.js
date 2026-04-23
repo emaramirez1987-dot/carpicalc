@@ -4153,7 +4153,7 @@ function imprimirPresupuesto(
     items.length !== 1 ? "s" : ""
   } · IVA no incluido</div><div style="text-align:right"><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.2em;color:#9a7040;margin-bottom:4px">Total del trabajo</div><div style="font-size:26px;font-weight:900;color:#1a6a30;letter-spacing:-0.5px">${fmtPeso(
     totalGeneral
-  )}</div></div></div><script>window.onload=()=>window.print();<\/script></body></html>`;
+  )}</div></div></div><script>window.onload=()=>window.print();</script></body></html>`;
   const win = window.open("", "_blank", "width=900,height=700");
   if (win) {
     win.document.write(html);
@@ -5639,7 +5639,7 @@ function imprimirCorte(grupos, nombre) {
     nombre
       ? `<div style="font-size:15px;font-weight:700;color:#1a0e04">${nombre}</div>`
       : ""
-  }<div style="font-size:11px;color:#666;margin-top:4px">${fecha}</div></div></div>${seccionesHtml}<script>window.onload=()=>window.print();<\/script></body></html>`;
+  }<div style="font-size:11px;color:#666;margin-top:4px">${fecha}</div></div></div>${seccionesHtml}<script>window.onload=()=>window.print();</script></body></html>`;
   const win = window.open("", "_blank", "width=900,height=700");
   if (win) {
     win.document.write(html);
