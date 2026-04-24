@@ -6118,8 +6118,9 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, 
   );
 }
 
-function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar }) {
+function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, costos }) {
   const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
+  const esProduccion = (p.estado || "nuevo") === "produccion";
   return (
     <div className="lista-fila" style={{
       display: "grid", gridTemplateColumns: "1fr 120px 130px auto",
@@ -6136,15 +6137,29 @@ function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar }) {
             {est.icon} {est.label}
           </span>
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
+          {esProduccion && modulos && costos && (
+            <button onClick={() => generarFichaObra(id, p, modulos, costos)}
+              style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: "2px 8px", background: "rgba(200,80,48,0.12)", border: "1px solid rgba(200,80,48,0.30)", color: "#c85030", borderRadius: 4, cursor: "pointer", flexShrink: 0 }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(200,80,48,0.22)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(200,80,48,0.12)"}>
+              📋 Ficha
+            </button>
+          )}
         </div>
         <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 300 }}>
           {fmtFecha(parseInt(id))} · {p.items.length} mód.
           {p.cliente && p.cliente.nombre && <span> · 👤 {p.cliente.nombre}</span>}
         </div>
-        {/* Total y acciones visibles solo en mobile (dentro del bloque info) */}
+        {/* Total y acciones visibles solo en mobile */}
         <div className="lista-mobile-row" style={{ display: "none", marginTop: 10, alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            {esProduccion && modulos && costos && (
+              <button onClick={() => generarFichaObra(id, p, modulos, costos)}
+                style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: "4px 9px", background: "rgba(200,80,48,0.12)", border: "1px solid rgba(200,80,48,0.30)", color: "#c85030", borderRadius: 5, cursor: "pointer" }}>
+                📋 Ficha
+              </button>
+            )}
             <select value={p.estado || "nuevo"} onChange={e => onCambiarEstado(id, e.target.value)}
               style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "4px 6px", background: `${est.color}18`, border: `1px solid ${est.color}44`, color: est.color, borderRadius: 6, cursor: "pointer", outline: "none", fontWeight: 700 }}>
               {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
@@ -6304,7 +6319,7 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar, mo
                 <div style={{ textAlign: "center", padding: "30px 0", color: "var(--text-muted)", fontSize: 13 }}>No hay trabajos en este estado.</div>
               ) : (
                 filtradas.map(([id, p]) => (
-                  <FilaLista key={id} id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} />
+                  <FilaLista key={id} id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} modulos={modulos} costos={costos} />
                 ))
               )}
             </Card>
