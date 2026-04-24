@@ -3723,6 +3723,7 @@ function CatalogoModulos({
   const [modo, setModo] = useState(null);
   const [msg, setMsg] = useState(null);
   const [vistaLayout, setVista] = useState("grid");
+  const [busqueda, setBusqueda] = useState("");
 
   const showMsg = (texto, tipo = "ok") => {
     setMsg({ texto, tipo });
@@ -3826,6 +3827,32 @@ function CatalogoModulos({
             justifyContent: "flex-end",
           }}
         >
+          {/* Buscador */}
+          {!modo && (
+            <div style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-muted)", pointerEvents: "none" }}>🔍</span>
+              <input
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                placeholder="Buscar módulo..."
+                style={{
+                  paddingLeft: 28, paddingRight: 10, paddingTop: 7, paddingBottom: 7,
+                  fontFamily: "'DM Mono',monospace", fontSize: 12,
+                  background: "var(--bg-surface)", border: "1px solid var(--border)",
+                  color: "var(--text-primary)", borderRadius: 7, outline: "none",
+                  width: 160, transition: "border-color 0.15s, width 0.2s",
+                }}
+                onFocus={e => { e.target.style.borderColor = "var(--accent-border)"; e.target.style.width = "200px"; }}
+                onBlur={e => { e.target.style.borderColor = "var(--border)"; if (!busqueda) e.target.style.width = "160px"; }}
+              />
+              {busqueda && (
+                <button onClick={() => setBusqueda("")}
+                  style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0 }}>
+                  ×
+                </button>
+              )}
+            </div>
+          )}
           {/* BOTONES DE BACKUP (Estilo idéntico a Nuevo Módulo) */}
           {!modo && (
             <>
@@ -3957,7 +3984,9 @@ function CatalogoModulos({
             gap: 12,
           }}
         >
-          {Object.entries(modulos).map(([cod, mod]) => {
+          {Object.entries(modulos).filter(([cod, mod]) =>
+            !busqueda || cod.toLowerCase().includes(busqueda.toLowerCase()) || mod.nombre.toLowerCase().includes(busqueda.toLowerCase())
+          ).map(([cod, mod]) => {
             const c = calcularModulo(mod, costos);
             if (!c) return null;
             return (
@@ -3983,7 +4012,9 @@ function CatalogoModulos({
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {Object.entries(modulos).map(([cod, mod]) => {
+          {Object.entries(modulos).filter(([cod, mod]) =>
+            !busqueda || cod.toLowerCase().includes(busqueda.toLowerCase()) || mod.nombre.toLowerCase().includes(busqueda.toLowerCase())
+          ).map(([cod, mod]) => {
             const c = calcularModulo(mod, costos);
             if (!c) return null;
             return (
@@ -4045,14 +4076,16 @@ function GestorPresupuestos({
   const [abierto, setAbierto] = useState(false);
   const [nombreNuevo, setNombreNuevo] = useState("");
   const [clienteNuevo, setClienteNuevo] = useState({ nombre: "", tel: "", dir: "" });
+  const [notaNueva, setNotaNueva] = useState("");
   const [confirmDel, setConfirmDel] = useState(null);
   const [estadoOpen, setEstadoOpen] = useState(null);
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
   const handleGuardar = () => {
     if (!nombreNuevo.trim()) return;
-    onGuardarNuevo(nombreNuevo.trim(), clienteNuevo);
+    onGuardarNuevo(nombreNuevo.trim(), clienteNuevo, notaNueva.trim());
     setNombreNuevo("");
     setClienteNuevo({ nombre: "", tel: "", dir: "" });
+    setNotaNueva("");
   };
 
   const inputStyle = {
@@ -4111,6 +4144,13 @@ function GestorPresupuestos({
                   onFocus={e => e.target.style.borderColor = "var(--accent-hover)"} onBlur={e => e.target.style.borderColor = "var(--accent-border)"} />
                 <input value={clienteNuevo.dir} onChange={e => setClienteNuevo(p => ({ ...p, dir: e.target.value }))}
                   placeholder="📍 Dirección" style={{ ...inputStyle, flex: "2 1 140px" }}
+                  onFocus={e => e.target.style.borderColor = "var(--accent-hover)"} onBlur={e => e.target.style.borderColor = "var(--accent-border)"} />
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, alignItems: "flex-start" }}>
+                <textarea value={notaNueva} onChange={e => setNotaNueva(e.target.value)}
+                  placeholder="📋 Observaciones generales del trabajo (opcional)"
+                  rows={2}
+                  style={{ ...inputStyle, flex: "1 1 200px", resize: "vertical", lineHeight: 1.5, fontSize: 12 }}
                   onFocus={e => e.target.style.borderColor = "var(--accent-hover)"} onBlur={e => e.target.style.borderColor = "var(--accent-border)"} />
                 <Btn onClick={handleGuardar} small disabled={!nombreNuevo.trim()}>Guardar</Btn>
               </div>
@@ -5034,6 +5074,34 @@ function Presupuesto({
                     {isOpen ? "▲" : "▼"} detalle
                   </button>
                   <button
+                    title="Duplicar módulo con las mismas dimensiones"
+                    onClick={() => {
+                      const nuevoId = `${item.codigo}-${Date.now()}`;
+                      const copia = { ...item, id: nuevoId };
+                      const overCopia = dimOverride[keyId] ? { ...dimOverride[keyId] } : undefined;
+                      setItems(it => {
+                        const nuevo = [...it];
+                        nuevo.splice(idx + 1, 0, copia);
+                        return nuevo;
+                      });
+                      if (overCopia) setDimOverride(d => ({ ...d, [nuevoId]: overCopia }));
+                    }}
+                    style={{
+                      padding: "4px 8px",
+                      background: "var(--accent-soft)",
+                      border: "1px solid var(--accent-border)",
+                      color: "var(--accent)",
+                      borderRadius: 5,
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(212,175,55,0.20)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "var(--accent-soft)"}
+                  >
+                    ⧉ duplicar
+                  </button>
+                  <button
                     onClick={() =>
                       setItems((it) => it.filter((_, i) => i !== idx))
                     }
@@ -5046,6 +5114,8 @@ function Presupuesto({
                       cursor: "pointer",
                       fontSize: 11,
                     }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(200,60,60,0.10)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                   >
                     eliminar
                   </button>
@@ -6055,9 +6125,20 @@ function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar }) {
 }
 
 function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) {
-  const [vistaTab, setVistaTab] = useState("lista"); // "kanban" | "lista"
+  const [vistaTab, setVistaTab] = useState("lista");
   const [filtroEstado, setFiltroEstado] = useState("todos");
-  const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
+  const [orden, setOrden] = useState("fecha_desc");
+
+  const ORDENES = [
+    { id: "fecha_desc",  label: "Más reciente",  fn: (a, b) => b[0] - a[0] },
+    { id: "fecha_asc",   label: "Más antiguo",   fn: (a, b) => a[0] - b[0] },
+    { id: "total_desc",  label: "Mayor monto",   fn: (a, b) => b[1].total - a[1].total },
+    { id: "total_asc",   label: "Menor monto",   fn: (a, b) => a[1].total - b[1].total },
+    { id: "nombre_asc",  label: "Nombre A→Z",    fn: (a, b) => a[1].nombre.localeCompare(b[1].nombre) },
+  ];
+
+  const fnOrden = ORDENES.find(o => o.id === orden)?.fn || ORDENES[0].fn;
+  const entries = Object.entries(presupuestos).sort(fnOrden);
   const filtradas = filtroEstado === "todos" ? entries : entries.filter(([, p]) => (p.estado || "nuevo") === filtroEstado);
 
   const btnVista = (id, icon, label) => (
@@ -6077,7 +6158,23 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) 
         <SectionTitle sub="Seguí el avance de cada trabajo de un vistazo">
           Tablero de Trabajos
         </SectionTitle>
-        <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 4 }}>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
+          {/* Selector de orden */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Ordenar</span>
+            <select value={orden} onChange={e => setOrden(e.target.value)} style={{
+              fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
+              padding: "6px 10px", borderRadius: 6, cursor: "pointer", outline: "none",
+              background: "var(--bg-surface)", border: "1px solid var(--border)",
+              color: "var(--text-secondary)", transition: "border-color 0.15s",
+            }}
+              onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+              onBlur={e => e.target.style.borderColor = "var(--border)"}
+            >
+              {ORDENES.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+          </div>
+          <div style={{ width: 1, height: 20, background: "var(--border)" }} />
           {btnVista("kanban", "⊞", "Kanban")}
           {btnVista("lista", "☰", "Lista")}
         </div>
@@ -6400,6 +6497,18 @@ function AppInterna() {
     });
   }, []);
 
+  // 5. Prevenir pérdida de datos al cerrar/recargar con presupuesto activo
+  useEffect(() => {
+    const handler = (e) => {
+      if (items.length > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [items]);
+
   const withSave = async (fn) => {
     setSaveEst("guardando");
     const ok = await fn();
@@ -6439,13 +6548,14 @@ function AppInterna() {
         return acc + c.total * it.cantidad;
       }, 0);
 
-  const handleGuardarPresupuesto = async (nombre, cliente) => {
+  const handleGuardarPresupuesto = async (nombre, cliente, nota) => {
     const id = String(Date.now());
     const nuevo = {
       ...presupuestos,
       [id]: {
         nombre,
         cliente: cliente || { nombre: "", tel: "", dir: "" },
+        nota: nota || "",
         estado: "nuevo",
         items: [...items],
         dimOverride: { ...dimOverride },
