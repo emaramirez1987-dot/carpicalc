@@ -3827,30 +3827,35 @@ function CatalogoModulos({
             justifyContent: "flex-end",
           }}
         >
-          {/* Buscador */}
+          {/* Buscador + toggle de vista agrupados */}
           {!modo && (
-            <div style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-muted)", pointerEvents: "none" }}>🔍</span>
-              <input
-                value={busqueda}
-                onChange={e => setBusqueda(e.target.value)}
-                placeholder="Buscar módulo..."
-                style={{
-                  paddingLeft: 28, paddingRight: 10, paddingTop: 7, paddingBottom: 7,
-                  fontFamily: "'DM Mono',monospace", fontSize: 12,
-                  background: "var(--bg-surface)", border: "1px solid var(--border)",
-                  color: "var(--text-primary)", borderRadius: 7, outline: "none",
-                  width: 160, transition: "border-color 0.15s, width 0.2s",
-                }}
-                onFocus={e => { e.target.style.borderColor = "var(--accent-border)"; e.target.style.width = "200px"; }}
-                onBlur={e => { e.target.style.borderColor = "var(--border)"; if (!busqueda) e.target.style.width = "160px"; }}
-              />
-              {busqueda && (
-                <button onClick={() => setBusqueda("")}
-                  style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0 }}>
-                  ×
-                </button>
-              )}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-muted)", pointerEvents: "none" }}>🔍</span>
+                <input
+                  value={busqueda}
+                  onChange={e => setBusqueda(e.target.value)}
+                  placeholder="Buscar módulo..."
+                  style={{
+                    paddingLeft: 28, paddingRight: 10, paddingTop: 7, paddingBottom: 7,
+                    fontFamily: "'DM Mono',monospace", fontSize: 12,
+                    background: "var(--bg-surface)", border: "1px solid var(--border)",
+                    color: "var(--text-primary)", borderRadius: 7, outline: "none",
+                    width: 160, transition: "border-color 0.15s, width 0.2s",
+                  }}
+                  onFocus={e => { e.target.style.borderColor = "var(--accent-border)"; e.target.style.width = "200px"; }}
+                  onBlur={e => { e.target.style.borderColor = "var(--border)"; if (!busqueda) e.target.style.width = "160px"; }}
+                />
+                {busqueda && (
+                  <button onClick={() => setBusqueda("")}
+                    style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0 }}>
+                    ×
+                  </button>
+                )}
+              </div>
+              {/* Separador */}
+              <div style={{ width: 1, height: 22, background: "var(--border)", margin: "0 2px" }} />
+              <VistaToggle vista={vistaLayout} onChange={setVista} />
             </div>
           )}
           {/* BOTONES DE BACKUP (Estilo idéntico a Nuevo Módulo) */}
@@ -3907,7 +3912,6 @@ function CatalogoModulos({
             </>
           )}
 
-          <VistaToggle vista={vistaLayout} onChange={setVista} />
           {!modo && (
             <Btn onClick={() => setModo({ tipo: "nuevo" })}>+ Nuevo módulo</Btn>
           )}
