@@ -220,6 +220,26 @@ const guardarModulos = (d) => _save("carpicalc:modulos", d);
 const guardarCostos = (d) => _save("carpicalc:costos", d);
 const guardarPresupuestos = (d) => _save("carpicalc:presupuestos", d);
 
+// ── Historial de precios ──────────────────────────────────────────
+async function cargarHistorialPrecios() {
+  try {
+    const r = localStorage.getItem("carpicalc:historial");
+    return r ? JSON.parse(r) : [];
+  } catch { return []; }
+}
+async function guardarSnapshotPrecios(costos) {
+  try {
+    const hist = await cargarHistorialPrecios();
+    const snap = {
+      fecha: Date.now(),
+      materiales: costos.materiales.map(m => ({ nombre: m.nombre, tipo: m.tipo, precioM2: m.precioM2 })),
+      herrajes: costos.herrajes.map(h => ({ nombre: h.nombre, precio: h.precio })),
+    };
+    const nuevo = [snap, ...hist].slice(0, 20); // máximo 20 snapshots
+    localStorage.setItem("carpicalc:historial", JSON.stringify(nuevo));
+  } catch {}
+}
+
 // ── Cálculo (intacto) ────────────────────────────────────────────
 function resolverDim(base, offsetEsp, offsetMm, divisor, espesor) {
   const raw = (base || 0) + (offsetEsp || 0) * (espesor || 0) + (offsetMm || 0);
@@ -352,6 +372,44 @@ const TIPO_MAT = {
   madera_maciza: "Madera maciza",
   terciado: "Terciado",
 };
+
+const ESTADOS_TRABAJO = [
+  { id: "nuevo",      label: "Nuevo",         color: "#7090b0", icon: "🆕" },
+  { id: "enviado",    label: "Enviado",        color: "#c8a030", icon: "📤" },
+  { id: "aceptado",   label: "Aceptado",       color: "#60a870", icon: "✅" },
+  { id: "produccion", label: "En producción",  color: "#c85030", icon: "🪚" },
+  { id: "entregado",  label: "Entregado",      color: "#7ecf8a", icon: "📦" },
+];
+
+function generarTextoWhatsApp(items, modulos, costos, getModUsado, totalGeneral, nombre, cliente) {
+  const fecha = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
+  let txt = "🪵 *CARPICÁLC — PRESUPUESTO*\n";
+  txt += "━━━━━━━━━━━━━━━━━━━\n";
+  if (nombre) txt += `📋 *${nombre}*\n`;
+  if (cliente && cliente.nombre) txt += `👤 ${cliente.nombre}\n`;
+  if (cliente && cliente.tel)    txt += `📞 ${cliente.tel}\n`;
+  if (cliente && cliente.dir)    txt += `📍 ${cliente.dir}\n`;
+  txt += `📅 ${fecha}\n\n`;
+  txt += "*DETALLE DE MÓDULOS*\n";
+  txt += "━━━━━━━━━━━━━━━━━━━\n";
+  items.forEach((item) => {
+    const modBase = modulos[item.codigo];
+    if (!modBase) return;
+    const modUsado = getModUsado(item);
+    const calc = calcularModulo(modUsado, costos);
+    if (!calc) return;
+    const dim = modUsado.dimensiones;
+    txt += `▸ *${item.codigo}* — ${modBase.nombre}\n`;
+    txt += `   ${dim.ancho}×${dim.profundidad}×${dim.alto} mm · x${item.cantidad}\n`;
+    if (item.nota && item.nota.trim()) txt += `   📝 _${item.nota}_\n`;
+    txt += `   Subtotal: *${fmtPeso(calc.total * item.cantidad)}*\n\n`;
+  });
+  txt += "━━━━━━━━━━━━━━━━━━━\n";
+  txt += `💰 *TOTAL: ${fmtPeso(totalGeneral)}*\n`;
+  txt += "_(IVA no incluido)_";
+  return txt;
+}
+
 const DIMS = ["ancho", "profundidad", "alto"];
 const PIEZA_VACIA = {
   nombre: "",
@@ -1138,10 +1196,38 @@ function HojaCostos({ costos, setCostos, onSave }) {
   const [nuevoH, setNuevoH] = useState({ nombre: "", precio: "", unidad: "u" });
   const [nuevoTc, setNuevoTc] = useState({ nombre: "", precio: "" });
   const [editando, setEditando] = useState(null);
+  const [pctInflacion, setPctInflacion] = useState("");
+  const [historial, setHistorial] = useState([]);
+  const [verHistorial, setVerHistorial] = useState(false);
+  const [confirmInflacion, setConfirmInflacion] = useState(false);
+
+  useEffect(() => {
+    cargarHistorialPrecios().then(setHistorial);
+  }, []);
+
   const save = (updated) => {
     setCostos(updated);
     onSave(updated);
   };
+
+  const aplicarInflacion = async () => {
+    const pct = parseFloat(pctInflacion);
+    if (!pct || isNaN(pct)) return;
+    await guardarSnapshotPrecios(costos);
+    const factor = 1 + pct / 100;
+    const updated = {
+      ...costos,
+      materiales: costos.materiales.map(m => ({ ...m, precioM2: Math.round(m.precioM2 * factor) })),
+      herrajes: costos.herrajes.map(h => ({ ...h, precio: Math.round(h.precio * factor) })),
+      manoDeObra: costos.manoDeObra.map(m => ({ ...m, precio: Math.round(m.precio * factor) })),
+      tapacanto: (costos.tapacanto || []).map(t => ({ ...t, precio: Math.round(t.precio * factor) })),
+    };
+    save(updated);
+    setHistorial(await cargarHistorialPrecios());
+    setPctInflacion("");
+    setConfirmInflacion(false);
+  };
+
   const ini = (sec, item) =>
     setEditando({ sec, id: item.id, data: { ...item } });
   const updE = (k, v) =>
@@ -1206,6 +1292,87 @@ function HojaCostos({ costos, setCostos, onSave }) {
       <SectionTitle sub="Valores base para todos los cálculos">
         Hoja de Costos
       </SectionTitle>
+
+      {/* ── Ajuste por Inflación ── */}
+      <HcSec icon="📈" titulo="Ajuste de precios por inflación">
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <label style={hcLc}>% de aumento a aplicar</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="number"
+                value={pctInflacion}
+                onChange={e => setPctInflacion(e.target.value)}
+                placeholder="Ej: 15"
+                style={{
+                  flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700,
+                  padding: "8px 12px", background: "var(--bg-subtle)", border: "1px solid var(--border)",
+                  color: "var(--text-primary)", borderRadius: 6, outline: "none",
+                }}
+                onFocus={e => e.target.style.borderColor = "var(--accent)"}
+                onBlur={e => e.target.style.borderColor = "var(--border)"}
+              />
+              <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", fontSize: 14 }}>%</span>
+            </div>
+          </div>
+          <div>
+            {!confirmInflacion ? (
+              <button
+                disabled={!pctInflacion || isNaN(parseFloat(pctInflacion))}
+                onClick={() => setConfirmInflacion(true)}
+                style={{
+                  padding: "9px 18px", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.4)",
+                  color: "#c8a02a", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace",
+                  fontWeight: 700, fontSize: 12, opacity: (!pctInflacion || isNaN(parseFloat(pctInflacion))) ? 0.4 : 1,
+                }}
+              >
+                📈 Aplicar +{pctInflacion || 0}%
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={aplicarInflacion}
+                  style={{ padding: "9px 16px", background: "rgba(100,180,80,0.15)", border: "1px solid rgba(100,180,80,0.4)", color: "#7ecf8a", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontWeight: 700, fontSize: 12 }}>
+                  ✓ Confirmar
+                </button>
+                <button onClick={() => setConfirmInflacion(false)}
+                  style={{ padding: "9px 12px", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
+                  Cancelar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10 }}>
+          Actualiza en un solo clic materiales, herrajes, tapacanto y mano de obra. Se guarda un snapshot antes de aplicar.
+        </p>
+
+        {historial.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <button onClick={() => setVerHistorial(v => !v)}
+              style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, textDecoration: "underline" }}>
+              {verHistorial ? "▲ Ocultar" : "▼ Ver"} historial de precios ({historial.length})
+            </button>
+            {verHistorial && (
+              <div style={{ marginTop: 10, background: "rgba(0,0,0,0.15)", borderRadius: 8, padding: 12 }}>
+                {historial.map((snap, i) => (
+                  <div key={i} style={{ padding: "8px 0", borderBottom: i < historial.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginBottom: 4 }}>
+                      {new Date(snap.fecha).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {snap.materiales.map(m => (
+                        <span key={m.nombre} style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "2px 7px", color: "var(--text-secondary)" }}>
+                          {m.nombre}: {fmtPeso(m.precioM2)}/m²
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </HcSec>
 
       <HcSec icon="🪵" titulo="Materiales">
         {costos.materiales.map((mat) => {
@@ -3794,18 +3961,162 @@ function GestorPresupuestos({
   onCargar,
   onGuardarNuevo,
   onEliminar,
+  onCambiarEstado,
   totalActual,
   itemsActual,
 }) {
   const [abierto, setAbierto] = useState(false);
   const [nombreNuevo, setNombreNuevo] = useState("");
+  const [clienteNuevo, setClienteNuevo] = useState({ nombre: "", tel: "", dir: "" });
   const [confirmDel, setConfirmDel] = useState(null);
+  const [estadoOpen, setEstadoOpen] = useState(null);
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
   const handleGuardar = () => {
     if (!nombreNuevo.trim()) return;
-    onGuardarNuevo(nombreNuevo.trim());
+    onGuardarNuevo(nombreNuevo.trim(), clienteNuevo);
     setNombreNuevo("");
+    setClienteNuevo({ nombre: "", tel: "", dir: "" });
   };
+
+  const inputStyle = {
+    flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "6px 9px",
+    background: "var(--bg-base)", border: "1px solid var(--accent-border)",
+    color: "var(--text-primary)", borderRadius: 6, outline: "none", minWidth: 0,
+  };
+
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <button
+        onClick={() => setAbierto((a) => !a)}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "12px 16px", borderRadius: 10, cursor: "pointer", transition: "all 0.15s",
+          background: "var(--bg-surface)", border: "1px solid var(--border)", fontFamily: "'DM Mono',monospace",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 14 }}>🗄</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-secondary)" }}>
+            Mis presupuestos
+          </span>
+          {entries.length > 0 && (
+            <span style={{ background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 999, padding: "1px 8px", fontSize: 10, fontWeight: 700 }}>
+              {entries.length}
+            </span>
+          )}
+        </div>
+        <span style={{ color: "var(--text-muted)", fontSize: 12 }}>{abierto ? "▲" : "▼"}</span>
+      </button>
+      {abierto && (
+        <div style={{ marginTop: 6, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+          {itemsActual.length > 0 && (
+            <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", background: "var(--accent-soft)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--accent)", marginBottom: 10 }}>
+                💾 Guardar presupuesto activo — {fmtPeso(totalActual)} ({itemsActual.length} módulo{itemsActual.length !== 1 ? "s" : ""})
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                <input
+                  value={nombreNuevo}
+                  onChange={(e) => setNombreNuevo(e.target.value)}
+                  placeholder="Nombre del trabajo (ej: Cocina Rodríguez)"
+                  onKeyDown={(e) => e.key === "Enter" && handleGuardar()}
+                  style={{ ...inputStyle, fontSize: 13, padding: "7px 10px", flex: "2 1 200px" }}
+                  onFocus={e => e.target.style.borderColor = "var(--accent-hover)"}
+                  onBlur={e => e.target.style.borderColor = "var(--accent-border)"}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                <input value={clienteNuevo.nombre} onChange={e => setClienteNuevo(p => ({ ...p, nombre: e.target.value }))}
+                  placeholder="👤 Nombre del cliente" style={{ ...inputStyle, flex: "2 1 140px" }}
+                  onFocus={e => e.target.style.borderColor = "var(--accent-hover)"} onBlur={e => e.target.style.borderColor = "var(--accent-border)"} />
+                <input value={clienteNuevo.tel} onChange={e => setClienteNuevo(p => ({ ...p, tel: e.target.value }))}
+                  placeholder="📞 Teléfono" style={{ ...inputStyle, flex: "1 1 100px" }}
+                  onFocus={e => e.target.style.borderColor = "var(--accent-hover)"} onBlur={e => e.target.style.borderColor = "var(--accent-border)"} />
+                <input value={clienteNuevo.dir} onChange={e => setClienteNuevo(p => ({ ...p, dir: e.target.value }))}
+                  placeholder="📍 Dirección" style={{ ...inputStyle, flex: "2 1 140px" }}
+                  onFocus={e => e.target.style.borderColor = "var(--accent-hover)"} onBlur={e => e.target.style.borderColor = "var(--accent-border)"} />
+                <Btn onClick={handleGuardar} small disabled={!nombreNuevo.trim()}>Guardar</Btn>
+              </div>
+            </div>
+          )}
+          {entries.length === 0 ? (
+            <div style={{ padding: "20px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+              No hay presupuestos guardados todavía.
+            </div>
+          ) : (
+            <div>
+              {entries.map(([id, p]) => {
+                const estadoInfo = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
+                return (
+                  <div key={id} style={{ padding: "11px 16px", borderBottom: "1px solid var(--border)", transition: "background 0.12s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "var(--accent-soft)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {p.nombre}
+                        </div>
+                        <div style={{ fontSize: 11, marginTop: 2, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+                          {fmtFecha(parseInt(id))} · {p.items.length} módulo{p.items.length !== 1 ? "s" : ""}
+                          {p.cliente && p.cliente.nombre && <span> · 👤 {p.cliente.nombre}</span>}
+                          {p.cliente && p.cliente.tel && <span> · 📞 {p.cliente.tel}</span>}
+                        </div>
+                      </div>
+                      <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a", flexShrink: 0 }}>
+                        {fmtPeso(p.total)}
+                      </div>
+                      {/* Badge de estado */}
+                      <div style={{ position: "relative", flexShrink: 0 }}>
+                        <button
+                          onClick={() => setEstadoOpen(estadoOpen === id ? null : id)}
+                          style={{ padding: "3px 10px", borderRadius: 999, fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", border: `1px solid ${estadoInfo.color}55`, background: `${estadoInfo.color}22`, color: estadoInfo.color }}>
+                          {estadoInfo.icon} {estadoInfo.label} ▾
+                        </button>
+                        {estadoOpen === id && (
+                          <div style={{ position: "absolute", right: 0, top: "110%", zIndex: 20, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "var(--shadow)", minWidth: 160, overflow: "hidden" }}>
+                            {ESTADOS_TRABAJO.map(est => (
+                              <button key={est.id} onClick={() => { onCambiarEstado(id, est.id); setEstadoOpen(null); }}
+                                style={{ width: "100%", padding: "8px 14px", background: est.id === (p.estado || "nuevo") ? `${est.color}22` : "transparent", border: "none", color: est.id === (p.estado || "nuevo") ? est.color : "var(--text-secondary)", cursor: "pointer", textAlign: "left", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                                {est.icon} {est.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {confirmDel === id ? (
+                        <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                          <button onClick={() => { onEliminar(id); setConfirmDel(null); }}
+                            style={{ padding: "4px 10px", background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                            Sí, borrar
+                          </button>
+                          <button onClick={() => setConfirmDel(null)}
+                            style={{ padding: "4px 10px", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                          <button onClick={() => onCargar(p)}
+                            style={{ padding: "4px 10px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                            ↩ Cargar
+                          </button>
+                          <button onClick={() => setConfirmDel(id)}
+                            style={{ padding: "4px 10px", background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
   return (
     <div style={{ marginBottom: 4 }}>
       <button
@@ -3853,222 +4164,7 @@ function GestorPresupuestos({
             </span>
           )}
         </div>
-        <span style={{ color: "var(--text-muted)", fontSize: 12 }}>
-          {abierto ? "▲" : "▼"}
-        </span>
-      </button>
-      {abierto && (
-        <div
-          style={{
-            marginTop: 6,
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            overflow: "hidden",
-          }}
-        >
-          {itemsActual.length > 0 && (
-            <div
-              style={{
-                padding: "14px 16px",
-                borderBottom: "1px solid var(--border)",
-                background: "var(--accent-soft)",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  color: "var(--accent)",
-                  marginBottom: 8,
-                }}
-              >
-                💾 Guardar presupuesto activo — {fmtPeso(totalActual)} (
-                {itemsActual.length} módulo{itemsActual.length !== 1 ? "s" : ""}
-                )
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  value={nombreNuevo}
-                  onChange={(e) => setNombreNuevo(e.target.value)}
-                  placeholder="Nombre del trabajo (ej: Cocina Rodríguez)"
-                  onKeyDown={(e) => e.key === "Enter" && handleGuardar()}
-                  style={{
-                    flex: 1,
-                    fontFamily: "'DM Mono',monospace",
-                    fontSize: 13,
-                    padding: "7px 10px",
-                    background: "var(--bg-base)",
-                    border: "1px solid var(--accent-border)",
-                    color: "var(--text-primary)",
-                    borderRadius: 6,
-                    outline: "none",
-                  }}
-                  onFocus={(e) =>
-                    (e.target.style.borderColor = "var(--accent-hover)")
-                  }
-                  onBlur={(e) =>
-                    (e.target.style.borderColor = "var(--accent-border)")
-                  }
-                />
-                <Btn
-                  onClick={handleGuardar}
-                  small
-                  disabled={!nombreNuevo.trim()}
-                >
-                  Guardar
-                </Btn>
-              </div>
-            </div>
-          )}
-          {entries.length === 0 ? (
-            <div
-              style={{
-                padding: "20px 16px",
-                textAlign: "center",
-                color: "var(--text-muted)",
-                fontSize: 13,
-              }}
-            >
-              No hay presupuestos guardados todavía.
-            </div>
-          ) : (
-            <div>
-              {entries.map(([id, p]) => (
-                <div
-                  key={id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "11px 16px",
-                    borderBottom: "1px solid var(--border)",
-                    transition: "background 0.12s",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "var(--accent-soft)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "transparent")
-                  }
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: "var(--text-primary)",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {p.nombre}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        marginTop: 2,
-                        fontFamily: "'DM Mono',monospace",
-                        color: "var(--text-muted)",
-                      }}
-                    >
-                      {fmtFecha(parseInt(id))} · {p.items.length} módulo
-                      {p.items.length !== 1 ? "s" : ""}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "'DM Mono',monospace",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "#7ecf8a",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {fmtPeso(p.total)}
-                  </div>
-                  {confirmDel === id ? (
-                    <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                      <button
-                        onClick={() => {
-                          onEliminar(id);
-                          setConfirmDel(null);
-                        }}
-                        style={{
-                          padding: "4px 10px",
-                          background: "rgba(200,60,60,0.15)",
-                          border: "1px solid rgba(200,60,60,0.35)",
-                          color: "#e07070",
-                          borderRadius: 5,
-                          cursor: "pointer",
-                          fontSize: 11,
-                          fontFamily: "'DM Mono',monospace",
-                          fontWeight: 700,
-                        }}
-                      >
-                        Sí, borrar
-                      </button>
-                      <button
-                        onClick={() => setConfirmDel(null)}
-                        style={{
-                          padding: "4px 10px",
-                          background: "transparent",
-                          border: "1px solid var(--border)",
-                          color: "var(--text-muted)",
-                          borderRadius: 5,
-                          cursor: "pointer",
-                          fontSize: 11,
-                        }}
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                      <button
-                        onClick={() => onCargar(p)}
-                        style={{
-                          padding: "4px 10px",
-                          background: "var(--accent-soft)",
-                          border: "1px solid var(--accent-border)",
-                          color: "var(--accent)",
-                          borderRadius: 5,
-                          cursor: "pointer",
-                          fontSize: 11,
-                          fontFamily: "'DM Mono',monospace",
-                          fontWeight: 700,
-                        }}
-                      >
-                        ↩ Cargar
-                      </button>
-                      <button
-                        onClick={() => setConfirmDel(id)}
-                        style={{
-                          padding: "4px 10px",
-                          background: "transparent",
-                          border: "1px solid rgba(200,60,60,0.22)",
-                          color: "#e07070",
-                          borderRadius: 5,
-                          cursor: "pointer",
-                          fontSize: 11,
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+
 
 // ── imprimirPresupuesto ───────────────────────────────────────────
 function imprimirPresupuesto(
@@ -4078,9 +4174,16 @@ function imprimirPresupuesto(
   getModUsado,
   totalGeneral,
   nombre,
-  mostrarPrecioUnitario
+  mostrarPrecioUnitario,
+  cliente
 ) {
   const fecha = fmtFechaLarga(Date.now());
+  const clienteHtml = cliente && (cliente.nombre || cliente.tel || cliente.dir)
+    ? `<div style="margin-top:12px;padding:10px 14px;background:#fff8ee;border:1px solid #e8d0a0;border-radius:6px;font-size:12px;color:#5a3a10">
+        ${cliente.nombre ? `<div>👤 <b>${cliente.nombre}</b></div>` : ""}
+        ${cliente.tel ? `<div style="margin-top:2px">📞 ${cliente.tel}</div>` : ""}
+        ${cliente.dir ? `<div style="margin-top:2px">📍 ${cliente.dir}</div>` : ""}
+      </div>` : "";
   const filas = items
     .map((item) => {
       const modBase = modulos[item.codigo];
@@ -4131,7 +4234,7 @@ function imprimirPresupuesto(
     nombre
       ? `<div style="font-size:15px;font-weight:700;color:#1a0e04">${nombre}</div>`
       : ""
-  }<div style="font-size:11px;color:#666;margin-top:4px">${fecha}</div></div></div><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f5ede0">${[
+  }<div style="font-size:11px;color:#666;margin-top:4px">${fecha}</div>${clienteHtml}</div></div><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f5ede0">${[
     "Código",
     "Módulo",
     "Cant.",
@@ -4485,6 +4588,7 @@ function Presupuesto({
   onGuardarPresupuesto,
   onCargarPresupuesto,
   onEliminarPresupuesto,
+  onCambiarEstado,
 }) {
   const [inputCod, setInputCod] = useState("");
   const [inputCant, setInputCant] = useState(1);
@@ -4575,6 +4679,7 @@ function Presupuesto({
           onCargar={onCargarPresupuesto}
           onGuardarNuevo={onGuardarPresupuesto}
           onEliminar={onEliminarPresupuesto}
+          onCambiarEstado={onCambiarEstado}
           totalActual={totalGeneral}
           itemsActual={items}
         />
@@ -5215,82 +5320,72 @@ function VistaPrevia({
   presupuestos,
 }) {
   const [mostrarPrecioUnitario, setMostrarPrecioUnitario] = useState(true);
-  const nombreActivo = (() => {
+  const [whatsappCopiado, setWhatsappCopiado] = useState(false);
+
+  const presupuestoActivo = (() => {
     if (!items.length) return null;
     const entries = Object.entries(presupuestos || {});
     const codsActuales = items.map((i) => i.codigo).join(",");
     const match = entries.find(
       ([, p]) => p.items.map((i) => i.codigo).join(",") === codsActuales
     );
-    return match ? match[1].nombre : null;
+    return match ? match[1] : null;
   })();
+  const nombreActivo = presupuestoActivo ? presupuestoActivo.nombre : null;
+  const clienteActivo = presupuestoActivo ? presupuestoActivo.cliente : null;
+
+  const handleWhatsApp = () => {
+    const txt = generarTextoWhatsApp(items, modulos, costos, getModUsado, totalGeneral, nombreActivo, clienteActivo);
+    navigator.clipboard.writeText(txt).then(() => {
+      setWhatsappCopiado(true);
+      setTimeout(() => setWhatsappCopiado(false), 2500);
+    });
+  };
+
+  const btnStyle = (color) => ({
+    display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 16px",
+    borderRadius: 6, fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+    letterSpacing: "0.05em", cursor: "pointer", transition: "all 0.18s",
+    background: color === "green" ? "linear-gradient(135deg,var(--accent),var(--accent-hover))" : "rgba(37,211,102,0.15)",
+    border: color === "green" ? "none" : "1px solid rgba(37,211,102,0.4)",
+    color: color === "green" ? "var(--text-inverted)" : "#25d366",
+    boxShadow: color === "green" ? "0 3px 12px rgba(180,100,20,0.28)" : "none",
+  });
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* rsp-stack en móvil: título y botones se apilan */}
-      <div
-        className="rsp-stack"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 16,
-        }}
-      >
+      <div className="rsp-stack" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
         <SectionTitle sub="Vista limpia para imprimir o enviar al cliente">
           Vista Previa del Presupuesto
         </SectionTitle>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            marginTop: 4,
-            flexShrink: 0,
-            flexWrap: "wrap",
-          }}
-        >
-          <ToggleSwitch
-            value={mostrarPrecioUnitario}
-            onChange={setMostrarPrecioUnitario}
-            label="Mostrar precio unitario"
-          />
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, flexShrink: 0, flexWrap: "wrap" }}>
+          <ToggleSwitch value={mostrarPrecioUnitario} onChange={setMostrarPrecioUnitario} label="Mostrar precio unitario" />
           {items.length > 0 && (
-            <button
-              onClick={() =>
-                imprimirPresupuesto(
-                  items,
-                  modulos,
-                  costos,
-                  getModUsado,
-                  totalGeneral,
-                  nombreActivo,
-                  mostrarPrecioUnitario
-                )
-              }
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 7,
-                padding: "7px 16px",
-                borderRadius: 6,
-                fontSize: 12,
-                fontFamily: "'DM Mono',monospace",
-                fontWeight: 700,
-                letterSpacing: "0.05em",
-                cursor: "pointer",
-                transition: "all 0.18s",
-                background:
-                  "linear-gradient(135deg,var(--accent),var(--accent-hover))",
-                border: "none",
-                color: "var(--text-inverted)",
-                boxShadow: "0 3px 12px rgba(180,100,20,0.28)",
-              }}
-            >
-              🖨 Imprimir / PDF
-            </button>
+            <>
+              <button onClick={handleWhatsApp} style={btnStyle("whatsapp")}>
+                {whatsappCopiado ? "✓ ¡Copiado!" : "📲 WhatsApp"}
+              </button>
+              <button
+                onClick={() => imprimirPresupuesto(items, modulos, costos, getModUsado, totalGeneral, nombreActivo, mostrarPrecioUnitario, clienteActivo)}
+                style={btnStyle("green")}
+              >
+                🖨 Imprimir / PDF
+              </button>
+            </>
           )}
         </div>
       </div>
+
+      {/* Datos del cliente activo */}
+      {clienteActivo && (clienteActivo.nombre || clienteActivo.tel || clienteActivo.dir) && (
+        <div style={{ display: "flex", gap: 16, padding: "12px 16px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 10, flexWrap: "wrap" }}>
+          {clienteActivo.nombre && <span style={{ fontSize: 13, color: "var(--text-primary)" }}>👤 <b>{clienteActivo.nombre}</b></span>}
+          {clienteActivo.tel && <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>📞 {clienteActivo.tel}</span>}
+          {clienteActivo.dir && <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>📍 {clienteActivo.dir}</span>}
+        </div>
+      )}
+
       {items.length === 0 ? (
         <div
           style={{
@@ -5986,12 +6081,14 @@ export default function App() {
         return acc + c.total * it.cantidad;
       }, 0);
 
-  const handleGuardarPresupuesto = async (nombre) => {
+  const handleGuardarPresupuesto = async (nombre, cliente) => {
     const id = String(Date.now());
     const nuevo = {
       ...presupuestos,
       [id]: {
         nombre,
+        cliente: cliente || { nombre: "", tel: "", dir: "" },
+        estado: "nuevo",
         items: [...items],
         dimOverride: { ...dimOverride },
         total: totalGeneral,
@@ -6007,6 +6104,14 @@ export default function App() {
   const handleEliminarPresupuesto = async (id) => {
     const nuevo = { ...presupuestos };
     delete nuevo[id];
+    setPresupuestos(nuevo);
+    withSave(() => guardarPresupuestos(nuevo));
+  };
+  const handleCambiarEstado = async (id, nuevoEstado) => {
+    const nuevo = {
+      ...presupuestos,
+      [id]: { ...presupuestos[id], estado: nuevoEstado },
+    };
     setPresupuestos(nuevo);
     withSave(() => guardarPresupuestos(nuevo));
   };
@@ -6084,6 +6189,7 @@ export default function App() {
               onGuardarPresupuesto={handleGuardarPresupuesto}
               onCargarPresupuesto={handleCargarPresupuesto}
               onEliminarPresupuesto={handleEliminarPresupuesto}
+              onCambiarEstado={handleCambiarEstado}
             />
           )}
           {vista === "preview" && (
