@@ -4117,55 +4117,6 @@ function GestorPresupuestos({
     </div>
   );
 }
-  return (
-    <div style={{ marginBottom: 4 }}>
-      <button
-        onClick={() => setAbierto((a) => !a)}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 16px",
-          borderRadius: 10,
-          cursor: "pointer",
-          transition: "all 0.15s",
-          background: "var(--bg-surface)",
-          border: "1px solid var(--border)",
-          fontFamily: "'DM Mono',monospace",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 14 }}>🗄</span>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Mis presupuestos
-          </span>
-          {entries.length > 0 && (
-            <span
-              style={{
-                background: "var(--accent-soft)",
-                border: "1px solid var(--accent-border)",
-                color: "var(--accent)",
-                borderRadius: 999,
-                padding: "1px 8px",
-                fontSize: 10,
-                fontWeight: 700,
-              }}
-            >
-              {entries.length}
-            </span>
-          )}
-        </div>
-
-
 // ── imprimirPresupuesto ───────────────────────────────────────────
 function imprimirPresupuesto(
   items,
