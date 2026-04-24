@@ -6260,8 +6260,127 @@ function Header({ vista, setVista, tabs, saveEst, tema, toggleTema }) {
   );
 }
 
+// ── Login ─────────────────────────────────────────────────────────
+const PASS_KEY = "carpicalc:auth";
+const PASS_HASH = btoa("carpicalc2025"); // ← cambiá esto por tu contraseña
+
+function LoginScreen({ onAccess }) {
+  const [input, setInput] = useState("");
+  const [error, setError] = useState(false);
+  const [shake, setShake] = useState(false);
+
+  const intentar = () => {
+    if (btoa(input) === PASS_HASH) {
+      sessionStorage.setItem(PASS_KEY, "1");
+      onAccess();
+    } else {
+      setError(true);
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+      setTimeout(() => setError(false), 2000);
+      setInput("");
+    }
+  };
+
+  return (
+    <>
+      <GlobalStyles />
+      <div style={{
+        minHeight: "100vh", background: "var(--bg-base)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 20,
+      }}>
+        <div style={{
+          width: "100%", maxWidth: 380,
+          background: "var(--bg-surface)", borderRadius: 16,
+          border: "1px solid var(--border)", padding: "40px 36px",
+          boxShadow: "var(--shadow)",
+          transform: shake ? "translateX(0)" : "none",
+          animation: shake ? "shake 0.4s ease" : "none",
+        }}>
+          {/* Logo */}
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🪵</div>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 26, fontWeight: 900, color: "var(--accent)", lineHeight: 1 }}>
+              CarpiCálc
+            </div>
+            <div style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", marginTop: 6, color: "var(--text-muted)", fontWeight: 300 }}>
+              Sistema de presupuestos
+            </div>
+          </div>
+
+          {/* Campo contraseña */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.12em", display: "block", marginBottom: 8 }}>
+              Contraseña de acceso
+            </label>
+            <input
+              type="password"
+              value={input}
+              onChange={e => { setInput(e.target.value); setError(false); }}
+              onKeyDown={e => e.key === "Enter" && intentar()}
+              placeholder="••••••••"
+              autoFocus
+              style={{
+                width: "100%", padding: "11px 14px",
+                fontFamily: "'DM Mono',monospace", fontSize: 16,
+                background: "var(--bg-base)",
+                border: `1px solid ${error ? "#e07070" : "var(--border)"}`,
+                borderRadius: 8, color: "var(--text-primary)", outline: "none",
+                transition: "border-color 0.2s",
+                letterSpacing: "0.15em",
+              }}
+              onFocus={e => { if (!error) e.target.style.borderColor = "var(--accent-border)"; }}
+              onBlur={e => { if (!error) e.target.style.borderColor = "var(--border)"; }}
+            />
+            {error && (
+              <div style={{ marginTop: 6, fontSize: 11, color: "#e07070", fontFamily: "'DM Mono',monospace" }}>
+                Contraseña incorrecta
+              </div>
+            )}
+          </div>
+
+          {/* Botón */}
+          <button onClick={intentar} style={{
+            width: "100%", padding: "11px 0",
+            background: "linear-gradient(135deg, var(--accent), var(--accent-hover))",
+            border: "none", borderRadius: 8, color: "var(--text-inverted)",
+            fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700,
+            letterSpacing: "0.1em", cursor: "pointer", transition: "opacity 0.2s",
+          }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+          >
+            Ingresar →
+          </button>
+        </div>
+
+        <style>{`
+          @keyframes shake {
+            0%,100%{transform:translateX(0)}
+            20%{transform:translateX(-8px)}
+            40%{transform:translateX(8px)}
+            60%{transform:translateX(-6px)}
+            80%{transform:translateX(6px)}
+          }
+        `}</style>
+      </div>
+    </>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────
 export default function App() {
+  const [autenticado, setAutenticado] = useState(
+    () => sessionStorage.getItem(PASS_KEY) === "1"
+  );
+
+  if (!autenticado) return <LoginScreen onAccess={() => setAutenticado(true)} />;
+
+  return <AppInterna />;
+}
+
+function AppInterna() {
   const { tema, toggleTema } = useTema();
   const [vista, setVista] = useState("presupuesto");
   const [modulos, setModulos] = useState(null);
