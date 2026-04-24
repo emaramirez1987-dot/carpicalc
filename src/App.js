@@ -454,26 +454,82 @@ const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+    /* ── Modo oscuro premium (default) ─────────────────────────── */
     :root,[data-theme="dark"]{
-      --bg-base:#0F0A04;--bg-surface:#1A1008;--bg-subtle:rgba(255,255,255,0.04);
-      --bg-overlay:rgba(10,6,2,0.97);--border:rgba(200,160,60,0.10);
-      --text-primary:#E8D5A8;--text-secondary:#8A6A40;--text-muted:#4A3010;--text-inverted:#0F0A04;
-      --accent:#C8802A;--accent-hover:#E8A040;--accent-soft:rgba(200,128,42,0.10);
-      --accent-border:rgba(200,128,42,0.28);--shadow:0 2px 24px 0 rgba(0,0,0,0.55);
-      --scrollbar-thumb:rgba(200,128,42,0.22);
+      --bg-base:#0F1115;
+      --bg-surface:#1A1D23;
+      --bg-subtle:rgba(255,255,255,0.03);
+      --bg-overlay:rgba(10,12,16,0.97);
+      --border:rgba(255,255,255,0.07);
+      --border-strong:rgba(212,175,55,0.18);
+      --text-primary:#F0EDE6;
+      --text-secondary:#A09880;
+      --text-muted:rgba(255,255,255,0.28);
+      --text-inverted:#0F1115;
+      --accent:#D4AF37;
+      --accent-hover:#E8C84A;
+      --accent-soft:rgba(212,175,55,0.10);
+      --accent-border:rgba(212,175,55,0.28);
+      --shadow:0 4px 32px rgba(0,0,0,0.65);
+      --shadow-sm:0 1px 8px rgba(0,0,0,0.45);
+      --scrollbar-thumb:rgba(212,175,55,0.20);
+      --radius-card:12px;
+      --separator:rgba(255,255,255,0.05);
     }
+
+    /* ── Modo claro ─────────────────────────────────────────────── */
     [data-theme="light"]{
-      --bg-base:#FAF7F0;--bg-surface:#F2EDE3;--bg-subtle:#EAE2D4;
-      --bg-overlay:rgba(255,251,242,0.97);--border:#E0D4BC;
-      --text-primary:#2C2318;--text-secondary:#6B5A45;--text-muted:#9A8060;--text-inverted:#FAF7F0;
-      --accent:#C8762A;--accent-hover:#A85F1E;--accent-soft:rgba(200,118,42,0.10);
-      --accent-border:rgba(200,118,42,0.32);--shadow:0 2px 16px 0 rgba(200,118,42,0.09);
-      --scrollbar-thumb:rgba(200,118,42,0.28);
+      --bg-base:#F5F2EC;
+      --bg-surface:#FFFFFF;
+      --bg-subtle:#EDE8DF;
+      --bg-overlay:rgba(245,242,236,0.97);
+      --border:#E4DDD0;
+      --border-strong:rgba(180,140,30,0.30);
+      --text-primary:#1C1A16;
+      --text-secondary:#6B5E45;
+      --text-muted:#A0907A;
+      --text-inverted:#FFFFFF;
+      --accent:#B8962A;
+      --accent-hover:#9A7C1E;
+      --accent-soft:rgba(184,150,42,0.10);
+      --accent-border:rgba(184,150,42,0.32);
+      --shadow:0 2px 20px rgba(0,0,0,0.10);
+      --shadow-sm:0 1px 6px rgba(0,0,0,0.07);
+      --scrollbar-thumb:rgba(184,150,42,0.28);
+      --radius-card:12px;
+      --separator:rgba(0,0,0,0.05);
     }
-    body{background-color:var(--bg-base);color:var(--text-primary);font-family:'Inter',system-ui,sans-serif;transition:background-color 0.3s,color 0.3s;}
-    ::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}
-    ::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:3px;}
+
+    body{
+      background-color:var(--bg-base);
+      color:var(--text-primary);
+      font-family:'Inter',system-ui,sans-serif;
+      font-weight:400;
+      transition:background-color 0.3s,color 0.3s;
+      -webkit-font-smoothing:antialiased;
+    }
+
+    /* Scrollbar fina y elegante */
+    ::-webkit-scrollbar{width:4px;height:4px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:4px;}
+    ::-webkit-scrollbar-thumb:hover{background:var(--accent-border);}
     input[type="number"]::-webkit-inner-spin-button{opacity:0.3;}
+
+    /* Separadores sutiles entre secciones */
+    .section-divider{
+      border:none;
+      border-top:1px solid var(--separator);
+      margin:0;
+    }
+
+    /* Hover pronunciado en dark mode */
+    .btn-secondary:hover{
+      background:rgba(212,175,55,0.18) !important;
+      border-color:rgba(212,175,55,0.40) !important;
+    }
+
     @media print{
       .no-print{display:none !important;}.print-only{display:block !important;}
       body{background:#fff !important;color:#1a1a1a !important;font-size:12px;}
@@ -486,33 +542,22 @@ const GlobalStyles = () => (
 
     /* ── Responsive mobile ─────────────────────────────────────── */
     @media (max-width: 768px) {
-      /* Padding general del main reducido */
       .rsp-main { padding: 14px 10px !important; }
-
-      /* Cards con padding reducido en móvil */
       .rsp-card { padding: 14px !important; }
-
-      /* Cualquier grid multi-columna colapsa a 1 columna */
       .rsp-grid-1 { grid-template-columns: 1fr !important; }
-
-      /* Scroll horizontal táctil para tablas y nav */
       .rsp-scroll-x {
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
       }
-      /* Ajuste para el catálogo en modo lista (apilado vertical) */
       .rsp-lista-item {
         flex-direction: column !important;
         align-items: flex-start !important;
         gap: 10px !important;
       }
-      /* Hace que el contenedor de precios y botones ocupen todo el ancho disponible */
       .rsp-lista-precio {
         width: 100% !important;
         justify-content: space-between !important;
       }
-
-      /* Header: envuelve los elementos para bajar las pestañas */
       .rsp-header-inner {
         flex-wrap: wrap !important;
         gap: 0px 10px !important;
@@ -520,8 +565,6 @@ const GlobalStyles = () => (
       }
       .rsp-brand { padding: 14px 0 !important; }
       .rsp-brand > div:first-child { font-size: 17px !important; }
-
-      /* Nav del header baja a la 2da línea y ocupa todo el ancho */
       .rsp-nav {
         order: 3 !important;
         width: 100% !important;
@@ -531,31 +574,32 @@ const GlobalStyles = () => (
         border-top: 1px solid var(--border);
         scrollbar-width: none;
       }
-      
-      /* Ocultar barra de scroll para que quede limpio */
-      .rsp-nav::-webkit-scrollbar {
-        display: none !important;
-      }
-      
+      .rsp-nav::-webkit-scrollbar { display: none !important; }
       .rsp-nav button {
         padding: 12px 16px !important;
         font-size: 11px !important;
         flex-shrink: 0;
       }
-
-      /* FormModulo paso 2: apilado vertical */
       .rsp-paso2 { flex-direction: column !important; }
-      /* En paso 2 la columna del form pieza ocupa todo */
       .rsp-paso2 > *:first-child { flex: none !important; width: 100% !important; }
-
-      /* Flex rows que deben apilarse */
       .rsp-stack { flex-direction: column !important; align-items: flex-start !important; }
-
-      /* Contenido interno de tablas: ancho mínimo para que el scroll tenga sentido */
       .rsp-table-inner { min-width: 520px; }
-
-      /* Botones de acción en el ítem presupuesto: texto más corto */
       .rsp-item-actions { flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; }
+
+      /* Kanban: columnas apiladas verticalmente en mobile */
+      .kanban-board {
+        flex-direction: column !important;
+        gap: 16px !important;
+      }
+      .kanban-col {
+        flex: none !important;
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+      .kanban-col-header {
+        justify-content: center !important;
+        border-radius: 10px 10px 0 0 !important;
+      }
     }
   `}</style>
 );
@@ -5849,35 +5893,41 @@ function AccionesTrabajo({ id, p, onCambiarEstado, onEliminar, onCargar, compact
   const estadoActual = ESTADOS_TRABAJO.findIndex(e => e.id === (p.estado || "nuevo"));
   const prev = ESTADOS_TRABAJO[estadoActual - 1];
   const next = ESTADOS_TRABAJO[estadoActual + 1];
-  const btnBase = { fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, borderRadius: 5, cursor: "pointer", border: "none", padding: compact ? "3px 8px" : "5px 10px", transition: "all 0.15s" };
+  const btnBase = {
+    fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+    borderRadius: 6, cursor: "pointer", padding: compact ? "4px 9px" : "5px 12px",
+    transition: "all 0.15s", outline: "none",
+  };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
       {prev && (
         <button onClick={() => onCambiarEstado(id, prev.id)} title={`← ${prev.label}`}
-          style={{ ...btnBase, background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-          ← {compact ? "" : prev.icon}
+          style={{ ...btnBase, background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "var(--border-strong)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-subtle)"; e.currentTarget.style.borderColor = "var(--border)"; }}>
+          ←
         </button>
       )}
       {next && (
         <button onClick={() => onCambiarEstado(id, next.id)} title={`${next.label} →`}
-          style={{ ...btnBase, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
-          {compact ? "" : next.icon} →
+          style={{ ...btnBase, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(212,175,55,0.20)"; e.currentTarget.style.borderColor = "rgba(212,175,55,0.45)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "var(--accent-soft)"; e.currentTarget.style.borderColor = "var(--accent-border)"; }}>
+          →
         </button>
       )}
-      <button onClick={() => onCargar(p)}
-        style={{ ...btnBase, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
-        ↩
-      </button>
       {confirmDel ? (
         <>
           <button onClick={() => { onEliminar(id); setConfirmDel(false); }}
-            style={{ ...btnBase, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070" }}>✓</button>
+            style={{ ...btnBase, background: "rgba(200,60,60,0.18)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070" }}>✓</button>
           <button onClick={() => setConfirmDel(false)}
             style={{ ...btnBase, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
         </>
       ) : (
         <button onClick={() => setConfirmDel(true)}
-          style={{ ...btnBase, background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070" }}>×</button>
+          style={{ ...btnBase, background: "transparent", border: "1px solid rgba(200,60,60,0.25)", color: "#e07070" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(200,60,60,0.12)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>×</button>
       )}
     </div>
   );
@@ -5888,23 +5938,31 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar }) {
   return (
     <div style={{
       background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10,
-      padding: "12px 13px", marginBottom: 8, transition: "border-color 0.15s, box-shadow 0.15s",
-      boxShadow: "0 1px 6px rgba(0,0,0,0.14)", borderLeft: `3px solid ${est.color}`,
+      padding: "12px 13px", marginBottom: 8,
+      transition: "border-color 0.15s, box-shadow 0.15s, transform 0.15s",
+      boxShadow: "var(--shadow-sm)", borderLeft: `3px solid ${est.color}`,
     }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent-border)"; e.currentTarget.style.boxShadow = "0 3px 12px rgba(0,0,0,0.24)"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "0 1px 6px rgba(0,0,0,0.14)"; e.currentTarget.style.borderLeftColor = est.color; }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-strong)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.35)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "var(--shadow-sm)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderLeftColor = est.color; }}
     >
-      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 3, lineHeight: 1.3 }}>{p.nombre}</div>
+      {/* Nombre con punto de color */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 7, marginBottom: 4 }}>
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: est.color, flexShrink: 0, marginTop: 4, boxShadow: `0 0 6px ${est.color}80` }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>{p.nombre}</span>
+      </div>
+
       {p.cliente && p.cliente.nombre && (
-        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 1 }}>
-          👤 {p.cliente.nombre}{p.cliente.tel && <span style={{ color: "var(--text-muted)" }}> · {p.cliente.tel}</span>}
+        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 2, paddingLeft: 15, fontWeight: 300 }}>
+          👤 {p.cliente.nombre}
+          {p.cliente.tel && <span style={{ color: "var(--text-muted)", marginLeft: 5 }}>· {p.cliente.tel}</span>}
         </div>
       )}
-      <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginBottom: 8 }}>
+      <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginBottom: 10, paddingLeft: 15, fontWeight: 300 }}>
         {fmtFecha(parseInt(id))} · {p.items.length} mód.
       </div>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
         <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
       </div>
     </div>
@@ -5951,7 +6009,7 @@ function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar }) {
 }
 
 function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) {
-  const [vistaTab, setVistaTab] = useState("kanban"); // "kanban" | "lista"
+  const [vistaTab, setVistaTab] = useState("lista"); // "kanban" | "lista"
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
   const filtradas = filtroEstado === "todos" ? entries : entries.filter(([, p]) => (p.estado || "nuevo") === filtroEstado);
@@ -6016,12 +6074,12 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) 
 
           {/* ── Vista KANBAN ── */}
           {vistaTab === "kanban" && (
-            <div className="rsp-scroll-x" style={{ display: "flex", gap: 12, alignItems: "flex-start", paddingBottom: 8 }}>
+            <div className="rsp-scroll-x kanban-board" style={{ display: "flex", gap: 12, alignItems: "flex-start", paddingBottom: 8 }}>
               {ESTADOS_TRABAJO.filter(est => filtroEstado === "todos" || filtroEstado === est.id).map(est => {
                 const cards = entries.filter(([, p]) => (p.estado || "nuevo") === est.id);
                 return (
-                  <div key={est.id} style={{ flex: "0 0 210px", minWidth: 210 }}>
-                    <div style={{
+                  <div key={est.id} className="kanban-col" style={{ flex: "0 0 210px", minWidth: 210 }}>
+                    <div className="kanban-col-header" style={{
                       padding: "9px 13px", borderRadius: "10px 10px 0 0",
                       background: `${est.color}20`, border: `1px solid ${est.color}40`, borderBottom: "none",
                       display: "flex", alignItems: "center", gap: 7,
@@ -6081,114 +6139,73 @@ function Header({ vista, setVista, tabs, saveEst, tema, toggleTema }) {
         alignItems: "center",
         gap: 24,
         padding: "0 28px",
-        background: "var(--bg-overlay)",
+        background: "rgba(15,17,21,0.80)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
         borderBottom: "1px solid var(--border)",
-        boxShadow: "var(--shadow)",
+        boxShadow: "0 1px 0 var(--separator), var(--shadow-sm)",
         transition: "background 0.3s",
       }}
     >
+      {/* Brand */}
       <div className="rsp-brand" style={{ padding: "16px 0", flexShrink: 0 }}>
-        <div
-          style={{
-            fontFamily: "'Playfair Display',serif",
-            fontSize: 19,
-            fontWeight: 900,
-            color: "var(--accent)",
-            lineHeight: 1,
-          }}
-        >
+        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 19, fontWeight: 900, color: "var(--accent)", lineHeight: 1, letterSpacing: "-0.01em" }}>
           🪵 CarpiCálc
         </div>
-        <div
-          style={{
-            fontSize: 9,
-            letterSpacing: "0.2em",
-            textTransform: "uppercase",
-            marginTop: 3,
-            color: "var(--text-muted)",
-          }}
-        >
+        <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", marginTop: 3, color: "var(--text-muted)", fontWeight: 300 }}>
           Sistema de presupuestos
         </div>
       </div>
-      {/* rsp-nav: scroll horizontal táctil en la barra de pestañas */}
+
+      {/* Nav */}
       <nav className="rsp-nav" style={{ display: "flex", flex: 1 }}>
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setVista(t.id)}
-            style={{
-              position: "relative",
-              background: "transparent",
-              border: "none",
-              borderBottom: `2px solid ${
-                vista === t.id ? "var(--accent)" : "transparent"
-              }`,
-              color: vista === t.id ? "var(--accent)" : "var(--text-muted)",
-              padding: "18px 20px",
-              cursor: "pointer",
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              fontFamily: "'DM Mono',monospace",
-              transition: "all 0.2s",
-              flexShrink: 0,
-            }}
-          >
-            {t.icon} {t.label}
-            {t.badge != null && (
-              <span
-                style={{
-                  position: "absolute",
-                  top: 12,
-                  right: 8,
-                  width: 16,
-                  height: 16,
-                  background: "var(--accent)",
-                  color: "var(--text-inverted)",
-                  borderRadius: "50%",
-                  fontSize: 9,
-                  fontWeight: 900,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {t.badge}
-              </span>
-            )}
-          </button>
-        ))}
+        {tabs.map((t) => {
+          const active = vista === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setVista(t.id)}
+              style={{
+                position: "relative",
+                background: "transparent",
+                border: "none",
+                borderBottom: `2px solid ${active ? "var(--accent)" : "transparent"}`,
+                color: active ? "var(--accent)" : "var(--text-muted)",
+                padding: "18px 20px",
+                cursor: "pointer",
+                fontSize: 11,
+                fontWeight: active ? 700 : 500,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                fontFamily: "'DM Mono',monospace",
+                transition: "all 0.2s",
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => { if (!active) { e.currentTarget.style.color = "var(--text-secondary)"; e.currentTarget.style.borderBottomColor = "var(--accent-border)"; }}}
+              onMouseLeave={e => { if (!active) { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderBottomColor = "transparent"; }}}
+            >
+              {t.icon} {t.label}
+            </button>
+          );
+        })}
       </nav>
-      <div
-        style={{
-          marginLeft: "auto",
-          display: "flex",
-          alignItems: "center",
-          gap: 16,
-          flexShrink: 0,
-        }}
-      >
+
+      {/* Controles */}
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
         <SaveIndicator estado={saveEst} />
         <button
           onClick={toggleTema}
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "6px 14px",
-            borderRadius: 999,
-            fontSize: 11,
-            fontFamily: "'DM Mono',monospace",
-            fontWeight: 700,
-            cursor: "pointer",
-            transition: "all 0.2s",
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "6px 14px", borderRadius: 999, fontSize: 11,
+            fontFamily: "'DM Mono',monospace", fontWeight: 700,
+            cursor: "pointer", transition: "all 0.2s",
             border: "1px solid var(--accent-border)",
             background: "var(--accent-soft)",
-            color: "var(--accent)",
-            whiteSpace: "nowrap",
+            color: "var(--accent)", whiteSpace: "nowrap",
           }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(212,175,55,0.18)"; e.currentTarget.style.borderColor = "rgba(212,175,55,0.45)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "var(--accent-soft)"; e.currentTarget.style.borderColor = "var(--accent-border)"; }}
         >
           {tema === "dark" ? "☀ Cálido" : "🌑 Taller"}
         </button>
@@ -6296,7 +6313,7 @@ export default function App() {
     { id: "presupuesto", label: "Presupuesto", icon: "📋" },
     { id: "preview", label: "Vista previa", icon: "📄" },
     { id: "corte", label: "Corte", icon: "🪚" },
-    { id: "trabajos", label: "Trabajos", icon: "📊", badge: Object.keys(presupuestos).length || null },
+    { id: "trabajos", label: "Trabajos", icon: "📊" },
     { id: "catalogo", label: "Catálogo", icon: "🗂" },
     { id: "costos", label: "Costos", icon: "💰" },
   ];
