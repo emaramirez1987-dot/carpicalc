@@ -257,36 +257,19 @@ function calcularModulo(modulo, costos) {
     metrosTapacanto = 0;
   const desglosePiezas = [];
   for (const p of modulo.piezas) {
-    const d1 = resolverDim(
-      dimMap[p.usaDim],
-      p.offsetEsp,
-      p.offsetMm,
-      p.divisor || 1,
-      esp
-    );
-    const d2 = resolverDim(
-      dimMap[p.usaDim2],
-      p.offsetEsp2,
-      p.offsetMm2,
-      p.divisor2 || 1,
-      esp
-    );
+    const d1 = p.especial
+      ? (parseInt(p.dimLibre1) || 0)
+      : resolverDim(dimMap[p.usaDim], p.offsetEsp, p.offsetMm, p.divisor || 1, esp);
+    const d2 = p.especial
+      ? (parseInt(p.dimLibre2) || 0)
+      : resolverDim(dimMap[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, esp);
     const area = (d1 * d2 * p.cantidad) / 1_000_000;
     m2Neto += area;
     let mTc = 0;
     if (p.tc?.id)
-      mTc =
-        (p.cantidad * ((p.tc.lados1 || 0) * d1 + (p.tc.lados2 || 0) * d2)) /
-        1000;
+      mTc = (p.cantidad * ((p.tc.lados1 || 0) * d1 + (p.tc.lados2 || 0) * d2)) / 1000;
     metrosTapacanto += mTc;
-    desglosePiezas.push({
-      nombre: p.nombre,
-      cantidad: p.cantidad,
-      d1,
-      d2,
-      area,
-      mTc,
-    });
+    desglosePiezas.push({ nombre: p.nombre, cantidad: p.cantidad, d1, d2, area, mTc, especial: !!p.especial });
   }
   const pctDesp = costos.desperdicioPct || 20;
   const m2Total = m2Neto * (1 + pctDesp / 100);
@@ -295,23 +278,13 @@ function calcularModulo(modulo, costos) {
   if (costos.tapacanto && modulo.piezas.some((p) => p.tc?.id)) {
     for (const p of modulo.piezas) {
       if (!p.tc?.id) continue;
-      const d1 = resolverDim(
-        dimMap[p.usaDim],
-        p.offsetEsp,
-        p.offsetMm,
-        p.divisor || 1,
-        esp
-      );
-      const d2 = resolverDim(
-        dimMap[p.usaDim2],
-        p.offsetEsp2,
-        p.offsetMm2,
-        p.divisor2 || 1,
-        esp
-      );
-      const mTc =
-        (p.cantidad * ((p.tc.lados1 || 0) * d1 + (p.tc.lados2 || 0) * d2)) /
-        1000;
+      const d1 = p.especial
+        ? (parseInt(p.dimLibre1) || 0)
+        : resolverDim(dimMap[p.usaDim], p.offsetEsp, p.offsetMm, p.divisor || 1, esp);
+      const d2 = p.especial
+        ? (parseInt(p.dimLibre2) || 0)
+        : resolverDim(dimMap[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, esp);
+      const mTc = (p.cantidad * ((p.tc.lados1 || 0) * d1 + (p.tc.lados2 || 0) * d2)) / 1000;
       const tcDef = costos.tapacanto.find((t) => t.id === p.tc.id);
       if (tcDef) costoTapacanto += mTc * tcDef.precio;
     }
@@ -2194,20 +2167,12 @@ function HojaCostos({ costos, setCostos, onSave }) {
 
 // ── FilaPieza ─────────────────────────────────────────────────────
 function FilaPieza({ pieza, idx, onDelete, dims, espesor, tapacanto }) {
-  const d1 = resolverDim(
-    dims[pieza.usaDim],
-    pieza.offsetEsp,
-    pieza.offsetMm,
-    pieza.divisor || 1,
-    espesor
-  );
-  const d2 = resolverDim(
-    dims[pieza.usaDim2],
-    pieza.offsetEsp2,
-    pieza.offsetMm2,
-    pieza.divisor2 || 1,
-    espesor
-  );
+  const d1 = pieza.especial
+    ? (parseInt(pieza.dimLibre1) || 0)
+    : resolverDim(dims[pieza.usaDim], pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1, espesor);
+  const d2 = pieza.especial
+    ? (parseInt(pieza.dimLibre2) || 0)
+    : resolverDim(dims[pieza.usaDim2], pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1, espesor);
   const area = (d1 * d2 * pieza.cantidad) / 1_000_000;
   const tcDef = tapacanto?.find((t) => t.id === pieza.tc?.id);
   const mTc = pieza.tc?.id
@@ -2240,41 +2205,19 @@ function FilaPieza({ pieza, idx, onDelete, dims, espesor, tapacanto }) {
           alignItems: "center",
         }}
       >
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {pieza.nombre}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+              {pieza.nombre}
+              {pieza.especial && (
+                <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(212,175,55,0.18)", color: "var(--accent)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>✦ ESP</span>
+              )}
+            </div>
+            <div style={{ fontSize: 11, marginTop: 2, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {pieza.especial
+                ? `libre: ${pieza.dimLibre1 || 0} × ${pieza.dimLibre2 || 0} mm`
+                : `${pieza.usaDim} ${offsetLabel(pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1)} × ${pieza.usaDim2} ${offsetLabel(pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1)}`}
+            </div>
           </div>
-          <div
-            style={{
-              fontSize: 11,
-              marginTop: 2,
-              fontFamily: "'DM Mono',monospace",
-              color: "var(--text-muted)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {pieza.usaDim}{" "}
-            {offsetLabel(pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1)}
-            {" × "}
-            {pieza.usaDim2}{" "}
-            {offsetLabel(
-              pieza.offsetEsp2,
-              pieza.offsetMm2,
-              pieza.divisor2 || 1
-            )}
-          </div>
-        </div>
         <div
           style={{
             textAlign: "center",
@@ -2383,266 +2326,139 @@ function FilaPieza({ pieza, idx, onDelete, dims, espesor, tapacanto }) {
 }
 
 // ── FormPieza ─────────────────────────────────────────────────────
-function FormPieza({ fp, setFp, onAgregar, error, dims, espesor, tapacanto }) {
-  const d1 = resolverDim(
-    dims[fp.usaDim],
-    parseInt(fp.offsetEsp) || 0,
-    parseInt(fp.offsetMm) || 0,
-    parseInt(fp.divisor) || 1,
-    espesor
-  );
-  const d2 = resolverDim(
-    dims[fp.usaDim2],
-    parseInt(fp.offsetEsp2) || 0,
-    parseInt(fp.offsetMm2) || 0,
-    parseInt(fp.divisor2) || 1,
-    espesor
-  );
-  const DimRow = ({ titulo, dimKey, espKey, mmKey, divKey, resultado }) => {
-    const divVal = parseInt(fp[divKey]) || 1;
-    return (
-      <div
-        style={{ background: "rgba(0,0,0,0.18)", borderRadius: 8, padding: 10 }}
-      >
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-            color: "var(--text-muted)",
-            marginBottom: 8,
-          }}
-        >
-          {titulo}
-        </div>
-        <div
-          className="rsp-grid-1"
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}
-        >
-          <Select
-            label="Toma de"
-            value={fp[dimKey]}
-            small
-            onChange={(v) => setFp((p) => ({ ...p, [dimKey]: v }))}
-            options={DIMS.map((d) => ({ value: d, label: d }))}
-          />
-          <TextInput
-            label="Dividir ÷"
-            type="number"
-            value={fp[divKey]}
-            placeholder="1"
-            suffix="÷"
-            small
-            onChange={(v) =>
-              setFp((p) => ({ ...p, [divKey]: Math.max(1, parseInt(v) || 1) }))
-            }
-          />
-          <TextInput
-            label="Espesores ±"
-            type="number"
-            value={fp[espKey]}
-            placeholder="0"
-            suffix="esp"
-            small
-            onChange={(v) => setFp((p) => ({ ...p, [espKey]: v }))}
-          />
-          <TextInput
-            label="mm fijos ±"
-            type="number"
-            value={fp[mmKey]}
-            placeholder="0"
-            suffix="mm"
-            small
-            onChange={(v) => setFp((p) => ({ ...p, [mmKey]: v }))}
-          />
-        </div>
-        <div
-          style={{
-            fontSize: 11,
-            marginTop: 6,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          <span style={{ color: "var(--text-muted)" }}>→</span>
-          <span
-            style={{
-              fontFamily: "'DM Mono',monospace",
-              fontWeight: 700,
-              color: "#7ecf8a",
-            }}
-          >
-            {Math.round(resultado)} mm
-          </span>
-          {(parseInt(fp[espKey]) || 0) !== 0 && (
-            <span
-              style={{
-                fontFamily: "'DM Mono',monospace",
-                color: "var(--accent)",
-                fontSize: 11,
-              }}
-            >
-              {parseInt(fp[espKey])} esp × {espesor}mm ={" "}
-              {(parseInt(fp[espKey]) || 0) * espesor}mm
-            </span>
-          )}
-          {divVal > 1 && (
-            <span
-              style={{
-                fontFamily: "'DM Mono',monospace",
-                color: "#7090c0",
-                fontSize: 11,
-              }}
-            >
-              ÷ {divVal}
-            </span>
-          )}
-        </div>
+// ── DimRow ── (fuera de FormPieza para evitar re-mount en cada render)
+function DimRow({ titulo, dimKey, espKey, mmKey, divKey, resultado, fp, setFp, espesor }) {
+  const divVal = parseInt(fp[divKey]) || 1;
+  return (
+    <div style={{ background: "rgba(0,0,0,0.18)", borderRadius: 8, padding: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
+        {titulo}
       </div>
-    );
-  };
+      <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <Select label="Toma de" value={fp[dimKey]} small
+          onChange={(v) => setFp((p) => ({ ...p, [dimKey]: v }))}
+          options={DIMS.map((d) => ({ value: d, label: d }))} />
+        <TextInput label="Dividir ÷" type="number" value={fp[divKey]} placeholder="1" suffix="÷" small
+          onChange={(v) => setFp((p) => ({ ...p, [divKey]: Math.max(1, parseInt(v) || 1) }))} />
+        <TextInput label="Espesores ±" type="number" value={fp[espKey]} placeholder="0" suffix="esp" small
+          onChange={(v) => setFp((p) => ({ ...p, [espKey]: v }))} />
+        <TextInput label="mm fijos ±" type="number" value={fp[mmKey]} placeholder="0" suffix="mm" small
+          onChange={(v) => setFp((p) => ({ ...p, [mmKey]: v }))} />
+      </div>
+      <div style={{ fontSize: 11, marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span style={{ color: "var(--text-muted)" }}>→</span>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>
+          {Math.round(resultado)} mm
+        </span>
+        {(parseInt(fp[espKey]) || 0) !== 0 && (
+          <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)", fontSize: 11 }}>
+            {parseInt(fp[espKey])} esp × {espesor}mm = {(parseInt(fp[espKey]) || 0) * espesor}mm
+          </span>
+        )}
+        {divVal > 1 && (
+          <span style={{ fontFamily: "'DM Mono',monospace", color: "#7090c0", fontSize: 11 }}>÷ {divVal}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── DimRowLibre ── para piezas especiales con medidas libres
+function DimRowLibre({ titulo, valKey, fp, setFp }) {
+  return (
+    <div style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.20)", borderRadius: 8, padding: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent)", marginBottom: 8 }}>
+        {titulo} <span style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "none", fontWeight: 400 }}>— medida libre</span>
+      </div>
+      <TextInput label="Medida exacta (mm)" type="number" value={fp[valKey]} placeholder="0" suffix="mm" small
+        onChange={(v) => setFp((p) => ({ ...p, [valKey]: parseInt(v) || 0 }))} />
+      <div style={{ fontSize: 11, marginTop: 6, fontFamily: "'DM Mono',monospace", color: "#7ecf8a" }}>
+        → {parseInt(fp[valKey]) || 0} mm
+      </div>
+    </div>
+  );
+}
+
+function FormPieza({ fp, setFp, onAgregar, error, dims, espesor, tapacanto }) {
+  const esEspecial = !!fp.especial;
+  const d1 = esEspecial
+    ? (parseInt(fp.dimLibre1) || 0)
+    : resolverDim(dims[fp.usaDim], parseInt(fp.offsetEsp) || 0, parseInt(fp.offsetMm) || 0, parseInt(fp.divisor) || 1, espesor);
+  const d2 = esEspecial
+    ? (parseInt(fp.dimLibre2) || 0)
+    : resolverDim(dims[fp.usaDim2], parseInt(fp.offsetEsp2) || 0, parseInt(fp.offsetMm2) || 0, parseInt(fp.divisor2) || 1, espesor);
+
   return (
     <Card className="rsp-card" highlight>
-      <h4
-        style={{
-          fontSize: 12,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "0.1em",
-          color: "var(--accent)",
-          marginBottom: 14,
-        }}
-      >
-        ➕ Agregar pieza
-      </h4>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div
-          className="rsp-grid-1"
-          style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}
-        >
-          <TextInput
-            label="Nombre"
-            placeholder="Lateral, Base, Puerta..."
-            value={fp.nombre}
-            onChange={(v) => setFp((p) => ({ ...p, nombre: v }))}
-            small
-          />
-          <TextInput
-            label="Cantidad"
-            type="number"
-            value={fp.cantidad}
-            onChange={(v) => setFp((p) => ({ ...p, cantidad: v }))}
-            small
-          />
-        </div>
-        <DimRow
-          titulo="Dim 1 (altura)"
-          dimKey="usaDim"
-          espKey="offsetEsp"
-          mmKey="offsetMm"
-          divKey="divisor"
-          resultado={d1}
-        />
-        <DimRow
-          titulo="Dim 2 (ancho)"
-          dimKey="usaDim2"
-          espKey="offsetEsp2"
-          mmKey="offsetMm2"
-          divKey="divisor2"
-          resultado={d2}
-        />
-        <div
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <h4 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent)" }}>
+          ➕ Agregar pieza
+        </h4>
+        {/* Toggle pieza especial */}
+        <button
+          onClick={() => setFp(p => ({ ...p, especial: !p.especial, dimLibre1: p.dimLibre1 || 0, dimLibre2: p.dimLibre2 || 0 }))}
+          title="Pieza especial: medidas libres sin fórmula"
           style={{
-            background: "rgba(0,0,0,0.18)",
-            borderRadius: 8,
-            padding: 10,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              color: "var(--text-muted)",
-              marginBottom: 8,
-            }}
-          >
+            display: "flex", alignItems: "center", gap: 5, padding: "3px 10px",
+            borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer",
+            fontFamily: "'DM Mono',monospace", transition: "all 0.15s",
+            background: esEspecial ? "rgba(212,175,55,0.18)" : "transparent",
+            border: `1px solid ${esEspecial ? "var(--accent-border)" : "var(--border)"}`,
+            color: esEspecial ? "var(--accent)" : "var(--text-muted)",
+          }}>
+          ✦ {esEspecial ? "Especial activa" : "Pieza especial"}
+        </button>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
+          <TextInput label="Nombre" placeholder="Lateral, Base, Puerta..." value={fp.nombre}
+            onChange={(v) => setFp((p) => ({ ...p, nombre: v }))} small />
+          <TextInput label="Cantidad" type="number" value={fp.cantidad}
+            onChange={(v) => setFp((p) => ({ ...p, cantidad: v }))} small />
+        </div>
+
+        {esEspecial ? (
+          <>
+            <div style={{ fontSize: 11, padding: "6px 10px", background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.20)", borderRadius: 6, color: "var(--accent)" }}>
+              ✦ Medidas libres — no dependen de las dimensiones del módulo
+            </div>
+            <DimRowLibre titulo="Dim 1 (altura)" valKey="dimLibre1" fp={fp} setFp={setFp} />
+            <DimRowLibre titulo="Dim 2 (ancho)" valKey="dimLibre2" fp={fp} setFp={setFp} />
+          </>
+        ) : (
+          <>
+            <DimRow titulo="Dim 1 (altura)" dimKey="usaDim" espKey="offsetEsp" mmKey="offsetMm" divKey="divisor"
+              resultado={d1} fp={fp} setFp={setFp} espesor={espesor} />
+            <DimRow titulo="Dim 2 (ancho)" dimKey="usaDim2" espKey="offsetEsp2" mmKey="offsetMm2" divKey="divisor2"
+              resultado={d2} fp={fp} setFp={setFp} espesor={espesor} />
+          </>
+        )}
+
+        <div style={{ background: "rgba(0,0,0,0.18)", borderRadius: 8, padding: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
             🎗 Tapacanto
           </div>
           <div style={{ marginBottom: 8 }}>
-            <Select
-              label="Tipo de cinta"
-              value={fp.tc.id}
-              small
-              onChange={(v) =>
-                setFp((p) => ({ ...p, tc: { ...p.tc, id: parseInt(v) } }))
-              }
-              options={[
-                { value: 0, label: "Sin tapacanto" },
-                ...(tapacanto || []).map((t) => ({
-                  value: t.id,
-                  label: t.nombre,
-                })),
-              ]}
-            />
+            <Select label="Tipo de cinta" value={fp.tc.id} small
+              onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, id: parseInt(v) } }))}
+              options={[{ value: 0, label: "Sin tapacanto" }, ...(tapacanto || []).map((t) => ({ value: t.id, label: t.nombre }))]} />
           </div>
-          <div
-            className="rsp-grid-1"
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}
-          >
-            <TextInput
-              label={`Lados D1 (${fp.usaDim})`}
-              type="number"
-              value={fp.tc.lados1}
-              small
-              onChange={(v) =>
-                setFp((p) => ({
-                  ...p,
-                  tc: { ...p.tc, lados1: parseInt(v) || 0 },
-                }))
-              }
-            />
-            <TextInput
-              label={`Lados D2 (${fp.usaDim2})`}
-              type="number"
-              value={fp.tc.lados2}
-              small
-              onChange={(v) =>
-                setFp((p) => ({
-                  ...p,
-                  tc: { ...p.tc, lados2: parseInt(v) || 0 },
-                }))
-              }
-            />
+          <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <TextInput label={`Lados D1 (${esEspecial ? "libre" : fp.usaDim})`} type="number" value={fp.tc.lados1} small
+              onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, lados1: parseInt(v) || 0 } }))} />
+            <TextInput label={`Lados D2 (${esEspecial ? "libre" : fp.usaDim2})`} type="number" value={fp.tc.lados2} small
+              onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, lados2: parseInt(v) || 0 } }))} />
           </div>
           {fp.tc.id > 0 && (
-            <div
-              style={{
-                fontSize: 11,
-                marginTop: 6,
-                fontFamily: "'DM Mono',monospace",
-                color: "var(--accent)",
-              }}
-            >
-              →{" "}
-              {fmtNum(
-                (parseInt(fp.cantidad || 1) *
-                  ((fp.tc.lados1 || 0) * d1 + (fp.tc.lados2 || 0) * d2)) /
-                  1000,
-                2
-              )}{" "}
-              m lineales
+            <div style={{ fontSize: 11, marginTop: 6, fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>
+              → {fmtNum((parseInt(fp.cantidad || 1) * ((fp.tc.lados1 || 0) * d1 + (fp.tc.lados2 || 0) * d2)) / 1000, 2)} m lineales
             </div>
           )}
         </div>
+
         {error && <p style={{ color: "#e07070", fontSize: 12 }}>⚠ {error}</p>}
-        <Btn onClick={onAgregar} full>
-          + Agregar esta pieza
-        </Btn>
+        <Btn onClick={onAgregar} full>+ Agregar esta pieza</Btn>
       </div>
     </Card>
   );
@@ -4334,6 +4150,226 @@ function imprimirPresupuesto(
     win.document.write(html);
     win.document.close();
   } else alert("El navegador bloqueó la ventana emergente.");
+}
+
+// ── Ficha de Obra ─────────────────────────────────────────────────
+function generarFichaObra(id, p, modulos, costos) {
+  const fecha = fmtFechaLarga(Date.now());
+  const creacion = fmtFechaLarga(parseInt(id));
+  const cobros = p.cobros || [];
+  const totalCobrado = cobros.reduce((a, c) => a + c.monto, 0);
+  const saldo = p.total - totalCobrado;
+
+  // Calcular piezas de corte agrupadas
+  const piezasCorte = [];
+  (p.items || []).forEach(item => {
+    const modBase = modulos[item.codigo];
+    if (!modBase) return;
+    const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+    const modUsado = { ...modBase, dimensiones: dims };
+    const matDef = costos.materiales.find(m => m.tipo === modUsado.material) || costos.materiales[0];
+    const esp = matDef?.espesor || 18;
+    const dimMap = { ancho: dims.ancho, profundidad: dims.profundidad, alto: dims.alto };
+    modUsado.piezas.forEach(pz => {
+      const d1 = pz.especial ? (parseInt(pz.dimLibre1) || 0)
+        : Math.round(resolverDim(dimMap[pz.usaDim], pz.offsetEsp, pz.offsetMm, pz.divisor || 1, esp));
+      const d2 = pz.especial ? (parseInt(pz.dimLibre2) || 0)
+        : Math.round(resolverDim(dimMap[pz.usaDim2], pz.offsetEsp2, pz.offsetMm2, pz.divisor2 || 1, esp));
+      const cant = (pz.cantidad || 1) * (item.cantidad || 1);
+      piezasCorte.push({ nombre: pz.nombre, modulo: `${item.codigo} ${modBase.nombre}`, d1, d2, cant, especial: !!pz.especial });
+    });
+  });
+
+  // Calcular materiales necesarios
+  const calcMat = (() => {
+    const matMap = {};
+    (p.items || []).forEach(item => {
+      const modBase = modulos[item.codigo];
+      if (!modBase) return;
+      const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+      const modUsado = { ...modBase, dimensiones: dims };
+      const calc = calcularModulo(modUsado, costos);
+      if (!calc) return;
+      const key = modUsado.material;
+      if (!matMap[key]) matMap[key] = { nombre: costos.materiales.find(m => m.tipo === key)?.nombre || key, m2: 0, espesor: costos.materiales.find(m => m.tipo === key)?.espesor || 18, placaL: costos.materiales.find(m => m.tipo === key)?.placaLargo || 2750, placaA: costos.materiales.find(m => m.tipo === key)?.placaAncho || 1830 };
+      matMap[key].m2 += calc.m2Total * item.cantidad;
+    });
+    return Object.values(matMap).map(m => ({
+      ...m,
+      placas: Math.ceil(m.m2 / ((m.placaL * m.placaA) / 1_000_000))
+    }));
+  })();
+
+  const calcTc = (() => {
+    const tcMap = {};
+    (p.items || []).forEach(item => {
+      const modBase = modulos[item.codigo];
+      if (!modBase) return;
+      const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+      const modUsado = { ...modBase, dimensiones: dims };
+      const calc = calcularModulo(modUsado, costos);
+      if (!calc) return;
+      modUsado.piezas.forEach(pz => {
+        if (!pz.tc?.id) return;
+        const tcDef = costos.tapacanto?.find(t => t.id === pz.tc.id);
+        if (!tcDef) return;
+        const esp = costos.materiales.find(m => m.tipo === modUsado.material)?.espesor || 18;
+        const dimMap = { ancho: dims.ancho, profundidad: dims.profundidad, alto: dims.alto };
+        const d1 = pz.especial ? (parseInt(pz.dimLibre1) || 0) : resolverDim(dimMap[pz.usaDim], pz.offsetEsp, pz.offsetMm, pz.divisor || 1, esp);
+        const d2 = pz.especial ? (parseInt(pz.dimLibre2) || 0) : resolverDim(dimMap[pz.usaDim2], pz.offsetEsp2, pz.offsetMm2, pz.divisor2 || 1, esp);
+        const metros = (pz.cantidad * item.cantidad * ((pz.tc.lados1 || 0) * d1 + (pz.tc.lados2 || 0) * d2)) / 1000;
+        if (!tcMap[tcDef.id]) tcMap[tcDef.id] = { nombre: tcDef.nombre, metros: 0 };
+        tcMap[tcDef.id].metros += metros;
+      });
+    });
+    return Object.values(tcMap);
+  })();
+
+  const calcHerrajes = (() => {
+    const hMap = {};
+    (p.items || []).forEach(item => {
+      const modBase = modulos[item.codigo];
+      if (!modBase) return;
+      (modBase.herrajes || []).forEach(h => {
+        const hDef = costos.herrajes?.find(hd => hd.id === h.id);
+        if (!hDef) return;
+        if (!hMap[h.id]) hMap[h.id] = { nombre: hDef.nombre, unidad: hDef.unidad || "u", cant: 0 };
+        hMap[h.id].cant += (h.cantidad || 1) * item.cantidad;
+      });
+    });
+    return Object.values(hMap);
+  })();
+
+  const filasCorte = piezasCorte.map((pz, i) =>
+    `<tr style="background:${i % 2 === 0 ? '#f9f6f0' : '#fff'}">
+      <td style="padding:7px 12px;font-size:12px;color:#5a3a10;font-family:monospace">${pz.modulo}</td>
+      <td style="padding:7px 12px;font-size:13px;font-weight:600;color:#1a0e04">${pz.nombre}${pz.especial ? ' <span style="font-size:9px;background:#fff3cd;color:#8a6010;border:1px solid #e0c060;border-radius:3px;padding:1px 4px">ESP</span>' : ''}</td>
+      <td style="padding:7px 12px;font-family:monospace;font-size:13px;font-weight:700;color:#1a6a30;text-align:right">${pz.d1}</td>
+      <td style="padding:7px 12px;font-family:monospace;font-size:13px;font-weight:700;color:#1a6a30;text-align:right">${pz.d2}</td>
+      <td style="padding:7px 12px;font-family:monospace;font-size:14px;font-weight:900;color:#7a4a10;text-align:center">×${pz.cant}</td>
+    </tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Ficha de Obra — ${p.nombre}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a0e04;padding:28px 36px;max-width:960px;margin:0 auto;font-size:13px}
+  h2{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:#7a4a10;margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid #e8d0a0}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px}
+  th{font-size:9px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:#9a7040;padding:7px 12px;border-bottom:2px solid #c8a060;text-align:left;background:#fdf6ec}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700}
+  .section{margin-bottom:24px;padding:16px 18px;border:1px solid #e8d0a0;border-radius:8px;background:#fdf9f3}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .label{font-size:9px;text-transform:uppercase;letter-spacing:0.12em;color:#9a7040;font-weight:700;margin-bottom:3px}
+  .val{font-size:14px;font-weight:700;color:#1a0e04;font-family:monospace}
+  .chip{display:inline-block;background:#f0e8d8;border:1px solid #c8a060;border-radius:4px;padding:2px 8px;font-size:11px;color:#7a4a10;margin:2px}
+  @media print{body{padding:12px 16px} .no-print{display:none}}
+</style></head><body>
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:14px;border-bottom:3px solid #a07030">
+  <div>
+    <div style="font-size:20px;font-weight:900;color:#7a4a10">🪵 CarpiCálc</div>
+    <div style="font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-top:3px">FICHA DE OBRA</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:18px;font-weight:800;color:#1a0e04">${p.nombre}</div>
+    <div style="font-size:11px;color:#888;margin-top:3px">Creado: ${creacion} · Impreso: ${fecha}</div>
+    <span class="badge" style="background:#c85030;color:#fff;margin-top:6px">🪚 En producción</span>
+  </div>
+</div>
+
+${p.cliente && (p.cliente.nombre || p.cliente.tel || p.cliente.dir) ? `
+<div class="section" style="margin-bottom:20px">
+  <div class="grid3">
+    ${p.cliente.nombre ? `<div><div class="label">Cliente</div><div class="val">${p.cliente.nombre}</div></div>` : ''}
+    ${p.cliente.tel ? `<div><div class="label">Teléfono</div><div class="val">${p.cliente.tel}</div></div>` : ''}
+    ${p.cliente.dir ? `<div><div class="label">Dirección entrega</div><div class="val">${p.cliente.dir}</div></div>` : ''}
+  </div>
+</div>` : ''}
+
+<div class="grid2" style="margin-bottom:20px">
+  <div class="section">
+    <h2>📦 Módulos del trabajo</h2>
+    ${(p.items || []).map(item => {
+      const modBase = modulos[item.codigo];
+      if (!modBase) return '';
+      const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+      return `<div style="padding:8px 0;border-bottom:1px solid #e8d8c0;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <span style="font-family:monospace;font-size:10px;color:#9a7040;font-weight:700">${item.codigo}</span>
+          <span style="font-size:13px;font-weight:700;color:#1a0e04;margin-left:8px">${modBase.nombre}</span>
+          <div style="font-size:11px;color:#7a6040;font-family:monospace;margin-top:2px">${dims.ancho}×${dims.profundidad}×${dims.alto} mm</div>
+        </div>
+        <span style="font-family:monospace;font-size:16px;font-weight:900;color:#7a4a10">×${item.cantidad}</span>
+      </div>`;
+    }).join('')}
+  </div>
+
+  <div>
+    <div class="section" style="margin-bottom:12px">
+      <h2>🪵 Material necesario</h2>
+      ${calcMat.map(m => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #e8d8c0">
+          <div>
+            <div style="font-weight:700;color:#1a0e04">${m.nombre} ${m.espesor}mm</div>
+            <div style="font-size:11px;color:#888;font-family:monospace">${m.m2.toFixed(2)} m² (c/desp.)</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:18px;font-weight:900;color:#7a4a10;font-family:monospace">${m.placas}</div>
+            <div style="font-size:10px;color:#888">placas</div>
+          </div>
+        </div>`).join('')}
+      ${calcTc.length > 0 ? `<div style="margin-top:10px"><div class="label">Tapacanto</div>${calcTc.map(t => `<span class="chip">🎗 ${t.nombre}: ${t.metros.toFixed(1)} m</span>`).join('')}</div>` : ''}
+      ${calcHerrajes.length > 0 ? `<div style="margin-top:10px"><div class="label">Herrajes</div>${calcHerrajes.map(h => `<span class="chip">⚙ ${h.nombre}: ${h.cant} ${h.unidad}</span>`).join('')}</div>` : ''}
+    </div>
+
+    <div class="section">
+      <h2>💵 Estado de cobros</h2>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="color:#888">Total acordado</span>
+        <span style="font-family:monospace;font-weight:700;color:#1a6a30">${fmtPeso(p.total)}</span>
+      </div>
+      ${cobros.map(c => `
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0">
+          <span style="color:#888">${c.concepto} — ${fmtFecha(c.fecha)}</span>
+          <span style="font-family:monospace;color:#5a8a5a">${fmtPeso(c.monto)}</span>
+        </div>`).join('')}
+      <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:2px solid #e8d0a0">
+        <span style="font-weight:700">Saldo pendiente</span>
+        <span style="font-family:monospace;font-weight:900;font-size:16px;color:${saldo > 0 ? '#c84040' : '#1a6a30'}">${fmtPeso(Math.max(0, saldo))}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>✂ Lista de corte completa (${piezasCorte.length} piezas · ${piezasCorte.reduce((a, p) => a + p.cant, 0)} unidades)</h2>
+  <table>
+    <thead><tr>
+      <th>Módulo</th><th>Pieza</th>
+      <th style="text-align:right">Alto (mm)</th>
+      <th style="text-align:right">Ancho (mm)</th>
+      <th style="text-align:center">Cant.</th>
+    </tr></thead>
+    <tbody>${filasCorte}</tbody>
+  </table>
+</div>
+
+${p.nota ? `<div class="section"><h2>📋 Observaciones</h2><p style="font-size:13px;color:#3a2810;line-height:1.6;margin-top:6px">${p.nota}</p></div>` : ''}
+
+<div style="margin-top:16px;padding:12px 16px;background:#f0f0f0;border-radius:6px;display:flex;justify-content:space-between;font-size:11px;color:#888">
+  <span>CarpiCálc · Ficha de Obra generada el ${fecha}</span>
+  <span>${p.nombre} · ${(p.items||[]).length} módulo${(p.items||[]).length !== 1 ? 's' : ''}</span>
+</div>
+
+<script>window.onload=()=>window.print();</script>
+</body></html>`;
+
+  const win = window.open("", "_blank", "width=1000,height=750");
+  if (win) { win.document.write(html); win.document.close(); }
+  else alert("El navegador bloqueó la ventana. Permití popups para este sitio.");
 }
 
 // ── ResumenPresupuesto ────────────────────────────────────────────
@@ -6040,8 +6076,9 @@ function AccionesTrabajo({ id, p, onCambiarEstado, onEliminar, onCargar, compact
   );
 }
 
-function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar }) {
+function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, costos }) {
   const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
+  const esProduccion = (p.estado || "nuevo") === "produccion";
   return (
     <div style={{
       background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10,
@@ -6052,12 +6089,10 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar }) {
       onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-strong)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.35)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "var(--shadow-sm)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderLeftColor = est.color; }}
     >
-      {/* Nombre con punto de color */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 7, marginBottom: 4 }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: est.color, flexShrink: 0, marginTop: 4, boxShadow: `0 0 6px ${est.color}80` }} />
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>{p.nombre}</span>
       </div>
-
       {p.cliente && p.cliente.nombre && (
         <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 2, paddingLeft: 15, fontWeight: 300 }}>
           👤 {p.cliente.nombre}
@@ -6067,10 +6102,17 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar }) {
       <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginBottom: 10, paddingLeft: 15, fontWeight: 300 }}>
         {fmtFecha(parseInt(id))} · {p.items.length} mód.
       </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
-        <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
+        <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }}>
+          {esProduccion && modulos && costos && (
+            <button onClick={() => generarFichaObra(id, p, modulos, costos)}
+              style={{ padding: "4px 9px", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,80,48,0.15)", border: "1px solid rgba(200,80,48,0.35)", color: "#c85030", borderRadius: 5, cursor: "pointer" }}>
+              📋 Ficha
+            </button>
+          )}
+          <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
+        </div>
       </div>
     </div>
   );
@@ -6128,7 +6170,7 @@ function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar }) {
   );
 }
 
-function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) {
+function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar, modulos, costos }) {
   const [vistaTab, setVistaTab] = useState("lista");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [orden, setOrden] = useState("fecha_desc");
@@ -6240,7 +6282,7 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) 
                         <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace" }}>Sin trabajos</div>
                       ) : (
                         cards.map(([id, p]) => (
-                          <TarjetaKanban key={id} id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} />
+                          <TarjetaKanban key={id} id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} modulos={modulos} costos={costos} />
                         ))
                       )}
                     </div>
@@ -6274,7 +6316,7 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) 
 }
 
 // ── PanelCaja ─────────────────────────────────────────────────────
-function FilaCaja({ id, p, onActualizar }) {
+function FilaCaja({ id, p, onActualizar, modulos, costos }) {
   const [abierto, setAbierto] = useState(false);
   const [montoCobro, setMontoCobro] = useState("");
   const [conceptoCobro, setConceptoCobro] = useState("Seña");
@@ -6403,6 +6445,23 @@ function FilaCaja({ id, p, onActualizar }) {
       {/* Panel expandido */}
       {abierto && (
         <div style={{ padding: "0 18px 18px", borderTop: "1px solid var(--separator)", paddingTop: 16 }}>
+          {/* Botón Ficha de Obra — solo en producción */}
+          {(p.estado === "produccion") && modulos && costos && (
+            <div style={{ marginBottom: 16 }}>
+              <button onClick={() => generarFichaObra(id, p, modulos, costos)}
+                style={{
+                  width: "100%", padding: "10px 16px", borderRadius: 8, cursor: "pointer",
+                  background: "rgba(200,80,48,0.12)", border: "1px solid rgba(200,80,48,0.35)",
+                  color: "#c85030", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700,
+                  letterSpacing: "0.08em", textTransform: "uppercase", transition: "all 0.15s",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(200,80,48,0.22)"}
+                onMouseLeave={e => e.currentTarget.style.background = "rgba(200,80,48,0.12)"}>
+                📋 Generar Ficha de Obra — lista para imprimir o compartir
+              </button>
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }} className="rsp-grid-1">
 
             {/* 1. Cobros */}
@@ -6568,7 +6627,7 @@ function FilaCaja({ id, p, onActualizar }) {
   );
 }
 
-function PanelCaja({ presupuestos, onActualizar }) {
+function PanelCaja({ presupuestos, onActualizar, modulos, costos }) {
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
 
   // Métricas globales
@@ -6641,7 +6700,7 @@ function PanelCaja({ presupuestos, onActualizar }) {
           {/* Lista de trabajos */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {entries.map(([id, p]) => (
-              <FilaCaja key={id} id={id} p={p} onActualizar={onActualizar} />
+              <FilaCaja key={id} id={id} p={p} onActualizar={onActualizar} modulos={modulos} costos={costos} />
             ))}
           </div>
         </>
@@ -7081,12 +7140,16 @@ function AppInterna() {
               onCambiarEstado={handleCambiarEstado}
               onEliminar={handleEliminarPresupuesto}
               onCargar={(p) => { handleCargarPresupuesto(p); setVista("presupuesto"); }}
+              modulos={modulos}
+              costos={costos}
             />
           )}
           {vista === "caja" && (
             <PanelCaja
               presupuestos={presupuestos}
               onActualizar={handleActualizarPresupuesto}
+              modulos={modulos}
+              costos={costos}
             />
           )}
           {vista === "catalogo" && (
