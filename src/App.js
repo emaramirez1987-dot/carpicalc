@@ -623,6 +623,16 @@ const GlobalStyles = () => (
       .lista-desktop-col { display: none !important; }
       .lista-mobile-row { display: flex !important; }
       .lista-header { display: none !important; }
+
+      /* Filtros de estado: columna vertical en mobile */
+      .filtros-estado {
+        flex-direction: column !important;
+        gap: 6px !important;
+      }
+      .filtros-estado > button {
+        width: 100% !important;
+        justify-content: flex-start !important;
+      }
     }
   `}</style>
 );
@@ -6082,7 +6092,7 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) 
       ) : (
         <>
           {/* Contadores siempre visibles */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="filtros-estado" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {ESTADOS_TRABAJO.map(est => {
               const count = entries.filter(([, p]) => (p.estado || "nuevo") === est.id).length;
               const active = filtroEstado === est.id;
