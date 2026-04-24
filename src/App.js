@@ -6273,6 +6273,383 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) 
   );
 }
 
+// ── PanelCaja ─────────────────────────────────────────────────────
+function FilaCaja({ id, p, onActualizar }) {
+  const [abierto, setAbierto] = useState(false);
+  const [montoCobro, setMontoCobro] = useState("");
+  const [conceptoCobro, setConceptoCobro] = useState("Seña");
+  const [costoReal, setCostoReal] = useState(p.costoReal ?? "");
+  const [diasVigencia, setDiasVigencia] = useState(p.diasVigencia ?? 15);
+  const [editandoCosto, setEditandoCosto] = useState(false);
+  const [editandoVigencia, setEditandoVigencia] = useState(false);
+
+  const cobros = p.cobros || [];
+  const totalCobrado = cobros.reduce((a, c) => a + c.monto, 0);
+  const saldoPendiente = p.total - totalCobrado;
+  const pctCobrado = p.total > 0 ? Math.min(100, (totalCobrado / p.total) * 100) : 0;
+
+  const margen = p.costoReal > 0
+    ? Math.round(((p.total - p.costoReal) / p.total) * 100)
+    : null;
+
+  // Vencimiento: solo relevante si está enviado
+  const diasTranscurridos = Math.floor((Date.now() - parseInt(id)) / 86400000);
+  const diasRestantes = (p.diasVigencia || 15) - diasTranscurridos;
+  const vencido = diasRestantes < 0;
+  const porVencer = diasRestantes >= 0 && diasRestantes <= 3;
+  const estadoVigencia = p.estado === "enviado" || p.estado === "nuevo"
+    ? vencido ? "vencido" : porVencer ? "por_vencer" : "vigente"
+    : null;
+
+  const agregarCobro = () => {
+    const monto = parseFloat(montoCobro);
+    if (!monto || isNaN(monto) || monto <= 0) return;
+    const nuevoCobro = { fecha: Date.now(), monto, concepto: conceptoCobro };
+    onActualizar(id, { cobros: [...cobros, nuevoCobro] });
+    setMontoCobro("");
+  };
+
+  const eliminarCobro = (idx) => {
+    onActualizar(id, { cobros: cobros.filter((_, i) => i !== idx) });
+  };
+
+  const guardarCostoReal = () => {
+    const v = parseFloat(costoReal);
+    onActualizar(id, { costoReal: isNaN(v) ? 0 : v });
+    setEditandoCosto(false);
+  };
+
+  const guardarVigencia = () => {
+    const v = parseInt(diasVigencia);
+    onActualizar(id, { diasVigencia: isNaN(v) ? 15 : v });
+    setEditandoVigencia(false);
+  };
+
+  const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
+
+  const inputSm = {
+    fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "5px 9px",
+    background: "var(--bg-base)", border: "1px solid var(--accent-border)",
+    color: "var(--text-primary)", borderRadius: 6, outline: "none",
+  };
+
+  return (
+    <div style={{
+      background: "var(--bg-surface)", border: "1px solid var(--border)",
+      borderRadius: 12, overflow: "hidden", transition: "border-color 0.15s",
+      borderLeft: `3px solid ${est.color}`,
+    }}>
+      {/* Cabecera */}
+      <div style={{ padding: "14px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}
+        onClick={() => setAbierto(a => !a)}
+        onMouseEnter={e => e.currentTarget.parentElement.style.borderColor = "var(--border-strong)"}
+        onMouseLeave={e => e.currentTarget.parentElement.style.borderColor = "var(--border)"}
+      >
+        {/* Info principal */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
+            <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.08em", background: `${est.color}22`, color: est.color, border: `1px solid ${est.color}44`, borderRadius: 4, padding: "2px 7px" }}>
+              {est.icon} {est.label}
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{p.nombre}</span>
+            {p.cliente?.nombre && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>· 👤 {p.cliente.nombre}</span>}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 300 }}>
+            {fmtFecha(parseInt(id))} · {p.items.length} mód.
+          </div>
+        </div>
+
+        {/* Vencimiento */}
+        {estadoVigencia && (
+          <div style={{
+            fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: "3px 9px",
+            borderRadius: 6, flexShrink: 0,
+            background: vencido ? "rgba(200,60,60,0.15)" : porVencer ? "rgba(200,160,42,0.15)" : "rgba(100,180,80,0.10)",
+            color: vencido ? "#e07070" : porVencer ? "#c8a02a" : "#7ecf8a",
+            border: `1px solid ${vencido ? "rgba(200,60,60,0.35)" : porVencer ? "rgba(200,160,42,0.35)" : "rgba(100,180,80,0.25)"}`,
+          }}>
+            {vencido ? `⚠ Vencido hace ${Math.abs(diasRestantes)}d` : `📅 Vence en ${diasRestantes}d`}
+          </div>
+        )}
+
+        {/* Barra cobro */}
+        <div style={{ flexShrink: 0, textAlign: "right", minWidth: 140 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+            <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+              Cobrado {Math.round(pctCobrado)}%
+            </span>
+            <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: saldoPendiente > 0 ? "#e07070" : "#7ecf8a" }}>
+              {fmtPeso(saldoPendiente > 0 ? saldoPendiente : 0)} pendiente
+            </span>
+          </div>
+          <div style={{ height: 5, background: "var(--bg-subtle)", borderRadius: 999, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${pctCobrado}%`, background: pctCobrado >= 100 ? "#7ecf8a" : "var(--accent)", borderRadius: 999, transition: "width 0.4s" }} />
+          </div>
+        </div>
+
+        {/* Total y margen */}
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 16, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</div>
+          {margen !== null && (
+            <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: margen >= 30 ? "#7ecf8a" : margen >= 15 ? "#c8a02a" : "#e07070", fontWeight: 700 }}>
+              {margen}% margen
+            </div>
+          )}
+        </div>
+
+        <span style={{ color: "var(--text-muted)", fontSize: 12, flexShrink: 0 }}>{abierto ? "▲" : "▼"}</span>
+      </div>
+
+      {/* Panel expandido */}
+      {abierto && (
+        <div style={{ padding: "0 18px 18px", borderTop: "1px solid var(--separator)", paddingTop: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }} className="rsp-grid-1">
+
+            {/* 1. Cobros */}
+            <div>
+              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 10, fontWeight: 700 }}>
+                💳 Cobros recibidos
+              </div>
+              {cobros.length === 0 ? (
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>Sin cobros registrados</div>
+              ) : (
+                <div style={{ marginBottom: 10 }}>
+                  {cobros.map((c, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: "1px solid var(--separator)" }}>
+                      <div>
+                        <div style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>{c.concepto}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>{fmtFecha(c.fecha)}</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(c.monto)}</span>
+                        <button onClick={() => eliminarCobro(i)}
+                          style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: 0 }}>×</button>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", marginTop: 4 }}>
+                    <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>SALDO PENDIENTE</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: saldoPendiente > 0 ? "#e07070" : "#7ecf8a" }}>
+                      {fmtPeso(Math.max(0, saldoPendiente))}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {/* Nuevo cobro */}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <select value={conceptoCobro} onChange={e => setConceptoCobro(e.target.value)}
+                  style={{ ...inputSm, flex: "0 0 auto" }}>
+                  {["Seña","Anticipo materiales","Cuota","Saldo final","Otro"].map(c => <option key={c}>{c}</option>)}
+                </select>
+                <input type="number" value={montoCobro} onChange={e => setMontoCobro(e.target.value)}
+                  placeholder="Monto $" onKeyDown={e => e.key === "Enter" && agregarCobro()}
+                  style={{ ...inputSm, flex: 1, minWidth: 80 }} />
+                <button onClick={agregarCobro}
+                  style={{ padding: "5px 12px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 6, cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                  + Cobro
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Rentabilidad */}
+            <div>
+              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 10, fontWeight: 700 }}>
+                📈 Rentabilidad
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Precio presupuestado</span>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Costo real del trabajo</span>
+                  {editandoCosto ? (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <input type="number" value={costoReal} onChange={e => setCostoReal(e.target.value)}
+                        autoFocus onKeyDown={e => e.key === "Enter" && guardarCostoReal()}
+                        style={{ ...inputSm, width: 100 }} />
+                      <button onClick={guardarCostoReal}
+                        style={{ padding: "4px 8px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>✓</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setEditandoCosto(true)}
+                      style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: p.costoReal > 0 ? "#e07070" : "var(--text-muted)", background: "none", border: "1px dashed var(--border)", borderRadius: 5, padding: "2px 8px", cursor: "pointer" }}>
+                      {p.costoReal > 0 ? fmtPeso(p.costoReal) : "Ingresar →"}
+                    </button>
+                  )}
+                </div>
+                {margen !== null && (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--separator)" }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>Ganancia neta</span>
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: margen >= 0 ? "#7ecf8a" : "#e07070" }}>
+                        {fmtPeso(p.total - p.costoReal)}
+                      </span>
+                    </div>
+                    <div style={{ height: 8, background: "var(--bg-subtle)", borderRadius: 999, overflow: "hidden", marginTop: 8 }}>
+                      <div style={{
+                        height: "100%", borderRadius: 999, transition: "width 0.4s",
+                        width: `${Math.max(0, Math.min(100, margen))}%`,
+                        background: margen >= 30 ? "#7ecf8a" : margen >= 15 ? "#c8a02a" : "#e07070",
+                      }} />
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, fontFamily: "'DM Mono',monospace" }}>
+                      {margen >= 30 ? "✅ Margen saludable" : margen >= 15 ? "⚠ Margen ajustado" : "🔴 Margen bajo — revisar costos"}
+                    </div>
+                  </>
+                )}
+                {margen === null && (
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
+                    Ingresá el costo real para ver el margen
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 3. Vigencia */}
+            <div>
+              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 10, fontWeight: 700 }}>
+                📅 Vigencia del presupuesto
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Válido por</span>
+                  {editandoVigencia ? (
+                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                      <input type="number" value={diasVigencia} onChange={e => setDiasVigencia(e.target.value)}
+                        autoFocus onKeyDown={e => e.key === "Enter" && guardarVigencia()}
+                        style={{ ...inputSm, width: 60 }} />
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>días</span>
+                      <button onClick={guardarVigencia}
+                        style={{ padding: "4px 8px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>✓</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setEditandoVigencia(true)}
+                      style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--accent)", background: "none", border: "1px dashed var(--accent-border)", borderRadius: 5, padding: "2px 8px", cursor: "pointer" }}>
+                      {p.diasVigencia || 15} días
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Creado</span>
+                  <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", color: "var(--text-secondary)" }}>{fmtFecha(parseInt(id))}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Vencimiento</span>
+                  <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", color: vencido ? "#e07070" : porVencer ? "#c8a02a" : "var(--text-secondary)", fontWeight: 700 }}>
+                    {fmtFecha(parseInt(id) + (p.diasVigencia || 15) * 86400000)}
+                  </span>
+                </div>
+                {estadoVigencia && (
+                  <div style={{
+                    padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    background: vencido ? "rgba(200,60,60,0.12)" : porVencer ? "rgba(200,160,42,0.12)" : "rgba(100,180,80,0.10)",
+                    color: vencido ? "#e07070" : porVencer ? "#c8a02a" : "#7ecf8a",
+                    border: `1px solid ${vencido ? "rgba(200,60,60,0.30)" : porVencer ? "rgba(200,160,42,0.30)" : "rgba(100,180,80,0.20)"}`,
+                  }}>
+                    {vencido
+                      ? `⚠ Vencido hace ${Math.abs(diasRestantes)} días. Actualizá el precio antes de reenviar.`
+                      : porVencer
+                      ? `⏳ Vence en ${diasRestantes} días. Hacé seguimiento con el cliente.`
+                      : `✅ Vigente por ${diasRestantes} días más.`}
+                  </div>
+                )}
+                {!estadoVigencia && (
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
+                    La vigencia aplica cuando el presupuesto está en estado Nuevo o Enviado.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PanelCaja({ presupuestos, onActualizar }) {
+  const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
+
+  // Métricas globales
+  const totalPresupuestado = entries.reduce((a, [, p]) => a + p.total, 0);
+  const totalCobrado = entries.reduce((a, [, p]) => {
+    const cobros = p.cobros || [];
+    return a + cobros.reduce((b, c) => b + c.monto, 0);
+  }, 0);
+  const totalPendiente = entries.reduce((a, [, p]) => {
+    if (p.estado === "entregado" || p.estado === "aceptado" || p.estado === "produccion") {
+      const cobros = p.cobros || [];
+      const cobrado = cobros.reduce((b, c) => b + c.monto, 0);
+      return a + Math.max(0, p.total - cobrado);
+    }
+    return a;
+  }, 0);
+  const vencidos = entries.filter(([id, p]) => {
+    if (p.estado !== "enviado" && p.estado !== "nuevo") return false;
+    const dias = Math.floor((Date.now() - parseInt(id)) / 86400000);
+    return dias > (p.diasVigencia || 15);
+  }).length;
+
+  const metricaStyle = {
+    background: "var(--bg-surface)", border: "1px solid var(--border)",
+    borderRadius: 12, padding: "16px 20px", flex: 1, minWidth: 140,
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <SectionTitle sub="Cobros, márgenes y vencimientos de tus trabajos">
+        Caja
+      </SectionTitle>
+
+      {entries.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 0", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>💵</div>
+          <p style={{ fontSize: 14 }}>No hay trabajos guardados todavía.</p>
+          <p style={{ fontSize: 12, marginTop: 6 }}>Guardá un presupuesto desde <strong style={{ color: "var(--accent)" }}>📋 Presupuesto</strong> para gestionarlo acá.</p>
+        </div>
+      ) : (
+        <>
+          {/* Métricas resumen */}
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ ...metricaStyle, borderTop: "3px solid var(--accent)" }}>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 6 }}>Total presupuestado</div>
+              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: "var(--accent)" }}>{fmtPeso(totalPresupuestado)}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>{entries.length} trabajos</div>
+            </div>
+            <div style={{ ...metricaStyle, borderTop: "3px solid #7ecf8a" }}>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 6 }}>Total cobrado</div>
+              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(totalCobrado)}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>
+                {totalPresupuestado > 0 ? Math.round((totalCobrado / totalPresupuestado) * 100) : 0}% del total
+              </div>
+            </div>
+            <div style={{ ...metricaStyle, borderTop: "3px solid #e07070" }}>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 6 }}>Pendiente de cobro</div>
+              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: "#e07070" }}>{fmtPeso(totalPendiente)}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>en trabajos activos</div>
+            </div>
+            {vencidos > 0 && (
+              <div style={{ ...metricaStyle, borderTop: "3px solid #c8a02a" }}>
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 6 }}>Presupuestos vencidos</div>
+                <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: "#c8a02a" }}>{vencidos}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>requieren seguimiento</div>
+              </div>
+            )}
+          </div>
+
+          {/* Lista de trabajos */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {entries.map(([id, p]) => (
+              <FilaCaja key={id} id={id} p={p} onActualizar={onActualizar} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Header ────────────────────────────────────────────────────────
 function Header({ vista, setVista, tabs, saveEst, tema, toggleTema }) {
   return (
@@ -6588,13 +6965,23 @@ function AppInterna() {
     withSave(() => guardarPresupuestos(nuevo));
   };
 
+  const handleActualizarPresupuesto = async (id, cambios) => {
+    const nuevo = {
+      ...presupuestos,
+      [id]: { ...presupuestos[id], ...cambios },
+    };
+    setPresupuestos(nuevo);
+    withSave(() => guardarPresupuestos(nuevo));
+  };
+
   const tabs = [
     { id: "presupuesto", label: "Presupuesto", icon: "📋" },
-    { id: "preview", label: "Vista previa", icon: "📄" },
-    { id: "corte", label: "Corte", icon: "🪚" },
-    { id: "trabajos", label: "Trabajos", icon: "📊" },
-    { id: "catalogo", label: "Catálogo", icon: "🗂" },
-    { id: "costos", label: "Costos", icon: "💰" },
+    { id: "preview",     label: "Vista previa", icon: "📄" },
+    { id: "corte",       label: "Corte",        icon: "🪚" },
+    { id: "trabajos",    label: "Trabajos",     icon: "📊" },
+    { id: "caja",        label: "Caja",         icon: "💵" },
+    { id: "catalogo",    label: "Catálogo",     icon: "🗂" },
+    { id: "costos",      label: "Costos",       icon: "💰" },
   ];
 
   if (cargando)
@@ -6694,6 +7081,12 @@ function AppInterna() {
               onCambiarEstado={handleCambiarEstado}
               onEliminar={handleEliminarPresupuesto}
               onCargar={(p) => { handleCargarPresupuesto(p); setVista("presupuesto"); }}
+            />
+          )}
+          {vista === "caja" && (
+            <PanelCaja
+              presupuestos={presupuestos}
+              onActualizar={handleActualizarPresupuesto}
             />
           )}
           {vista === "catalogo" && (
