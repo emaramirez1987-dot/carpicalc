@@ -586,10 +586,25 @@ const GlobalStyles = () => (
       .rsp-table-inner { min-width: 520px; }
       .rsp-item-actions { flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; }
 
-      /* Kanban: columnas apiladas verticalmente en mobile */
+      /* Kanban: scroll horizontal en desktop */
+      .kanban-board {
+        display: flex;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Kanban mobile: apilado vertical, 100% ancho, sin scroll horizontal */
+      .kanban-board-mobile-fix,
+      .lista-mobile-row { display: none; }
+
+    }
+
+    @media (max-width: 768px) {
       .kanban-board {
         flex-direction: column !important;
+        overflow: visible !important;
         gap: 16px !important;
+        padding-bottom: 0 !important;
       }
       .kanban-col {
         flex: none !important;
@@ -598,8 +613,16 @@ const GlobalStyles = () => (
       }
       .kanban-col-header {
         justify-content: center !important;
-        border-radius: 10px 10px 0 0 !important;
+        text-align: center !important;
       }
+      /* Lista: colapsar grid a 1 columna, ocultar columnas desktop */
+      .lista-fila {
+        grid-template-columns: 1fr !important;
+        gap: 0 !important;
+      }
+      .lista-desktop-col { display: none !important; }
+      .lista-mobile-row { display: flex !important; }
+      .lista-header { display: none !important; }
     }
   `}</style>
 );
@@ -5972,9 +5995,9 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar }) {
 function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar }) {
   const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
   return (
-    <div style={{
-      display: "grid", gridTemplateColumns: "1fr 130px 120px auto",
-      alignItems: "center", gap: 12, padding: "11px 16px",
+    <div className="lista-fila" style={{
+      display: "grid", gridTemplateColumns: "1fr 120px 130px auto",
+      alignItems: "center", gap: 12, padding: "12px 16px",
       borderBottom: "1px solid var(--border)", transition: "background 0.12s",
     }}
       onMouseEnter={e => e.currentTarget.style.background = "var(--accent-soft)"}
@@ -5982,28 +6005,41 @@ function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar }) {
     >
       {/* Info */}
       <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: `${est.color}22`, color: est.color, border: `1px solid ${est.color}44`, borderRadius: 4, padding: "1px 6px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: `${est.color}22`, color: est.color, border: `1px solid ${est.color}44`, borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>
             {est.icon} {est.label}
           </span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
         </div>
-        <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+        <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 300 }}>
           {fmtFecha(parseInt(id))} · {p.items.length} mód.
           {p.cliente && p.cliente.nombre && <span> · 👤 {p.cliente.nombre}</span>}
         </div>
+        {/* Total y acciones visibles solo en mobile (dentro del bloque info) */}
+        <div className="lista-mobile-row" style={{ display: "none", marginTop: 10, alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <select value={p.estado || "nuevo"} onChange={e => onCambiarEstado(id, e.target.value)}
+              style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "4px 6px", background: `${est.color}18`, border: `1px solid ${est.color}44`, color: est.color, borderRadius: 6, cursor: "pointer", outline: "none", fontWeight: 700 }}>
+              {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
+            </select>
+            <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
+          </div>
+        </div>
       </div>
-      {/* Total */}
-      <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", textAlign: "right" }}>
+      {/* Total — oculto en mobile */}
+      <div className="lista-desktop-col lista-fila-total" style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", textAlign: "right" }}>
         {fmtPeso(p.total)}
       </div>
-      {/* Selector de estado */}
-      <select value={p.estado || "nuevo"} onChange={e => onCambiarEstado(id, e.target.value)}
+      {/* Selector — oculto en mobile */}
+      <select className="lista-desktop-col" value={p.estado || "nuevo"} onChange={e => onCambiarEstado(id, e.target.value)}
         style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "5px 6px", background: `${est.color}18`, border: `1px solid ${est.color}44`, color: est.color, borderRadius: 6, cursor: "pointer", outline: "none", fontWeight: 700 }}>
         {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
       </select>
-      {/* Acciones */}
-      <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
+      {/* Acciones — ocultas en mobile */}
+      <div className="lista-desktop-col">
+        <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
+      </div>
     </div>
   );
 }
@@ -6074,7 +6110,7 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) 
 
           {/* ── Vista KANBAN ── */}
           {vistaTab === "kanban" && (
-            <div className="rsp-scroll-x kanban-board" style={{ display: "flex", gap: 12, alignItems: "flex-start", paddingBottom: 8 }}>
+            <div className="kanban-board" style={{ display: "flex", gap: 12, alignItems: "flex-start", paddingBottom: 8 }}>
               {ESTADOS_TRABAJO.filter(est => filtroEstado === "todos" || filtroEstado === est.id).map(est => {
                 const cards = entries.filter(([, p]) => (p.estado || "nuevo") === est.id);
                 return (
@@ -6106,7 +6142,7 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) 
           {/* ── Vista LISTA ── */}
           {vistaTab === "lista" && (
             <Card className="rsp-card" style={{ padding: 0, overflow: "hidden" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 130px 120px auto", gap: 12, padding: "9px 16px", background: "var(--accent-soft)", borderBottom: "1px solid var(--border)" }}>
+              <div className="lista-header" style={{ display: "grid", gridTemplateColumns: "1fr 120px 130px auto", gap: 12, padding: "9px 16px", background: "var(--accent-soft)", borderBottom: "1px solid var(--border)" }}>
                 {["Trabajo / Cliente", "Total", "Estado", "Acciones"].map(h => (
                   <div key={h} style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>{h}</div>
                 ))}
