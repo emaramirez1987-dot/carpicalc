@@ -5844,111 +5844,140 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos }) {
 }
 
 // ── TableroKanban ─────────────────────────────────────────────────
-function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar }) {
+function AccionesTrabajo({ id, p, onCambiarEstado, onEliminar, onCargar, compact }) {
   const [confirmDel, setConfirmDel] = useState(false);
   const estadoActual = ESTADOS_TRABAJO.findIndex(e => e.id === (p.estado || "nuevo"));
-  const puedeRetroceder = estadoActual > 0;
-  const puedeAvanzar = estadoActual < ESTADOS_TRABAJO.length - 1;
+  const prev = ESTADOS_TRABAJO[estadoActual - 1];
+  const next = ESTADOS_TRABAJO[estadoActual + 1];
+  const btnBase = { fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, borderRadius: 5, cursor: "pointer", border: "none", padding: compact ? "3px 8px" : "5px 10px", transition: "all 0.15s" };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+      {prev && (
+        <button onClick={() => onCambiarEstado(id, prev.id)} title={`← ${prev.label}`}
+          style={{ ...btnBase, background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+          ← {compact ? "" : prev.icon}
+        </button>
+      )}
+      {next && (
+        <button onClick={() => onCambiarEstado(id, next.id)} title={`${next.label} →`}
+          style={{ ...btnBase, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+          {compact ? "" : next.icon} →
+        </button>
+      )}
+      <button onClick={() => onCargar(p)}
+        style={{ ...btnBase, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+        ↩
+      </button>
+      {confirmDel ? (
+        <>
+          <button onClick={() => { onEliminar(id); setConfirmDel(false); }}
+            style={{ ...btnBase, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070" }}>✓</button>
+          <button onClick={() => setConfirmDel(false)}
+            style={{ ...btnBase, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+        </>
+      ) : (
+        <button onClick={() => setConfirmDel(true)}
+          style={{ ...btnBase, background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070" }}>×</button>
+      )}
+    </div>
+  );
+}
 
+function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar }) {
+  const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
   return (
     <div style={{
       background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10,
-      padding: 14, marginBottom: 10, transition: "border-color 0.15s, box-shadow 0.15s",
-      boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+      padding: "12px 13px", marginBottom: 8, transition: "border-color 0.15s, box-shadow 0.15s",
+      boxShadow: "0 1px 6px rgba(0,0,0,0.14)", borderLeft: `3px solid ${est.color}`,
     }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent-border)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.28)"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.18)"; }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent-border)"; e.currentTarget.style.boxShadow = "0 3px 12px rgba(0,0,0,0.24)"; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "0 1px 6px rgba(0,0,0,0.14)"; e.currentTarget.style.borderLeftColor = est.color; }}
     >
-      {/* Nombre del trabajo */}
-      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, lineHeight: 1.3 }}>
-        {p.nombre}
-      </div>
-
-      {/* Cliente */}
+      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 3, lineHeight: 1.3 }}>{p.nombre}</div>
       {p.cliente && p.cliente.nombre && (
-        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 2 }}>
-          👤 {p.cliente.nombre}
-          {p.cliente.tel && <span style={{ marginLeft: 6, color: "var(--text-muted)" }}>· 📞 {p.cliente.tel}</span>}
+        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 1 }}>
+          👤 {p.cliente.nombre}{p.cliente.tel && <span style={{ color: "var(--text-muted)" }}> · {p.cliente.tel}</span>}
         </div>
       )}
-
-      {/* Fecha y módulos */}
-      <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginBottom: 10 }}>
-        {fmtFecha(parseInt(id))} · {p.items.length} módulo{p.items.length !== 1 ? "s" : ""}
+      <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginBottom: 8 }}>
+        {fmtFecha(parseInt(id))} · {p.items.length} mód.
       </div>
-
-      {/* Total */}
-      <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 16, fontWeight: 700, color: "#7ecf8a", marginBottom: 12 }}>
-        {fmtPeso(p.total)}
-      </div>
-
-      {/* Botones mover estado */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-        <button
-          onClick={() => puedeRetroceder && onCambiarEstado(id, ESTADOS_TRABAJO[estadoActual - 1].id)}
-          disabled={!puedeRetroceder}
-          title={puedeRetroceder ? `← ${ESTADOS_TRABAJO[estadoActual - 1].label}` : ""}
-          style={{
-            flex: 1, padding: "5px 0", borderRadius: 6, cursor: puedeRetroceder ? "pointer" : "not-allowed",
-            background: "var(--bg-subtle)", border: "1px solid var(--border)",
-            color: puedeRetroceder ? "var(--text-secondary)" : "var(--text-muted)",
-            fontSize: 13, opacity: puedeRetroceder ? 1 : 0.35, transition: "all 0.15s",
-          }}
-        >
-          ←
-        </button>
-        <button
-          onClick={() => puedeAvanzar && onCambiarEstado(id, ESTADOS_TRABAJO[estadoActual + 1].id)}
-          disabled={!puedeAvanzar}
-          title={puedeAvanzar ? `${ESTADOS_TRABAJO[estadoActual + 1].label} →` : ""}
-          style={{
-            flex: 1, padding: "5px 0", borderRadius: 6, cursor: puedeAvanzar ? "pointer" : "not-allowed",
-            background: puedeAvanzar ? "var(--accent-soft)" : "var(--bg-subtle)",
-            border: `1px solid ${puedeAvanzar ? "var(--accent-border)" : "var(--border)"}`,
-            color: puedeAvanzar ? "var(--accent)" : "var(--text-muted)",
-            fontSize: 13, opacity: puedeAvanzar ? 1 : 0.35, fontWeight: 700, transition: "all 0.15s",
-          }}
-        >
-          →
-        </button>
-      </div>
-
-      {/* Acciones */}
-      <div style={{ display: "flex", gap: 6 }}>
-        <button onClick={() => onCargar(p)}
-          style={{ flex: 1, padding: "4px 0", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer" }}>
-          ↩ Cargar
-        </button>
-        {confirmDel ? (
-          <>
-            <button onClick={() => { onEliminar(id); setConfirmDel(false); }}
-              style={{ flex: 1, padding: "4px 0", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070", borderRadius: 5, cursor: "pointer" }}>
-              ✓ Sí
-            </button>
-            <button onClick={() => setConfirmDel(false)}
-              style={{ padding: "4px 8px", fontSize: 11, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 5, cursor: "pointer" }}>
-              No
-            </button>
-          </>
-        ) : (
-          <button onClick={() => setConfirmDel(true)}
-            style={{ padding: "4px 8px", fontSize: 11, background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer" }}>
-            ×
-          </button>
-        )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+        <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
       </div>
     </div>
   );
 }
 
+function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar }) {
+  const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
+  return (
+    <div style={{
+      display: "grid", gridTemplateColumns: "1fr 130px 120px auto",
+      alignItems: "center", gap: 12, padding: "11px 16px",
+      borderBottom: "1px solid var(--border)", transition: "background 0.12s",
+    }}
+      onMouseEnter={e => e.currentTarget.style.background = "var(--accent-soft)"}
+      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+    >
+      {/* Info */}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: `${est.color}22`, color: est.color, border: `1px solid ${est.color}44`, borderRadius: 4, padding: "1px 6px", flexShrink: 0 }}>
+            {est.icon} {est.label}
+          </span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
+        </div>
+        <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+          {fmtFecha(parseInt(id))} · {p.items.length} mód.
+          {p.cliente && p.cliente.nombre && <span> · 👤 {p.cliente.nombre}</span>}
+        </div>
+      </div>
+      {/* Total */}
+      <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", textAlign: "right" }}>
+        {fmtPeso(p.total)}
+      </div>
+      {/* Selector de estado */}
+      <select value={p.estado || "nuevo"} onChange={e => onCambiarEstado(id, e.target.value)}
+        style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "5px 6px", background: `${est.color}18`, border: `1px solid ${est.color}44`, color: est.color, borderRadius: 6, cursor: "pointer", outline: "none", fontWeight: 700 }}>
+        {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
+      </select>
+      {/* Acciones */}
+      <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
+    </div>
+  );
+}
+
 function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) {
+  const [vistaTab, setVistaTab] = useState("kanban"); // "kanban" | "lista"
+  const [filtroEstado, setFiltroEstado] = useState("todos");
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
+  const filtradas = filtroEstado === "todos" ? entries : entries.filter(([, p]) => (p.estado || "nuevo") === filtroEstado);
+
+  const btnVista = (id, icon, label) => (
+    <button onClick={() => setVistaTab(id)} style={{
+      padding: "6px 14px", borderRadius: 6, fontSize: 11, fontFamily: "'DM Mono',monospace",
+      fontWeight: 700, cursor: "pointer", transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6,
+      background: vistaTab === id ? "var(--accent-soft)" : "transparent",
+      border: `1px solid ${vistaTab === id ? "var(--accent-border)" : "var(--border)"}`,
+      color: vistaTab === id ? "var(--accent)" : "var(--text-muted)",
+    }}>{icon} {label}</button>
+  );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <SectionTitle sub="Seguí el avance de cada trabajo de un vistazo">
-        Tablero de Trabajos
-      </SectionTitle>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+        <SectionTitle sub="Seguí el avance de cada trabajo de un vistazo">
+          Tablero de Trabajos
+        </SectionTitle>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 4 }}>
+          {btnVista("kanban", "⊞", "Kanban")}
+          {btnVista("lista", "☰", "Lista")}
+        </div>
+      </div>
 
       {entries.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 0", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
@@ -5958,67 +5987,81 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) 
         </div>
       ) : (
         <>
-          {/* Resumen rápido */}
-          <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+          {/* Contadores siempre visibles */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {ESTADOS_TRABAJO.map(est => {
               const count = entries.filter(([, p]) => (p.estado || "nuevo") === est.id).length;
+              const active = filtroEstado === est.id;
               return (
-                <div key={est.id} style={{ textAlign: "center", padding: "12px 8px", background: count > 0 ? `${est.color}18` : "var(--bg-surface)", border: `1px solid ${count > 0 ? est.color + "44" : "var(--border)"}`, borderRadius: 10 }}>
-                  <div style={{ fontSize: 20 }}>{est.icon}</div>
-                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: count > 0 ? est.color : "var(--text-muted)", lineHeight: 1, marginTop: 4 }}>{count}</div>
-                  <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginTop: 4 }}>{est.label}</div>
-                </div>
+                <button key={est.id} onClick={() => setFiltroEstado(active ? "todos" : est.id)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8, cursor: "pointer",
+                    background: active ? `${est.color}25` : count > 0 ? `${est.color}10` : "var(--bg-surface)",
+                    border: `1px solid ${active ? est.color : count > 0 ? est.color + "44" : "var(--border)"}`,
+                    transition: "all 0.15s",
+                  }}>
+                  <span style={{ fontSize: 14 }}>{est.icon}</span>
+                  <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 900, color: count > 0 ? est.color : "var(--text-muted)", lineHeight: 1 }}>{count}</span>
+                  <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: active ? est.color : "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>{est.label}</span>
+                </button>
               );
             })}
+            {filtroEstado !== "todos" && (
+              <button onClick={() => setFiltroEstado("todos")}
+                style={{ padding: "7px 12px", borderRadius: 8, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace" }}>
+                × Ver todos
+              </button>
+            )}
           </div>
 
-          {/* Tablero de columnas */}
-          <div className="rsp-scroll-x" style={{ display: "flex", gap: 14, alignItems: "flex-start", paddingBottom: 8 }}>
-            {ESTADOS_TRABAJO.map(est => {
-              const cards = entries.filter(([, p]) => (p.estado || "nuevo") === est.id);
-              return (
-                <div key={est.id} style={{ flex: "0 0 220px", minWidth: 220 }}>
-                  {/* Cabecera columna */}
-                  <div style={{
-                    padding: "10px 14px", borderRadius: "10px 10px 0 0", marginBottom: 0,
-                    background: `${est.color}22`, border: `1px solid ${est.color}44`,
-                    borderBottom: "none", display: "flex", alignItems: "center", gap: 8,
-                  }}>
-                    <span style={{ fontSize: 16 }}>{est.icon}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: est.color, fontFamily: "'DM Mono',monospace", flex: 1 }}>
-                      {est.label}
-                    </span>
-                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", background: `${est.color}33`, color: est.color, borderRadius: 999, padding: "1px 8px" }}>
-                      {cards.length}
-                    </span>
+          {/* ── Vista KANBAN ── */}
+          {vistaTab === "kanban" && (
+            <div className="rsp-scroll-x" style={{ display: "flex", gap: 12, alignItems: "flex-start", paddingBottom: 8 }}>
+              {ESTADOS_TRABAJO.filter(est => filtroEstado === "todos" || filtroEstado === est.id).map(est => {
+                const cards = entries.filter(([, p]) => (p.estado || "nuevo") === est.id);
+                return (
+                  <div key={est.id} style={{ flex: "0 0 210px", minWidth: 210 }}>
+                    <div style={{
+                      padding: "9px 13px", borderRadius: "10px 10px 0 0",
+                      background: `${est.color}20`, border: `1px solid ${est.color}40`, borderBottom: "none",
+                      display: "flex", alignItems: "center", gap: 7,
+                    }}>
+                      <span style={{ fontSize: 15 }}>{est.icon}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: est.color, fontFamily: "'DM Mono',monospace", flex: 1 }}>{est.label}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono',monospace", background: `${est.color}30`, color: est.color, borderRadius: 999, padding: "1px 7px" }}>{cards.length}</span>
+                    </div>
+                    <div style={{ minHeight: 80, maxHeight: 520, overflowY: "auto", padding: "8px 8px 4px", border: `1px solid ${est.color}40`, borderRadius: "0 0 10px 10px", background: "var(--bg-subtle)" }}>
+                      {cards.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace" }}>Sin trabajos</div>
+                      ) : (
+                        cards.map(([id, p]) => (
+                          <TarjetaKanban key={id} id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} />
+                        ))
+                      )}
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
 
-                  {/* Área de tarjetas */}
-                  <div style={{
-                    minHeight: 120, padding: 10, border: `1px solid ${est.color}44`,
-                    borderRadius: "0 0 10px 10px", background: "var(--bg-subtle)",
-                  }}>
-                    {cards.length === 0 ? (
-                      <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace" }}>
-                        Sin trabajos
-                      </div>
-                    ) : (
-                      cards.map(([id, p]) => (
-                        <TarjetaKanban
-                          key={id}
-                          id={id}
-                          p={p}
-                          onCambiarEstado={onCambiarEstado}
-                          onEliminar={onEliminar}
-                          onCargar={onCargar}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {/* ── Vista LISTA ── */}
+          {vistaTab === "lista" && (
+            <Card className="rsp-card" style={{ padding: 0, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 130px 120px auto", gap: 12, padding: "9px 16px", background: "var(--accent-soft)", borderBottom: "1px solid var(--border)" }}>
+                {["Trabajo / Cliente", "Total", "Estado", "Acciones"].map(h => (
+                  <div key={h} style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>{h}</div>
+                ))}
+              </div>
+              {filtradas.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "30px 0", color: "var(--text-muted)", fontSize: 13 }}>No hay trabajos en este estado.</div>
+              ) : (
+                filtradas.map(([id, p]) => (
+                  <FilaLista key={id} id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} />
+                ))
+              )}
+            </Card>
+          )}
         </>
       )}
     </div>
