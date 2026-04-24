@@ -5843,6 +5843,188 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos }) {
   );
 }
 
+// ── TableroKanban ─────────────────────────────────────────────────
+function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar }) {
+  const [confirmDel, setConfirmDel] = useState(false);
+  const estadoActual = ESTADOS_TRABAJO.findIndex(e => e.id === (p.estado || "nuevo"));
+  const puedeRetroceder = estadoActual > 0;
+  const puedeAvanzar = estadoActual < ESTADOS_TRABAJO.length - 1;
+
+  return (
+    <div style={{
+      background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10,
+      padding: 14, marginBottom: 10, transition: "border-color 0.15s, box-shadow 0.15s",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+    }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent-border)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.28)"; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.18)"; }}
+    >
+      {/* Nombre del trabajo */}
+      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, lineHeight: 1.3 }}>
+        {p.nombre}
+      </div>
+
+      {/* Cliente */}
+      {p.cliente && p.cliente.nombre && (
+        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 2 }}>
+          👤 {p.cliente.nombre}
+          {p.cliente.tel && <span style={{ marginLeft: 6, color: "var(--text-muted)" }}>· 📞 {p.cliente.tel}</span>}
+        </div>
+      )}
+
+      {/* Fecha y módulos */}
+      <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginBottom: 10 }}>
+        {fmtFecha(parseInt(id))} · {p.items.length} módulo{p.items.length !== 1 ? "s" : ""}
+      </div>
+
+      {/* Total */}
+      <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 16, fontWeight: 700, color: "#7ecf8a", marginBottom: 12 }}>
+        {fmtPeso(p.total)}
+      </div>
+
+      {/* Botones mover estado */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+        <button
+          onClick={() => puedeRetroceder && onCambiarEstado(id, ESTADOS_TRABAJO[estadoActual - 1].id)}
+          disabled={!puedeRetroceder}
+          title={puedeRetroceder ? `← ${ESTADOS_TRABAJO[estadoActual - 1].label}` : ""}
+          style={{
+            flex: 1, padding: "5px 0", borderRadius: 6, cursor: puedeRetroceder ? "pointer" : "not-allowed",
+            background: "var(--bg-subtle)", border: "1px solid var(--border)",
+            color: puedeRetroceder ? "var(--text-secondary)" : "var(--text-muted)",
+            fontSize: 13, opacity: puedeRetroceder ? 1 : 0.35, transition: "all 0.15s",
+          }}
+        >
+          ←
+        </button>
+        <button
+          onClick={() => puedeAvanzar && onCambiarEstado(id, ESTADOS_TRABAJO[estadoActual + 1].id)}
+          disabled={!puedeAvanzar}
+          title={puedeAvanzar ? `${ESTADOS_TRABAJO[estadoActual + 1].label} →` : ""}
+          style={{
+            flex: 1, padding: "5px 0", borderRadius: 6, cursor: puedeAvanzar ? "pointer" : "not-allowed",
+            background: puedeAvanzar ? "var(--accent-soft)" : "var(--bg-subtle)",
+            border: `1px solid ${puedeAvanzar ? "var(--accent-border)" : "var(--border)"}`,
+            color: puedeAvanzar ? "var(--accent)" : "var(--text-muted)",
+            fontSize: 13, opacity: puedeAvanzar ? 1 : 0.35, fontWeight: 700, transition: "all 0.15s",
+          }}
+        >
+          →
+        </button>
+      </div>
+
+      {/* Acciones */}
+      <div style={{ display: "flex", gap: 6 }}>
+        <button onClick={() => onCargar(p)}
+          style={{ flex: 1, padding: "4px 0", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer" }}>
+          ↩ Cargar
+        </button>
+        {confirmDel ? (
+          <>
+            <button onClick={() => { onEliminar(id); setConfirmDel(false); }}
+              style={{ flex: 1, padding: "4px 0", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070", borderRadius: 5, cursor: "pointer" }}>
+              ✓ Sí
+            </button>
+            <button onClick={() => setConfirmDel(false)}
+              style={{ padding: "4px 8px", fontSize: 11, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 5, cursor: "pointer" }}>
+              No
+            </button>
+          </>
+        ) : (
+          <button onClick={() => setConfirmDel(true)}
+            style={{ padding: "4px 8px", fontSize: 11, background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer" }}>
+            ×
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar }) {
+  const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <SectionTitle sub="Seguí el avance de cada trabajo de un vistazo">
+        Tablero de Trabajos
+      </SectionTitle>
+
+      {entries.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 0", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>📊</div>
+          <p style={{ fontSize: 14 }}>No hay trabajos guardados todavía.</p>
+          <p style={{ fontSize: 12, marginTop: 6 }}>Guardá un presupuesto desde <strong style={{ color: "var(--accent)" }}>📋 Presupuesto</strong> para verlo acá.</p>
+        </div>
+      ) : (
+        <>
+          {/* Resumen rápido */}
+          <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+            {ESTADOS_TRABAJO.map(est => {
+              const count = entries.filter(([, p]) => (p.estado || "nuevo") === est.id).length;
+              return (
+                <div key={est.id} style={{ textAlign: "center", padding: "12px 8px", background: count > 0 ? `${est.color}18` : "var(--bg-surface)", border: `1px solid ${count > 0 ? est.color + "44" : "var(--border)"}`, borderRadius: 10 }}>
+                  <div style={{ fontSize: 20 }}>{est.icon}</div>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: count > 0 ? est.color : "var(--text-muted)", lineHeight: 1, marginTop: 4 }}>{count}</div>
+                  <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginTop: 4 }}>{est.label}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Tablero de columnas */}
+          <div className="rsp-scroll-x" style={{ display: "flex", gap: 14, alignItems: "flex-start", paddingBottom: 8 }}>
+            {ESTADOS_TRABAJO.map(est => {
+              const cards = entries.filter(([, p]) => (p.estado || "nuevo") === est.id);
+              return (
+                <div key={est.id} style={{ flex: "0 0 220px", minWidth: 220 }}>
+                  {/* Cabecera columna */}
+                  <div style={{
+                    padding: "10px 14px", borderRadius: "10px 10px 0 0", marginBottom: 0,
+                    background: `${est.color}22`, border: `1px solid ${est.color}44`,
+                    borderBottom: "none", display: "flex", alignItems: "center", gap: 8,
+                  }}>
+                    <span style={{ fontSize: 16 }}>{est.icon}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: est.color, fontFamily: "'DM Mono',monospace", flex: 1 }}>
+                      {est.label}
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", background: `${est.color}33`, color: est.color, borderRadius: 999, padding: "1px 8px" }}>
+                      {cards.length}
+                    </span>
+                  </div>
+
+                  {/* Área de tarjetas */}
+                  <div style={{
+                    minHeight: 120, padding: 10, border: `1px solid ${est.color}44`,
+                    borderRadius: "0 0 10px 10px", background: "var(--bg-subtle)",
+                  }}>
+                    {cards.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace" }}>
+                        Sin trabajos
+                      </div>
+                    ) : (
+                      cards.map(([id, p]) => (
+                        <TarjetaKanban
+                          key={id}
+                          id={id}
+                          p={p}
+                          onCambiarEstado={onCambiarEstado}
+                          onEliminar={onEliminar}
+                          onCargar={onCargar}
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Header ────────────────────────────────────────────────────────
 function Header({ vista, setVista, tabs, saveEst, tema, toggleTema }) {
   return (
@@ -6071,6 +6253,7 @@ export default function App() {
     { id: "presupuesto", label: "Presupuesto", icon: "📋" },
     { id: "preview", label: "Vista previa", icon: "📄" },
     { id: "corte", label: "Corte", icon: "🪚" },
+    { id: "trabajos", label: "Trabajos", icon: "📊", badge: Object.keys(presupuestos).length || null },
     { id: "catalogo", label: "Catálogo", icon: "🗂" },
     { id: "costos", label: "Costos", icon: "💰" },
   ];
@@ -6164,6 +6347,14 @@ export default function App() {
               costos={costos}
               getModUsado={getModUsado}
               presupuestos={presupuestos}
+            />
+          )}
+          {vista === "trabajos" && (
+            <TableroKanban
+              presupuestos={presupuestos}
+              onCambiarEstado={handleCambiarEstado}
+              onEliminar={handleEliminarPresupuesto}
+              onCargar={(p) => { handleCargarPresupuesto(p); setVista("presupuesto"); }}
             />
           )}
           {vista === "catalogo" && (
