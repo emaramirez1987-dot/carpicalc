@@ -2990,10 +2990,13 @@ function FormModulo({
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <Btn variant="ghost" onClick={onCancelar}>
-              Cancelar
-            </Btn>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <Btn variant="ghost" onClick={onCancelar}>Cancelar</Btn>
+            {esEdicion && (
+              <Btn variant="ghost" onClick={guardar} style={{ borderColor: "var(--accent-border)", color: "var(--accent)" }}>
+                💾 Guardar y cerrar
+              </Btn>
+            )}
             <Btn onClick={siguiente}>Siguiente → Piezas</Btn>
           </div>
         </div>
@@ -3141,13 +3144,15 @@ function FormModulo({
             >
               <Btn
                 variant="ghost"
-                onClick={() => {
-                  setPaso(1);
-                  setError("");
-                }}
+                onClick={() => { setPaso(1); setError(""); }}
               >
                 ← Volver
               </Btn>
+              {esEdicion && (
+                <Btn variant="ghost" onClick={guardar} style={{ borderColor: "var(--accent-border)", color: "var(--accent)" }}>
+                  💾 Guardar y cerrar
+                </Btn>
+              )}
               <Btn onClick={siguiente} disabled={piezas.length === 0}>
                 Siguiente → Herrajes
               </Btn>
@@ -4313,6 +4318,7 @@ function GestorPresupuestos({
   const [notaNueva, setNotaNueva] = useState("");
   const [confirmDel, setConfirmDel] = useState(null);
   const [estadoOpen, setEstadoOpen] = useState(null);
+  const { pushUndo, ToastContainer: ToastGestor } = useUndo();
   const [guardado, setGuardado] = useState(false); // feedback visual
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
 
@@ -4448,29 +4454,23 @@ function GestorPresupuestos({
                           </div>
                         )}
                       </div>
-                      {confirmDel === id ? (
-                        <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                          <button onClick={() => { onEliminar(id); setConfirmDel(null); }}
-                            style={{ padding: "4px 10px", background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
-                            Sí, borrar
-                          </button>
-                          <button onClick={() => setConfirmDel(null)}
-                            style={{ padding: "4px 10px", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                          <button onClick={() => onCargar(p)}
-                            style={{ padding: "4px 10px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
-                            ↩ Cargar
-                          </button>
-                          <button onClick={() => setConfirmDel(id)}
-                            style={{ padding: "4px 10px", background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
-                            ×
-                          </button>
-                        </div>
-                      )}
+                      <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                        <button onClick={() => onCargar(p)}
+                          style={{ padding: "4px 10px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                          ↩ Cargar
+                        </button>
+                        <button onClick={() => {
+                          const snap = { ...p };
+                          onEliminar(id);
+                          pushUndo({
+                            mensaje: `Presupuesto "${p.nombre}" eliminado`,
+                            onDeshacer: () => onGuardarNuevo(snap.nombre, snap.cliente, snap.nota, snap),
+                          });
+                        }}
+                          style={{ padding: "4px 10px", background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
+                          ×
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -4479,6 +4479,7 @@ function GestorPresupuestos({
           )}
         </div>
       )}
+      <ToastGestor />
     </div>
   );
 }
@@ -5073,35 +5074,36 @@ function ResumenPresupuesto({
               borderTop: "1px solid var(--accent-border)",
             }}
           >
-            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-              {items.reduce((a, i) => a + i.cantidad, 0)} unidades ·{" "}
-              {items.length} módulo{items.length !== 1 ? "s" : ""} · IVA no
-              incluido
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                {items.reduce((a, i) => a + i.cantidad, 0)} unidades ·{" "}
+                {items.length} módulo{items.length !== 1 ? "s" : ""}
+              </div>
+              <button onClick={() => setMostrarIVA(v => !v)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  background: mostrarIVA ? "rgba(126,207,138,0.12)" : "var(--accent-soft)",
+                  border: `1px solid ${mostrarIVA ? "rgba(126,207,138,0.30)" : "var(--accent-border)"}`,
+                  color: mostrarIVA ? "#7ecf8a" : "var(--accent)",
+                  borderRadius: 6, padding: "4px 10px", cursor: "pointer",
+                  fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, width: "fit-content",
+                  transition: "all 0.15s",
+                }}>
+                {mostrarIVA ? "✓ Con IVA 21%" : "+ Ver con IVA 21%"}
+              </button>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div
-                style={{
-                  fontSize: 10,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.2em",
-                  marginBottom: 4,
-                  color: "var(--text-muted)",
-                }}
-              >
-                Total del trabajo
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 4, color: "var(--text-muted)" }}>
+                {mostrarIVA ? "Total + IVA 21%" : "Total sin IVA"}
               </div>
-              <div
-                style={{
-                  fontFamily: "'Playfair Display',serif",
-                  fontSize: 30,
-                  fontWeight: 900,
-                  letterSpacing: -0.5,
-                  lineHeight: 1,
-                  color: "#7ecf8a",
-                }}
-              >
-                {fmtPeso(totalGeneral)}
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 30, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1, color: "#7ecf8a", transition: "all 0.2s" }}>
+                {fmtPeso(mostrarIVA ? totalConIVA : totalGeneral)}
               </div>
+              {mostrarIVA && (
+                <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginTop: 4 }}>
+                  base: {fmtPeso(totalGeneral)} · iva: {fmtPeso(totalConIVA - totalGeneral)}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -5131,7 +5133,10 @@ function Presupuesto({
   const [error, setError] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [mostrarPrecioUnitario, setMostrarPrecioUnitario] = useState(false);
+  const [mostrarIVA, setMostrarIVA] = useState(false);
   const [preDim, setPreDim] = useState(null);
+  const totalConIVA = Math.round(totalGeneral * 1.21);
+  const { pushUndo, ToastContainer } = useUndo();
   const handleCodChange = (val) => {
     const cod = val.toUpperCase();
     setInputCod(cod);
@@ -5206,8 +5211,8 @@ function Presupuesto({
     );
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <SectionTitle sub="Ingresá códigos para armar el presupuesto del trabajo">
-        Armar Presupuesto
+      <SectionTitle sub={items.length === 0 ? "Ingresá códigos para armar el presupuesto del trabajo" : `${items.length} módulo${items.length !== 1 ? "s" : ""} · ${fmtPeso(totalGeneral)}`}>
+        {items.length === 0 ? "Armar Presupuesto" : ((() => { const entries = Object.entries(presupuestos); const match = entries.find(([,p]) => p.items.length === items.length); return match ? match[1].nombre : "Presupuesto activo"; })())}
       </SectionTitle>
       <div className="no-print">
         <GestorPresupuestos
@@ -5540,9 +5545,23 @@ function Presupuesto({
                     ⧉ duplicar
                   </button>
                   <button
-                    onClick={() =>
-                      setItems((it) => it.filter((_, i) => i !== idx))
-                    }
+                    onClick={() => {
+                      const itemEliminado = items[idx];
+                      const dimEliminada = dimOverride[`${item.codigo}-${item.id || 0}`];
+                      const keyId = `${item.codigo}-${item.id || 0}`;
+                      setItems(it => it.filter((_, i) => i !== idx));
+                      pushUndo({
+                        mensaje: `Módulo "${item.codigo}" eliminado del presupuesto`,
+                        onDeshacer: () => {
+                          setItems(it => {
+                            const n = [...it];
+                            n.splice(idx, 0, itemEliminado);
+                            return n;
+                          });
+                          if (dimEliminada) setDimOverride(d => ({ ...d, [keyId]: dimEliminada }));
+                        },
+                      });
+                    }}
                     style={{
                       padding: "4px 8px",
                       background: "transparent",
@@ -5841,6 +5860,7 @@ function Presupuesto({
           />
         </div>
       )}
+      <ToastContainer />
     </div>
   );
 }
@@ -7399,11 +7419,11 @@ function AppInterna() {
         return acc + c.total * it.cantidad;
       }, 0);
 
-  const handleGuardarPresupuesto = async (nombre, cliente, nota) => {
+  const handleGuardarPresupuesto = async (nombre, cliente, nota, presupuestoCompleto) => {
     const id = String(Date.now());
     const nuevo = {
       ...presupuestos,
-      [id]: {
+      [id]: presupuestoCompleto || {
         nombre,
         cliente: cliente || { nombre: "", tel: "", dir: "" },
         nota: nota || "",
@@ -7458,24 +7478,30 @@ function AppInterna() {
     return (
       <>
         <GlobalStyles />
-        <div
-          style={{
-            minHeight: "100vh",
-            background: "var(--bg-base)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "'DM Mono',monospace",
-              color: "var(--text-muted)",
-              fontSize: 14,
-              letterSpacing: "0.15em",
-            }}
-          >
-            ⟳ Cargando...
+        <div style={{ minHeight: "100vh", background: "var(--bg-base)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="anim-scalein" style={{ textAlign: "center" }}>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 42, fontWeight: 900, color: "var(--accent)", letterSpacing: "-0.02em", marginBottom: 8 }}>
+              🪵 CarpiCálc
+            </div>
+            <div style={{ fontSize: 10, letterSpacing: "0.28em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 28, fontWeight: 300 }}>
+              Sistema de presupuestos
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{
+                  width: 7, height: 7, borderRadius: "50%", background: "var(--accent)",
+                  animation: `dotPulse 1.2s ease-in-out infinite`,
+                  animationDelay: `${i * 0.18}s`,
+                  opacity: 0.3,
+                }} />
+              ))}
+            </div>
+            <style>{`
+              @keyframes dotPulse {
+                0%,80%,100%{opacity:0.3;transform:scale(1)}
+                40%{opacity:1;transform:scale(1.4)}
+              }
+            `}</style>
           </div>
         </div>
       </>
