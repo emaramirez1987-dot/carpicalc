@@ -4811,6 +4811,8 @@ function ResumenPresupuesto({
   mostrarPrecioUnitario,
   nombrePresupuesto,
 }) {
+  const [mostrarIVA, setMostrarIVA] = useState(false);
+  const totalConIVA = Math.round(totalGeneral * 1.21);
   if (items.length === 0) return null;
   const cols = mostrarPrecioUnitario
     ? "80px 1fr 50px 120px 130px"
@@ -5133,9 +5135,7 @@ function Presupuesto({
   const [error, setError] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [mostrarPrecioUnitario, setMostrarPrecioUnitario] = useState(false);
-  const [mostrarIVA, setMostrarIVA] = useState(false);
   const [preDim, setPreDim] = useState(null);
-  const totalConIVA = Math.round(totalGeneral * 1.21);
   const { pushUndo, ToastContainer } = useUndo();
   const handleCodChange = (val) => {
     const cod = val.toUpperCase();
