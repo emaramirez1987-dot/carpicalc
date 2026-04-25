@@ -4316,7 +4316,6 @@ function GestorPresupuestos({
   const [nombreNuevo, setNombreNuevo] = useState("");
   const [clienteNuevo, setClienteNuevo] = useState({ nombre: "", tel: "", dir: "" });
   const [notaNueva, setNotaNueva] = useState("");
-  const [confirmDel, setConfirmDel] = useState(null);
   const [estadoOpen, setEstadoOpen] = useState(null);
   const { pushUndo, ToastContainer: ToastGestor } = useUndo();
   const [guardado, setGuardado] = useState(false); // feedback visual
