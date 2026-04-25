@@ -346,6 +346,98 @@ const TIPO_MAT = {
   terciado: "Terciado",
 };
 
+const CATEGORIAS_DEFAULT = [
+  { id: "bajos",    label: "Bajos",     icon: "⬇", color: "#7090c0" },
+  { id: "altos",    label: "Altos",     icon: "⬆", color: "#9070b0" },
+  { id: "placares", label: "Placares",  icon: "🚪", color: "#70a080" },
+  { id: "living",   label: "Living",    icon: "🛋", color: "#c09050" },
+  { id: "banio",    label: "Baño",      icon: "🚿", color: "#5090a0" },
+  { id: "otros",    label: "Otros",     icon: "📦", color: "#808080" },
+];
+
+// ── Hook global de Undo ───────────────────────────────────────────
+function useUndo() {
+  const [toasts, setToasts] = useState([]);
+
+  const pushUndo = ({ mensaje, onDeshacer, duracion = 5000 }) => {
+    const id = Date.now();
+    setToasts(t => [...t, { id, mensaje, onDeshacer, duracion, inicio: Date.now() }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), duracion + 300);
+  };
+
+  const deshacer = (id) => {
+    const toast = toasts.find(t => t.id === id);
+    if (toast?.onDeshacer) toast.onDeshacer();
+    setToasts(t => t.filter(x => x.id !== id));
+  };
+
+  const ToastContainer = () => (
+    <div style={{
+      position: "fixed", bottom: 24, right: 24, zIndex: 9000,
+      display: "flex", flexDirection: "column", gap: 10, pointerEvents: "none",
+    }}>
+      {toasts.map(toast => (
+        <UndoToast key={toast.id} toast={toast} onDeshacer={() => deshacer(toast.id)} onClose={() => setToasts(t => t.filter(x => x.id !== toast.id))} />
+      ))}
+    </div>
+  );
+
+  return { pushUndo, ToastContainer };
+}
+
+function UndoToast({ toast, onDeshacer, onClose }) {
+  const [pct, setPct] = useState(100);
+  useEffect(() => {
+    const start = Date.now();
+    const iv = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const remaining = Math.max(0, 100 - (elapsed / toast.duracion) * 100);
+      setPct(remaining);
+      if (remaining === 0) clearInterval(iv);
+    }, 30);
+    return () => clearInterval(iv);
+  }, [toast.duracion]);
+
+  return (
+    <div className="anim-slideright" style={{
+      pointerEvents: "all", background: "var(--bg-surface)",
+      border: "1px solid var(--border-strong)", borderRadius: 12,
+      boxShadow: "0 8px 32px rgba(0,0,0,0.55)", overflow: "hidden",
+      minWidth: 280, maxWidth: 340,
+    }}>
+      <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 16, flexShrink: 0 }}>🗑</span>
+        <span style={{ flex: 1, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+          {toast.mensaje}
+        </span>
+        <button onClick={onDeshacer} style={{
+          padding: "5px 12px", borderRadius: 7, cursor: "pointer",
+          background: "var(--accent-soft)", border: "1px solid var(--accent-border)",
+          color: "var(--accent)", fontFamily: "'DM Mono',monospace",
+          fontSize: 11, fontWeight: 700, flexShrink: 0, transition: "all 0.15s",
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = "rgba(212,175,55,0.22)"}
+          onMouseLeave={e => e.currentTarget.style.background = "var(--accent-soft)"}
+        >
+          ↩ Deshacer
+        </button>
+        <button onClick={onClose} style={{
+          background: "none", border: "none", color: "var(--text-muted)",
+          cursor: "pointer", fontSize: 15, padding: "0 2px", flexShrink: 0,
+        }}>×</button>
+      </div>
+      {/* Barra de progreso countdown */}
+      <div style={{ height: 3, background: "var(--bg-subtle)" }}>
+        <div style={{
+          height: "100%", background: "var(--accent)",
+          width: `${pct}%`, transition: "width 0.03s linear",
+          borderRadius: "0 0 0 0",
+        }} />
+      </div>
+    </div>
+  );
+}
+
 const ESTADOS_TRABAJO = [
   { id: "nuevo",      label: "Nuevo",         color: "#7090b0", icon: "🆕" },
   { id: "enviado",    label: "Enviado",        color: "#c8a030", icon: "📤" },
@@ -2649,6 +2741,7 @@ function FormModulo({
           descripcion: moduloBase.descripcion || "",
           dimensiones: { ...moduloBase.dimensiones },
           material: moduloBase.material,
+          categoria: moduloBase.categoria || "otros",
         }
       : {
           codigo: "",
@@ -2656,6 +2749,7 @@ function FormModulo({
           descripcion: "",
           dimensiones: { ancho: 600, profundidad: 550, alto: 700 },
           material: "melamina",
+          categoria: "otros",
         }
   );
   const [piezas, setPiezas] = useState(
@@ -2730,6 +2824,7 @@ function FormModulo({
       descripcion: datos.descripcion,
       dimensiones: datos.dimensiones,
       material: datos.material,
+      categoria: datos.categoria || "otros",
       piezas,
       herrajes,
       moDeObra,
@@ -2868,6 +2963,33 @@ function FormModulo({
               )}
             </div>
           )}
+
+          {/* Selector de categoría */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
+              Categoría
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {CATEGORIAS_DEFAULT.map(cat => {
+                const activa = datos.categoria === cat.id;
+                return (
+                  <button key={cat.id} onClick={() => setDatos(d => ({ ...d, categoria: cat.id }))}
+                    style={{
+                      padding: "6px 14px", borderRadius: 20, cursor: "pointer",
+                      fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
+                      transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5,
+                      background: activa ? `${cat.color}25` : "transparent",
+                      border: `1px solid ${activa ? cat.color : "var(--border)"}`,
+                      color: activa ? cat.color : "var(--text-muted)",
+                      boxShadow: activa ? `0 0 10px ${cat.color}30` : "none",
+                    }}>
+                    {cat.icon} {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <Btn variant="ghost" onClick={onCancelar}>
               Cancelar
@@ -3664,6 +3786,10 @@ function CatalogoModulos({
   const [msg, setMsg] = useState(null);
   const [vistaLayout, setVista] = useState("grid");
   const [busqueda, setBusqueda] = useState("");
+  const [categoriasColapsadas, setCategoriasColapsadas] = useState({});
+  const { pushUndo, ToastContainer } = useUndo();
+
+  const toggleCategoria = (id) => setCategoriasColapsadas(c => ({ ...c, [id]: !c[id] }));
 
   const showMsg = (texto, tipo = "ok") => {
     setMsg({ texto, tipo });
@@ -3671,7 +3797,6 @@ function CatalogoModulos({
   };
 
   const guardar = (codigo, datos) => {
-    // Preservar imagen existente si no viene en los datos nuevos
     const existente = modulos[codigo];
     const datosConImagen = existente?.imagen && !datos.imagen
       ? { ...datos, imagen: existente.imagen }
@@ -3699,11 +3824,20 @@ function CatalogoModulos({
   };
 
   const eliminar = (cod) => {
+    const snap = { ...modulos };
+    const modEliminado = snap[cod];
     const n = { ...modulos };
     delete n[cod];
     setModulos(n);
     onSave(n);
-    showMsg(`"${cod}" eliminado.`, "warn");
+    pushUndo({
+      mensaje: `Módulo "${cod} — ${modEliminado?.nombre || ""}" eliminado`,
+      onDeshacer: () => {
+        const restaurado = { ...n, [cod]: modEliminado };
+        setModulos(restaurado);
+        onSave(restaurado);
+      },
+    });
   };
 
   // 💾 LÓGICA DE BACKUP (Exportar/Importar)
@@ -3933,76 +4067,99 @@ function CatalogoModulos({
         </Card>
       )}
 
-      {/* Grid / List view logic */}
-      {vistaLayout === "grid" ? (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))",
-            gap: 12,
-          }}
-        >
-          {Object.entries(modulos).filter(([cod, mod]) =>
-            !busqueda || cod.toLowerCase().includes(busqueda.toLowerCase()) || mod.nombre.toLowerCase().includes(busqueda.toLowerCase())
-          ).map(([cod, mod]) => {
+      {/* Grid / List view agrupado por categorías */}
+      {(() => {
+        const filtrados = Object.entries(modulos).filter(([cod, mod]) =>
+          !busqueda || cod.toLowerCase().includes(busqueda.toLowerCase()) || mod.nombre.toLowerCase().includes(busqueda.toLowerCase())
+        );
+        if (filtrados.length === 0 && Object.keys(modulos).length > 0) {
+          return <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)", fontSize: 13 }}>Sin resultados para "{busqueda}"</div>;
+        }
+        // Agrupar por categoría
+        const grupos = {};
+        filtrados.forEach(([cod, mod]) => {
+          const cat = mod.categoria || "otros";
+          if (!grupos[cat]) grupos[cat] = [];
+          grupos[cat].push([cod, mod]);
+        });
+        const ordenCats = CATEGORIAS_DEFAULT.map(c => c.id).concat(
+          Object.keys(grupos).filter(k => !CATEGORIAS_DEFAULT.find(c => c.id === k))
+        );
+        return ordenCats.filter(catId => grupos[catId]?.length > 0).map(catId => {
+          const cat = CATEGORIAS_DEFAULT.find(c => c.id === catId) || { id: catId, label: catId, icon: "📦", color: "#808080" };
+          const items = grupos[catId];
+          const colapsada = categoriasColapsadas[catId];
+          const totalCat = items.reduce((s, [, mod]) => {
             const c = calcularModulo(mod, costos);
-            if (!c) return null;
-            return (
-              <TarjetaModuloGrid
-                key={cod}
-                cod={cod}
-                mod={mod}
-                c={c}
-                onEditar={() => setModo({ tipo: "editar", codigo: cod, modulo: mod })}
-                onEliminar={() => eliminar(cod)}
-                onDuplicar={() => setModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
-                onImagenChange={handleImagenChange}
-              />
-            );
-          })}
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {Object.entries(modulos).filter(([cod, mod]) =>
-            !busqueda || cod.toLowerCase().includes(busqueda.toLowerCase()) || mod.nombre.toLowerCase().includes(busqueda.toLowerCase())
-          ).map(([cod, mod]) => {
-            const c = calcularModulo(mod, costos);
-            if (!c) return null;
-            return (
-              <FilaModuloLista
-                key={cod}
-                cod={cod}
-                mod={mod}
-                c={c}
-                onEditar={() => setModo({ tipo: "editar", codigo: cod, modulo: mod })}
-                onEliminar={() => eliminar(cod)}
-                onDuplicar={() => setModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
-                onImagenChange={handleImagenChange}
-              />
-            );
-          })}
-        </div>
-      )}
+            return s + (c ? c.total : 0);
+          }, 0);
+          return (
+            <div key={catId} style={{ marginBottom: 20 }}>
+              {/* Header de categoría */}
+              <button onClick={() => toggleCategoria(catId)} style={{
+                width: "100%", display: "flex", alignItems: "center", gap: 10,
+                padding: "10px 16px", marginBottom: colapsada ? 0 : 10,
+                borderRadius: colapsada ? 10 : "10px 10px 0 0",
+                background: `${cat.color}12`, border: `1px solid ${cat.color}30`,
+                borderBottom: colapsada ? undefined : `2px solid ${cat.color}50`,
+                cursor: "pointer", transition: "all 0.18s",
+              }}>
+                <span style={{ fontSize: 16 }}>{cat.icon}</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: cat.color, flex: 1, textAlign: "left" }}>
+                  {cat.label}
+                </span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: cat.color, opacity: 0.7, background: `${cat.color}20`, border: `1px solid ${cat.color}30`, borderRadius: 999, padding: "2px 8px" }}>
+                  {items.length} mód.
+                </span>
+                {!busqueda && (
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: cat.color }}>
+                    {fmtPeso(totalCat)} base
+                  </span>
+                )}
+                <span style={{ fontSize: 11, color: cat.color, opacity: 0.6, marginLeft: 4 }}>{colapsada ? "▼" : "▲"}</span>
+              </button>
+              {!colapsada && (
+                vistaLayout === "grid" ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 12, padding: "4px 2px" }}>
+                    {items.map(([cod, mod]) => {
+                      const c = calcularModulo(mod, costos);
+                      if (!c) return null;
+                      return <TarjetaModuloGrid key={cod} cod={cod} mod={mod} c={c}
+                        onEditar={() => setModo({ tipo: "editar", codigo: cod, modulo: mod })}
+                        onEliminar={() => eliminar(cod)}
+                        onDuplicar={() => setModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
+                        onImagenChange={handleImagenChange} />;
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "4px 2px" }}>
+                    {items.map(([cod, mod]) => {
+                      const c = calcularModulo(mod, costos);
+                      if (!c) return null;
+                      return <FilaModuloLista key={cod} cod={cod} mod={mod} c={c}
+                        onEditar={() => setModo({ tipo: "editar", codigo: cod, modulo: mod })}
+                        onEliminar={() => eliminar(cod)}
+                        onDuplicar={() => setModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
+                        onImagenChange={handleImagenChange} />;
+                    })}
+                  </div>
+                )
+              )}
+            </div>
+          );
+        });
+      })()}
 
       {Object.keys(modulos).length === 0 && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "60px 0",
-            borderRadius: 12,
-            border: "1px dashed var(--border)",
-            color: "var(--text-muted)",
-          }}
-        >
+        <div style={{ textAlign: "center", padding: "60px 0", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>🗂</div>
           <p style={{ fontSize: 14 }}>No hay módulos en el catálogo.</p>
           <p style={{ fontSize: 12, marginTop: 6 }}>
-            Hacé clic en{" "}
-            <strong style={{ color: "var(--accent)" }}>+ Nuevo módulo</strong>{" "}
-            para empezar.
+            Hacé clic en <strong style={{ color: "var(--accent)" }}>+ Nuevo módulo</strong> para empezar.
           </p>
         </div>
       )}
+      <ToastContainer />
     </div>
   );
 }
