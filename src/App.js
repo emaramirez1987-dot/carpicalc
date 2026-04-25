@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 
 const costoIniciales = {
   materiales: [
@@ -3388,233 +3388,266 @@ function VistaToggle({ vista, onChange }) {
     </div>
   );
 }
-function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar }) {
+// ── Imagen de módulo ──────────────────────────────────────────────
+function comprimirImagen(file, maxW = 400, maxH = 280, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+        const w = Math.round(img.width * ratio);
+        const h = Math.round(img.height * ratio);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function ImagenModulo({ imagen, cod, onSubir, onBorrar, compact = false }) {
+  const inputRef = React.useRef();
+  const [cargando, setCargando] = useState(false);
+  const [modal, setModal] = useState(false);
+
+  const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setCargando(true);
+    try {
+      const base64 = await comprimirImagen(file);
+      onSubir(base64);
+    } catch { /* silent */ } finally {
+      setCargando(false);
+      e.target.value = "";
+    }
+  };
+
+  if (compact) {
+    // Vista lista: miniatura 48×48
+    return (
+      <>
+        <div
+          onClick={() => imagen ? setModal(true) : inputRef.current?.click()}
+          title={imagen ? "Ver imagen" : "Agregar imagen"}
+          style={{
+            width: 48, height: 48, flexShrink: 0, borderRadius: 8,
+            overflow: "hidden", cursor: "pointer", position: "relative",
+            background: "var(--bg-subtle)", border: "1px solid var(--border)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "border-color 0.15s",
+          }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
+          onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
+        >
+          {imagen
+            ? <img src={imagen} alt={cod} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : <span style={{ fontSize: 18, opacity: 0.35 }}>📷</span>
+          }
+        </div>
+        <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: "none" }} />
+        {modal && imagen && (
+          <ModalImagen imagen={imagen} cod={cod} onClose={() => setModal(false)} onBorrar={onBorrar} onCambiar={() => { setModal(false); setTimeout(() => inputRef.current?.click(), 100); }} />
+        )}
+      </>
+    );
+  }
+
+  // Vista grid: franja superior de la tarjeta
+  return (
+    <>
+      <div style={{ position: "relative", margin: "-20px -20px 14px -20px", height: 148, borderRadius: "12px 12px 0 0", overflow: "hidden", background: "var(--bg-subtle)" }}>
+        {imagen ? (
+          <>
+            <img
+              src={imagen} alt={cod}
+              onClick={() => setModal(true)}
+              style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block", transition: "transform 0.3s" }}
+              onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"}
+              onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+            />
+            <button
+              onClick={() => inputRef.current?.click()}
+              title="Cambiar imagen"
+              style={{
+                position: "absolute", top: 8, right: 8, width: 28, height: 28,
+                borderRadius: "50%", border: "none", cursor: "pointer",
+                background: "rgba(0,0,0,0.55)", color: "#fff", fontSize: 13,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                backdropFilter: "blur(4px)", transition: "background 0.15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.8)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(0,0,0,0.55)"}
+            >✎</button>
+          </>
+        ) : (
+          <div
+            onClick={() => !cargando && inputRef.current?.click()}
+            style={{
+              width: "100%", height: "100%", display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center", gap: 6,
+              cursor: cargando ? "wait" : "pointer",
+              borderBottom: "1px dashed var(--border)",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = "var(--accent-soft)"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+          >
+            <span style={{ fontSize: 26, opacity: 0.3 }}>📷</span>
+            <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", fontWeight: 700 }}>
+              {cargando ? "Procesando..." : "Agregar foto de referencia"}
+            </span>
+          </div>
+        )}
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: "none" }} />
+      {modal && imagen && (
+        <ModalImagen imagen={imagen} cod={cod} onClose={() => setModal(false)} onBorrar={onBorrar} onCambiar={() => { setModal(false); setTimeout(() => inputRef.current?.click(), 100); }} />
+      )}
+    </>
+  );
+}
+
+function ModalImagen({ imagen, cod, onClose, onBorrar, onCambiar }) {
+  const [confirmBorrar, setConfirmBorrar] = useState(false);
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 999,
+        background: "rgba(0,0,0,0.88)", display: "flex",
+        alignItems: "center", justifyContent: "center",
+        padding: 20, backdropFilter: "blur(6px)",
+        animation: "fadeIn 0.2s ease",
+      }}
+    >
+      <div onClick={e => e.stopPropagation()} style={{ position: "relative", maxWidth: 800, width: "100%", animation: "scaleIn 0.22s cubic-bezier(0.22,1,0.36,1)" }}>
+        <img src={imagen} alt={cod} style={{ width: "100%", borderRadius: 12, display: "block", boxShadow: "0 24px 80px rgba(0,0,0,0.8)" }} />
+        <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 8 }}>
+          {!confirmBorrar ? (
+            <>
+              <button onClick={onCambiar}
+                style={{ padding: "7px 14px", borderRadius: 7, background: "rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", backdropFilter: "blur(4px)" }}>
+                ✎ Cambiar
+              </button>
+              <button onClick={() => setConfirmBorrar(true)}
+                style={{ padding: "7px 14px", borderRadius: 7, background: "rgba(180,40,40,0.65)", border: "1px solid rgba(255,100,100,0.3)", color: "#fff", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", backdropFilter: "blur(4px)" }}>
+                × Quitar
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => { onBorrar(); onClose(); }}
+                style={{ padding: "7px 14px", borderRadius: 7, background: "rgba(200,40,40,0.85)", border: "1px solid rgba(255,100,100,0.4)", color: "#fff", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer" }}>
+                ✓ Confirmar
+              </button>
+              <button onClick={() => setConfirmBorrar(false)}
+                style={{ padding: "7px 14px", borderRadius: 7, background: "rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", fontSize: 12, fontFamily: "'DM Mono',monospace", cursor: "pointer" }}>
+                Cancelar
+              </button>
+            </>
+          )}
+          <button onClick={onClose}
+            style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
+            ×
+          </button>
+        </div>
+        <div style={{ position: "absolute", bottom: 12, left: 16, fontFamily: "'DM Mono',monospace", fontSize: 11, color: "rgba(255,255,255,0.7)", background: "rgba(0,0,0,0.5)", padding: "4px 10px", borderRadius: 5, backdropFilter: "blur(4px)" }}>
+          {cod}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onImagenChange }) {
   return (
     <Card className="rsp-card">
+      <ImagenModulo
+        imagen={mod.imagen}
+        cod={cod}
+        onSubir={(b64) => onImagenChange(cod, b64)}
+        onBorrar={() => onImagenChange(cod, null)}
+      />
       <div style={{ marginBottom: 10 }}>
-        <span
-          style={{
-            fontFamily: "'DM Mono',monospace",
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.1em",
-            color: "var(--accent)",
-          }}
-        >
+        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "var(--accent)" }}>
           {cod}
         </span>
-        <h3
-          style={{
-            fontSize: 14,
-            fontWeight: 700,
-            marginTop: 2,
-            color: "var(--text-primary)",
-          }}
-        >
+        <h3 style={{ fontSize: 14, fontWeight: 700, marginTop: 2, color: "var(--text-primary)" }}>
           {mod.nombre}
         </h3>
         {mod.descripcion && (
-          <p style={{ fontSize: 12, marginTop: 2, color: "var(--text-muted)" }}>
-            {mod.descripcion}
-          </p>
+          <p style={{ fontSize: 12, marginTop: 2, color: "var(--text-muted)" }}>{mod.descripcion}</p>
         )}
       </div>
-      <div
-        style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}
-      >
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
         <Badge>{TIPO_MAT[mod.material]}</Badge>
         <Badge color="#7090b0">{mod.piezas.length} piezas</Badge>
         <Badge color="#705090">{c.espesor}mm</Badge>
       </div>
-      <p
-        style={{
-          fontSize: 11,
-          marginBottom: 10,
-          fontFamily: "'DM Mono',monospace",
-          color: "var(--text-muted)",
-        }}
-      >
-        {mod.dimensiones.ancho} × {mod.dimensiones.profundidad} ×{" "}
-        {mod.dimensiones.alto} mm
+      <p style={{ fontSize: 11, marginBottom: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+        {mod.dimensiones.ancho} × {mod.dimensiones.profundidad} × {mod.dimensiones.alto} mm
       </p>
       <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 8,
-            marginBottom: 10,
-            fontSize: 11,
-          }}
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10, fontSize: 11 }}>
           <div>
-            <div
-              style={{
-                fontSize: 10,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                color: "var(--text-muted)",
-              }}
-            >
-              m² neto
-            </div>
-            <div
-              style={{ fontFamily: "'DM Mono',monospace", color: "#9ab080" }}
-            >
-              {fmtNum(c.m2Neto)} m²
-            </div>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>m² neto</div>
+            <div style={{ fontFamily: "'DM Mono',monospace", color: "#9ab080" }}>{fmtNum(c.m2Neto)} m²</div>
           </div>
           <div>
-            <div
-              style={{
-                fontSize: 10,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                color: "var(--text-muted)",
-              }}
-            >
-              Tapacanto
-            </div>
-            <div
-              style={{
-                fontFamily: "'DM Mono',monospace",
-                color: "var(--accent)",
-              }}
-            >
-              {fmtNum(c.metrosTapacanto, 2)} m
-            </div>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>Tapacanto</div>
+            <div style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>{fmtNum(c.metrosTapacanto, 2)} m</div>
           </div>
         </div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
-            <div
-              style={{
-                fontSize: 10,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                color: "var(--text-muted)",
-              }}
-            >
-              Precio de venta
-            </div>
-            <div
-              style={{
-                fontFamily: "'DM Mono',monospace",
-                fontSize: 17,
-                fontWeight: 700,
-                marginTop: 2,
-                color: "#7ecf8a",
-              }}
-            >
-              {fmtPeso(c.total)}
-            </div>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>Precio de venta</div>
+            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 17, fontWeight: 700, marginTop: 2, color: "#7ecf8a" }}>{fmtPeso(c.total)}</div>
           </div>
-          <AccionesModulo
-            onEditar={onEditar}
-            onEliminar={onEliminar}
-            onDuplicar={onDuplicar}
-          />
+          <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} />
         </div>
       </div>
     </Card>
   );
 }
-function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar }) {
+
+function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onImagenChange }) {
   return (
     <div
       className="rsp-lista-item"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 16,
-        padding: "12px 16px",
-        borderRadius: 10,
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border)",
-        transition: "border-color 0.15s",
-      }}
-      onMouseEnter={(e) =>
-        (e.currentTarget.style.borderColor = "var(--accent-border)")
-      }
-      onMouseLeave={(e) =>
-        (e.currentTarget.style.borderColor = "var(--border)")
-      }
+      style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 16px", borderRadius: 10, background: "var(--bg-surface)", border: "1px solid var(--border)", transition: "border-color 0.15s" }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
+      onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
     >
+      <ImagenModulo imagen={mod.imagen} cod={cod} compact
+        onSubir={(b64) => onImagenChange(cod, b64)}
+        onBorrar={() => onImagenChange(cod, null)}
+      />
       <div style={{ flex: 2, minWidth: 0 }}>
-        <span
-          style={{
-            fontFamily: "'DM Mono',monospace",
-            fontSize: 11,
-            fontWeight: 700,
-            color: "var(--accent)",
-            marginRight: 8,
-          }}
-        >
-          {cod}
-        </span>
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: "var(--text-primary)",
-          }}
-        >
-          {mod.nombre}
-        </span>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", marginRight: 8 }}>{cod}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{mod.nombre}</span>
         {mod.descripcion && (
-          <p
-            style={{
-              fontSize: 11,
-              marginTop: 2,
-              color: "var(--text-muted)",
-              fontStyle: "italic",
-            }}
-          >
-            {mod.descripcion}
-          </p>
+          <p style={{ fontSize: 11, marginTop: 2, color: "var(--text-muted)", fontStyle: "italic" }}>{mod.descripcion}</p>
         )}
       </div>
-      <span
-        style={{
-          fontFamily: "'DM Mono',monospace",
-          fontSize: 11,
-          color: "var(--text-muted)",
-          flexShrink: 0,
-        }}
-      >
-        {mod.dimensiones.ancho}×{mod.dimensiones.profundidad}×
-        {mod.dimensiones.alto} mm
+      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
+        {mod.dimensiones.ancho}×{mod.dimensiones.profundidad}×{mod.dimensiones.alto} mm
       </span>
       <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
         <Badge>{TIPO_MAT[mod.material]}</Badge>
         <Badge color="#705090">{c.espesor}mm</Badge>
       </div>
-      <div
-        className="rsp-lista-precio"
-        style={{
-          display: "flex",
-          gap: 16,
-          flexShrink: 0,
-          fontFamily: "'DM Mono',monospace",
-          fontSize: 12,
-        }}
-      >
+      <div className="rsp-lista-precio" style={{ display: "flex", gap: 16, flexShrink: 0, fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
         <span style={{ color: "#9ab080" }}>{fmtNum(c.m2Neto)} m²</span>
-        <span style={{ color: "#7ecf8a", fontWeight: 700 }}>
-          {fmtPeso(c.total)}
-        </span>
+        <span style={{ color: "#7ecf8a", fontWeight: 700 }}>{fmtPeso(c.total)}</span>
       </div>
-      <AccionesModulo
-        onEditar={onEditar}
-        onEliminar={onEliminar}
-        onDuplicar={onDuplicar}
-      />
+      <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} />
     </div>
   );
 }
@@ -3638,7 +3671,12 @@ function CatalogoModulos({
   };
 
   const guardar = (codigo, datos) => {
-    const nuevo = { ...modulos, [codigo]: datos };
+    // Preservar imagen existente si no viene en los datos nuevos
+    const existente = modulos[codigo];
+    const datosConImagen = existente?.imagen && !datos.imagen
+      ? { ...datos, imagen: existente.imagen }
+      : datos;
+    const nuevo = { ...modulos, [codigo]: datosConImagen };
     setModulos(nuevo);
     onSave(nuevo);
     setModo(null);
@@ -3649,6 +3687,15 @@ function CatalogoModulos({
         ? `"${codigo}" duplicado.`
         : `"${codigo}" guardado.`
     );
+  };
+
+  const handleImagenChange = (cod, base64) => {
+    const nuevo = {
+      ...modulos,
+      [cod]: { ...modulos[cod], imagen: base64 || undefined },
+    };
+    setModulos(nuevo);
+    onSave(nuevo);
   };
 
   const eliminar = (cod) => {
@@ -3906,17 +3953,10 @@ function CatalogoModulos({
                 cod={cod}
                 mod={mod}
                 c={c}
-                onEditar={() =>
-                  setModo({ tipo: "editar", codigo: cod, modulo: mod })
-                }
+                onEditar={() => setModo({ tipo: "editar", codigo: cod, modulo: mod })}
                 onEliminar={() => eliminar(cod)}
-                onDuplicar={() =>
-                  setModo({
-                    tipo: "duplicar",
-                    modulo: mod,
-                    codigoSugerido: cod,
-                  })
-                }
+                onDuplicar={() => setModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
+                onImagenChange={handleImagenChange}
               />
             );
           })}
@@ -3934,17 +3974,10 @@ function CatalogoModulos({
                 cod={cod}
                 mod={mod}
                 c={c}
-                onEditar={() =>
-                  setModo({ tipo: "editar", codigo: cod, modulo: mod })
-                }
+                onEditar={() => setModo({ tipo: "editar", codigo: cod, modulo: mod })}
                 onEliminar={() => eliminar(cod)}
-                onDuplicar={() =>
-                  setModo({
-                    tipo: "duplicar",
-                    modulo: mod,
-                    codigoSugerido: cod,
-                  })
-                }
+                onDuplicar={() => setModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
+                onImagenChange={handleImagenChange}
               />
             );
           })}
