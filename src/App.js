@@ -3788,6 +3788,14 @@ function CatalogoModulos({
   const [busqueda, setBusqueda] = useState("");
   const [categoriasColapsadas, setCategoriasColapsadas] = useState({});
   const { pushUndo, ToastContainer } = useUndo();
+  const formRef = React.useRef(null);
+
+  const abrirModo = (nuevoModo) => {
+    setModo(nuevoModo);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+  };
 
   const toggleCategoria = (id) => setCategoriasColapsadas(c => ({ ...c, [id]: !c[id] }));
 
@@ -4001,7 +4009,7 @@ function CatalogoModulos({
           )}
 
           {!modo && (
-            <Btn onClick={() => setModo({ tipo: "nuevo" })}>+ Nuevo módulo</Btn>
+            <Btn onClick={() => abrirModo({ tipo: "nuevo" })}>+ Nuevo módulo</Btn>
           )}
         </div>
       </div>
@@ -4033,6 +4041,7 @@ function CatalogoModulos({
       )}
 
       {modo && (
+        <div ref={formRef}>
         <Card className="rsp-card" highlight style={{ padding: 24 }}>
           <div
             style={{
@@ -4065,6 +4074,7 @@ function CatalogoModulos({
             codigoEditar={modo.tipo === "editar" ? modo.codigo : null}
           />
         </Card>
+        </div>
       )}
 
       {/* Grid / List view agrupado por categorías */}
@@ -4125,9 +4135,9 @@ function CatalogoModulos({
                       const c = calcularModulo(mod, costos);
                       if (!c) return null;
                       return <TarjetaModuloGrid key={cod} cod={cod} mod={mod} c={c}
-                        onEditar={() => setModo({ tipo: "editar", codigo: cod, modulo: mod })}
+                        onEditar={() => abrirModo({ tipo: "editar", codigo: cod, modulo: mod })}
                         onEliminar={() => eliminar(cod)}
-                        onDuplicar={() => setModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
+                        onDuplicar={() => abrirModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
                         onImagenChange={handleImagenChange} />;
                     })}
                   </div>
@@ -4137,9 +4147,9 @@ function CatalogoModulos({
                       const c = calcularModulo(mod, costos);
                       if (!c) return null;
                       return <FilaModuloLista key={cod} cod={cod} mod={mod} c={c}
-                        onEditar={() => setModo({ tipo: "editar", codigo: cod, modulo: mod })}
+                        onEditar={() => abrirModo({ tipo: "editar", codigo: cod, modulo: mod })}
                         onEliminar={() => eliminar(cod)}
-                        onDuplicar={() => setModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
+                        onDuplicar={() => abrirModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
                         onImagenChange={handleImagenChange} />;
                     })}
                   </div>
@@ -4160,6 +4170,128 @@ function CatalogoModulos({
         </div>
       )}
       <ToastContainer />
+    </div>
+  );
+}
+
+// ── PanelSelectorModulos ──────────────────────────────────────────
+function PanelSelectorModulos({ modulos, onSeleccionar }) {
+  const [busqueda, setBusqueda] = useState("");
+  const [colapsadas, setColapsadas] = useState(() =>
+    Object.fromEntries(CATEGORIAS_DEFAULT.map(c => [c.id, true]))
+  );
+  const inputRef = React.useRef();
+
+  const toggle = (id) => setColapsadas(c => ({ ...c, [id]: !c[id] }));
+
+  const buscando = busqueda.trim().length > 0;
+  const termino = busqueda.toLowerCase();
+
+  // Agrupar módulos por categoría
+  const grupos = {};
+  Object.entries(modulos).forEach(([cod, mod]) => {
+    if (buscando) {
+      const match = cod.toLowerCase().includes(termino) || mod.nombre.toLowerCase().includes(termino);
+      if (!match) return;
+    }
+    const cat = mod.categoria || "otros";
+    if (!grupos[cat]) grupos[cat] = [];
+    grupos[cat].push({ cod, mod });
+  });
+
+  const ordenCats = CATEGORIAS_DEFAULT.map(c => c.id).filter(id => grupos[id]?.length > 0);
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      {/* Buscador */}
+      <div style={{ position: "relative", marginBottom: 10 }}>
+        <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "var(--text-muted)", pointerEvents: "none" }}>🔍</span>
+        <input
+          ref={inputRef}
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre o código... (ej: bajo mesada, PL001)"
+          style={{
+            width: "100%", paddingLeft: 32, paddingRight: busqueda ? 32 : 12,
+            paddingTop: 8, paddingBottom: 8,
+            fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13,
+            background: "var(--bg-base)", border: "1px solid var(--border)",
+            color: "var(--text-primary)", borderRadius: 8, outline: "none",
+            transition: "border-color 0.15s",
+          }}
+          onFocus={e => { e.target.style.borderColor = "var(--accent-border)"; if (buscando) setColapsadas(Object.fromEntries(CATEGORIAS_DEFAULT.map(c => [c.id, false]))); }}
+          onBlur={e => e.target.style.borderColor = "var(--border)"}
+          onKeyDown={e => {
+            if (e.key === "Escape") { setBusqueda(""); e.target.blur(); }
+          }}
+        />
+        {busqueda && (
+          <button onClick={() => { setBusqueda(""); inputRef.current?.focus(); }}
+            style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0 }}>
+            ×
+          </button>
+        )}
+      </div>
+
+      {/* Grupos por categoría */}
+      {ordenCats.length === 0 && buscando ? (
+        <div style={{ fontSize: 12, color: "var(--text-muted)", padding: "10px 0", fontFamily: "'DM Mono',monospace" }}>
+          Sin resultados para "{busqueda}"
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {ordenCats.map(catId => {
+            const cat = CATEGORIAS_DEFAULT.find(c => c.id === catId) || { id: catId, label: catId, icon: "📦", color: "#808080" };
+            const items = grupos[catId] || [];
+            const abierta = buscando || !colapsadas[catId];
+            return (
+              <div key={catId} style={{ borderRadius: 8, overflow: "hidden", border: `1px solid ${cat.color}25` }}>
+                {/* Header colapsable */}
+                <button onClick={() => toggle(catId)}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 8,
+                    padding: "7px 12px", background: `${cat.color}10`,
+                    border: "none", cursor: "pointer", transition: "background 0.15s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = `${cat.color}20`}
+                  onMouseLeave={e => e.currentTarget.style.background = `${cat.color}10`}
+                >
+                  <span style={{ fontSize: 13 }}>{cat.icon}</span>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: cat.color, flex: 1, textAlign: "left" }}>
+                    {cat.label}
+                  </span>
+                  <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: cat.color, opacity: 0.6, background: `${cat.color}20`, border: `1px solid ${cat.color}30`, borderRadius: 999, padding: "1px 7px" }}>
+                    {items.length}
+                  </span>
+                  <span style={{ fontSize: 10, color: cat.color, opacity: 0.5 }}>{abierta ? "▲" : "▼"}</span>
+                </button>
+
+                {/* Chips de módulos */}
+                {abierta && (
+                  <div style={{ padding: "8px 10px", display: "flex", flexWrap: "wrap", gap: 5, background: "var(--bg-subtle)" }}>
+                    {items.map(({ cod, mod }) => (
+                      <button key={cod} onClick={() => { onSeleccionar(cod); setBusqueda(""); }}
+                        style={{
+                          background: "var(--bg-surface)", border: "1px solid var(--border)",
+                          color: "var(--text-secondary)", borderRadius: 6, padding: "5px 10px",
+                          fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace",
+                          transition: "all 0.13s", display: "flex", alignItems: "center", gap: 5,
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = cat.color; e.currentTarget.style.background = `${cat.color}12`; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--bg-surface)"; }}
+                        title={`Agregar ${mod.nombre}`}
+                      >
+                        <span style={{ color: cat.color, fontWeight: 700 }}>{cod}</span>
+                        <span style={{ color: "var(--text-muted)" }}>— {mod.nombre}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -5186,41 +5318,10 @@ function Presupuesto({
             </div>
           </div>
         )}
-        <div
-          style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 5 }}
-        >
-          {Object.entries(modulos).map(([cod, mod]) => (
-            <button
-              key={cod}
-              onClick={() => handleCodChange(cod)}
-              style={{
-                background: "var(--accent-soft)",
-                border: "1px solid var(--border)",
-                color: "var(--text-secondary)",
-                borderRadius: 5,
-                padding: "4px 9px",
-                fontSize: 11,
-                cursor: "pointer",
-                fontFamily: "'DM Mono',monospace",
-                transition: "border-color 0.15s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.borderColor = "var(--accent-border)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.borderColor = "var(--border)")
-              }
-            >
-              <span style={{ color: "var(--accent)", fontWeight: 700 }}>
-                {cod}
-              </span>
-              <span style={{ color: "var(--text-muted)" }}>
-                {" "}
-                — {mod.nombre}
-              </span>
-            </button>
-          ))}
-        </div>
+        <PanelSelectorModulos
+          modulos={modulos}
+          onSeleccionar={(cod) => handleCodChange(cod)}
+        />
       </Card>
 
       {items.length === 0 ? (
