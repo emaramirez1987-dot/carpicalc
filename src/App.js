@@ -425,8 +425,280 @@ function useTema() {
 // ╚══════════════════════════════════════════════════════════════════╝
 const GlobalStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700&family=DM+Mono:wght@300;400;500&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+    /* ── Modo oscuro premium (default) ─────────────────────────── */
+    :root,[data-theme="dark"]{
+      --bg-base:#0F1115;
+      --bg-surface:#1A1D23;
+      --bg-subtle:rgba(255,255,255,0.03);
+      --bg-overlay:rgba(10,12,16,0.97);
+      --border:rgba(255,255,255,0.07);
+      --border-strong:rgba(212,175,55,0.18);
+      --text-primary:#F0EDE6;
+      --text-secondary:#A09880;
+      --text-muted:rgba(255,255,255,0.28);
+      --text-inverted:#0F1115;
+      --accent:#D4AF37;
+      --accent-hover:#E8C84A;
+      --accent-soft:rgba(212,175,55,0.10);
+      --accent-border:rgba(212,175,55,0.28);
+      --shadow:0 4px 32px rgba(0,0,0,0.65);
+      --shadow-sm:0 1px 8px rgba(0,0,0,0.45);
+      --scrollbar-thumb:rgba(212,175,55,0.20);
+      --radius-card:12px;
+      --separator:rgba(255,255,255,0.05);
+      --grain-opacity:0.032;
+    }
+
+    /* ── Modo claro ─────────────────────────────────────────────── */
+    [data-theme="light"]{
+      --bg-base:#F5F2EC;
+      --bg-surface:#FFFFFF;
+      --bg-subtle:#EDE8DF;
+      --bg-overlay:rgba(245,242,236,0.97);
+      --border:#E4DDD0;
+      --border-strong:rgba(180,140,30,0.30);
+      --text-primary:#1C1A16;
+      --text-secondary:#6B5E45;
+      --text-muted:#A0907A;
+      --text-inverted:#FFFFFF;
+      --accent:#B8962A;
+      --accent-hover:#9A7C1E;
+      --accent-soft:rgba(184,150,42,0.10);
+      --accent-border:rgba(184,150,42,0.32);
+      --shadow:0 2px 20px rgba(0,0,0,0.10);
+      --shadow-sm:0 1px 6px rgba(0,0,0,0.07);
+      --scrollbar-thumb:rgba(184,150,42,0.28);
+      --radius-card:12px;
+      --separator:rgba(0,0,0,0.05);
+      --grain-opacity:0.018;
+    }
+
+    /* ── Grain texture — profundidad sin peso visual ─────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: var(--grain-opacity);
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 128px 128px;
+    }
+
+    body{
+      background-color:var(--bg-base);
+      color:var(--text-primary);
+      font-family:'Bricolage Grotesque',system-ui,sans-serif;
+      font-weight:400;
+      font-optical-sizing:auto;
+      transition:background-color 0.3s,color 0.3s;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    /* ── Animaciones de entrada ──────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.97); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes slideRight {
+      from { opacity: 0; transform: translateX(-10px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes counterPulse {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+
+    /* Stagger de tarjetas — cada nth-child recibe delay */
+    .anim-fadein    { animation: fadeIn  0.35s ease both; }
+    .anim-fadeup    { animation: fadeUp  0.40s cubic-bezier(0.22,1,0.36,1) both; }
+    .anim-scalein   { animation: scaleIn 0.30s cubic-bezier(0.22,1,0.36,1) both; }
+    .anim-slideright{ animation: slideRight 0.32s cubic-bezier(0.22,1,0.36,1) both; }
+
+    /* Delay escalonado para listas */
+    .stagger-1  { animation-delay: 0.04s; }
+    .stagger-2  { animation-delay: 0.08s; }
+    .stagger-3  { animation-delay: 0.12s; }
+    .stagger-4  { animation-delay: 0.16s; }
+    .stagger-5  { animation-delay: 0.20s; }
+    .stagger-6  { animation-delay: 0.24s; }
+
+    /* Hover microlift para cards interactivas */
+    .hover-lift {
+      transition: transform 0.18s cubic-bezier(0.22,1,0.36,1),
+                  box-shadow 0.18s cubic-bezier(0.22,1,0.36,1),
+                  border-color 0.18s ease;
+    }
+    .hover-lift:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.38);
+    }
+
+    /* Pulse en métricas de caja al actualizar */
+    .metric-pulse { animation: counterPulse 0.4s cubic-bezier(0.22,1,0.36,1); }
+
+    /* Scrollbar fina y elegante */
+    ::-webkit-scrollbar{width:4px;height:4px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:4px;}
+    ::-webkit-scrollbar-thumb:hover{background:var(--accent-border);}
+    input[type="number"]::-webkit-inner-spin-button{opacity:0.3;}
+
+    /* Separadores sutiles entre secciones */
+    .section-divider{
+      border:none;
+      border-top:1px solid var(--separator);
+      margin:0;
+    }
+
+    /* Hover pronunciado en dark mode */
+    .btn-secondary:hover{
+      background:rgba(212,175,55,0.18) !important;
+      border-color:rgba(212,175,55,0.40) !important;
+    }
+
+    /* ── Tipografía mejorada ─────────────────────────────────────── */
+    h1,h2,h3 {
+      font-family:'Playfair Display',serif;
+      letter-spacing:-0.02em;
+    }
+    code, kbd, .mono {
+      font-family:'DM Mono',monospace;
+    }
+    /* Peso variable para jerarquía */
+    .text-display  { font-weight: 700; letter-spacing: -0.03em; }
+    .text-label    { font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.75em; }
+    .text-data     { font-family: 'DM Mono', monospace; font-weight: 500; }
+    .text-subtle   { font-weight: 300; color: var(--text-muted); }
+
+    @media print{
+      .no-print{display:none !important;}.print-only{display:block !important;}
+      body{background:#fff !important;color:#1a1a1a !important;font-size:12px;}
+      body::before{display:none !important;}
+      main{padding:0 !important;max-width:100% !important;}
+      .print-table-row{break-inside:avoid;}
+      .print-total-block{background:#f5f5f0 !important;border-top:2px solid #a07030 !important;}
+      .item-nota-print{font-style:italic;color:#666 !important;font-size:11px;margin-top:2px;}
+    }
+    .print-only{display:none;}
+
+    /* ── Responsive mobile ─────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .rsp-main { padding: 14px 10px !important; }
+      .rsp-card { padding: 14px !important; }
+      .rsp-grid-1 { grid-template-columns: 1fr !important; }
+      .rsp-scroll-x {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .rsp-lista-item {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+      }
+      .rsp-lista-precio {
+        width: 100% !important;
+        justify-content: space-between !important;
+      }
+      .rsp-header-inner {
+        flex-wrap: wrap !important;
+        gap: 0px 10px !important;
+        padding: 0 12px !important;
+      }
+      .rsp-brand { padding: 14px 0 !important; }
+      .rsp-brand > div:first-child { font-size: 17px !important; }
+      .rsp-nav {
+        order: 3 !important;
+        width: 100% !important;
+        flex: none !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        border-top: 1px solid var(--border);
+        scrollbar-width: none;
+      }
+      .rsp-nav::-webkit-scrollbar { display: none !important; }
+      .rsp-nav button {
+        padding: 12px 16px !important;
+        font-size: 11px !important;
+        flex-shrink: 0;
+      }
+      .rsp-paso2 { flex-direction: column !important; }
+      .rsp-paso2 > *:first-child { flex: none !important; width: 100% !important; }
+      .rsp-stack { flex-direction: column !important; align-items: flex-start !important; }
+      .rsp-table-inner { min-width: 520px; }
+      .rsp-item-actions { flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; }
+
+      /* Kanban: scroll horizontal en desktop */
+      .kanban-board {
+        display: flex;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Kanban mobile: apilado vertical, 100% ancho, sin scroll horizontal */
+      .kanban-board-mobile-fix,
+      .lista-mobile-row { display: none; }
+
+    }
+
+    @media (max-width: 768px) {
+      .kanban-board {
+        flex-direction: column !important;
+        overflow: visible !important;
+        gap: 16px !important;
+        padding-bottom: 0 !important;
+      }
+      .kanban-col {
+        flex: none !important;
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+      .kanban-col-header {
+        justify-content: center !important;
+        text-align: center !important;
+      }
+      /* Lista: colapsar grid a 1 columna, ocultar columnas desktop */
+      .lista-fila {
+        grid-template-columns: 1fr !important;
+        gap: 0 !important;
+      }
+      .lista-desktop-col { display: none !important; }
+      .lista-mobile-row { display: flex !important; }
+      .lista-header { display: none !important; }
+
+      /* Filtros de estado: columna vertical en mobile */
+      .filtros-estado {
+        flex-direction: column !important;
+        gap: 6px !important;
+      }
+      .filtros-estado > button {
+        width: 100% !important;
+        justify-content: flex-start !important;
+      }
+
+      /* Deshabilitar hover-lift en touch */
+      .hover-lift:hover {
+        transform: none !important;
+        box-shadow: none !important;
+      }
+    }
+  `}</style>
 
     /* ── Modo oscuro premium (default) ─────────────────────────── */
     :root,[data-theme="dark"]{
@@ -825,21 +1097,21 @@ function Badge({ children, color }) {
 }
 function SectionTitle({ children, sub }) {
   return (
-    <div style={{ marginBottom: 24 }}>
+    <div className="anim-fadeup" style={{ marginBottom: 24 }}>
       <h2
         style={{
           fontFamily: "'Playfair Display',serif",
-          fontSize: 24,
+          fontSize: 26,
           fontWeight: 900,
           color: "var(--accent)",
-          letterSpacing: -0.5,
+          letterSpacing: -0.8,
           lineHeight: 1,
         }}
       >
         {children}
       </h2>
       {sub && (
-        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 7, fontWeight: 300, letterSpacing: "0.01em" }}>
           {sub}
         </p>
       )}
@@ -3890,6 +4162,7 @@ function GestorPresupuestos({
   onGuardarNuevo,
   onEliminar,
   onCambiarEstado,
+  onLimpiar,
   totalActual,
   itemsActual,
 }) {
@@ -3899,13 +4172,25 @@ function GestorPresupuestos({
   const [notaNueva, setNotaNueva] = useState("");
   const [confirmDel, setConfirmDel] = useState(null);
   const [estadoOpen, setEstadoOpen] = useState(null);
+  const [guardado, setGuardado] = useState(false); // feedback visual
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
+
   const handleGuardar = () => {
     if (!nombreNuevo.trim()) return;
     onGuardarNuevo(nombreNuevo.trim(), clienteNuevo, notaNueva.trim());
-    setNombreNuevo("");
-    setClienteNuevo({ nombre: "", tel: "", dir: "" });
-    setNotaNueva("");
+    // Feedback visual
+    setGuardado(true);
+    setTimeout(() => {
+      setGuardado(false);
+      // Limpiar form
+      setNombreNuevo("");
+      setClienteNuevo({ nombre: "", tel: "", dir: "" });
+      setNotaNueva("");
+      // Limpiar items del presupuesto activo
+      if (onLimpiar) onLimpiar();
+      // Colapsar el gestor
+      setAbierto(false);
+    }, 1200);
   };
 
   const inputStyle = {
@@ -3938,7 +4223,7 @@ function GestorPresupuestos({
         <span style={{ color: "var(--text-muted)", fontSize: 12 }}>{abierto ? "▲" : "▼"}</span>
       </button>
       {abierto && (
-        <div style={{ marginTop: 6, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+        <div style={{ marginTop: 6, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "visible" }}>
           {itemsActual.length > 0 && (
             <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", background: "var(--accent-soft)" }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--accent)", marginBottom: 10 }}>
@@ -3972,7 +4257,9 @@ function GestorPresupuestos({
                   rows={2}
                   style={{ ...inputStyle, flex: "1 1 200px", resize: "vertical", lineHeight: 1.5, fontSize: 12 }}
                   onFocus={e => e.target.style.borderColor = "var(--accent-hover)"} onBlur={e => e.target.style.borderColor = "var(--accent-border)"} />
-                <Btn onClick={handleGuardar} small disabled={!nombreNuevo.trim()}>Guardar</Btn>
+                <Btn onClick={handleGuardar} small disabled={!nombreNuevo.trim() || guardado}>
+                  {guardado ? "✓ Guardado" : "Guardar"}
+                </Btn>
               </div>
             </div>
           )}
@@ -4788,6 +5075,7 @@ function Presupuesto({
           onGuardarNuevo={onGuardarPresupuesto}
           onEliminar={onEliminarPresupuesto}
           onCambiarEstado={onCambiarEstado}
+          onLimpiar={() => setItems([])}
           totalActual={totalGeneral}
           itemsActual={items}
         />
@@ -6080,14 +6368,13 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, 
   const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
   const esProduccion = (p.estado || "nuevo") === "produccion";
   return (
-    <div style={{
+    <div className="hover-lift anim-fadeup" style={{
       background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10,
       padding: "12px 13px", marginBottom: 8,
-      transition: "border-color 0.15s, box-shadow 0.15s, transform 0.15s",
       boxShadow: "var(--shadow-sm)", borderLeft: `3px solid ${est.color}`,
     }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-strong)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.35)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "var(--shadow-sm)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderLeftColor = est.color; }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = "var(--border-strong)"}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.borderLeftColor = est.color; }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 7, marginBottom: 4 }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: est.color, flexShrink: 0, marginTop: 4, boxShadow: `0 0 6px ${est.color}80` }} />
@@ -6391,9 +6678,9 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
   };
 
   return (
-    <div style={{
+    <div className="hover-lift anim-fadeup" style={{
       background: "var(--bg-surface)", border: "1px solid var(--border)",
-      borderRadius: 12, overflow: "hidden", transition: "border-color 0.15s",
+      borderRadius: 12, overflow: "visible", transition: "border-color 0.18s",
       borderLeft: `3px solid ${est.color}`,
     }}>
       {/* Cabecera */}
@@ -6686,28 +6973,28 @@ function PanelCaja({ presupuestos, onActualizar, modulos, costos }) {
         <>
           {/* Métricas resumen */}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ ...metricaStyle, borderTop: "3px solid var(--accent)" }}>
+            <div className="anim-fadeup stagger-1" style={{ ...metricaStyle, borderTop: "3px solid var(--accent)" }}>
               <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 6 }}>Total presupuestado</div>
               <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: "var(--accent)" }}>{fmtPeso(totalPresupuestado)}</div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>{entries.length} trabajos</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3, fontWeight: 300 }}>{entries.length} trabajos</div>
             </div>
-            <div style={{ ...metricaStyle, borderTop: "3px solid #7ecf8a" }}>
+            <div className="anim-fadeup stagger-2" style={{ ...metricaStyle, borderTop: "3px solid #7ecf8a" }}>
               <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 6 }}>Total cobrado</div>
               <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(totalCobrado)}</div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3, fontWeight: 300 }}>
                 {totalPresupuestado > 0 ? Math.round((totalCobrado / totalPresupuestado) * 100) : 0}% del total
               </div>
             </div>
-            <div style={{ ...metricaStyle, borderTop: "3px solid #e07070" }}>
+            <div className="anim-fadeup stagger-3" style={{ ...metricaStyle, borderTop: "3px solid #e07070" }}>
               <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 6 }}>Pendiente de cobro</div>
               <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: "#e07070" }}>{fmtPeso(totalPendiente)}</div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>en trabajos activos</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3, fontWeight: 300 }}>en trabajos activos</div>
             </div>
             {vencidos > 0 && (
-              <div style={{ ...metricaStyle, borderTop: "3px solid #c8a02a" }}>
+              <div className="anim-fadeup stagger-4" style={{ ...metricaStyle, borderTop: "3px solid #c8a02a" }}>
                 <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 6 }}>Presupuestos vencidos</div>
                 <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: "#c8a02a" }}>{vencidos}</div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>requieren seguimiento</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3, fontWeight: 300 }}>requieren seguimiento</div>
               </div>
             )}
           </div>
@@ -6847,8 +7134,7 @@ function LoginScreen({ onAccess }) {
           background: "var(--bg-surface)", borderRadius: 16,
           border: "1px solid var(--border)", padding: "40px 36px",
           boxShadow: "var(--shadow)",
-          transform: shake ? "translateX(0)" : "none",
-          animation: shake ? "shake 0.4s ease" : "none",
+          animation: shake ? "shake 0.4s ease" : "scaleIn 0.45s cubic-bezier(0.22,1,0.36,1)",
         }}>
           {/* Logo */}
           <div style={{ textAlign: "center", marginBottom: 32 }}>
