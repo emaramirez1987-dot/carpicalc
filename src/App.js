@@ -3835,7 +3835,7 @@ function CatalogoModulos({
   const [vistaLayout, setVista] = useState("grid");
   const [busqueda, setBusqueda] = useState("");
   const [categoriasColapsadas, setCategoriasColapsadas] = useState({});
-  const { pushUndo, ToastContainer } = useUndo();
+  const { ToastContainer } = useUndo();
   const formRef = React.useRef(null);
 
   const abrirModo = (nuevoModo) => {
@@ -5939,6 +5939,7 @@ function VistaPrevia({
       setCondiciones(presSel.condiciones ?? (perfil?.condiciones || ""));
       setMostrarLista(false); // en mobile, ir al doc
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presSelId]);
 
   const guardarTextos = () => {
@@ -5983,7 +5984,7 @@ function VistaPrevia({
     <button onClick={onClick} style={{
       display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px",
       borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-      cursor: "pointer", transition: "all 0.15s", border: "none",
+      cursor: "pointer", transition: "all 0.15s",
       background: color === "gold" ? "linear-gradient(135deg,var(--accent),var(--accent-hover))" :
                   color === "wa" ? "rgba(37,211,102,0.15)" : "var(--accent-soft)",
       border: color === "wa" ? "1px solid rgba(37,211,102,0.35)" :
