@@ -5125,6 +5125,71 @@ function ResumenPresupuesto({
   );
 }
 
+// ── BarraTotal ────────────────────────────────────────────────────
+function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombrePresupuesto }) {
+  const [expandido, setExpandido] = useState(false);
+  const [mostrarIVA, setMostrarIVA] = useState(false);
+  const totalConIVA = Math.round(totalGeneral * 1.21);
+  const totalUnid = items.reduce((a, i) => a + i.cantidad, 0);
+
+  return (
+    <div style={{ borderRadius: expandido ? "10px 10px 0 0" : 10, overflow: "hidden", border: "1px solid var(--accent-border)", background: "var(--bg-surface)" }}>
+      {/* Barra principal — siempre visible */}
+      <div style={{
+        padding: "10px 16px", display: "flex", alignItems: "center",
+        gap: 12, flexWrap: "wrap", cursor: "pointer",
+        background: "var(--accent-soft)",
+        borderBottom: expandido ? "1px solid var(--accent-border)" : "none",
+      }}
+        onClick={() => setExpandido(v => !v)}
+      >
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+            {totalUnid} u · {items.length} mód.
+          </span>
+          <button
+            onClick={e => { e.stopPropagation(); setMostrarIVA(v => !v); }}
+            style={{
+              padding: "3px 10px", borderRadius: 5, fontSize: 10,
+              fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer",
+              background: mostrarIVA ? "rgba(126,207,138,0.15)" : "transparent",
+              border: `1px solid ${mostrarIVA ? "rgba(126,207,138,0.35)" : "var(--accent-border)"}`,
+              color: mostrarIVA ? "#7ecf8a" : "var(--accent)",
+              transition: "all 0.15s",
+            }}>
+            {mostrarIVA ? "✓ Con IVA" : "+ IVA 21%"}
+          </button>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 900, color: "#7ecf8a", letterSpacing: -0.5 }}>
+            {fmtPeso(mostrarIVA ? totalConIVA : totalGeneral)}
+          </span>
+          {mostrarIVA && (
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+              base {fmtPeso(totalGeneral)}
+            </span>
+          )}
+          <span style={{ color: "var(--accent)", fontSize: 12, fontFamily: "'DM Mono',monospace" }}>
+            {expandido ? "▲" : "▼"}
+          </span>
+        </div>
+      </div>
+
+      {/* Resumen expandido */}
+      {expandido && (
+        <ResumenPresupuesto
+          items={items}
+          modulos={modulos}
+          costos={costos}
+          getModUsado={getModUsado}
+          totalGeneral={totalGeneral}
+          nombrePresupuesto={nombrePresupuesto}
+        />
+      )}
+    </div>
+  );
+}
+
 // ── Presupuesto ───────────────────────────────────────────────────
 function Presupuesto({
   modulos,
@@ -5464,7 +5529,19 @@ function Presupuesto({
         </div>
       )}
 
-      {/* 4. Formulario agregar módulo */}
+      {/* 4. Barra de total colapsable — entre módulos y formulario */}
+      {items.length > 0 && (
+        <BarraTotal
+          items={items}
+          modulos={modulos}
+          costos={costos}
+          getModUsado={getModUsado}
+          totalGeneral={totalGeneral}
+          nombrePresupuesto={nombreTrabajo}
+        />
+      )}
+
+      {/* 5. Formulario agregar módulo */}
       <div ref={formRef}>
         <Card className="rsp-card no-print">
           <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 100px auto", gap: 12, alignItems: "end" }}>
@@ -5496,15 +5573,6 @@ function Presupuesto({
         </Card>
       </div>
 
-      {/* 5. Resumen */}
-      <ResumenPresupuesto
-        items={items}
-        modulos={modulos}
-        costos={costos}
-        getModUsado={getModUsado}
-        totalGeneral={totalGeneral}
-        nombrePresupuesto={nombreTrabajo}
-      />
       <ToastContainer />
     </div>
   );
