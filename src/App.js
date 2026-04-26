@@ -4338,188 +4338,149 @@ function PanelSelectorModulos({ modulos, onSeleccionar }) {
 function GestorPresupuestos({
   presupuestos,
   onCargar,
-  onGuardarNuevo,
+  onNuevo,
   onEliminar,
   onCambiarEstado,
-  onLimpiar,
   totalActual,
   itemsActual,
+  nombreInicial = "",
+  clienteInicial = { nombre: "", tel: "", dir: "" },
 }) {
   const [abierto, setAbierto] = useState(false);
-  const [nombreNuevo, setNombreNuevo] = useState("");
-  const [clienteNuevo, setClienteNuevo] = useState({ nombre: "", tel: "", dir: "" });
-  const [notaNueva, setNotaNueva] = useState("");
-  const [estadoOpen, setEstadoOpen] = useState(null);
   const [confirmDelId, setConfirmDelId] = useState(null);
-  const [guardado, setGuardado] = useState(false);
-  const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
+  const [busquedaPres, setBusquedaPres] = useState("");
 
-  const handleGuardar = () => {
-    if (!nombreNuevo.trim()) return;
-    onGuardarNuevo(nombreNuevo.trim(), clienteNuevo, notaNueva.trim());
-    // Feedback visual
-    setGuardado(true);
-    setTimeout(() => {
-      setGuardado(false);
-      // Limpiar form
-      setNombreNuevo("");
-      setClienteNuevo({ nombre: "", tel: "", dir: "" });
-      setNotaNueva("");
-      // Limpiar items del presupuesto activo
-      if (onLimpiar) onLimpiar();
-      // Colapsar el gestor
-      setAbierto(false);
-    }, 1200);
-  };
-
-  const inputStyle = {
-    flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "6px 9px",
-    background: "var(--bg-base)", border: "1px solid var(--accent-border)",
-    color: "var(--text-primary)", borderRadius: 6, outline: "none", minWidth: 0,
-  };
+  const totalEntries = Object.keys(presupuestos).length;
+  const entries = Object.entries(presupuestos)
+    .sort((a, b) => b[0] - a[0])
+    .filter(([, p]) => {
+      if (!busquedaPres.trim()) return true;
+      const q = busquedaPres.toLowerCase();
+      return p.nombre?.toLowerCase().includes(q) || p.cliente?.nombre?.toLowerCase().includes(q);
+    });
 
   return (
-    <div style={{ marginBottom: 4 }}>
-      <button
-        onClick={() => setAbierto((a) => !a)}
-        style={{
-          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "12px 16px", borderRadius: 10, cursor: "pointer", transition: "all 0.15s",
-          background: "var(--bg-surface)", border: "1px solid var(--border)", fontFamily: "'DM Mono',monospace",
-        }}
-      >
+    <div>
+      {/* Cabecera colapsable */}
+      <button onClick={() => setAbierto(a => !a)} style={{
+        width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "12px 16px", borderRadius: abierto ? "10px 10px 0 0" : 10, cursor: "pointer",
+        background: "var(--bg-surface)", border: "1px solid var(--border)",
+        fontFamily: "'DM Mono',monospace", transition: "all 0.15s",
+        borderBottom: abierto ? "none" : "1px solid var(--border)",
+      }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 14 }}>🗄</span>
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-secondary)" }}>
             Mis presupuestos
           </span>
-          {entries.length > 0 && (
+          {totalEntries > 0 && (
             <span style={{ background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 999, padding: "1px 8px", fontSize: 10, fontWeight: 700 }}>
-              {entries.length}
+              {totalEntries}
             </span>
           )}
         </div>
         <span style={{ color: "var(--text-muted)", fontSize: 12 }}>{abierto ? "▲" : "▼"}</span>
       </button>
+
       {abierto && (
-        <div style={{ marginTop: 6, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "visible" }}>
-          {itemsActual.length > 0 && (
-            <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", background: "var(--accent-soft)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--accent)", marginBottom: 10 }}>
-                💾 Guardar presupuesto activo — {fmtPeso(totalActual)} ({itemsActual.length} módulo{itemsActual.length !== 1 ? "s" : ""})
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                <input
-                  value={nombreNuevo}
-                  onChange={(e) => setNombreNuevo(e.target.value)}
-                  placeholder="Nombre del trabajo (ej: Cocina Rodríguez)"
-                  onKeyDown={(e) => e.key === "Enter" && handleGuardar()}
-                  style={{ ...inputStyle, fontSize: 13, padding: "7px 10px", flex: "2 1 200px" }}
-                  onFocus={e => e.target.style.borderColor = "var(--accent-hover)"}
-                  onBlur={e => e.target.style.borderColor = "var(--accent-border)"}
-                />
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                <input value={clienteNuevo.nombre} onChange={e => setClienteNuevo(p => ({ ...p, nombre: e.target.value }))}
-                  placeholder="👤 Nombre del cliente" style={{ ...inputStyle, flex: "2 1 140px" }}
-                  onFocus={e => e.target.style.borderColor = "var(--accent-hover)"} onBlur={e => e.target.style.borderColor = "var(--accent-border)"} />
-                <input value={clienteNuevo.tel} onChange={e => setClienteNuevo(p => ({ ...p, tel: e.target.value }))}
-                  placeholder="📞 Teléfono" style={{ ...inputStyle, flex: "1 1 100px" }}
-                  onFocus={e => e.target.style.borderColor = "var(--accent-hover)"} onBlur={e => e.target.style.borderColor = "var(--accent-border)"} />
-                <input value={clienteNuevo.dir} onChange={e => setClienteNuevo(p => ({ ...p, dir: e.target.value }))}
-                  placeholder="📍 Dirección" style={{ ...inputStyle, flex: "2 1 140px" }}
-                  onFocus={e => e.target.style.borderColor = "var(--accent-hover)"} onBlur={e => e.target.style.borderColor = "var(--accent-border)"} />
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, alignItems: "flex-start" }}>
-                <textarea value={notaNueva} onChange={e => setNotaNueva(e.target.value)}
-                  placeholder="📋 Observaciones generales del trabajo (opcional)"
-                  rows={2}
-                  style={{ ...inputStyle, flex: "1 1 200px", resize: "vertical", lineHeight: 1.5, fontSize: 12 }}
-                  onFocus={e => e.target.style.borderColor = "var(--accent-hover)"} onBlur={e => e.target.style.borderColor = "var(--accent-border)"} />
-                <Btn onClick={handleGuardar} small disabled={!nombreNuevo.trim() || guardado}>
-                  {guardado ? "✓ Guardado" : "Guardar"}
-                </Btn>
+        <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderTop: "1px solid var(--separator)", borderRadius: "0 0 10px 10px", overflow: "visible" }}>
+
+          {/* Buscador — solo con más de 3 */}
+          {totalEntries > 3 && (
+            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--separator)" }}>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-muted)", pointerEvents: "none" }}>🔍</span>
+                <input value={busquedaPres} onChange={e => setBusquedaPres(e.target.value)}
+                  placeholder="Buscar por nombre o cliente..."
+                  style={{ width: "100%", paddingLeft: 28, paddingRight: 10, paddingTop: 6, paddingBottom: 6, fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 12, background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 6, outline: "none" }}
+                  onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                  onBlur={e => e.target.style.borderColor = "var(--border)"} />
               </div>
             </div>
           )}
+
+          {/* Lista de presupuestos */}
           {entries.length === 0 ? (
             <div style={{ padding: "20px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-              No hay presupuestos guardados todavía.
+              {busquedaPres ? `Sin resultados para "${busquedaPres}"` : "No hay presupuestos guardados todavía"}
             </div>
           ) : (
-            <div>
-              {entries.map(([id, p]) => {
-                const estadoInfo = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
-                return (
-                  <div key={id} style={{ padding: "11px 16px", borderBottom: "1px solid var(--border)", transition: "background 0.12s" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "var(--accent-soft)"}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {p.nombre}
-                        </div>
-                        <div style={{ fontSize: 11, marginTop: 2, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
-                          {fmtFecha(parseInt(id))} · {p.items.length} módulo{p.items.length !== 1 ? "s" : ""}
-                          {p.cliente && p.cliente.nombre && <span> · 👤 {p.cliente.nombre}</span>}
-                          {p.cliente && p.cliente.tel && <span> · 📞 {p.cliente.tel}</span>}
-                        </div>
-                      </div>
-                      <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a", flexShrink: 0 }}>
-                        {fmtPeso(p.total)}
-                      </div>
-                      {/* Badge de estado */}
-                      <div style={{ position: "relative", flexShrink: 0 }}>
-                        <button
-                          onClick={() => setEstadoOpen(estadoOpen === id ? null : id)}
-                          style={{ padding: "3px 10px", borderRadius: 999, fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", border: `1px solid ${estadoInfo.color}55`, background: `${estadoInfo.color}22`, color: estadoInfo.color }}>
-                          {estadoInfo.icon} {estadoInfo.label} ▾
-                        </button>
-                        {estadoOpen === id && (
-                          <div style={{ position: "absolute", right: 0, top: "110%", zIndex: 20, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "var(--shadow)", minWidth: 160, overflow: "hidden" }}>
-                            {ESTADOS_TRABAJO.map(est => (
-                              <button key={est.id} onClick={() => { onCambiarEstado(id, est.id); setEstadoOpen(null); }}
-                                style={{ width: "100%", padding: "8px 14px", background: est.id === (p.estado || "nuevo") ? `${est.color}22` : "transparent", border: "none", color: est.id === (p.estado || "nuevo") ? est.color : "var(--text-secondary)", cursor: "pointer", textAlign: "left", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-                                {est.icon} {est.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center" }}>
-                        <button onClick={() => onCargar(p, id)}
-                          style={{ padding: "4px 10px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
-                          ↩ Cargar
-                        </button>
-                        {confirmDelId === id ? (
-                          <>
-                            <button onClick={() => { onEliminar(id); setConfirmDelId(null); }}
-                              style={{ padding: "4px 10px", background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
-                              ✓ Confirmar
-                            </button>
-                            <button onClick={() => setConfirmDelId(null)}
-                              style={{ padding: "4px 10px", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
-                              Cancelar
-                            </button>
-                          </>
-                        ) : (
-                          <button onClick={() => setConfirmDelId(id)}
-                            style={{ padding: "4px 10px", background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
-                            ×
-                          </button>
-                        )}
-                      </div>
+            entries.map(([id, p]) => {
+              const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
+              return (
+                <div key={id} style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                  borderBottom: "1px solid var(--separator)", transition: "background 0.12s",
+                  flexWrap: "wrap",
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, background: `${est.color}20`, color: est.color, border: `1px solid ${est.color}30`, borderRadius: 3, padding: "1px 5px", fontFamily: "'DM Mono',monospace", flexShrink: 0 }}>
+                        {est.icon} {est.label}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, fontFamily: "'DM Mono',monospace" }}>
+                      {fmtFecha(parseInt(id))} · {p.items?.length || 0} mód.
+                      {p.cliente?.nombre && <span> · 👤 {p.cliente.nombre}</span>}
+                      <span style={{ color: "#7ecf8a", fontWeight: 700, marginLeft: 8 }}>{fmtPeso(p.total)}</span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Acciones */}
+                  <div style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center" }}>
+                    <button onClick={() => { onCargar(p, id); setAbierto(false); }}
+                      style={{ padding: "4px 12px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                      ✎ Abrir
+                    </button>
+                    {confirmDelId === id ? (
+                      <>
+                        <button onClick={() => { onEliminar(id); setConfirmDelId(null); }}
+                          style={{ padding: "4px 10px", background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                          ✓ Confirmar
+                        </button>
+                        <button onClick={() => setConfirmDelId(null)}
+                          style={{ padding: "4px 8px", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => setConfirmDelId(id)}
+                        style={{ padding: "4px 8px", background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
           )}
+
+          {/* Botón Nuevo presupuesto — al pie */}
+          <div style={{ padding: "12px 14px" }}>
+            <button onClick={() => { onNuevo && onNuevo(); setAbierto(false); }}
+              style={{
+                width: "100%", padding: "10px 0", borderRadius: 8, cursor: "pointer",
+                background: "var(--accent-soft)", border: "1px dashed var(--accent-border)",
+                color: "var(--accent)", fontFamily: "'DM Mono',monospace", fontSize: 12,
+                fontWeight: 700, letterSpacing: "0.06em", transition: "all 0.15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(212,175,55,0.18)"}
+              onMouseLeave={e => e.currentTarget.style.background = "var(--accent-soft)"}>
+              + Nuevo presupuesto
+            </button>
+          </div>
         </div>
       )}
     </div>
   );
 }
+
 // ── imprimirPresupuesto ───────────────────────────────────────────
 function imprimirPresupuesto(
   items,
@@ -4531,6 +4492,7 @@ function imprimirPresupuesto(
   mostrarPrecioUnitario,
   cliente
 ) {
+  const perfil = leerPerfil();
   const fecha = fmtFechaLarga(Date.now());
   const clienteHtml = cliente && (cliente.nombre || cliente.tel || cliente.dir)
     ? `<div style="margin-top:12px;padding:10px 14px;background:#fff8ee;border:1px solid #e8d0a0;border-radius:6px;font-size:12px;color:#5a3a10">
@@ -4538,6 +4500,16 @@ function imprimirPresupuesto(
         ${cliente.tel ? `<div style="margin-top:2px">📞 ${cliente.tel}</div>` : ""}
         ${cliente.dir ? `<div style="margin-top:2px">📍 ${cliente.dir}</div>` : ""}
       </div>` : "";
+  const encabezadoTaller = perfil?.nombre
+    ? `<div style="display:flex;align-items:center;gap:14px">
+        ${perfil.logo ? `<img src="${perfil.logo}" style="height:44px;object-fit:contain" />` : ""}
+        <div>
+          <div style="font-family:'Georgia',serif;font-size:20px;font-weight:900;color:#7a4a10">${perfil.nombre}</div>
+          ${perfil.slogan ? `<div style="font-size:11px;color:#9a7040;font-style:italic">${perfil.slogan}</div>` : ""}
+          <div style="font-size:10px;color:#aaa;margin-top:2px">${[perfil.tel, perfil.email, perfil.direccion].filter(Boolean).join(" · ")}</div>
+        </div>
+      </div>`
+    : `<div><div style="font-size:22px;font-weight:900;color:#7a4a10">🪵 CarpiCálc</div><div style="font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-top:4px;color:#888">Presupuesto de carpintería</div></div>`;
   const filas = items
     .map((item) => {
       const modBase = modulos[item.codigo];
@@ -4582,13 +4554,7 @@ function imprimirPresupuesto(
     })
     .join("");
   const totalUnid = items.reduce((a, i) => a + i.cantidad, 0);
-  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>CarpiCálc — ${
-    nombre || "Presupuesto"
-  }</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a0e04;padding:32px 40px;max-width:900px;margin:0 auto}@media print{body{padding:16px 20px}}</style></head><body><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #a07030"><div><div style="font-size:22px;font-weight:900;color:#7a4a10;letter-spacing:-0.5px">🪵 CarpiCálc</div><div style="font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-top:4px;color:#888">Presupuesto de carpintería</div></div><div style="text-align:right">${
-    nombre
-      ? `<div style="font-size:15px;font-weight:700;color:#1a0e04">${nombre}</div>`
-      : ""
-  }<div style="font-size:11px;color:#666;margin-top:4px">${fecha}</div>${clienteHtml}</div></div><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f5ede0">${[
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>CarpiCálc — ${nombre || "Presupuesto"}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a0e04;padding:32px 40px;max-width:900px;margin:0 auto}@media print{body{padding:16px 20px}}</style></head><body><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #a07030">${encabezadoTaller}<div style="text-align:right">${nombre ? `<div style="font-size:15px;font-weight:700;color:#1a0e04">${nombre}</div>` : ""}<div style="font-size:11px;color:#666;margin-top:4px">${fecha}</div>${clienteHtml}</div></div><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f5ede0">${[
     "Código",
     "Módulo",
     "Cant.",
@@ -5186,6 +5152,7 @@ function Presupuesto({
   onCargarPresupuesto,
   onEliminarPresupuesto,
   onCambiarEstado,
+  onActualizarPresupuesto,
 }) {
   const [inputCod, setInputCod] = useState("");
   const [inputCant, setInputCant] = useState(1);
@@ -5196,7 +5163,10 @@ function Presupuesto({
   const [editandoCliente, setEditandoCliente] = useState(false);
   const [clienteActivo, setClienteActivo] = useState({ nombre: "", tel: "", dir: "" });
   const [nombreTrabajo, setNombreTrabajo] = useState("");
+  const [presupuestoActivoId, setPresupuestoActivoId] = useState(null); // id del pres cargado
+  const [dialogoGuardar, setDialogoGuardar] = useState(false); // diálogo actualizar/copia
   const { pushUndo, ToastContainer } = useUndo();
+  const formRef = React.useRef(null); // ref al formulario para autoscroll
 
   // Detectar presupuesto desactualizado cuando se carga uno guardado
   const [alertaPrecios, setAlertaPrecios] = useState(null); // { idPres, totalOriginal, totalRecalculado }
@@ -5225,8 +5195,19 @@ function Presupuesto({
     onCargarPresupuesto(p);
     setClienteActivo(p.cliente || { nombre: "", tel: "", dir: "" });
     setNombreTrabajo(p.nombre || "");
+    setPresupuestoActivoId(id || null);
     setAlertaPrecios(null);
+    setEditandoCliente(false);
     verificarPrecios(p, id);
+  };
+
+  const handleNuevoPresupuesto = () => {
+    setItems([]);
+    setClienteActivo({ nombre: "", tel: "", dir: "" });
+    setNombreTrabajo("");
+    setPresupuestoActivoId(null);
+    setAlertaPrecios(null);
+    setEditandoCliente(true); // abre panel de cliente
   };
 
   const handleCodChange = (val) => {
@@ -5291,6 +5272,10 @@ function Presupuesto({
     setInputCant(1);
     setPreDim(null);
     setError("");
+    // Autoscroll suave al formulario
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
   };
   const setNota = (keyId, v) =>
     setItems((its) =>
@@ -5299,764 +5284,223 @@ function Presupuesto({
       )
     );
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* ── Tarjeta de trabajo activo ── */}
-      <div style={{
-        background: "var(--bg-surface)", border: "1px solid var(--border)",
-        borderRadius: 14, overflow: "hidden",
-      }}>
-        {/* Header */}
+      {/* 1. Tarjeta de trabajo activo */}
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
         <div style={{
-          padding: "16px 20px", display: "flex", alignItems: "center",
+          padding: "14px 20px", display: "flex", alignItems: "center",
           justifyContent: "space-between", gap: 12, flexWrap: "wrap",
-          borderBottom: items.length > 0 || editandoCliente ? "1px solid var(--border)" : "none",
+          borderBottom: editandoCliente ? "1px solid var(--border)" : "none",
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            {items.length === 0 && !editandoCliente ? (
-              <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
-                Sin presupuesto activo
-              </div>
+            {!items.length && !editandoCliente && !nombreTrabajo ? (
+              <div style={{ fontSize: 14, color: "var(--text-muted)", fontStyle: "italic" }}>Sin presupuesto activo</div>
             ) : (
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
                   {nombreTrabajo || "Nuevo presupuesto"}
                 </div>
                 {clienteActivo.nombre && (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    👤 {clienteActivo.nombre}
-                    {clienteActivo.tel && <span> · {clienteActivo.tel}</span>}
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                    👤 {clienteActivo.nombre}{clienteActivo.tel && ` · ${clienteActivo.tel}`}
                   </div>
                 )}
               </div>
             )}
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0, flexWrap: "wrap" }}>
             {items.length > 0 && (
-              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>
                 {fmtPeso(totalGeneral)}
-              </div>
+              </span>
             )}
-            <button
-              onClick={() => setEditandoCliente(v => !v)}
-              style={{
-                padding: "6px 14px", borderRadius: 7, fontSize: 11,
-                fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer",
-                background: editandoCliente ? "var(--accent-soft)" : "transparent",
-                border: `1px solid ${editandoCliente ? "var(--accent-border)" : "var(--border)"}`,
-                color: editandoCliente ? "var(--accent)" : "var(--text-muted)",
-                transition: "all 0.15s",
-              }}>
-              {editandoCliente ? "✓ Listo" : items.length === 0 ? "✦ Nuevo presupuesto" : "✎ Editar datos"}
+            {items.length > 0 && (
+              <button onClick={() => presupuestoActivoId ? setDialogoGuardar(true) : onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "")}
+                style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 2px 8px rgba(180,100,20,0.25)" }}>
+                💾 Guardar
+              </button>
+            )}
+            <button onClick={() => setEditandoCliente(v => !v)}
+              style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: editandoCliente ? "var(--accent-soft)" : "transparent", border: `1px solid ${editandoCliente ? "var(--accent-border)" : "var(--border)"}`, color: editandoCliente ? "var(--accent)" : "var(--text-muted)", transition: "all 0.15s" }}>
+              {editandoCliente ? "✓ Listo" : "✎ Datos"}
             </button>
           </div>
         </div>
-
-        {/* Panel de datos del cliente — inline */}
         {editandoCliente && (
-          <div style={{ padding: "16px 20px", background: "var(--bg-subtle)" }}>
-            <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
-              <TextInput label="Nombre del trabajo" placeholder="Ej: Cocina Rodríguez" small
-                value={nombreTrabajo} onChange={setNombreTrabajo} />
-              <TextInput label="Cliente" placeholder="Nombre del cliente" small
-                value={clienteActivo.nombre} onChange={v => setClienteActivo(c => ({ ...c, nombre: v }))} />
-              <TextInput label="Teléfono" placeholder="341 555-1234" small
-                value={clienteActivo.tel} onChange={v => setClienteActivo(c => ({ ...c, tel: v }))} />
+          <div style={{ padding: "14px 20px", background: "var(--bg-subtle)" }}>
+            <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 10 }}>
+              <TextInput label="Nombre del trabajo" placeholder="Ej: Cocina Rodríguez" small value={nombreTrabajo} onChange={setNombreTrabajo} />
+              <TextInput label="Cliente" placeholder="Nombre del cliente" small value={clienteActivo.nombre} onChange={v => setClienteActivo(c => ({ ...c, nombre: v }))} />
+              <TextInput label="Teléfono" placeholder="341 555-1234" small value={clienteActivo.tel} onChange={v => setClienteActivo(c => ({ ...c, tel: v }))} />
             </div>
-            <TextInput label="Dirección de entrega" placeholder="Av. San Martín 456" small
-              value={clienteActivo.dir} onChange={v => setClienteActivo(c => ({ ...c, dir: v }))} />
+            <TextInput label="Dirección de entrega" placeholder="Av. San Martín 456" small value={clienteActivo.dir} onChange={v => setClienteActivo(c => ({ ...c, dir: v }))} />
           </div>
         )}
       </div>
 
-      {/* ── Alerta de precios desactualizados ── */}
+      {/* Diálogo guardar */}
+      {dialogoGuardar && (
+        <div style={{ padding: "16px 20px", borderRadius: 10, background: "var(--bg-surface)", border: "1px solid var(--accent-border)" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>💾 ¿Cómo querés guardar?</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14 }}>"{nombreTrabajo || "Sin nombre"}"</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={() => {
+              onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, total: totalGeneral });
+              setDialogoGuardar(false);
+            }} style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+              ✓ Actualizar original
+            </button>
+            <button onClick={() => { onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, ""); setDialogoGuardar(false); }}
+              style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+              + Guardar como copia
+            </button>
+            <button onClick={() => setDialogoGuardar(false)}
+              style={{ padding: "8px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Alerta precios */}
       {alertaPrecios && (
-        <div style={{
-          padding: "14px 18px", borderRadius: 10, display: "flex",
-          alignItems: "center", gap: 14, flexWrap: "wrap",
-          background: "rgba(200,160,42,0.10)", border: "1px solid rgba(200,160,42,0.30)",
-        }}>
+        <div style={{ padding: "12px 16px", borderRadius: 10, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "rgba(200,160,42,0.10)", border: "1px solid rgba(200,160,42,0.30)" }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#c8a02a", marginBottom: 3 }}>
-              ⚠ Los precios cambiaron desde que se creó este presupuesto
-            </div>
-            <div style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#c8a02a", marginBottom: 2 }}>⚠ Los precios cambiaron desde que se creó este presupuesto</div>
+            <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
               Original: {fmtPeso(alertaPrecios.totalOriginal)} → Recalculado: {fmtPeso(alertaPrecios.totalRecalculado)}
-              <span style={{ marginLeft: 10, color: alertaPrecios.totalRecalculado > alertaPrecios.totalOriginal ? "#e07070" : "#7ecf8a", fontWeight: 700 }}>
-                ({alertaPrecios.totalRecalculado > alertaPrecios.totalOriginal ? "+" : ""}
-                {fmtPeso(alertaPrecios.totalRecalculado - alertaPrecios.totalOriginal)})
+              <span style={{ marginLeft: 8, color: alertaPrecios.totalRecalculado > alertaPrecios.totalOriginal ? "#e07070" : "#7ecf8a", fontWeight: 700 }}>
+                ({alertaPrecios.totalRecalculado > alertaPrecios.totalOriginal ? "+" : ""}{fmtPeso(alertaPrecios.totalRecalculado - alertaPrecios.totalOriginal)})
               </span>
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setAlertaPrecios(null)}
-              style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-              Mantener original
-            </button>
-            <button onClick={() => {
-              // Actualizar el total en el presupuesto guardado que corresponde
-              setAlertaPrecios(null);
-            }}
-              style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a" }}>
-              ✓ Usar precio actualizado
+            <button onClick={() => setAlertaPrecios(null)} style={{ padding: "6px 12px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>Mantener</button>
+            <button onClick={() => { if (alertaPrecios.id) onActualizarPresupuesto && onActualizarPresupuesto(alertaPrecios.id, { total: alertaPrecios.totalRecalculado }); setAlertaPrecios(null); }}
+              style={{ padding: "6px 12px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a" }}>
+              ✓ Actualizar precio
             </button>
           </div>
         </div>
       )}
 
+      {/* 2. Mis presupuestos */}
       <div className="no-print">
         <GestorPresupuestos
           presupuestos={presupuestos}
           onCargar={handleCargar}
-          onGuardarNuevo={(nombre, cliente, nota) => {
-            onGuardarPresupuesto(nombreTrabajo || nombre, clienteActivo.nombre ? clienteActivo : cliente, nota);
-          }}
+          onNuevo={handleNuevoPresupuesto}
           onEliminar={onEliminarPresupuesto}
           onCambiarEstado={onCambiarEstado}
-          onLimpiar={() => {
-            setItems([]);
-            setClienteActivo({ nombre: "", tel: "", dir: "" });
-            setNombreTrabajo("");
-            setAlertaPrecios(null);
-          }}
           totalActual={totalGeneral}
           itemsActual={items}
+          nombreInicial={nombreTrabajo}
+          clienteInicial={clienteActivo}
         />
       </div>
-      <Card className="rsp-card no-print">
-        {/* rsp-grid-1: el form de agregar colapsa en móvil */}
-        <div
-          className="rsp-grid-1"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 100px auto",
-            gap: 12,
-            alignItems: "end",
-          }}
-        >
-          <div>
-            <TextInput
-              label="Código de módulo"
-              placeholder="MC001"
-              value={inputCod}
-              onChange={handleCodChange}
-            />
-            {error && (
-              <p style={{ color: "#e07070", fontSize: 12, marginTop: 5 }}>
-                ⚠ {error}
-              </p>
-            )}
-          </div>
-          <TextInput
-            label="Cantidad"
-            type="number"
-            value={inputCant}
-            onChange={setInputCant}
-          />
-          <div>
-            <Btn onClick={agregar}>Agregar</Btn>
-          </div>
-        </div>
-        {preDim && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: "14px",
-              background: "var(--accent-soft)",
-              border: "1px solid var(--accent-border)",
-              borderRadius: 8,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 11,
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                fontWeight: 700,
-                color: "var(--accent)",
-                marginBottom: 12,
-              }}
-            >
-              📐 Modificar medidas antes de agregar
-            </div>
-            <div
-              className="rsp-grid-1"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: 10,
-              }}
-            >
-              <TextInput
-                label="Ancho"
-                type="number"
-                small
-                suffix="mm"
-                value={preDim.ancho}
-                onChange={(v) =>
-                  setPreDim((p) => ({ ...p, ancho: parseInt(v) || 0 }))
-                }
-              />
-              <TextInput
-                label="Profundidad"
-                type="number"
-                small
-                suffix="mm"
-                value={preDim.profundidad}
-                onChange={(v) =>
-                  setPreDim((p) => ({ ...p, profundidad: parseInt(v) || 0 }))
-                }
-              />
-              <TextInput
-                label="Alto"
-                type="number"
-                small
-                suffix="mm"
-                value={preDim.alto}
-                onChange={(v) =>
-                  setPreDim((p) => ({ ...p, alto: parseInt(v) || 0 }))
-                }
-              />
-            </div>
-          </div>
-        )}
-        <PanelSelectorModulos
-          modulos={modulos}
-          onSeleccionar={(cod) => handleCodChange(cod)}
-        />
-      </Card>
 
-      {items.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "40px 0",
-            fontSize: 14,
-            color: "var(--text-muted)",
-          }}
-        >
-          📋 El presupuesto está vacío.
-        </div>
-      ) : (
-        items.map((item, idx) => {
-          const keyId = item.id || item.codigo;
-          const modBase = modulos[item.codigo];
-          if (!modBase) return null;
-          const modUsado = getModUsado(item);
-          const calc = calcularModulo(modUsado, costos);
-          if (!calc) return null;
-          const isOpen = expandido === keyId;
-          const over = dimOverride[keyId] || {};
-          return (
-            <Card
-              key={keyId}
-              className="rsp-card"
-              style={{
-                borderColor: isOpen ? "var(--accent-border)" : "var(--border)",
-              }}
-            >
-              {/* rsp-stack: en móvil se apila el header del ítem */}
-              <div
-                className="rsp-stack"
-                style={{ display: "flex", alignItems: "flex-start", gap: 12 }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      gap: 8,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: "'DM Mono',monospace",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "var(--accent)",
-                      }}
-                    >
-                      {item.codigo}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      {modBase.nombre}
-                    </span>
-                    <Badge>{TIPO_MAT[modUsado.material]}</Badge>
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      marginTop: 4,
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    {modUsado.dimensiones.ancho}×
-                    {modUsado.dimensiones.profundidad}×
-                    {modUsado.dimensiones.alto} mm
-                    {(over.ancho || over.profundidad || over.alto) && (
-                      <span style={{ marginLeft: 8, color: "var(--accent)" }}>
-                        ★ personalizado
-                      </span>
-                    )}
-                  </div>
-                  {item.nota && item.nota.trim() && !isOpen && (
-                    <div
-                      style={{
-                        fontSize: 12,
-                        marginTop: 4,
-                        color: "var(--accent)",
-                        fontStyle: "italic",
-                      }}
-                    >
-                      📝 {item.nota}
-                    </div>
-                  )}
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    flexShrink: 0,
-                  }}
-                >
-                  {[
-                    ["−", -1],
-                    ["+", 1],
-                  ].map(([lbl, d]) => (
-                    <button
-                      key={lbl}
-                      onClick={() =>
-                        setItems((it) =>
-                          it.map((x, i) =>
-                            i === idx
-                              ? { ...x, cantidad: Math.max(1, x.cantidad + d) }
-                              : x
-                          )
-                        )
-                      }
-                      style={{
-                        width: 28,
-                        height: 28,
-                        background: "var(--accent-soft)",
-                        border: "1px solid var(--accent-border)",
-                        color: "var(--accent)",
-                        borderRadius: 5,
-                        cursor: "pointer",
-                        fontSize: 15,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {lbl}
-                    </button>
-                  ))}
-                  <span
-                    style={{
-                      fontFamily: "'DM Mono',monospace",
-                      fontWeight: 700,
-                      width: 24,
-                      textAlign: "center",
-                      color: "var(--accent)",
-                    }}
-                  >
-                    {item.cantidad}
-                  </span>
-                </div>
-                <div
-                  style={{ textAlign: "right", flexShrink: 0, minWidth: 100 }}
-                >
-                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                    {fmtPeso(calc.total)} / u
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "'DM Mono',monospace",
-                      fontSize: 18,
-                      fontWeight: 700,
-                      color: "#7ecf8a",
-                    }}
-                  >
-                    {fmtPeso(calc.total * item.cantidad)}
-                  </div>
-                </div>
-                {/* rsp-item-actions: botones en fila en móvil */}
-                <div
-                  className="rsp-item-actions"
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 5,
-                    flexShrink: 0,
-                  }}
-                >
-                  <button
-                    onClick={() => setExpandido(isOpen ? null : keyId)}
-                    style={{
-                      padding: "4px 8px",
-                      background: "var(--bg-subtle)",
-                      border: "1px solid var(--border)",
-                      color: "var(--text-secondary)",
-                      borderRadius: 5,
-                      cursor: "pointer",
-                      fontSize: 11,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {isOpen ? "▲" : "▼"} detalle
-                  </button>
-                  <button
-                    title="Duplicar módulo con las mismas dimensiones"
-                    onClick={() => {
-                      const nuevoId = `${item.codigo}-${Date.now()}`;
-                      const copia = { ...item, id: nuevoId };
-                      const overCopia = dimOverride[keyId] ? { ...dimOverride[keyId] } : undefined;
-                      setItems(it => {
-                        const nuevo = [...it];
-                        nuevo.splice(idx + 1, 0, copia);
-                        return nuevo;
-                      });
-                      if (overCopia) setDimOverride(d => ({ ...d, [nuevoId]: overCopia }));
-                    }}
-                    style={{
-                      padding: "4px 8px",
-                      background: "var(--accent-soft)",
-                      border: "1px solid var(--accent-border)",
-                      color: "var(--accent)",
-                      borderRadius: 5,
-                      cursor: "pointer",
-                      fontSize: 11,
-                      fontWeight: 700,
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = "rgba(212,175,55,0.20)"}
-                    onMouseLeave={e => e.currentTarget.style.background = "var(--accent-soft)"}
-                  >
-                    ⧉ duplicar
-                  </button>
-                  <button
-                    onClick={() => {
-                      const itemEliminado = items[idx];
-                      const dimEliminada = dimOverride[`${item.codigo}-${item.id || 0}`];
-                      const keyId = `${item.codigo}-${item.id || 0}`;
-                      setItems(it => it.filter((_, i) => i !== idx));
-                      pushUndo({
-                        mensaje: `Módulo "${item.codigo}" eliminado del presupuesto`,
-                        onDeshacer: () => {
-                          setItems(it => {
-                            const n = [...it];
-                            n.splice(idx, 0, itemEliminado);
-                            return n;
-                          });
-                          if (dimEliminada) setDimOverride(d => ({ ...d, [keyId]: dimEliminada }));
-                        },
-                      });
-                    }}
-                    style={{
-                      padding: "4px 8px",
-                      background: "transparent",
-                      border: "1px solid rgba(200,60,60,0.22)",
-                      color: "#e07070",
-                      borderRadius: 5,
-                      cursor: "pointer",
-                      fontSize: 11,
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = "rgba(200,60,60,0.10)"}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                  >
-                    eliminar
-                  </button>
-                </div>
-              </div>
-              {isOpen && (
-                <div
-                  style={{
-                    marginTop: 16,
-                    paddingTop: 16,
-                    borderTop: "1px solid var(--border)",
-                  }}
-                >
-                  <div style={{ marginBottom: 16 }}>
-                    <label
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        letterSpacing: "0.12em",
-                        textTransform: "uppercase",
-                        fontFamily: "'DM Mono',monospace",
-                        color: "var(--text-muted)",
-                        display: "block",
-                        marginBottom: 6,
-                      }}
-                    >
-                      📝 Nota para este módulo
-                    </label>
-                    <textarea
-                      value={item.nota || ""}
-                      onChange={(e) => setNota(keyId, e.target.value)}
-                      placeholder="Ej: sin puerta, color wengué, medida a confirmar en obra..."
-                      rows={2}
-                      style={{
-                        width: "100%",
-                        fontFamily: "'DM Mono',monospace",
-                        fontSize: 13,
-                        padding: "8px 12px",
-                        background: "var(--bg-subtle)",
-                        border: "1px solid var(--border)",
-                        color: "var(--text-primary)",
-                        borderRadius: 6,
-                        outline: "none",
-                        resize: "vertical",
-                        transition: "border-color 0.2s",
-                        lineHeight: 1.5,
-                      }}
-                      onFocus={(e) =>
-                        (e.target.style.borderColor = "var(--accent)")
-                      }
-                      onBlur={(e) =>
-                        (e.target.style.borderColor = "var(--border)")
-                      }
-                    />
-                  </div>
-                  <div
-                    className="rsp-grid-1"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 16,
-                    }}
-                  >
-                    <div>
-                      <h4
-                        style={{
-                          fontSize: 11,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          fontWeight: 700,
-                          color: "var(--text-secondary)",
-                          marginBottom: 10,
-                        }}
-                      >
-                        Dimensiones para este trabajo
-                      </h4>
-                      <div
-                        className="rsp-grid-1"
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr 1fr",
-                          gap: 8,
-                        }}
-                      >
-                        {DIMS.map((dim) => (
-                          <TextInput
-                            key={dim}
-                            label={dim}
-                            type="number"
-                            small
-                            suffix="mm"
-                            value={over[dim] ?? modBase.dimensiones[dim]}
-                            onChange={(v) =>
-                              setDimOverride((d) => ({
-                                ...d,
-                                [keyId]: {
-                                  ...(d[keyId] || {}),
-                                  [dim]: parseInt(v) || 0,
-                                },
-                              }))
-                            }
-                          />
-                        ))}
-                      </div>
-                      <button
-                        onClick={() =>
-                          setDimOverride((d) => {
-                            const n = { ...d };
-                            delete n[keyId];
-                            return n;
-                          })
-                        }
-                        style={{
-                          marginTop: 8,
-                          background: "none",
-                          border: "none",
-                          color: "var(--text-muted)",
-                          cursor: "pointer",
-                          fontSize: 12,
-                          textDecoration: "underline",
-                        }}
-                      >
-                        Restaurar originales
-                      </button>
-                    </div>
-                    <div>
-                      <h4
-                        style={{
-                          fontSize: 11,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          fontWeight: 700,
-                          color: "var(--text-secondary)",
-                          marginBottom: 10,
-                        }}
-                      >
-                        Desglose de costo
-                      </h4>
-                      {[
-                        [
-                          "Material",
-                          calc.costoMaterial,
-                          `${fmtNum(calc.m2Neto)} m²+${calc.pctDesp}%`,
-                        ],
-                        [
-                          "Tapacanto",
-                          calc.costoTapacanto,
-                          `${fmtNum(calc.metrosTapacanto, 2)} m`,
-                        ],
-                        ["MO", calc.costoMO, ""],
-                        ["Herrajes", calc.costoHerrajes, ""],
-                        ["── Costo base", calc.costoBase, ""],
-                        ["Ganancia", calc.ganancia, ""],
-                      ].map(([label, val, note]) => (
-                        <div
-                          key={label}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            padding: "4px 0",
-                            borderBottom: "1px solid var(--border)",
-                            fontSize: 13,
-                          }}
-                        >
-                          <div>
-                            <span
-                              style={{
-                                color: label.startsWith("──")
-                                  ? "var(--text-primary)"
-                                  : "var(--text-muted)",
-                                fontWeight: label.startsWith("──") ? 700 : 400,
-                              }}
-                            >
-                              {label}
-                            </span>
-                            {note && (
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  marginLeft: 6,
-                                  color: "var(--text-muted)",
-                                }}
-                              >
-                                {note}
-                              </span>
-                            )}
-                          </div>
-                          <span
-                            style={{
-                              fontFamily: "'DM Mono',monospace",
-                              color: "#b8b080",
-                            }}
-                          >
-                            {fmtPeso(val)}
-                          </span>
-                        </div>
-                      ))}
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          paddingTop: 8,
-                          fontWeight: 700,
-                        }}
-                      >
-                        <span style={{ color: "var(--text-primary)" }}>
-                          Precio de venta
-                        </span>
-                        <span
-                          style={{
-                            fontFamily: "'DM Mono',monospace",
-                            fontSize: 16,
-                            color: "#7ecf8a",
-                          }}
-                        >
-                          {fmtPeso(calc.total)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </Card>
-          );
-        })
-      )}
-
+      {/* 3. Módulos cargados */}
       {items.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-            paddingTop: 8,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                flex: 1,
-              }}
-            >
-              <div
-                style={{ height: 1, width: 32, background: "var(--border)" }}
-              />
-              <span
-                style={{
-                  fontSize: 11,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.15em",
-                  fontWeight: 700,
-                  color: "var(--text-muted)",
-                }}
-              >
-                Resumen del presupuesto
-              </span>
-              <div
-                style={{ height: 1, flex: 1, background: "var(--border)" }}
-              />
-            </div>
-            <div style={{ marginLeft: 16 }}>
-              <ToggleSwitch
-                value={mostrarPrecioUnitario}
-                onChange={setMostrarPrecioUnitario}
-                label="Mostrar precio unitario"
-              />
-            </div>
-          </div>
-          <ResumenPresupuesto
-            items={items}
-            modulos={modulos}
-            costos={costos}
-            getModUsado={getModUsado}
-            totalGeneral={totalGeneral}
-            mostrarPrecioUnitario={mostrarPrecioUnitario}
-          />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {items.map((item, idx) => {
+            const keyId = item.id || item.codigo;
+            const modUsado = getModUsado(item);
+            if (!modUsado) return null;
+            const calc = calcularModulo(modUsado, costos);
+            if (!calc) return null;
+            const modBase = modulos[item.codigo];
+            const over = modUsado.dimensiones;
+            const dimDif = modBase && (over.ancho !== modBase.dimensiones.ancho || over.profundidad !== modBase.dimensiones.profundidad || over.alto !== modBase.dimensiones.alto);
+            return (
+              <div key={keyId} className="hover-lift anim-fadeup" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{item.codigo}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{modUsado.nombre}</div>
+                    <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: dimDif ? "var(--accent)" : "var(--text-muted)", marginTop: 2 }}>
+                      {over.ancho}×{over.profundidad}×{over.alto} mm{dimDif ? " ★ personalizado" : ""} · {TIPO_MAT[modUsado.material]}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: Math.max(1, it.cantidad - 1) } : it))}
+                        style={{ width: 26, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, minWidth: 22, textAlign: "center" }}>{item.cantidad}</span>
+                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: it.cantidad + 1 } : it))}
+                        style={{ width: 26, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                    </div>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", minWidth: 80, textAlign: "right" }}>
+                      {fmtPeso(calc.total * item.cantidad)}
+                    </span>
+                    <button onClick={() => {
+                      const itemEl = item;
+                      const dimEl = dimOverride[keyId];
+                      setItems(its => its.filter((_, i) => i !== idx));
+                      pushUndo({ mensaje: `"${item.codigo}" eliminado del presupuesto`, onDeshacer: () => {
+                        setItems(its => { const n = [...its]; n.splice(idx, 0, itemEl); return n; });
+                        if (dimEl) setDimOverride(d => ({ ...d, [keyId]: dimEl }));
+                      }});
+                    }} style={{ background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px" }}>×</button>
+                  </div>
+                </div>
+                {expandido === keyId && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--separator)" }}>
+                    <TextInput label="Nota del ítem" placeholder="Observación..." small value={item.nota || ""} onChange={v => setNota(keyId, v)} />
+                  </div>
+                )}
+                <button onClick={() => setExpandido(expandido === keyId ? null : keyId)}
+                  style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 11, marginTop: 4, padding: 0, fontFamily: "'DM Mono',monospace" }}>
+                  {expandido === keyId ? "▲ menos" : "▼ detalle"}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
+
+      {/* 4. Formulario agregar módulo */}
+      <div ref={formRef}>
+        <Card className="rsp-card no-print">
+          <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 100px auto", gap: 12, alignItems: "end" }}>
+            <div>
+              <TextInput label="Código de módulo" placeholder="MC001" value={inputCod} onChange={handleCodChange} />
+              {error && <p style={{ color: "#e07070", fontSize: 12, marginTop: 5 }}>⚠ {error}</p>}
+            </div>
+            <TextInput label="Cantidad" type="number" value={inputCant} onChange={setInputCant} />
+            <div><Btn onClick={agregar}>Agregar</Btn></div>
+          </div>
+          {preDim && (
+            <div style={{ marginTop: 14, padding: 14, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", marginBottom: 10 }}>
+                ✎ Dimensiones para {inputCod} <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(editables antes de agregar)</span>
+              </div>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                {["ancho", "profundidad", "alto"].map(dim => (
+                  <div key={dim} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>{dim}</label>
+                    <input type="number" value={preDim[dim]} onChange={e => setPreDim(p => ({ ...p, [dim]: parseInt(e.target.value) || 0 }))}
+                      style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "6px 10px", background: "var(--bg-base)", border: "1px solid var(--accent-border)", color: "var(--text-primary)", borderRadius: 6, outline: "none", width: 90 }} />
+                    <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>mm</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <PanelSelectorModulos modulos={modulos} onSeleccionar={cod => handleCodChange(cod)} />
+        </Card>
+      </div>
+
+      {/* 5. Resumen */}
+      <ResumenPresupuesto
+        items={items}
+        modulos={modulos}
+        costos={costos}
+        getModUsado={getModUsado}
+        totalGeneral={totalGeneral}
+        mostrarPrecioUnitario={mostrarPrecioUnitario}
+        nombrePresupuesto={nombreTrabajo}
+      />
       <ToastContainer />
     </div>
   );
@@ -7398,11 +6842,8 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
         )}
 
         {/* Barra cobro */}
-        <div style={{ flexShrink: 0, textAlign: "right", minWidth: 140 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-            <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
-              Cobrado {Math.round(pctCobrado)}%
-            </span>
+        <div style={{ flexShrink: 0, textAlign: "right", minWidth: 120 }}>
+          <div style={{ marginBottom: 4, textAlign: "right" }}>
             <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: saldoPendiente > 0 ? "#e07070" : "#7ecf8a" }}>
               {fmtPeso(saldoPendiente > 0 ? saldoPendiente : 0)} pendiente
             </span>
@@ -8122,7 +7563,7 @@ function AppInterna() {
       if (perfil) setPerfil(perfil);
       // Recuperar borrador de sessionStorage si existe
       try {
-        const borrador = sessionStorage.getItem("carpicalc:borrador");
+        const borrador = localStorage.getItem("carpicalc:borrador");
         if (borrador) {
           const { items: bItems, dimOverride: bDim } = JSON.parse(borrador);
           if (bItems?.length > 0) {
@@ -8135,14 +7576,14 @@ function AppInterna() {
     });
   }, []);
 
-  // Autosave borrador en sessionStorage — recupera el trabajo si se cierra el navegador
+  // Autosave borrador en localStorage — persiste entre cierres de pestaña
   useEffect(() => {
     if (items.length > 0) {
       try {
-        sessionStorage.setItem("carpicalc:borrador", JSON.stringify({ items, dimOverride }));
+        localStorage.setItem("carpicalc:borrador", JSON.stringify({ items, dimOverride }));
       } catch {}
     } else {
-      sessionStorage.removeItem("carpicalc:borrador");
+      localStorage.removeItem("carpicalc:borrador");
     }
   }, [items, dimOverride]);
 
@@ -8214,13 +7655,13 @@ function AppInterna() {
     setPresupuestos(nuevo);
     withSave(() => guardarPresupuestos(nuevo));
     // Limpiar borrador al guardar con éxito
-    sessionStorage.removeItem("carpicalc:borrador");
+    localStorage.removeItem("carpicalc:borrador");
   };
   const handleCargarPresupuesto = (p) => {
     setItems(p.items ? [...p.items] : []);
     setDimOverride(p.dimOverride && typeof p.dimOverride === "object" ? { ...p.dimOverride } : {});
     // Al cargar un presupuesto guardado, limpiar el borrador anterior
-    sessionStorage.removeItem("carpicalc:borrador");
+    localStorage.removeItem("carpicalc:borrador");
   };
   const handleEliminarPresupuesto = async (id) => {
     const nuevo = { ...presupuestos };
@@ -8329,6 +7770,7 @@ function AppInterna() {
               onCargarPresupuesto={handleCargarPresupuesto}
               onEliminarPresupuesto={handleEliminarPresupuesto}
               onCambiarEstado={handleCambiarEstado}
+              onActualizarPresupuesto={handleActualizarPresupuesto}
             />
           )}
           {vista === "preview" && (
