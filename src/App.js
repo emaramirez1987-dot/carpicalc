@@ -4461,20 +4461,8 @@ function GestorPresupuestos({
             })
           )}
 
-          {/* Botón Nuevo presupuesto — al pie */}
-          <div style={{ padding: "12px 14px" }}>
-            <button onClick={() => { onNuevo && onNuevo(); setAbierto(false); }}
-              style={{
-                width: "100%", padding: "10px 0", borderRadius: 8, cursor: "pointer",
-                background: "var(--accent-soft)", border: "1px dashed var(--accent-border)",
-                color: "var(--accent)", fontFamily: "'DM Mono',monospace", fontSize: 12,
-                fontWeight: 700, letterSpacing: "0.06em", transition: "all 0.15s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(212,175,55,0.18)"}
-              onMouseLeave={e => e.currentTarget.style.background = "var(--accent-soft)"}>
-              + Nuevo presupuesto
-            </button>
-          </div>
+          {/* Pie del panel */}
+          <div style={{ height: 4 }} />
         </div>
       )}
     </div>
