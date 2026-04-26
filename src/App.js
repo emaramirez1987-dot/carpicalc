@@ -5158,7 +5158,6 @@ function Presupuesto({
   const [inputCant, setInputCant] = useState(1);
   const [error, setError] = useState("");
   const [expandido, setExpandido] = useState(null);
-  const [mostrarPrecioUnitario, setMostrarPrecioUnitario] = useState(false);
   const [preDim, setPreDim] = useState(null);
   const [editandoCliente, setEditandoCliente] = useState(false);
   const [clienteActivo, setClienteActivo] = useState({ nombre: "", tel: "", dir: "" });
