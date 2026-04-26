@@ -6667,7 +6667,18 @@ function AccionesTrabajo({ id, p, onCambiarEstado, onEliminar, onCargar, compact
 function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, costos }) {
   const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
   const esProduccion = (p.estado || "nuevo") === "produccion";
-  
+
+  // Función auxiliar para obtener el perfil de forma segura
+  const obtenerPerfil = () => {
+    try {
+      const data = localStorage.getItem("carpicalc:perfil");
+      return data ? JSON.parse(data) : {};
+    } catch (err) {
+      console.error("Error al leer perfil", err);
+      return {};
+    }
+  };
+
   return (
     <div className="hover-lift anim-fadeup" style={{
       background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10,
@@ -6675,36 +6686,60 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, 
       boxShadow: "var(--shadow-sm)", borderLeft: `3px solid ${est.color}`,
     }}
       onMouseEnter={e => e.currentTarget.style.borderColor = "var(--border-strong)"}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.borderLeftColor = est.color; }}
+      onMouseLeave={e => { 
+        e.currentTarget.style.borderColor = "var(--border)"; 
+        e.currentTarget.style.borderLeftColor = est.color; 
+      }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 7, marginBottom: 4 }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: est.color, flexShrink: 0, marginTop: 4, boxShadow: `0 0 6px ${est.color}80` }} />
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>{p.nombre}</span>
       </div>
+
       {p.cliente && p.cliente.nombre && (
         <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 2, paddingLeft: 15, fontWeight: 300 }}>
           👤 {p.cliente.nombre}
           {p.cliente.tel && <span style={{ color: "var(--text-muted)", marginLeft: 5 }}>· {p.cliente.tel}</span>}
         </div>
       )}
+
       <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginBottom: 10, paddingLeft: 15, fontWeight: 300 }}>
         {fmtFecha(parseInt(id))} · {p.items.length} mód.
       </div>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+        
         <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }}>
           {esProduccion && modulos && costos && (
-            <button onClick={() => generarFichaObra(id, p, modulos, costos, (()=>{try{return JSON.parse(localStorage.getItem("carpicalc:perfil"))||{};}catch{return{};}}()))}
-              style={{ padding: "4px 9px", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,80,48,0.15)", border: "1px solid rgba(200,80,48,0.35)", color: "#c85030", borderRadius: 5, cursor: "pointer" }}>
+            <button 
+              onClick={() => {
+                const perfil = obtenerPerfil();
+                generarFichaObra(id, p, modulos, costos, perfil);
+              }}
+              style={{ 
+                padding: "4px 9px", fontSize: 10, fontFamily: "'DM Mono',monospace", 
+                fontWeight: 700, background: "rgba(200,80,48,0.15)", 
+                border: "1px solid rgba(200,80,48,0.35)", color: "#c85030", 
+                borderRadius: 5, cursor: "pointer" 
+              }}
+            >
               📋 Ficha
             </button>
           )}
-          <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
+          <AccionesTrabajo 
+            id={id} 
+            p={p} 
+            onCambiarEstado={onCambiarEstado} 
+            onEliminar={onEliminar} 
+            onCargar={onCargar} 
+            compact 
+          />
         </div>
       </div>
     </div>
   );
-} // <--- ESTA ES LA LLAVE QUE FALTABA
+}
 
 function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, costos, onActualizarPresupuesto }) {
   const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
