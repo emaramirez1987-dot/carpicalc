@@ -6667,38 +6667,111 @@ function AccionesTrabajo({ id, p, onCambiarEstado, onEliminar, onCargar, compact
 function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, costos }) {
   const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
   const esProduccion = (p.estado || "nuevo") === "produccion";
+
   return (
-    <div className="hover-lift anim-fadeup" style={{
-      background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10,
-      padding: "12px 13px", marginBottom: 8,
-      boxShadow: "var(--shadow-sm)", borderLeft: `3px solid ${est.color}`,
-    }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = "var(--border-strong)"}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.borderLeftColor = est.color; }}
+    <div
+      className="hover-lift anim-fadeup"
+      style={{
+        background: "var(--bg-surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        padding: "12px 13px",
+        marginBottom: 8,
+        boxShadow: "var(--shadow-sm)",
+        borderLeft: `3px solid ${est.color}`,
+      }}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--border-strong)")}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = "var(--border)";
+        e.currentTarget.style.borderLeftColor = est.color;
+      }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 7, marginBottom: 4 }}>
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: est.color, flexShrink: 0, marginTop: 4, boxShadow: `0 0 6px ${est.color}80` }} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>{p.nombre}</span>
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: est.color,
+            flexShrink: 0,
+            marginTop: 4,
+            boxShadow: `0 0 6px ${est.color}80`,
+          }}
+        />
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>
+          {p.nombre}
+        </span>
       </div>
+
       {p.cliente && p.cliente.nombre && (
         <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 2, paddingLeft: 15, fontWeight: 300 }}>
           👤 {p.cliente.nombre}
-          {p.cliente.tel && <span style={{ color: "var(--text-muted)", marginLeft: 5 }}>· {p.cliente.tel}</span>}
+          {p.cliente.tel && (
+            <span style={{ color: "var(--text-muted)", marginLeft: 5 }}>· {p.cliente.tel}</span>
+          )}
         </div>
       )}
-      <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginBottom: 10, paddingLeft: 15, fontWeight: 300 }}>
+
+      <div
+        style={{
+          fontSize: 10,
+          fontFamily: "'DM Mono',monospace",
+          color: "var(--text-muted)",
+          marginBottom: 10,
+          paddingLeft: 15,
+          fontWeight: 300,
+        }}
+      >
         {fmtFecha(parseInt(id))} · {p.items.length} mód.
       </div>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>
+          {fmtPeso(p.total)}
+        </span>
+
         <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }}>
           {esProduccion && modulos && costos && (
-            <button onClick={() => generarFichaObra(id, p, modulos, costos, (()=>{try{return JSON.parse(localStorage.getItem("carpicalc:perfil"))||{};}catch{return{};}}()))}
-              style={{ padding: "4px 9px", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,80,48,0.15)", border: "1px solid rgba(200,80,48,0.35)", color: "#c85030", borderRadius: 5, cursor: "pointer" }}>
+            <button
+              onClick={() =>
+                generarFichaObra(
+                  id,
+                  p,
+                  modulos,
+                  costos,
+                  (() => {
+                    try {
+                      return JSON.parse(localStorage.getItem("carpicalc:perfil")) || {};
+                    } catch {
+                      return {};
+                    }
+                  })()
+                )
+              }
+              style={{
+                padding: "4px 9px",
+                fontSize: 10,
+                fontFamily: "'DM Mono',monospace",
+                fontWeight: 700,
+                background: "rgba(200,80,48,0.15)",
+                border: "1px solid rgba(200,80,48,0.35)",
+                color: "#c85030",
+                borderRadius: 5,
+                cursor: "pointer",
+              }}
+            >
               📋 Ficha
             </button>
           )}
-          <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
+
+          <AccionesTrabajo
+            id={id}
+            p={p}
+            onCambiarEstado={onCambiarEstado}
+            onEliminar={onEliminar}
+            onCargar={onCargar}
+            compact
+          />
         </div>
       </div>
     </div>
@@ -6718,57 +6791,112 @@ function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, cost
   ];
 
   return (
-    <div className="anim-fadeup" style={{
-      border: `1px solid ${expandido ? "var(--accent-border)" : "var(--border)"}`,
-      borderRadius: 10, overflow: "visible", transition: "border-color 0.18s",
-      background: "var(--bg-surface)", marginBottom: 2,
-    }}>
-      {/* Fila principal — click para expandir */}
-      <div className="lista-fila" style={{
-        display: "grid", gridTemplateColumns: "1fr 120px 130px auto",
-        alignItems: "center", gap: 12, padding: "12px 16px",
-        cursor: "pointer", transition: "background 0.12s",
-        borderRadius: expandido ? "10px 10px 0 0" : 10,
-        borderBottom: expandido ? "1px solid var(--border)" : "none",
-      }}
-        onClick={() => setExpandido(v => !v)}
-        onMouseEnter={e => e.currentTarget.style.background = "var(--accent-soft)"}
-        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-      >
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: `${est.color}22`, color: est.color, border: `1px solid ${est.color}44`, borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>
-              {est.icon} {est.label}
-            </span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
-          </div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 300 }}>
-            {fmtFecha(parseInt(id))} · {p.items.length} mód.
-            {p.cliente?.nombre && <span> · 👤 {p.cliente.nombre}</span>}
-          </div>
-          {/* Mobile row */}
-          <div className="lista-mobile-row" style={{ display: "none", marginTop: 8, alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
-            <select value={p.estado || "nuevo"} onChange={e => { e.stopPropagation(); onCambiarEstado(id, e.target.value); }}
-              onClick={e => e.stopPropagation()}
-              style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "4px 6px", background: `${est.color}18`, border: `1px solid ${est.color}44`, color: est.color, borderRadius: 6, cursor: "pointer", outline: "none", fontWeight: 700 }}>
-              {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
-            </select>
-          </div>
+  <div className="anim-fadeup" style={{
+    border: `1px solid ${expandido ? "var(--accent-border)" : "var(--border)"}`,
+    borderRadius: 10, overflow: "visible", transition: "border-color 0.18s",
+    background: "var(--bg-surface)", marginBottom: 2,
+  }}>
+    {/* Fila principal — click para expandir */}
+    <div className="lista-fila" style={{
+      display: "grid", gridTemplateColumns: "1fr 120px 130px auto",
+      alignItems: "center", gap: 12, padding: "12px 16px",
+      cursor: "pointer", transition: "background 0.12s",
+      borderRadius: expandido ? "10px 10px 0 0" : 10,
+      borderBottom: expandido ? "1px solid var(--border)" : "none",
+    }}
+      onClick={() => setExpandido(v => !v)}
+      onMouseEnter={e => e.currentTarget.style.background = "var(--accent-soft)"}
+      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: `${est.color}22`, color: est.color, border: `1px solid ${est.color}44`, borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>
+            {est.icon} {est.label}
+          </span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {p.nombre}
+          </span>
         </div>
-        <div className="lista-desktop-col" style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", textAlign: "right" }}>
-          {fmtPeso(p.total)}
+
+        <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 300 }}>
+          {fmtFecha(parseInt(id))} · {p.items.length} mód.
+          {p.cliente && p.cliente.nombre && (
+            <span> · 👤 {p.cliente.nombre}</span>
+          )}
         </div>
-        <select className="lista-desktop-col" value={p.estado || "nuevo"}
-          onChange={e => { e.stopPropagation(); onCambiarEstado(id, e.target.value); }}
-          onClick={e => e.stopPropagation()}
-          style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "5px 6px", background: `${est.color}18`, border: `1px solid ${est.color}44`, color: est.color, borderRadius: 6, cursor: "pointer", outline: "none", fontWeight: 700 }}>
-          {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
-        </select>
-        <div className="lista-desktop-col" onClick={e => e.stopPropagation()}>
-          <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
+
+        {/* Mobile row */}
+        <div className="lista-mobile-row" style={{ display: "none", marginTop: 8, alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a" }}>
+            {fmtPeso(p.total)}
+          </span>
+
+          <select
+            value={p.estado || "nuevo"}
+            onChange={e => { e.stopPropagation(); onCambiarEstado(id, e.target.value); }}
+            onClick={e => e.stopPropagation()}
+            style={{
+              fontFamily: "'DM Mono',monospace",
+              fontSize: 11,
+              padding: "4px 6px",
+              background: `${est.color}18`,
+              border: `1px solid ${est.color}44`,
+              color: est.color,
+              borderRadius: 6,
+              cursor: "pointer",
+              outline: "none",
+              fontWeight: 700
+            }}
+          >
+            {ESTADOS_TRABAJO.map(e => (
+              <option key={e.id} value={e.id}>
+                {e.icon} {e.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
+
+      <div className="lista-desktop-col" style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", textAlign: "right" }}>
+        {fmtPeso(p.total)}
+      </div>
+
+      <select
+        className="lista-desktop-col"
+        value={p.estado || "nuevo"}
+        onChange={e => { e.stopPropagation(); onCambiarEstado(id, e.target.value); }}
+        onClick={e => e.stopPropagation()}
+        style={{
+          fontFamily: "'DM Mono',monospace",
+          fontSize: 11,
+          padding: "5px 6px",
+          background: `${est.color}18`,
+          border: `1px solid ${est.color}44`,
+          color: est.color,
+          borderRadius: 6,
+          cursor: "pointer",
+          outline: "none",
+          fontWeight: 700
+        }}
+      >
+        {ESTADOS_TRABAJO.map(e => (
+          <option key={e.id} value={e.id}>
+            {e.icon} {e.label}
+          </option>
+        ))}
+      </select>
+
+      <div className="lista-desktop-col" onClick={e => e.stopPropagation()}>
+        <AccionesTrabajo
+          id={id}
+          p={p}
+          onCambiarEstado={onCambiarEstado}
+          onEliminar={onEliminar}
+          onCargar={onCargar}
+          compact
+        />
+      </div>
+    </div>
 
       {/* Panel expandido */}
       {expandido && (
