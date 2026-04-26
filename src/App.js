@@ -4614,6 +4614,12 @@ function imprimirPresupuesto(
   } else alert("El navegador bloqueó la ventana emergente.");
 }
 
+// ── Helpers ───────────────────────────────────────────────────────
+function leerPerfil() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:perfil")) || {}; }
+  catch { return {}; }
+}
+
 // ── Ficha de Obra ─────────────────────────────────────────────────
 function generarFichaObra(id, p, modulos, costos, perfil = {}) {
   const fecha = fmtFechaLarga(Date.now());
@@ -6693,7 +6699,7 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, 
         <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
         <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }}>
           {esProduccion && modulos && costos && (
-            <button onClick={() => generarFichaObra(id, p, modulos, costos, (()=>{try{return JSON.parse(localStorage.getItem("carpicalc:perfil"))||{};}catch{return{};}}()))}
+            <button onClick={() => generarFichaObra(id, p, modulos, costos, leerPerfil())}
               style={{ padding: "4px 9px", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,80,48,0.15)", border: "1px solid rgba(200,80,48,0.35)", color: "#c85030", borderRadius: 5, cursor: "pointer" }}>
               📋 Ficha
             </button>
@@ -6801,7 +6807,7 @@ function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, cost
             )}
             {tabActiva === "ficha" && modulos && costos && (
               <div style={{ textAlign: "center", paddingTop: 8 }}>
-                <button onClick={() => generarFichaObra(id, p, modulos, costos, (()=>{try{return JSON.parse(localStorage.getItem("carpicalc:perfil"))||{};}catch{return{};}}()))}
+                <button onClick={() => generarFichaObra(id, p, modulos, costos, leerPerfil())}
                   style={{
                     padding: "12px 28px", borderRadius: 8, cursor: "pointer",
                     background: "rgba(200,80,48,0.12)", border: "1px solid rgba(200,80,48,0.35)",
@@ -7280,7 +7286,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
           {/* Botón Ficha de Obra — solo en producción */}
           {(p.estado === "produccion") && modulos && costos && (
             <div style={{ marginBottom: 16 }}>
-              <button onClick={() => generarFichaObra(id, p, modulos, costos, (()=>{try{return JSON.parse(localStorage.getItem("carpicalc:perfil"))||{};}catch{return{};}}()))}
+              <button onClick={() => generarFichaObra(id, p, modulos, costos, leerPerfil())}
                 style={{
                   width: "100%", padding: "10px 16px", borderRadius: 8, cursor: "pointer",
                   background: "rgba(200,80,48,0.12)", border: "1px solid rgba(200,80,48,0.35)",
