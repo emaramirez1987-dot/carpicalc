@@ -6667,6 +6667,7 @@ function AccionesTrabajo({ id, p, onCambiarEstado, onEliminar, onCargar, compact
 function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, costos }) {
   const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
   const esProduccion = (p.estado || "nuevo") === "produccion";
+  
   return (
     <div className="hover-lift anim-fadeup" style={{
       background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10,
@@ -6703,7 +6704,7 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, 
       </div>
     </div>
   );
-}
+} // <--- ESTA ES LA LLAVE QUE FALTABA
 
 function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, costos, onActualizarPresupuesto }) {
   const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
