@@ -4865,6 +4865,7 @@ function ResumenPresupuesto({
     const mod = getModUsado(item);
     return mod && mod.piezas;
   });
+  if (itemsValidos.length === 0) return null;
   const cols = mostrarPrecioUnitario
     ? "80px 1fr 50px 120px 130px"
     : "80px 1fr 50px 130px";
@@ -4970,7 +4971,7 @@ function ResumenPresupuesto({
                 </div>
               ))}
           </div>
-          {items.map((item, idx) => {
+          {(itemsValidos).map((item, idx) => {
             const modBase = modulos[item.codigo];
             if (!modBase) return null;
             const modUsado = getModUsado(item);
