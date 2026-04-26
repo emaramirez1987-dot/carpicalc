@@ -190,6 +190,8 @@ const modulosIniciales = {
 };
 
 // ── Persistencia ──────────────────────────────────────────────────
+const PERFIL_VACIO = { nombre: "", slogan: "", tel: "", email: "", direccion: "", logo: null, textoApertura: "", condiciones: "" };
+
 async function cargarDatos() {
   try {
     const rm = localStorage.getItem("carpicalc:modulos");
@@ -200,14 +202,14 @@ async function cargarDatos() {
       modulos: rm ? JSON.parse(rm) : modulosIniciales,
       costos: rc ? JSON.parse(rc) : costoIniciales,
       presupuestos: rp ? JSON.parse(rp) : {},
-      perfil: rpf ? JSON.parse(rpf) : { nombre: "", slogan: "", tel: "", email: "", direccion: "", logo: null, textoApertura: "", condiciones: "" },
+      perfil: rpf ? { ...PERFIL_VACIO, ...JSON.parse(rpf) } : { ...PERFIL_VACIO },
     };
   } catch {
     return {
       modulos: modulosIniciales,
       costos: costoIniciales,
       presupuestos: {},
-      perfil: { nombre: "", slogan: "", tel: "", email: "", direccion: "", logo: null },
+      perfil: { ...PERFIL_VACIO },
     };
   }
 }
@@ -250,16 +252,16 @@ function resolverDim(base, offsetEsp, offsetMm, divisor, espesor) {
   return Math.max(0, raw / Math.max(1, divisor || 1));
 }
 function calcularModulo(modulo, costos) {
-  const matDef =
-    costos.materiales.find((m) => m.tipo === modulo.material) ||
-    costos.materiales[0];
+  if (!modulo?.piezas || !costos?.materiales) return null;
+  const matDef = costos.materiales.find((m) => m.tipo === modulo.material) || costos.materiales[0];
   if (!matDef) return null;
-  const { ancho, profundidad, alto } = modulo.dimensiones;
-  const dimMap = { ancho, profundidad, alto };
+  const { ancho, profundidad, alto } = modulo.dimensiones || {};
+  if (!ancho && !profundidad && !alto) return null;
+  const dimMap = { ancho: ancho || 0, profundidad: profundidad || 0, alto: alto || 0 };
   const esp = matDef.espesor || 18;
-  let m2Neto = 0,
-    metrosTapacanto = 0;
+  let m2Neto = 0, metrosTapacanto = 0, costoTapacanto = 0;
   const desglosePiezas = [];
+
   for (const p of modulo.piezas) {
     const d1 = p.especial
       ? (parseInt(p.dimLibre1) || 0)
@@ -270,61 +272,37 @@ function calcularModulo(modulo, costos) {
     const area = (d1 * d2 * p.cantidad) / 1_000_000;
     m2Neto += area;
     let mTc = 0;
-    if (p.tc?.id)
+    if (p.tc?.id) {
       mTc = (p.cantidad * ((p.tc.lados1 || 0) * d1 + (p.tc.lados2 || 0) * d2)) / 1000;
-    metrosTapacanto += mTc;
+      metrosTapacanto += mTc;
+      // Calcular costo tapacanto en el mismo loop (evita doble iteración)
+      const tcDef = (costos.tapacanto || []).find((t) => t.id === p.tc.id);
+      if (tcDef) costoTapacanto += mTc * tcDef.precio;
+    }
     desglosePiezas.push({ nombre: p.nombre, cantidad: p.cantidad, d1, d2, area, mTc, especial: !!p.especial });
   }
+
   const pctDesp = costos.desperdicioPct || 20;
   const m2Total = m2Neto * (1 + pctDesp / 100);
   const costoMaterial = m2Total * matDef.precioM2;
-  let costoTapacanto = 0;
-  if (costos.tapacanto && modulo.piezas.some((p) => p.tc?.id)) {
-    for (const p of modulo.piezas) {
-      if (!p.tc?.id) continue;
-      const d1 = p.especial
-        ? (parseInt(p.dimLibre1) || 0)
-        : resolverDim(dimMap[p.usaDim], p.offsetEsp, p.offsetMm, p.divisor || 1, esp);
-      const d2 = p.especial
-        ? (parseInt(p.dimLibre2) || 0)
-        : resolverDim(dimMap[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, esp);
-      const mTc = (p.cantidad * ((p.tc.lados1 || 0) * d1 + (p.tc.lados2 || 0) * d2)) / 1000;
-      const tcDef = costos.tapacanto.find((t) => t.id === p.tc.id);
-      if (tcDef) costoTapacanto += mTc * tcDef.precio;
-    }
-  }
+
   let costoMO = 0;
-  const moItem = costos.manoDeObra.find(
-    (m) => m.tipo === modulo.moDeObra?.tipo
-  );
+  const moItem = costos.manoDeObra?.find((m) => m.tipo === modulo.moDeObra?.tipo);
   if (moItem)
-    costoMO =
-      moItem.tipo === "por_modulo"
-        ? moItem.precio
-        : moItem.precio * (modulo.moDeObra.horas || 0);
+    costoMO = moItem.tipo === "por_modulo"
+      ? moItem.precio
+      : moItem.precio * (modulo.moDeObra.horas || 0);
+
   let costoHerrajes = 0;
   for (const h of modulo.herrajes || []) {
-    const herr = costos.herrajes.find((x) => x.id === h.id);
-    if (herr) costoHerrajes += herr.precio * h.cantidad;
+    const herr = costos.herrajes?.find((x) => x.id === h.id);
+    if (herr) costoHerrajes += herr.precio * (h.cantidad || 1);
   }
+
   const costoBase = costoMaterial + costoTapacanto + costoMO + costoHerrajes;
-  const ganancia = costoBase * (costos.gastosGenerales / 100);
+  const ganancia = costoBase * ((costos.gastosGenerales || 0) / 100);
   const total = costoBase + ganancia;
-  return {
-    costoMaterial,
-    costoTapacanto,
-    costoMO,
-    costoHerrajes,
-    costoBase,
-    ganancia,
-    total,
-    m2Neto,
-    m2Total,
-    pctDesp,
-    metrosTapacanto,
-    desglosePiezas,
-    espesor: esp,
-  };
+  return { costoMaterial, costoTapacanto, costoMO, costoHerrajes, costoBase, ganancia, total, m2Neto, m2Total, pctDesp, metrosTapacanto, desglosePiezas, espesor: esp };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -363,28 +341,36 @@ const CATEGORIAS_DEFAULT = [
 function useUndo() {
   const [toasts, setToasts] = useState([]);
 
-  const pushUndo = ({ mensaje, onDeshacer, duracion = 5000 }) => {
+  const pushUndo = useCallback(({ mensaje, onDeshacer, duracion = 5000 }) => {
     const id = Date.now();
-    setToasts(t => [...t, { id, mensaje, onDeshacer, duracion, inicio: Date.now() }]);
+    setToasts(t => [...t, { id, mensaje, onDeshacer, duracion }]);
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), duracion + 300);
-  };
+  }, []);
 
-  const deshacer = (id) => {
-    const toast = toasts.find(t => t.id === id);
-    if (toast?.onDeshacer) toast.onDeshacer();
+  const deshacer = useCallback((id) => {
+    setToasts(t => {
+      const toast = t.find(x => x.id === id);
+      if (toast?.onDeshacer) toast.onDeshacer();
+      return t.filter(x => x.id !== id);
+    });
+  }, []);
+
+  const cerrar = useCallback((id) => {
     setToasts(t => t.filter(x => x.id !== id));
-  };
+  }, []);
 
-  const ToastContainer = () => (
+  const ToastContainer = useCallback(() => (
     <div style={{
       position: "fixed", bottom: 24, right: 24, zIndex: 9000,
       display: "flex", flexDirection: "column", gap: 10, pointerEvents: "none",
     }}>
       {toasts.map(toast => (
-        <UndoToast key={toast.id} toast={toast} onDeshacer={() => deshacer(toast.id)} onClose={() => setToasts(t => t.filter(x => x.id !== toast.id))} />
+        <UndoToast key={toast.id} toast={toast}
+          onDeshacer={() => deshacer(toast.id)}
+          onClose={() => cerrar(toast.id)} />
       ))}
     </div>
-  );
+  ), [toasts, deshacer, cerrar]);
 
   return { pushUndo, ToastContainer };
 }
@@ -3829,6 +3815,9 @@ function CatalogoModulos({
   onSave,
   setCostos,
   hSaveC,
+  presupuestos,
+  perfil,
+  onGuardarPerfil,
 }) {
   const [modo, setModo] = useState(null);
   const [msg, setMsg] = useState(null);
@@ -3889,16 +3878,19 @@ function CatalogoModulos({
 
   // 💾 LÓGICA DE BACKUP (Exportar/Importar)
   const handleExport = () => {
-    const data = { modulos, costos };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
+    const data = {
+      version: 2,
+      fecha: new Date().toISOString(),
+      modulos,
+      costos,
+      presupuestos: presupuestos || {},
+      perfil: perfil || {},
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `carpicalc-backup-${new Date()
-      .toISOString()
-      .slice(0, 10)}.json`;
+    a.download = `carpicalc-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -3910,24 +3902,31 @@ function CatalogoModulos({
     reader.onload = (evt) => {
       try {
         const data = JSON.parse(evt.target.result);
-        if (data.modulos && data.costos) {
-          setModulos(data.modulos);
-          onSave(data.modulos);
-          // Actualizamos también los costos si las funciones están presentes
-          if (setCostos && hSaveC) {
-            setCostos(data.costos);
-            hSaveC(data.costos);
-          }
-          showMsg("Backup cargado con éxito.");
-        } else {
+        if (!data.modulos || !data.costos) {
           showMsg("El archivo no tiene el formato correcto.", "warn");
+          return;
         }
-      } catch (err) {
+        // Módulos + costos (siempre)
+        setModulos(data.modulos);
+        onSave(data.modulos);
+        setCostos(data.costos);
+        hSaveC(data.costos);
+        // Presupuestos (solo si existen en el backup v2)
+        if (data.presupuestos && typeof data.presupuestos === "object") {
+          guardarPresupuestos(data.presupuestos);
+        }
+        // Perfil (solo si existe en el backup v2)
+        if (data.perfil && typeof data.perfil === "object" && onGuardarPerfil) {
+          onGuardarPerfil({ ...PERFIL_VACIO, ...data.perfil });
+        }
+        const extras = data.version === 2 ? " (incluye presupuestos y perfil)" : "";
+        showMsg(`Backup cargado con éxito${extras}.`);
+      } catch {
         showMsg("Error al leer el archivo.", "warn");
       }
     };
     reader.readAsText(file);
-    e.target.value = ""; // Resetea el input
+    e.target.value = "";
   };
 
   const tituloForm = () => {
@@ -4862,6 +4861,10 @@ function ResumenPresupuesto({
   const [mostrarIVA, setMostrarIVA] = useState(false);
   const totalConIVA = Math.round(totalGeneral * 1.21);
   if (items.length === 0) return null;
+  const itemsValidos = items.filter(item => {
+    const mod = getModUsado(item);
+    return mod && mod.piezas;
+  });
   const cols = mostrarPrecioUnitario
     ? "80px 1fr 50px 120px 130px"
     : "80px 1fr 50px 130px";
@@ -7971,9 +7974,31 @@ function AppInterna() {
       setCostos(costos);
       setPresupuestos(presupuestos || {});
       if (perfil) setPerfil(perfil);
+      // Recuperar borrador de sessionStorage si existe
+      try {
+        const borrador = sessionStorage.getItem("carpicalc:borrador");
+        if (borrador) {
+          const { items: bItems, dimOverride: bDim } = JSON.parse(borrador);
+          if (bItems?.length > 0) {
+            setItems(bItems);
+            setDimOverride(bDim || {});
+          }
+        }
+      } catch {}
       setCargando(false);
     });
   }, []);
+
+  // Autosave borrador en sessionStorage — recupera el trabajo si se cierra el navegador
+  useEffect(() => {
+    if (items.length > 0) {
+      try {
+        sessionStorage.setItem("carpicalc:borrador", JSON.stringify({ items, dimOverride }));
+      } catch {}
+    } else {
+      sessionStorage.removeItem("carpicalc:borrador");
+    }
+  }, [items, dimOverride]);
 
   // 5. Prevenir pérdida de datos al cerrar/recargar con presupuesto activo
   useEffect(() => {
@@ -8042,10 +8067,14 @@ function AppInterna() {
     };
     setPresupuestos(nuevo);
     withSave(() => guardarPresupuestos(nuevo));
+    // Limpiar borrador al guardar con éxito
+    sessionStorage.removeItem("carpicalc:borrador");
   };
   const handleCargarPresupuesto = (p) => {
-    setItems([...p.items]);
-    setDimOverride({ ...p.dimOverride });
+    setItems(p.items ? [...p.items] : []);
+    setDimOverride(p.dimOverride && typeof p.dimOverride === "object" ? { ...p.dimOverride } : {});
+    // Al cargar un presupuesto guardado, limpiar el borrador anterior
+    sessionStorage.removeItem("carpicalc:borrador");
   };
   const handleEliminarPresupuesto = async (id) => {
     const nuevo = { ...presupuestos };
@@ -8210,6 +8239,12 @@ function AppInterna() {
               onSave={hSaveM}
               setCostos={setCostos}
               hSaveC={hSaveC}
+              presupuestos={presupuestos}
+              perfil={perfil}
+              onGuardarPerfil={(nuevo) => {
+                setPerfil(nuevo);
+                withSave(() => guardarPerfil(nuevo));
+              }}
             />
           )}
           {vista === "costos" && (
