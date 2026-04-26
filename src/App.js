@@ -4345,10 +4345,13 @@ function GestorPresupuestos({
   itemsActual,
   nombreInicial = "",
   clienteInicial = { nombre: "", tel: "", dir: "" },
+  onVer,
+  itemsActivos = [],
 }) {
   const [abierto, setAbierto] = useState(false);
   const [confirmDelId, setConfirmDelId] = useState(null);
   const [busquedaPres, setBusquedaPres] = useState("");
+  const [avisoVerId, setAvisoVerId] = useState(null); // aviso de cambios sin guardar
 
   const totalEntries = Object.keys(presupuestos).length;
   const entries = Object.entries(presupuestos)
@@ -4433,11 +4436,36 @@ function GestorPresupuestos({
                   </div>
 
                   {/* Acciones */}
-                  <div style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center", flexWrap: "wrap" }}>
+
+                    {/* Aviso cambios sin guardar al ir a Ver */}
+                    {avisoVerId === id && (
+                      <div style={{ position: "absolute", right: 14, top: "100%", zIndex: 100, background: "var(--bg-surface)", border: "1px solid rgba(200,160,42,0.40)", borderRadius: 8, padding: "10px 14px", boxShadow: "0 6px 20px rgba(0,0,0,0.40)", minWidth: 240 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#c8a02a", marginBottom: 6 }}>⚠ Tenés un presupuesto activo sin guardar</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>¿Querés ir a Vista Previa de todas formas?</div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button onClick={() => { onVer(id); setAbierto(false); setAvisoVerId(null); }}
+                            style={{ padding: "5px 12px", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a", borderRadius: 5 }}>
+                            Ir a Vista Previa
+                          </button>
+                          <button onClick={() => setAvisoVerId(null)}
+                            style={{ padding: "5px 10px", fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 5 }}>
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <button onClick={() => { onCargar(p, id); setAbierto(false); }}
-                      style={{ padding: "4px 12px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
-                      ✎ Abrir
+                      style={{ padding: "4px 10px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                      ✎ Editar
                     </button>
+                    {onVer && (
+                      <button onClick={() => itemsActivos.length > 0 ? setAvisoVerId(id) : (onVer(id), setAbierto(false))}
+                        style={{ padding: "4px 10px", background: "rgba(112,144,176,0.12)", border: "1px solid rgba(112,144,176,0.30)", color: "#7090b0", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                        👁 Ver
+                      </button>
+                    )}
                     {confirmDelId === id ? (
                       <>
                         <button onClick={() => { onEliminar(id); setConfirmDelId(null); }}
@@ -5206,6 +5234,7 @@ function Presupuesto({
   onEliminarPresupuesto,
   onCambiarEstado,
   onActualizarPresupuesto,
+  onVerPresupuesto,
 }) {
   const [inputCod, setInputCod] = useState("");
   const [inputCant, setInputCant] = useState(1);
@@ -5350,6 +5379,8 @@ function Presupuesto({
           itemsActual={items}
           nombreInicial={nombreTrabajo}
           clienteInicial={clienteActivo}
+          onVer={onVerPresupuesto}
+          itemsActivos={items}
         />
       </div>
 
@@ -5383,13 +5414,21 @@ function Presupuesto({
               </span>
             )}
             {items.length > 0 && (
-              <button onClick={() => presupuestoActivoId ? setDialogoGuardar(true) : (() => {
-                onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
-                setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setEditandoCliente(false);
-              })()}
-                style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 2px 8px rgba(180,100,20,0.25)" }}>
-                💾 Guardar
-              </button>
+              <>
+                <button onClick={() => presupuestoActivoId ? setDialogoGuardar(true) : (() => {
+                  onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
+                  setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setEditandoCliente(false);
+                })()}
+                  style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 2px 8px rgba(180,100,20,0.25)" }}>
+                  💾 Guardar
+                </button>
+                <button onClick={() => {
+                  setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setEditandoCliente(false); setAlertaPrecios(null);
+                }}
+                  style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "transparent", border: "1px solid rgba(200,60,60,0.30)", color: "#e07070", transition: "all 0.15s" }}>
+                  ✕ Cancelar
+                </button>
+              </>
             )}
             {/* Nuevo presupuesto — solo cuando no hay nada activo */}
             {!items.length && !nombreTrabajo && !editandoCliente && (
@@ -5583,18 +5622,25 @@ function VistaPrevia({
   items, modulos, costos, onLimpiar, getModUsado,
   totalGeneral, presupuestos, perfil,
   onActualizarPresupuesto, onCambiarEstado, onCargarPresupuesto,
+  presupuestoSelId, onSeleccionarPresupuesto,
 }) {
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
-  const [presSelId, setPresSelId] = useState(null);
-  const [mostrarLista, setMostrarLista] = useState(true); // mobile nav
+  const [presSelIdLocal, setPresSelIdLocal] = useState(presupuestoSelId || null);
+  const presSelId = presupuestoSelId !== undefined ? presupuestoSelId : presSelIdLocal;
+  const setPresSelId = (id) => {
+    setPresSelIdLocal(id);
+    if (onSeleccionarPresupuesto) onSeleccionarPresupuesto(id);
+  };
+  const [mostrarLista, setMostrarLista] = useState(!presupuestoSelId);
   const [mostrarPrecioUnitario, setMostrarPrecioUnitario] = useState(true);
   const [whatsappCopiado, setWhatsappCopiado] = useState(false);
   const [guardandoTexto, setGuardandoTexto] = useState(false);
 
-  // Presupuesto seleccionado
-  const presSel = presSelId ? presupuestos[presSelId] : null;
+  useEffect(() => {
+    if (presupuestoSelId) setMostrarLista(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Textos editables locales (se sincronizan al guardar)
+  const presSel = presSelId ? presupuestos[presSelId] : null;
   const [textoApertura, setTextoApertura] = useState("");
   const [condiciones, setCondiciones] = useState("");
 
@@ -5602,7 +5648,7 @@ function VistaPrevia({
     if (presSel) {
       setTextoApertura(presSel.textoApertura ?? (perfil?.textoApertura || ""));
       setCondiciones(presSel.condiciones ?? (perfil?.condiciones || ""));
-      setMostrarLista(false); // en mobile, ir al doc
+      setMostrarLista(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presSelId]);
@@ -5662,9 +5708,17 @@ function VistaPrevia({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      <SectionTitle sub="Editá y enviá tus presupuestos guardados">
-        Vista Previa
-      </SectionTitle>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
+        <SectionTitle sub="Editá y enviá tus presupuestos guardados">
+          Vista Previa
+        </SectionTitle>
+        {presSelId && (
+          <button onClick={() => { setPresSelId(null); setMostrarLista(true); if (onSeleccionarPresupuesto) onSeleccionarPresupuesto(null); }}
+            style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "transparent", border: "1px solid rgba(200,60,60,0.25)", color: "#e07070", flexShrink: 0, marginTop: 4 }}>
+            ✕ Limpiar vista
+          </button>
+        )}
+      </div>
 
       {entries.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 0", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
@@ -6143,22 +6197,26 @@ function imprimirCorte(grupos, nombre) {
     );
 }
 
-function ListaCorte({ items, modulos, costos, getModUsado, presupuestos }) {
-  if (items.length === 0) {
+function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupuestoVistaPreviaId }) {
+  // Si hay un presupuesto seleccionado en Vista Previa, usarlo en lugar del activo
+  const presVP = presupuestoVistaPreviaId ? presupuestos[presupuestoVistaPreviaId] : null;
+  const itemsEfectivos = presVP ? (presVP.items || []) : items;
+  const getModUsadoEfectivo = presVP
+    ? (item) => {
+        const base = modulos[item.codigo];
+        if (!base) return null;
+        const dims = (presVP.dimOverride && presVP.dimOverride[`${item.codigo}-${item.id || 0}`]) || base.dimensiones;
+        return { ...base, dimensiones: dims };
+      }
+    : getModUsado;
+
+  if (itemsEfectivos.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <SectionTitle sub="Lista detallada agrupada por material con medidas listas para la escuadradora">
-          Lista de Corte
+          Lista de Corte{presVP ? ` — ${presVP.nombre}` : ""}
         </SectionTitle>
-        <div
-          style={{
-            textAlign: "center",
-            padding: "60px 0",
-            borderRadius: 12,
-            border: "1px dashed var(--border)",
-            color: "var(--text-muted)",
-          }}
-        >
+        <div style={{ textAlign: "center", padding: "60px 0", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>🪚</div>
           <p style={{ fontSize: 14 }}>No hay piezas para cortar.</p>
           <p style={{ fontSize: 12, marginTop: 6 }}>
@@ -6169,20 +6227,21 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos }) {
         </div>
       </div>
     );
+
   }
-  const nombreActivo = (() => {
+  const nombreActivo = presVP ? presVP.nombre : (() => {
     const entries = Object.entries(presupuestos || {});
-    const codsActuales = items.map((i) => i.codigo).join(",");
+    const codsActuales = itemsEfectivos.map((i) => i.codigo).join(",");
     const match = entries.find(
       ([, p]) => p.items.map((i) => i.codigo).join(",") === codsActuales
     );
     return match ? match[1].nombre : null;
   })();
   const grupos = {};
-  items.forEach((item) => {
+  itemsEfectivos.forEach((item) => {
     const modBase = modulos[item.codigo];
     if (!modBase) return;
-    const modUsado = getModUsado(item);
+    const modUsado = getModUsadoEfectivo(item);
     const matDef =
       costos.materiales.find((m) => m.tipo === modUsado.material) ||
       costos.materiales[0];
@@ -7626,6 +7685,7 @@ function AppInterna() {
   const [saveEst, setSaveEst] = useState(null);
   const [items, setItems] = useState([]);
   const [dimOverride, setDimOverride] = useState({});
+  const [presupuestoVistaPreviaId, setPresupuestoVistaPreviaId] = useState(null);
 
   useEffect(() => {
     cargarDatos().then(({ modulos, costos, presupuestos, perfil }) => {
@@ -7843,6 +7903,7 @@ function AppInterna() {
               onEliminarPresupuesto={handleEliminarPresupuesto}
               onCambiarEstado={handleCambiarEstado}
               onActualizarPresupuesto={handleActualizarPresupuesto}
+              onVerPresupuesto={(id) => { setPresupuestoVistaPreviaId(id); setVista("preview"); }}
             />
           )}
           {vista === "preview" && (
@@ -7850,10 +7911,7 @@ function AppInterna() {
               items={items}
               modulos={modulos}
               costos={costos}
-              onLimpiar={() => {
-                setItems([]);
-                setDimOverride({});
-              }}
+              onLimpiar={() => { setItems([]); setDimOverride({}); }}
               getModUsado={getModUsado}
               totalGeneral={totalGeneral}
               presupuestos={presupuestos}
@@ -7861,6 +7919,8 @@ function AppInterna() {
               onActualizarPresupuesto={handleActualizarPresupuesto}
               onCambiarEstado={handleCambiarEstado}
               onCargarPresupuesto={handleCargarPresupuesto}
+              presupuestoSelId={presupuestoVistaPreviaId}
+              onSeleccionarPresupuesto={setPresupuestoVistaPreviaId}
             />
           )}
           {vista === "corte" && (
@@ -7870,6 +7930,7 @@ function AppInterna() {
               costos={costos}
               getModUsado={getModUsado}
               presupuestos={presupuestos}
+              presupuestoVistaPreviaId={presupuestoVistaPreviaId}
             />
           )}
           {vista === "trabajos" && (
