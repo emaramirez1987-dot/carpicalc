@@ -4350,8 +4350,8 @@ function GestorPresupuestos({
   const [clienteNuevo, setClienteNuevo] = useState({ nombre: "", tel: "", dir: "" });
   const [notaNueva, setNotaNueva] = useState("");
   const [estadoOpen, setEstadoOpen] = useState(null);
-  const { pushUndo, ToastContainer: ToastGestor } = useUndo();
-  const [guardado, setGuardado] = useState(false); // feedback visual
+  const [confirmDelId, setConfirmDelId] = useState(null);
+  const [guardado, setGuardado] = useState(false);
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
 
   const handleGuardar = () => {
@@ -4486,22 +4486,28 @@ function GestorPresupuestos({
                           </div>
                         )}
                       </div>
-                      <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                        <button onClick={() => onCargar(p)}
+                      <div style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center" }}>
+                        <button onClick={() => onCargar(p, id)}
                           style={{ padding: "4px 10px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
                           ↩ Cargar
                         </button>
-                        <button onClick={() => {
-                          const snap = { ...p };
-                          onEliminar(id);
-                          pushUndo({
-                            mensaje: `Presupuesto "${p.nombre}" eliminado`,
-                            onDeshacer: () => onGuardarNuevo(snap.nombre, snap.cliente, snap.nota, snap),
-                          });
-                        }}
-                          style={{ padding: "4px 10px", background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
-                          ×
-                        </button>
+                        {confirmDelId === id ? (
+                          <>
+                            <button onClick={() => { onEliminar(id); setConfirmDelId(null); }}
+                              style={{ padding: "4px 10px", background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                              ✓ Confirmar
+                            </button>
+                            <button onClick={() => setConfirmDelId(null)}
+                              style={{ padding: "4px 10px", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
+                              Cancelar
+                            </button>
+                          </>
+                        ) : (
+                          <button onClick={() => setConfirmDelId(id)}
+                            style={{ padding: "4px 10px", background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
+                            ×
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -4511,7 +4517,6 @@ function GestorPresupuestos({
           )}
         </div>
       )}
-      <ToastGestor />
     </div>
   );
 }
@@ -5188,16 +5193,48 @@ function Presupuesto({
   const [expandido, setExpandido] = useState(null);
   const [mostrarPrecioUnitario, setMostrarPrecioUnitario] = useState(false);
   const [preDim, setPreDim] = useState(null);
+  const [editandoCliente, setEditandoCliente] = useState(false);
+  const [clienteActivo, setClienteActivo] = useState({ nombre: "", tel: "", dir: "" });
+  const [nombreTrabajo, setNombreTrabajo] = useState("");
   const { pushUndo, ToastContainer } = useUndo();
+
+  // Detectar presupuesto desactualizado cuando se carga uno guardado
+  const [alertaPrecios, setAlertaPrecios] = useState(null); // { idPres, totalOriginal, totalRecalculado }
+
+  // Al cargar un presupuesto verificar si los precios cambiaron
+  const verificarPrecios = (p, id) => {
+    if (!p.items || p.items.length === 0) return;
+    const totalRecalculado = p.items.reduce((acc, item) => {
+      const base = modulos[item.codigo];
+      if (!base) return acc;
+      const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || base.dimensiones;
+      const mod = { ...base, dimensiones: dims };
+      const calc = calcularModulo(mod, costos);
+      if (!calc) return acc;
+      return acc + calc.total * item.cantidad;
+    }, 0);
+    const diff = Math.abs(totalRecalculado - p.total);
+    if (diff > 1) { // diferencia mayor a $1 → precios cambiaron
+      setAlertaPrecios({ id, totalOriginal: p.total, totalRecalculado: Math.round(totalRecalculado) });
+    } else {
+      setAlertaPrecios(null);
+    }
+  };
+
+  const handleCargar = (p, id) => {
+    onCargarPresupuesto(p);
+    setClienteActivo(p.cliente || { nombre: "", tel: "", dir: "" });
+    setNombreTrabajo(p.nombre || "");
+    setAlertaPrecios(null);
+    verificarPrecios(p, id);
+  };
+
   const handleCodChange = (val) => {
     const cod = val.toUpperCase();
     setInputCod(cod);
     setError("");
-    if (modulos[cod]) {
-      setPreDim({ ...modulos[cod].dimensiones });
-    } else {
-      setPreDim(null);
-    }
+    if (modulos[cod]) setPreDim({ ...modulos[cod].dimensiones });
+    else setPreDim(null);
   };
   const agregar = () => {
     const cod = inputCod.trim().toUpperCase();
@@ -5263,17 +5300,125 @@ function Presupuesto({
     );
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <SectionTitle sub={items.length === 0 ? "Ingresá códigos para armar el presupuesto del trabajo" : `${items.length} módulo${items.length !== 1 ? "s" : ""} · ${fmtPeso(totalGeneral)}`}>
-        {items.length === 0 ? "Armar Presupuesto" : ((() => { const entries = Object.entries(presupuestos); const match = entries.find(([,p]) => p.items.length === items.length); return match ? match[1].nombre : "Presupuesto activo"; })())}
-      </SectionTitle>
+
+      {/* ── Tarjeta de trabajo activo ── */}
+      <div style={{
+        background: "var(--bg-surface)", border: "1px solid var(--border)",
+        borderRadius: 14, overflow: "hidden",
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: "16px 20px", display: "flex", alignItems: "center",
+          justifyContent: "space-between", gap: 12, flexWrap: "wrap",
+          borderBottom: items.length > 0 || editandoCliente ? "1px solid var(--border)" : "none",
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {items.length === 0 && !editandoCliente ? (
+              <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
+                Sin presupuesto activo
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
+                  {nombreTrabajo || "Nuevo presupuesto"}
+                </div>
+                {clienteActivo.nombre && (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    👤 {clienteActivo.nombre}
+                    {clienteActivo.tel && <span> · {clienteActivo.tel}</span>}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+            {items.length > 0 && (
+              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>
+                {fmtPeso(totalGeneral)}
+              </div>
+            )}
+            <button
+              onClick={() => setEditandoCliente(v => !v)}
+              style={{
+                padding: "6px 14px", borderRadius: 7, fontSize: 11,
+                fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer",
+                background: editandoCliente ? "var(--accent-soft)" : "transparent",
+                border: `1px solid ${editandoCliente ? "var(--accent-border)" : "var(--border)"}`,
+                color: editandoCliente ? "var(--accent)" : "var(--text-muted)",
+                transition: "all 0.15s",
+              }}>
+              {editandoCliente ? "✓ Listo" : items.length === 0 ? "✦ Nuevo presupuesto" : "✎ Editar datos"}
+            </button>
+          </div>
+        </div>
+
+        {/* Panel de datos del cliente — inline */}
+        {editandoCliente && (
+          <div style={{ padding: "16px 20px", background: "var(--bg-subtle)" }}>
+            <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <TextInput label="Nombre del trabajo" placeholder="Ej: Cocina Rodríguez" small
+                value={nombreTrabajo} onChange={setNombreTrabajo} />
+              <TextInput label="Cliente" placeholder="Nombre del cliente" small
+                value={clienteActivo.nombre} onChange={v => setClienteActivo(c => ({ ...c, nombre: v }))} />
+              <TextInput label="Teléfono" placeholder="341 555-1234" small
+                value={clienteActivo.tel} onChange={v => setClienteActivo(c => ({ ...c, tel: v }))} />
+            </div>
+            <TextInput label="Dirección de entrega" placeholder="Av. San Martín 456" small
+              value={clienteActivo.dir} onChange={v => setClienteActivo(c => ({ ...c, dir: v }))} />
+          </div>
+        )}
+      </div>
+
+      {/* ── Alerta de precios desactualizados ── */}
+      {alertaPrecios && (
+        <div style={{
+          padding: "14px 18px", borderRadius: 10, display: "flex",
+          alignItems: "center", gap: 14, flexWrap: "wrap",
+          background: "rgba(200,160,42,0.10)", border: "1px solid rgba(200,160,42,0.30)",
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#c8a02a", marginBottom: 3 }}>
+              ⚠ Los precios cambiaron desde que se creó este presupuesto
+            </div>
+            <div style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+              Original: {fmtPeso(alertaPrecios.totalOriginal)} → Recalculado: {fmtPeso(alertaPrecios.totalRecalculado)}
+              <span style={{ marginLeft: 10, color: alertaPrecios.totalRecalculado > alertaPrecios.totalOriginal ? "#e07070" : "#7ecf8a", fontWeight: 700 }}>
+                ({alertaPrecios.totalRecalculado > alertaPrecios.totalOriginal ? "+" : ""}
+                {fmtPeso(alertaPrecios.totalRecalculado - alertaPrecios.totalOriginal)})
+              </span>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setAlertaPrecios(null)}
+              style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+              Mantener original
+            </button>
+            <button onClick={() => {
+              // Actualizar el total en el presupuesto guardado que corresponde
+              setAlertaPrecios(null);
+            }}
+              style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a" }}>
+              ✓ Usar precio actualizado
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="no-print">
         <GestorPresupuestos
           presupuestos={presupuestos}
-          onCargar={onCargarPresupuesto}
-          onGuardarNuevo={onGuardarPresupuesto}
+          onCargar={handleCargar}
+          onGuardarNuevo={(nombre, cliente, nota) => {
+            onGuardarPresupuesto(nombreTrabajo || nombre, clienteActivo.nombre ? clienteActivo : cliente, nota);
+          }}
           onEliminar={onEliminarPresupuesto}
           onCambiarEstado={onCambiarEstado}
-          onLimpiar={() => setItems([])}
+          onLimpiar={() => {
+            setItems([]);
+            setClienteActivo({ nombre: "", tel: "", dir: "" });
+            setNombreTrabajo("");
+            setAlertaPrecios(null);
+          }}
           totalActual={totalGeneral}
           itemsActual={items}
         />
