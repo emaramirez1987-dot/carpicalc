@@ -5338,10 +5338,20 @@ function Presupuesto({
                 💾 Guardar
               </button>
             )}
-            <button onClick={() => setEditandoCliente(v => !v)}
-              style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: editandoCliente ? "var(--accent-soft)" : "transparent", border: `1px solid ${editandoCliente ? "var(--accent-border)" : "var(--border)"}`, color: editandoCliente ? "var(--accent)" : "var(--text-muted)", transition: "all 0.15s" }}>
-              {editandoCliente ? "✓ Listo" : "✎ Datos"}
-            </button>
+            {/* Nuevo presupuesto — solo cuando no hay nada activo */}
+            {!items.length && !nombreTrabajo && !editandoCliente && (
+              <button onClick={() => setEditandoCliente(true)}
+                style={{ padding: "6px 16px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", transition: "all 0.15s" }}>
+                + Nuevo presupuesto
+              </button>
+            )}
+            {/* Editar datos — solo cuando hay algo activo */}
+            {(items.length > 0 || nombreTrabajo) && (
+              <button onClick={() => setEditandoCliente(v => !v)}
+                style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", transition: "all 0.15s" }}>
+                ✎ Datos
+              </button>
+            )}
           </div>
         </div>
         {editandoCliente && (
