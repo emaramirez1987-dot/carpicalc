@@ -5285,7 +5285,22 @@ function Presupuesto({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* 1. Tarjeta de trabajo activo */}
+      {/* 1. Mis presupuestos */}
+      <div className="no-print">
+        <GestorPresupuestos
+          presupuestos={presupuestos}
+          onCargar={handleCargar}
+          onNuevo={handleNuevoPresupuesto}
+          onEliminar={onEliminarPresupuesto}
+          onCambiarEstado={onCambiarEstado}
+          totalActual={totalGeneral}
+          itemsActual={items}
+          nombreInicial={nombreTrabajo}
+          clienteInicial={clienteActivo}
+        />
+      </div>
+
+      {/* 2. Tarjeta de trabajo activo */}
       <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
         <div style={{
           padding: "14px 20px", display: "flex", alignItems: "center",
@@ -5315,7 +5330,10 @@ function Presupuesto({
               </span>
             )}
             {items.length > 0 && (
-              <button onClick={() => presupuestoActivoId ? setDialogoGuardar(true) : onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "")}
+              <button onClick={() => presupuestoActivoId ? setDialogoGuardar(true) : (() => {
+                onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
+                setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setEditandoCliente(false);
+              })()}
                 style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 2px 8px rgba(180,100,20,0.25)" }}>
                 💾 Guardar
               </button>
@@ -5347,10 +5365,15 @@ function Presupuesto({
             <button onClick={() => {
               onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, total: totalGeneral });
               setDialogoGuardar(false);
+              setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setEditandoCliente(false);
             }} style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
               ✓ Actualizar original
             </button>
-            <button onClick={() => { onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, ""); setDialogoGuardar(false); }}
+            <button onClick={() => {
+              onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
+              setDialogoGuardar(false);
+              setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setEditandoCliente(false);
+            }}
               style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
               + Guardar como copia
             </button>
@@ -5383,21 +5406,6 @@ function Presupuesto({
           </div>
         </div>
       )}
-
-      {/* 2. Mis presupuestos */}
-      <div className="no-print">
-        <GestorPresupuestos
-          presupuestos={presupuestos}
-          onCargar={handleCargar}
-          onNuevo={handleNuevoPresupuesto}
-          onEliminar={onEliminarPresupuesto}
-          onCambiarEstado={onCambiarEstado}
-          totalActual={totalGeneral}
-          itemsActual={items}
-          nombreInicial={nombreTrabajo}
-          clienteInicial={clienteActivo}
-        />
-      </div>
 
       {/* 3. Módulos cargados */}
       {items.length > 0 && (
