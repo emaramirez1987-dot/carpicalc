@@ -1604,10 +1604,21 @@ function HojaCostos({ costos, setCostos, onSave }) {
 
         {historial.length > 0 && (
           <div style={{ marginTop: 14 }}>
-            <button onClick={() => setVerHistorial(v => !v)}
-              style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, textDecoration: "underline" }}>
-              {verHistorial ? "▲ Ocultar" : "▼ Ver"} historial de precios ({historial.length})
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button onClick={() => setVerHistorial(v => !v)}
+                style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, textDecoration: "underline" }}>
+                {verHistorial ? "▲ Ocultar" : "▼ Ver"} historial de precios ({historial.length})
+              </button>
+              <button onClick={async () => {
+                if (!window.confirm("¿Limpiar todo el historial de precios?")) return;
+                localStorage.removeItem("carpicalc:historial");
+                setHistorial([]);
+                setVerHistorial(false);
+              }}
+                style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", textDecoration: "underline" }}>
+                × Limpiar historial
+              </button>
+            </div>
             {verHistorial && (
               <div style={{ marginTop: 10, background: "rgba(0,0,0,0.15)", borderRadius: 8, padding: 12 }}>
                 {historial.map((snap, i) => (
