@@ -195,16 +195,19 @@ async function cargarDatos() {
     const rm = localStorage.getItem("carpicalc:modulos");
     const rc = localStorage.getItem("carpicalc:costos");
     const rp = localStorage.getItem("carpicalc:presupuestos");
+    const rpf = localStorage.getItem("carpicalc:perfil");
     return {
       modulos: rm ? JSON.parse(rm) : modulosIniciales,
       costos: rc ? JSON.parse(rc) : costoIniciales,
       presupuestos: rp ? JSON.parse(rp) : {},
+      perfil: rpf ? JSON.parse(rpf) : { nombre: "", slogan: "", tel: "", email: "", direccion: "", logo: null, textoApertura: "", condiciones: "" },
     };
   } catch {
     return {
       modulos: modulosIniciales,
       costos: costoIniciales,
       presupuestos: {},
+      perfil: { nombre: "", slogan: "", tel: "", email: "", direccion: "", logo: null },
     };
   }
 }
@@ -219,6 +222,7 @@ const _save = async (key, data) => {
 const guardarModulos = (d) => _save("carpicalc:modulos", d);
 const guardarCostos = (d) => _save("carpicalc:costos", d);
 const guardarPresupuestos = (d) => _save("carpicalc:presupuestos", d);
+const guardarPerfil = (d) => _save("carpicalc:perfil", d);
 
 // ── Historial de precios ──────────────────────────────────────────
 async function cargarHistorialPrecios() {
@@ -1446,8 +1450,13 @@ function HojaCostos({ costos, setCostos, onSave }) {
   const aplicarInflacion = async () => {
     const pct = parseFloat(pctInflacion);
     if (!pct || isNaN(pct)) return;
-    await guardarSnapshotPrecios(costos);
     const factor = 1 + pct / 100;
+    // Bloquear si el factor haría precios negativos
+    if (factor <= 0) {
+      alert(`⚠ Con ${pct}% los precios quedarían negativos o en cero. Usá un valor mayor a -100%.`);
+      return;
+    }
+    await guardarSnapshotPrecios(costos);
     const updated = {
       ...costos,
       materiales: costos.materiales.map(m => ({ ...m, precioM2: Math.round(m.precioM2 * factor) })),
@@ -1459,6 +1468,19 @@ function HojaCostos({ costos, setCostos, onSave }) {
     setHistorial(await cargarHistorialPrecios());
     setPctInflacion("");
     setConfirmInflacion(false);
+  };
+
+  const restaurarDesdeHistorial = async (snap) => {
+    if (!window.confirm(`¿Restaurar precios del ${new Date(snap.fecha).toLocaleDateString("es-AR")}?`)) return;
+    const updated = {
+      ...costos,
+      materiales: costos.materiales.map(m => {
+        const h = snap.materiales.find(x => x.nombre === m.nombre);
+        return h ? { ...m, precioM2: h.precioM2 } : m;
+      }),
+    };
+    save(updated);
+    setHistorial(await cargarHistorialPrecios());
   };
 
   const ini = (sec, item) =>
@@ -1547,19 +1569,34 @@ function HojaCostos({ costos, setCostos, onSave }) {
               />
               <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", fontSize: 14 }}>%</span>
             </div>
+            {/* Alerta si el resultado sería negativo */}
+            {pctInflacion && parseFloat(pctInflacion) <= -100 && (
+              <div style={{ marginTop: 6, fontSize: 11, color: "#e07070", fontFamily: "'DM Mono',monospace' " }}>
+                ⚠ Con este valor los precios quedarían negativos. Mínimo: -99%
+              </div>
+            )}
+            {/* Calculadora de reversión */}
+            {pctInflacion && parseFloat(pctInflacion) > 0 && (
+              <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace'" }}>
+                💡 Para revertir este aumento exactamente aplicá: <strong style={{ color: "var(--accent)" }}>
+                  {(-(parseFloat(pctInflacion) / (1 + parseFloat(pctInflacion) / 100))).toFixed(2)}%
+                </strong>
+              </div>
+            )}
           </div>
           <div>
             {!confirmInflacion ? (
               <button
-                disabled={!pctInflacion || isNaN(parseFloat(pctInflacion))}
+                disabled={!pctInflacion || isNaN(parseFloat(pctInflacion)) || parseFloat(pctInflacion) <= -100}
                 onClick={() => setConfirmInflacion(true)}
                 style={{
                   padding: "9px 18px", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.4)",
                   color: "#c8a02a", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace",
-                  fontWeight: 700, fontSize: 12, opacity: (!pctInflacion || isNaN(parseFloat(pctInflacion))) ? 0.4 : 1,
+                  fontWeight: 700, fontSize: 12,
+                  opacity: (!pctInflacion || isNaN(parseFloat(pctInflacion)) || parseFloat(pctInflacion) <= -100) ? 0.4 : 1,
                 }}
               >
-                📈 Aplicar +{pctInflacion || 0}%
+                📈 Aplicar {parseFloat(pctInflacion) > 0 ? "+" : ""}{pctInflacion || 0}%
               </button>
             ) : (
               <div style={{ display: "flex", gap: 8 }}>
@@ -1588,9 +1625,15 @@ function HojaCostos({ costos, setCostos, onSave }) {
             {verHistorial && (
               <div style={{ marginTop: 10, background: "rgba(0,0,0,0.15)", borderRadius: 8, padding: 12 }}>
                 {historial.map((snap, i) => (
-                  <div key={i} style={{ padding: "8px 0", borderBottom: i < historial.length - 1 ? "1px solid var(--border)" : "none" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginBottom: 4 }}>
-                      {new Date(snap.fecha).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  <div key={i} style={{ padding: "10px 0", borderBottom: i < historial.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, flexWrap: "wrap", gap: 8 }}>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                        📅 {new Date(snap.fecha).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                      <button onClick={() => restaurarDesdeHistorial(snap)}
+                        style={{ padding: "3px 10px", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5 }}>
+                        ↩ Restaurar estos precios
+                      </button>
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {snap.materiales.map(m => (
@@ -3446,44 +3489,40 @@ function FormModulo({
 
 // ── CatalogoModulos ───────────────────────────────────────────────
 function AccionesModulo({ onEditar, onEliminar, onDuplicar }) {
+  const [confirmar, setConfirmar] = useState(false);
   const s = (type) => ({
-    padding: "5px 10px",
-    borderRadius: 6,
-    fontSize: 11,
-    fontWeight: 700,
-    fontFamily: "'DM Mono',monospace",
-    cursor: "pointer",
-    transition: "all 0.15s",
+    padding: "5px 12px", borderRadius: 6, fontSize: 11,
+    fontWeight: 700, fontFamily: "'DM Mono',monospace",
+    cursor: "pointer", transition: "all 0.15s", width: "100%",
     background:
-      type === "edit"
-        ? "var(--accent-soft)"
-        : type === "dup"
-        ? "rgba(112,144,176,0.12)"
-        : "transparent",
+      type === "edit" ? "var(--accent-soft)" :
+      type === "dup"  ? "rgba(112,144,176,0.12)" : "transparent",
     border:
-      type === "edit"
-        ? "1px solid var(--accent-border)"
-        : type === "dup"
-        ? "1px solid rgba(112,144,176,0.30)"
-        : "1px solid rgba(200,60,60,0.22)",
+      type === "edit" ? "1px solid var(--accent-border)" :
+      type === "dup"  ? "1px solid rgba(112,144,176,0.30)" :
+                        "1px solid rgba(200,60,60,0.22)",
     color:
-      type === "edit"
-        ? "var(--accent)"
-        : type === "dup"
-        ? "#7090b0"
-        : "#e07070",
+      type === "edit" ? "var(--accent)" :
+      type === "dup"  ? "#7090b0" : "#e07070",
   });
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-      <button onClick={onEditar} style={s("edit")}>
-        ✏ editar
-      </button>
-      <button onClick={onDuplicar} style={s("dup")}>
-        ⧉ duplicar
-      </button>
-      <button onClick={onEliminar} style={s("del")}>
-        × borrar
-      </button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 90 }}>
+      <button onClick={onEditar} style={s("edit")}>✏ editar</button>
+      <button onClick={onDuplicar} style={s("dup")}>⧉ duplicar</button>
+      {confirmar ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <button onClick={() => { onEliminar(); setConfirmar(false); }}
+            style={{ ...s("del"), background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", fontWeight: 900 }}>
+            ✓ confirmar
+          </button>
+          <button onClick={() => setConfirmar(false)}
+            style={{ ...s("del"), color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+            cancelar
+          </button>
+        </div>
+      ) : (
+        <button onClick={() => setConfirmar(true)} style={s("del")}>× borrar</button>
+      )}
     </div>
   );
 }
@@ -3722,21 +3761,25 @@ function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onIm
         {mod.dimensiones.ancho} × {mod.dimensiones.profundidad} × {mod.dimensiones.alto} mm
       </p>
       <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10, fontSize: 11 }}>
-          <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>m² neto</div>
-            <div style={{ fontFamily: "'DM Mono',monospace", color: "#9ab080" }}>{fmtNum(c.m2Neto)} m²</div>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          {/* Métricas + precio — columna izquierda */}
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10, fontSize: 11 }}>
+              <div>
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>m² neto</div>
+                <div style={{ fontFamily: "'DM Mono',monospace", color: "#9ab080" }}>{fmtNum(c.m2Neto)} m²</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>Tapacanto</div>
+                <div style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>{fmtNum(c.metrosTapacanto, 2)} m</div>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>Precio de venta</div>
+              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 17, fontWeight: 700, marginTop: 2, color: "#7ecf8a" }}>{fmtPeso(c.total)}</div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>Tapacanto</div>
-            <div style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>{fmtNum(c.metrosTapacanto, 2)} m</div>
-          </div>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-          <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>Precio de venta</div>
-            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 17, fontWeight: 700, marginTop: 2, color: "#7ecf8a" }}>{fmtPeso(c.total)}</div>
-          </div>
+          {/* Botones — columna derecha */}
           <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} />
         </div>
       </div>
@@ -3837,20 +3880,11 @@ function CatalogoModulos({
   };
 
   const eliminar = (cod) => {
-    const snap = { ...modulos };
-    const modEliminado = snap[cod];
     const n = { ...modulos };
     delete n[cod];
     setModulos(n);
     onSave(n);
-    pushUndo({
-      mensaje: `Módulo "${cod} — ${modEliminado?.nombre || ""}" eliminado`,
-      onDeshacer: () => {
-        const restaurado = { ...n, [cod]: modEliminado };
-        setModulos(restaurado);
-        onSave(restaurado);
-      },
-    });
+    showMsg(`"${cod}" eliminado.`, "warn");
   };
 
   // 💾 LÓGICA DE BACKUP (Exportar/Importar)
@@ -4581,12 +4615,22 @@ function imprimirPresupuesto(
 }
 
 // ── Ficha de Obra ─────────────────────────────────────────────────
-function generarFichaObra(id, p, modulos, costos) {
+function generarFichaObra(id, p, modulos, costos, perfil = {}) {
   const fecha = fmtFechaLarga(Date.now());
   const creacion = fmtFechaLarga(parseInt(id));
   const cobros = p.cobros || [];
   const totalCobrado = cobros.reduce((a, c) => a + c.monto, 0);
   const saldo = p.total - totalCobrado;
+
+  const encabezadoTaller = perfil?.nombre ? `
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">
+      ${perfil.logo ? `<img src="${perfil.logo}" style="height:40px;object-fit:contain" />` : ""}
+      <div>
+        <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:#7a4a10">${perfil.nombre}</div>
+        ${perfil.slogan ? `<div style="font-size:11px;color:#9a7040;font-style:italic">${perfil.slogan}</div>` : ""}
+        <div style="font-size:10px;color:#aaa">${[perfil.tel, perfil.email, perfil.direccion].filter(Boolean).join(" · ")}</div>
+      </div>
+    </div>` : `<div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#7a4a10">🪵 CarpiCálc</div>`;
 
   // Calcular piezas de corte agrupadas
   const piezasCorte = [];
@@ -4697,9 +4741,8 @@ function generarFichaObra(id, p, modulos, costos) {
 </style></head><body>
 
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:14px;border-bottom:3px solid #a07030">
-  <div>
-    <div style="font-size:20px;font-weight:900;color:#7a4a10">🪵 CarpiCálc</div>
-    <div style="font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-top:3px">FICHA DE OBRA</div>
+  <div>${encabezadoTaller}
+    <div style="font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-top:6px">FICHA DE OBRA</div>
   </div>
   <div style="text-align:right">
     <div style="font-size:18px;font-weight:800;color:#1a0e04">${p.nombre}</div>
@@ -5866,132 +5909,260 @@ function Presupuesto({
 
 // ── VistaPrevia ───────────────────────────────────────────────────
 function VistaPrevia({
-  items,
-  modulos,
-  costos,
-  onLimpiar,
-  getModUsado,
-  totalGeneral,
-  presupuestos,
+  items, modulos, costos, onLimpiar, getModUsado,
+  totalGeneral, presupuestos, perfil,
+  onActualizarPresupuesto, onCambiarEstado, onCargarPresupuesto,
 }) {
+  const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
+  const [presSelId, setPresSelId] = useState(null);
+  const [mostrarLista, setMostrarLista] = useState(true); // mobile nav
   const [mostrarPrecioUnitario, setMostrarPrecioUnitario] = useState(true);
   const [whatsappCopiado, setWhatsappCopiado] = useState(false);
+  const [guardandoTexto, setGuardandoTexto] = useState(false);
 
-  const presupuestoActivo = (() => {
-    if (!items.length) return null;
-    const entries = Object.entries(presupuestos || {});
-    const codsActuales = items.map((i) => i.codigo).join(",");
-    const match = entries.find(
-      ([, p]) => p.items.map((i) => i.codigo).join(",") === codsActuales
-    );
-    return match ? match[1] : null;
-  })();
-  const nombreActivo = presupuestoActivo ? presupuestoActivo.nombre : null;
-  const clienteActivo = presupuestoActivo ? presupuestoActivo.cliente : null;
+  // Presupuesto seleccionado
+  const presSel = presSelId ? presupuestos[presSelId] : null;
 
-  const handleWhatsApp = () => {
-    const txt = generarTextoWhatsApp(items, modulos, costos, getModUsado, totalGeneral, nombreActivo, clienteActivo);
-    navigator.clipboard.writeText(txt).then(() => {
-      setWhatsappCopiado(true);
-      setTimeout(() => setWhatsappCopiado(false), 2500);
-    });
+  // Textos editables locales (se sincronizan al guardar)
+  const [textoApertura, setTextoApertura] = useState("");
+  const [condiciones, setCondiciones] = useState("");
+
+  useEffect(() => {
+    if (presSel) {
+      setTextoApertura(presSel.textoApertura ?? (perfil?.textoApertura || ""));
+      setCondiciones(presSel.condiciones ?? (perfil?.condiciones || ""));
+      setMostrarLista(false); // en mobile, ir al doc
+    }
+  }, [presSelId]);
+
+  const guardarTextos = () => {
+    if (!presSelId) return;
+    const prevTotal = presSel.total;
+    const cambios = { textoApertura, condiciones };
+    // Historial si cambió el total
+    if (presSel.total !== prevTotal) {
+      cambios.historialVersiones = [
+        ...(presSel.historialVersiones || []),
+        { fecha: Date.now(), total: presSel.total }
+      ].slice(-5);
+    }
+    onActualizarPresupuesto(presSelId, cambios);
+    setGuardandoTexto(true);
+    setTimeout(() => setGuardandoTexto(false), 1800);
   };
 
-  const btnStyle = (color) => ({
-    display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 16px",
-    borderRadius: 6, fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-    letterSpacing: "0.05em", cursor: "pointer", transition: "all 0.18s",
-    background: color === "green" ? "linear-gradient(135deg,var(--accent),var(--accent-hover))" : "rgba(37,211,102,0.15)",
-    border: color === "green" ? "none" : "1px solid rgba(37,211,102,0.4)",
-    color: color === "green" ? "var(--text-inverted)" : "#25d366",
-    boxShadow: color === "green" ? "0 3px 12px rgba(180,100,20,0.28)" : "none",
-  });
+  const handleWhatsApp = () => {
+    if (!presSel) return;
+    const txt = generarTextoWhatsApp(
+      presSel.items, modulos, costos,
+      (item) => { const base = modulos[item.codigo]; const dims = (presSel.dimOverride && presSel.dimOverride[`${item.codigo}-${item.id||0}`]) || base?.dimensiones; return { ...base, dimensiones: dims }; },
+      presSel.total, presSel.nombre, presSel.cliente
+    );
+    navigator.clipboard.writeText(txt).then(() => { setWhatsappCopiado(true); setTimeout(() => setWhatsappCopiado(false), 2500); });
+  };
+
+  const handlePDF = () => {
+    if (!presSel) return;
+    const getModUsadoLocal = (item) => {
+      const base = modulos[item.codigo];
+      const dims = (presSel.dimOverride && presSel.dimOverride[`${item.codigo}-${item.id||0}`]) || base?.dimensiones;
+      return { ...base, dimensiones: dims };
+    };
+    imprimirPresupuesto(presSel.items, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, mostrarPrecioUnitario, presSel.cliente);
+  };
+
+  const estSel = presSel ? (ESTADOS_TRABAJO.find(e => e.id === (presSel.estado || "nuevo")) || ESTADOS_TRABAJO[0]) : null;
+
+  const btnAcc = (color, children, onClick) => (
+    <button onClick={onClick} style={{
+      display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px",
+      borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+      cursor: "pointer", transition: "all 0.15s", border: "none",
+      background: color === "gold" ? "linear-gradient(135deg,var(--accent),var(--accent-hover))" :
+                  color === "wa" ? "rgba(37,211,102,0.15)" : "var(--accent-soft)",
+      border: color === "wa" ? "1px solid rgba(37,211,102,0.35)" :
+              color === "ghost" ? "1px solid var(--accent-border)" : "none",
+      color: color === "gold" ? "var(--text-inverted)" :
+             color === "wa" ? "#25d366" : "var(--accent)",
+      boxShadow: color === "gold" ? "0 3px 12px rgba(180,100,20,0.28)" : "none",
+    }}>{children}</button>
+  );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* rsp-stack en móvil: título y botones se apilan */}
-      <div className="rsp-stack" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
-        <SectionTitle sub="Vista limpia para imprimir o enviar al cliente">
-          Vista Previa del Presupuesto
-        </SectionTitle>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, flexShrink: 0, flexWrap: "wrap" }}>
-          <ToggleSwitch value={mostrarPrecioUnitario} onChange={setMostrarPrecioUnitario} label="Mostrar precio unitario" />
-          {items.length > 0 && (
-            <>
-              <button onClick={handleWhatsApp} style={btnStyle("whatsapp")}>
-                {whatsappCopiado ? "✓ ¡Copiado!" : "📲 WhatsApp"}
-              </button>
-              <button
-                onClick={() => imprimirPresupuesto(items, modulos, costos, getModUsado, totalGeneral, nombreActivo, mostrarPrecioUnitario, clienteActivo)}
-                style={btnStyle("green")}
-              >
-                🖨 Imprimir / PDF
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      <SectionTitle sub="Editá y enviá tus presupuestos guardados">
+        Vista Previa
+      </SectionTitle>
 
-      {/* Datos del cliente activo */}
-      {clienteActivo && (clienteActivo.nombre || clienteActivo.tel || clienteActivo.dir) && (
-        <div style={{ display: "flex", gap: 16, padding: "12px 16px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 10, flexWrap: "wrap" }}>
-          {clienteActivo.nombre && <span style={{ fontSize: 13, color: "var(--text-primary)" }}>👤 <b>{clienteActivo.nombre}</b></span>}
-          {clienteActivo.tel && <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>📞 {clienteActivo.tel}</span>}
-          {clienteActivo.dir && <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>📍 {clienteActivo.dir}</span>}
-        </div>
-      )}
-
-      {items.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "60px 0",
-            borderRadius: 12,
-            border: "1px dashed var(--border)",
-            color: "var(--text-muted)",
-          }}
-        >
+      {entries.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 0", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>📄</div>
-          <p style={{ fontSize: 14 }}>El presupuesto está vacío.</p>
-          <p style={{ fontSize: 12, marginTop: 6 }}>
-            Agregá módulos desde{" "}
-            <strong style={{ color: "var(--accent)" }}>📋 Presupuesto</strong>.
-          </p>
+          <p style={{ fontSize: 14 }}>No hay presupuestos guardados todavía.</p>
+          <p style={{ fontSize: 12, marginTop: 6 }}>Guardá uno desde <strong style={{ color: "var(--accent)" }}>📋 Presupuesto</strong>.</p>
         </div>
       ) : (
-        <>
-          <div
-            className="no-print"
-            style={{ display: "flex", justifyContent: "flex-end" }}
-          >
-            <button
-              onClick={onLimpiar}
-              style={{
-                padding: "6px 14px",
-                background: "transparent",
-                fontSize: 11,
-                fontFamily: "'DM Mono',monospace",
-                cursor: "pointer",
-                borderRadius: 6,
-                border: "1px solid rgba(200,60,60,0.25)",
-                color: "#e07070",
-                transition: "all 0.15s",
-              }}
-            >
-              × Limpiar presupuesto
-            </button>
+        <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }} className="vp-layout">
+          {/* ── Panel izquierdo: lista de trabajos ── */}
+          <div className={`vp-lista ${!mostrarLista ? "vp-lista-hidden" : ""}`} style={{
+            width: 260, flexShrink: 0, background: "var(--bg-surface)",
+            border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden",
+          }}>
+            <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", background: "var(--accent-soft)" }}>
+              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--accent)" }}>
+                {entries.length} presupuestos
+              </div>
+            </div>
+            {entries.map(([id, p]) => {
+              const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
+              const activo = presSelId === id;
+              return (
+                <div key={id} onClick={() => setPresSelId(id)} style={{
+                  padding: "11px 14px", cursor: "pointer", transition: "background 0.12s",
+                  borderBottom: "1px solid var(--separator)",
+                  background: activo ? "var(--accent-soft)" : "transparent",
+                  borderLeft: `3px solid ${activo ? "var(--accent)" : "transparent"}`,
+                }}
+                  onMouseEnter={e => { if (!activo) e.currentTarget.style.background = "var(--bg-subtle)"; }}
+                  onMouseLeave={e => { if (!activo) e.currentTarget.style.background = "transparent"; }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, color: activo ? "var(--accent)" : "var(--text-primary)", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {p.nombre}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, background: `${est.color}20`, color: est.color, border: `1px solid ${est.color}30`, borderRadius: 3, padding: "1px 5px", fontFamily: "'DM Mono',monospace" }}>
+                      {est.icon} {est.label}
+                    </span>
+                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+                  </div>
+                  {p.cliente?.nombre && <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>👤 {p.cliente.nombre}</div>}
+                </div>
+              );
+            })}
           </div>
-          <ResumenPresupuesto
-            items={items}
-            modulos={modulos}
-            costos={costos}
-            getModUsado={getModUsado}
-            totalGeneral={totalGeneral}
-            mostrarPrecioUnitario={mostrarPrecioUnitario}
-            nombrePresupuesto={nombreActivo}
-          />
-        </>
+
+          {/* ── Panel derecho: documento ── */}
+          <div className={`vp-doc ${mostrarLista && !presSel ? "vp-doc-hidden" : ""}`} style={{ flex: 1, minWidth: 0 }}>
+            {!presSel ? (
+              <div style={{ textAlign: "center", padding: "60px 20px", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>👈</div>
+                <p style={{ fontSize: 14 }}>Seleccioná un presupuesto de la lista</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {/* Botón volver mobile */}
+                <button className="vp-back" onClick={() => setMostrarLista(true)}
+                  style={{ display: "none", alignSelf: "flex-start", padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", marginBottom: 4 }}>
+                  ← Lista de presupuestos
+                </button>
+
+                {/* Toolbar */}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", padding: "12px 16px", background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{presSel.nombre}</div>
+                    {presSel.cliente?.nombre && <div style={{ fontSize: 11, color: "var(--text-muted)" }}>👤 {presSel.cliente.nombre}</div>}
+                  </div>
+                  {/* Estado */}
+                  <select value={presSel.estado || "nuevo"} onChange={e => onCambiarEstado(presSelId, e.target.value)}
+                    style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "6px 9px", background: `${estSel.color}18`, border: `1px solid ${estSel.color}44`, color: estSel.color, borderRadius: 7, cursor: "pointer", outline: "none", fontWeight: 700 }}>
+                    {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
+                  </select>
+                  <ToggleSwitch value={mostrarPrecioUnitario} onChange={setMostrarPrecioUnitario} label="P. unit." />
+                  {btnAcc("wa", whatsappCopiado ? "✓ Copiado" : "📲 WhatsApp", handleWhatsApp)}
+                  {btnAcc("gold", "🖨 PDF", handlePDF)}
+                </div>
+
+                {/* Historial de versiones */}
+                {(presSel.historialVersiones || []).length > 0 && (
+                  <div style={{ padding: "8px 14px", background: "rgba(200,160,42,0.08)", border: "1px solid rgba(200,160,42,0.20)", borderRadius: 8, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--accent)", fontWeight: 700 }}>📊 Versiones anteriores:</span>
+                    {(presSel.historialVersiones || []).map((v, i) => (
+                      <span key={i} style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+                        {fmtFecha(v.fecha)}: {fmtPeso(v.total)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Texto de apertura editable */}
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
+                    📝 Texto de apertura
+                  </div>
+                  <textarea value={textoApertura} onChange={e => setTextoApertura(e.target.value)}
+                    placeholder="Ej: Estimado cliente, le hacemos llegar el presente presupuesto..."
+                    rows={3}
+                    style={{
+                      width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13,
+                      padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)",
+                      color: "var(--text-primary)", borderRadius: 8, outline: "none", resize: "vertical",
+                      lineHeight: 1.6, transition: "border-color 0.15s",
+                    }}
+                    onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                    onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                </div>
+
+                {/* Resumen del presupuesto */}
+                <ResumenPresupuesto
+                  items={presSel.items}
+                  modulos={modulos}
+                  costos={costos}
+                  getModUsado={(item) => {
+                    const base = modulos[item.codigo];
+                    const dims = (presSel.dimOverride && presSel.dimOverride[`${item.codigo}-${item.id||0}`]) || base?.dimensiones;
+                    return { ...base, dimensiones: dims };
+                  }}
+                  totalGeneral={presSel.total}
+                  mostrarPrecioUnitario={mostrarPrecioUnitario}
+                  nombrePresupuesto={presSel.nombre}
+                />
+
+                {/* Condiciones editables */}
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
+                    📋 Condiciones y observaciones
+                  </div>
+                  <textarea value={condiciones} onChange={e => setCondiciones(e.target.value)}
+                    placeholder="Ej: Validez 15 días. Precios sin IVA. Seña del 40% para iniciar fabricación."
+                    rows={3}
+                    style={{
+                      width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13,
+                      padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)",
+                      color: "var(--text-primary)", borderRadius: 8, outline: "none", resize: "vertical",
+                      lineHeight: 1.6, transition: "border-color 0.15s",
+                    }}
+                    onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                    onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                </div>
+
+                {/* Guardar textos */}
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button onClick={guardarTextos} style={{
+                    padding: "9px 22px", borderRadius: 8, cursor: "pointer",
+                    background: guardandoTexto ? "rgba(126,207,138,0.15)" : "var(--accent-soft)",
+                    border: `1px solid ${guardandoTexto ? "rgba(126,207,138,0.4)" : "var(--accent-border)"}`,
+                    color: guardandoTexto ? "#7ecf8a" : "var(--accent)",
+                    fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, transition: "all 0.2s",
+                  }}>
+                    {guardandoTexto ? "✓ Guardado" : "💾 Guardar cambios"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
+
+      <style>{`
+        .vp-layout { align-items: flex-start; }
+        @media (max-width: 768px) {
+          .vp-layout { flex-direction: column !important; }
+          .vp-lista { width: 100% !important; }
+          .vp-lista-hidden { display: none !important; }
+          .vp-doc { width: 100% !important; }
+          .vp-doc-hidden { display: none !important; }
+          .vp-back { display: inline-flex !important; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -6522,7 +6693,7 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, 
         <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
         <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }}>
           {esProduccion && modulos && costos && (
-            <button onClick={() => generarFichaObra(id, p, modulos, costos)}
+            <button onClick={() => generarFichaObra(id, p, modulos, costos, (()=>{try{return JSON.parse(localStorage.getItem("carpicalc:perfil"))||{};}catch{return{};}}()))}
               style={{ padding: "4px 9px", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,80,48,0.15)", border: "1px solid rgba(200,80,48,0.35)", color: "#c85030", borderRadius: 5, cursor: "pointer" }}>
               📋 Ficha
             </button>
@@ -6534,74 +6705,298 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, 
   );
 }
 
-function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, costos }) {
+function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, costos, onActualizarPresupuesto }) {
   const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
-  const esProduccion = (p.estado || "nuevo") === "produccion";
+  const [expandido, setExpandido] = useState(false);
+  const [tabActiva, setTabActiva] = useState("presupuesto");
+
+  const tabs = [
+    { id: "presupuesto", label: "Presupuesto", icon: "📋" },
+    { id: "corte",       label: "Corte",       icon: "✂" },
+    { id: "modulos",     label: "Módulos",     icon: "🪵" },
+    { id: "ficha",       label: "Ficha",       icon: "📄" },
+  ];
+
   return (
-    <div className="lista-fila" style={{
-      display: "grid", gridTemplateColumns: "1fr 120px 130px auto",
-      alignItems: "center", gap: 12, padding: "12px 16px",
-      borderBottom: "1px solid var(--border)", transition: "background 0.12s",
-    }}
-      onMouseEnter={e => e.currentTarget.style.background = "var(--accent-soft)"}
-      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-    >
-      {/* Info */}
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: `${est.color}22`, color: est.color, border: `1px solid ${est.color}44`, borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>
-            {est.icon} {est.label}
-          </span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
-          {esProduccion && modulos && costos && (
-            <button onClick={() => generarFichaObra(id, p, modulos, costos)}
-              style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: "2px 8px", background: "rgba(200,80,48,0.12)", border: "1px solid rgba(200,80,48,0.30)", color: "#c85030", borderRadius: 4, cursor: "pointer", flexShrink: 0 }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(200,80,48,0.22)"}
-              onMouseLeave={e => e.currentTarget.style.background = "rgba(200,80,48,0.12)"}>
-              📋 Ficha
-            </button>
-          )}
-        </div>
-        <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 300 }}>
-          {fmtFecha(parseInt(id))} · {p.items.length} mód.
-          {p.cliente && p.cliente.nombre && <span> · 👤 {p.cliente.nombre}</span>}
-        </div>
-        {/* Total y acciones visibles solo en mobile */}
-        <div className="lista-mobile-row" style={{ display: "none", marginTop: 10, alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            {esProduccion && modulos && costos && (
-              <button onClick={() => generarFichaObra(id, p, modulos, costos)}
-                style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: "4px 9px", background: "rgba(200,80,48,0.12)", border: "1px solid rgba(200,80,48,0.30)", color: "#c85030", borderRadius: 5, cursor: "pointer" }}>
-                📋 Ficha
-              </button>
-            )}
-            <select value={p.estado || "nuevo"} onChange={e => onCambiarEstado(id, e.target.value)}
+    <div className="anim-fadeup" style={{
+      border: `1px solid ${expandido ? "var(--accent-border)" : "var(--border)"}`,
+      borderRadius: 10, overflow: "visible", transition: "border-color 0.18s",
+      background: "var(--bg-surface)", marginBottom: 2,
+    }}>
+      {/* Fila principal — click para expandir */}
+      <div className="lista-fila" style={{
+        display: "grid", gridTemplateColumns: "1fr 120px 130px auto",
+        alignItems: "center", gap: 12, padding: "12px 16px",
+        cursor: "pointer", transition: "background 0.12s",
+        borderRadius: expandido ? "10px 10px 0 0" : 10,
+        borderBottom: expandido ? "1px solid var(--border)" : "none",
+      }}
+        onClick={() => setExpandido(v => !v)}
+        onMouseEnter={e => e.currentTarget.style.background = "var(--accent-soft)"}
+        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: `${est.color}22`, color: est.color, border: `1px solid ${est.color}44`, borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>
+              {est.icon} {est.label}
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 300 }}>
+            {fmtFecha(parseInt(id))} · {p.items.length} mód.
+            {p.cliente?.nombre && <span> · 👤 {p.cliente.nombre}</span>}
+          </div>
+          {/* Mobile row */}
+          <div className="lista-mobile-row" style={{ display: "none", marginTop: 8, alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+            <select value={p.estado || "nuevo"} onChange={e => { e.stopPropagation(); onCambiarEstado(id, e.target.value); }}
+              onClick={e => e.stopPropagation()}
               style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "4px 6px", background: `${est.color}18`, border: `1px solid ${est.color}44`, color: est.color, borderRadius: 6, cursor: "pointer", outline: "none", fontWeight: 700 }}>
               {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
             </select>
-            <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
           </div>
         </div>
+        <div className="lista-desktop-col" style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", textAlign: "right" }}>
+          {fmtPeso(p.total)}
+        </div>
+        <select className="lista-desktop-col" value={p.estado || "nuevo"}
+          onChange={e => { e.stopPropagation(); onCambiarEstado(id, e.target.value); }}
+          onClick={e => e.stopPropagation()}
+          style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "5px 6px", background: `${est.color}18`, border: `1px solid ${est.color}44`, color: est.color, borderRadius: 6, cursor: "pointer", outline: "none", fontWeight: 700 }}>
+          {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
+        </select>
+        <div className="lista-desktop-col" onClick={e => e.stopPropagation()}>
+          <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
+        </div>
       </div>
-      {/* Total — oculto en mobile */}
-      <div className="lista-desktop-col lista-fila-total" style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", textAlign: "right" }}>
-        {fmtPeso(p.total)}
-      </div>
-      {/* Selector — oculto en mobile */}
-      <select className="lista-desktop-col" value={p.estado || "nuevo"} onChange={e => onCambiarEstado(id, e.target.value)}
-        style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "5px 6px", background: `${est.color}18`, border: `1px solid ${est.color}44`, color: est.color, borderRadius: 6, cursor: "pointer", outline: "none", fontWeight: 700 }}>
-        {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
-      </select>
-      {/* Acciones — ocultas en mobile */}
-      <div className="lista-desktop-col">
-        <AccionesTrabajo id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} compact />
+
+      {/* Panel expandido */}
+      {expandido && (
+        <div style={{ padding: "0 0 16px 0" }}>
+          {/* Tabs internas */}
+          <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)", padding: "0 16px" }}>
+            {tabs.map(t => (
+              <button key={t.id} onClick={() => setTabActiva(t.id)} style={{
+                padding: "10px 16px", background: "transparent", border: "none",
+                borderBottom: `2px solid ${tabActiva === t.id ? "var(--accent)" : "transparent"}`,
+                color: tabActiva === t.id ? "var(--accent)" : "var(--text-muted)",
+                fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
+                letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer",
+                transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5,
+              }}>
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ padding: "16px 16px 0" }}>
+            {tabActiva === "presupuesto" && (
+              <TabPresupuestoTrabajo p={p} modulos={modulos} costos={costos} />
+            )}
+            {tabActiva === "corte" && (
+              <TabCorteTrabajo p={p} modulos={modulos} costos={costos} />
+            )}
+            {tabActiva === "modulos" && (
+              <TabModulosTrabajo id={id} p={p} modulos={modulos} costos={costos} onActualizar={onActualizarPresupuesto} />
+            )}
+            {tabActiva === "ficha" && modulos && costos && (
+              <div style={{ textAlign: "center", paddingTop: 8 }}>
+                <button onClick={() => generarFichaObra(id, p, modulos, costos, (()=>{try{return JSON.parse(localStorage.getItem("carpicalc:perfil"))||{};}catch{return{};}}()))}
+                  style={{
+                    padding: "12px 28px", borderRadius: 8, cursor: "pointer",
+                    background: "rgba(200,80,48,0.12)", border: "1px solid rgba(200,80,48,0.35)",
+                    color: "#c85030", fontFamily: "'DM Mono',monospace", fontSize: 12,
+                    fontWeight: 700, letterSpacing: "0.08em", transition: "all 0.15s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(200,80,48,0.22)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "rgba(200,80,48,0.12)"}>
+                  📋 Generar Ficha de Obra — lista para imprimir o compartir
+                </button>
+                <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 10, fontFamily: "'DM Mono',monospace" }}>
+                  Incluye módulos, lista de corte, materiales y estado de cobros
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Tabs internas de FilaLista ────────────────────────────────────
+function TabPresupuestoTrabajo({ p, modulos, costos }) {
+  if (!p.items || p.items.length === 0) return <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin módulos cargados.</div>;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {p.items.map((item, idx) => {
+        const modBase = modulos[item.codigo];
+        if (!modBase) return null;
+        const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+        const modUsado = { ...modBase, dimensiones: dims };
+        const calc = calcularModulo(modUsado, costos);
+        return (
+          <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "var(--bg-subtle)", borderRadius: 8, gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>{item.codigo}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginLeft: 8 }}>{modBase.nombre}</span>
+              <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+                {dims.ancho}×{dims.profundidad}×{dims.alto} mm · ×{item.cantidad}
+              </div>
+            </div>
+            {calc && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a", flexShrink: 0 }}>{fmtPeso(calc.total * item.cantidad)}</span>}
+          </div>
+        );
+      })}
+      <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid var(--separator)" }}>
+        <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
       </div>
     </div>
   );
 }
 
-function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar, modulos, costos }) {
+function TabCorteTrabajo({ p, modulos, costos }) {
+  if (!p.items || p.items.length === 0) return <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin módulos cargados.</div>;
+  const piezas = [];
+  p.items.forEach(item => {
+    const modBase = modulos[item.codigo];
+    if (!modBase) return;
+    const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+    const modUsado = { ...modBase, dimensiones: dims };
+    const matDef = costos.materiales.find(m => m.tipo === modUsado.material) || costos.materiales[0];
+    const esp = matDef?.espesor || 18;
+    const dimMap = { ancho: dims.ancho, profundidad: dims.profundidad, alto: dims.alto };
+    modUsado.piezas.forEach(pz => {
+      const d1 = pz.especial ? (parseInt(pz.dimLibre1)||0) : Math.round(resolverDim(dimMap[pz.usaDim], pz.offsetEsp, pz.offsetMm, pz.divisor||1, esp));
+      const d2 = pz.especial ? (parseInt(pz.dimLibre2)||0) : Math.round(resolverDim(dimMap[pz.usaDim2], pz.offsetEsp2, pz.offsetMm2, pz.divisor2||1, esp));
+      piezas.push({ nombre: pz.nombre, modulo: `${item.codigo} ${modBase.nombre}`, d1, d2, cant: (pz.cantidad||1)*(item.cantidad||1) });
+    });
+  });
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <thead>
+          <tr style={{ background: "var(--accent-soft)" }}>
+            {["Módulo","Pieza","Alto","Ancho","Cant"].map(h => (
+              <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, borderBottom: "1px solid var(--border)" }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {piezas.map((pz, i) => (
+            <tr key={i} style={{ borderBottom: "1px solid var(--separator)" }}>
+              <td style={{ padding: "6px 10px", fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>{pz.modulo}</td>
+              <td style={{ padding: "6px 10px", fontWeight: 600, color: "var(--text-primary)" }}>{pz.nombre}</td>
+              <td style={{ padding: "6px 10px", fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>{pz.d1}</td>
+              <td style={{ padding: "6px 10px", fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>{pz.d2}</td>
+              <td style={{ padding: "6px 10px", fontFamily: "'DM Mono',monospace", fontWeight: 900, color: "var(--accent)" }}>×{pz.cant}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TabModulosTrabajo({ id, p, modulos, costos, onActualizar }) {
+  const [editandoIdx, setEditandoIdx] = useState(null);
+  const [dimsEdit, setDimsEdit] = useState({});
+
+  const abrirEdit = (idx, item) => {
+    const modBase = modulos[item.codigo];
+    const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase?.dimensiones || { ancho: 600, profundidad: 550, alto: 700 };
+    setDimsEdit({ ...dims });
+    setEditandoIdx(idx);
+  };
+
+  const guardarDims = (idx, item) => {
+    const keyId = `${item.codigo}-${item.id || 0}`;
+    const nuevoOverride = { ...(p.dimOverride || {}), [keyId]: { ...dimsEdit } };
+    onActualizar(id, { dimOverride: nuevoOverride });
+    setEditandoIdx(null);
+  };
+
+  const inp = { fontFamily: "'DM Mono',monospace", fontSize: 13, padding: "6px 9px", background: "var(--bg-base)", border: "1px solid var(--accent-border)", color: "var(--text-primary)", borderRadius: 6, outline: "none", width: 80, textAlign: "center" };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <p style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+        Los cambios aplican solo a este presupuesto. El catálogo no se modifica.
+      </p>
+      {p.items.map((item, idx) => {
+        const modBase = modulos[item.codigo];
+        if (!modBase) return null;
+        const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+        const estaEditando = editandoIdx === idx;
+        const cat = CATEGORIAS_DEFAULT.find(c => c.id === (modBase.categoria || "otros")) || CATEGORIAS_DEFAULT[5];
+
+        return (
+          <div key={idx} style={{
+            background: estaEditando ? "var(--accent-soft)" : "var(--bg-subtle)",
+            border: `1px solid ${estaEditando ? "var(--accent-border)" : "var(--border)"}`,
+            borderRadius: 10, padding: "12px 14px", transition: "all 0.15s",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: estaEditando ? 14 : 0, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 10, fontWeight: 700, background: `${cat.color}20`, color: cat.color, border: `1px solid ${cat.color}30`, borderRadius: 4, padding: "1px 7px", fontFamily: "'DM Mono',monospace" }}>
+                {cat.icon} {item.codigo}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", flex: 1 }}>{modBase.nombre}</span>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)" }}>
+                {dims.ancho}×{dims.profundidad}×{dims.alto} mm · ×{item.cantidad}
+              </span>
+              {!estaEditando && (
+                <button onClick={() => abrirEdit(idx, item)}
+                  style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+                  ✎ Editar dimensiones
+                </button>
+              )}
+            </div>
+
+            {estaEditando && (
+              <div>
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 12 }}>
+                  {["ancho", "profundidad", "alto"].map(dim => (
+                    <div key={dim} style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+                      <label style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>{dim}</label>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <input type="number" value={dimsEdit[dim]} onChange={e => setDimsEdit(d => ({ ...d, [dim]: parseInt(e.target.value) || 0 }))}
+                          style={inp} />
+                        <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>mm</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => guardarDims(idx, item)}
+                    style={{ padding: "7px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+                    ✓ Guardar
+                  </button>
+                  <button onClick={() => setEditandoIdx(null)}
+                    style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                    Cancelar
+                  </button>
+                  {p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`] && (
+                    <button onClick={() => {
+                      const keyId = `${item.codigo}-${item.id || 0}`;
+                      const nuevoOverride = { ...(p.dimOverride || {}) };
+                      delete nuevoOverride[keyId];
+                      onActualizar(id, { dimOverride: nuevoOverride });
+                      setEditandoIdx(null);
+                    }}
+                      style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid rgba(200,60,60,0.25)", color: "#e07070" }}>
+                      ↩ Restaurar original
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar, modulos, costos, onActualizarPresupuesto }) {
   const [vistaTab, setVistaTab] = useState("lista");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [orden, setOrden] = useState("fecha_desc");
@@ -6735,7 +7130,7 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar, mo
                 <div style={{ textAlign: "center", padding: "30px 0", color: "var(--text-muted)", fontSize: 13 }}>No hay trabajos en este estado.</div>
               ) : (
                 filtradas.map(([id, p]) => (
-                  <FilaLista key={id} id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} modulos={modulos} costos={costos} />
+                  <FilaLista key={id} id={id} p={p} onCambiarEstado={onCambiarEstado} onEliminar={onEliminar} onCargar={onCargar} modulos={modulos} costos={costos} onActualizarPresupuesto={onActualizarPresupuesto} />
                 ))
               )}
             </Card>
@@ -6758,10 +7153,11 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
 
   const cobros = p.cobros || [];
   const totalCobrado = cobros.reduce((a, c) => a + c.monto, 0);
-  const saldoPendiente = p.total - totalCobrado;
-  const pctCobrado = p.total > 0 ? Math.min(100, (totalCobrado / p.total) * 100) : 0;
+  const saldoPendiente = Math.max(0, p.total - totalCobrado);
+  const totalValido = p.total > 0;
+  const pctCobrado = totalValido ? Math.min(100, Math.round((totalCobrado / p.total) * 100)) : 0;
 
-  const margen = p.costoReal > 0
+  const margen = (totalValido && p.costoReal > 0)
     ? Math.round(((p.total - p.costoReal) / p.total) * 100)
     : null;
 
@@ -6862,8 +7258,13 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
 
         {/* Total y margen */}
         <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 16, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</div>
-          {margen !== null && (
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 16, fontWeight: 700, color: totalValido ? "#7ecf8a" : "#e07070" }}>
+            {fmtPeso(p.total)}
+          </div>
+          {!totalValido && (
+            <div style={{ fontSize: 10, color: "#e07070", fontFamily: "'DM Mono',monospace" }}>⚠ Revisar costos</div>
+          )}
+          {margen !== null && totalValido && (
             <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: margen >= 30 ? "#7ecf8a" : margen >= 15 ? "#c8a02a" : "#e07070", fontWeight: 700 }}>
               {margen}% margen
             </div>
@@ -6879,7 +7280,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
           {/* Botón Ficha de Obra — solo en producción */}
           {(p.estado === "produccion") && modulos && costos && (
             <div style={{ marginBottom: 16 }}>
-              <button onClick={() => generarFichaObra(id, p, modulos, costos)}
+              <button onClick={() => generarFichaObra(id, p, modulos, costos, (()=>{try{return JSON.parse(localStorage.getItem("carpicalc:perfil"))||{};}catch{return{};}}()))}
                 style={{
                   width: "100%", padding: "10px 16px", borderRadius: 8, cursor: "pointer",
                   background: "rgba(200,80,48,0.12)", border: "1px solid rgba(200,80,48,0.35)",
@@ -6968,11 +7369,11 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
                     </button>
                   )}
                 </div>
-                {margen !== null && (
+                {margen !== null && totalValido && (
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--separator)" }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>Ganancia neta</span>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: margen >= 0 ? "#7ecf8a" : "#e07070" }}>
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: (p.total - p.costoReal) >= 0 ? "#7ecf8a" : "#e07070" }}>
                         {fmtPeso(p.total - p.costoReal)}
                       </span>
                     </div>
@@ -6988,7 +7389,12 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
                     </div>
                   </>
                 )}
-                {margen === null && (
+                {!totalValido && (
+                  <div style={{ fontSize: 11, color: "#e07070", fontFamily: "'DM Mono',monospace", padding: "6px 0", borderTop: "1px solid var(--separator)" }}>
+                    ⚠ El total del presupuesto es negativo. Revisá los costos en 💰 Costos.
+                  </div>
+                )}
+                {margen === null && totalValido && (
                   <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
                     Ingresá el costo real para ver el margen
                   </div>
@@ -7111,7 +7517,7 @@ function PanelCaja({ presupuestos, onActualizar, modulos, costos }) {
               <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 6 }}>Total cobrado</div>
               <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(totalCobrado)}</div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3, fontWeight: 300 }}>
-                {totalPresupuestado > 0 ? Math.round((totalCobrado / totalPresupuestado) * 100) : 0}% del total
+                {totalPresupuestado !== 0 ? Math.round((totalCobrado / Math.abs(totalPresupuestado)) * 100) : 0}% del total
               </div>
             </div>
             <div className="anim-fadeup stagger-3" style={{ ...metricaStyle, borderTop: "3px solid #e07070" }}>
@@ -7136,6 +7542,199 @@ function PanelCaja({ presupuestos, onActualizar, modulos, costos }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ── PanelPerfil ───────────────────────────────────────────────────
+function PanelPerfil({ perfil, onGuardar }) {
+  const [form, setForm] = useState({ ...perfil });
+  const [guardado, setGuardado] = useState(false);
+  const logoRef = React.useRef();
+
+  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleLogo = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const b64 = await comprimirImagen(file, 300, 120, 0.88);
+    upd("logo", b64);
+    e.target.value = "";
+  };
+
+  const handleGuardar = () => {
+    onGuardar({ ...form });
+    setGuardado(true);
+    setTimeout(() => setGuardado(false), 2000);
+  };
+
+  const inp = {
+    fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "9px 13px",
+    background: "var(--bg-base)", border: "1px solid var(--border)",
+    color: "var(--text-primary)", borderRadius: 8, outline: "none",
+    width: "100%", transition: "border-color 0.15s",
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 640 }}>
+      <SectionTitle sub="Esta información aparece en todos los documentos generados">
+        ⚙ Mi Taller
+      </SectionTitle>
+
+      <Card className="rsp-card">
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+          {/* Logo */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 10 }}>
+              Logo del taller
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{
+                width: 120, height: 60, borderRadius: 8, overflow: "hidden",
+                border: "1px dashed var(--border)", display: "flex", alignItems: "center",
+                justifyContent: "center", background: "var(--bg-subtle)", flexShrink: 0,
+                cursor: "pointer", transition: "border-color 0.15s",
+              }}
+                onClick={() => logoRef.current?.click()}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
+              >
+                {form.logo
+                  ? <img src={form.logo} alt="logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                  : <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", textAlign: "center" }}>🖼 Subir logo</span>
+                }
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
+                  PNG o JPG recomendado. Se comprime automáticamente a 300×120px.
+                </p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => logoRef.current?.click()}
+                    style={{ padding: "6px 14px", borderRadius: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+                    {form.logo ? "Cambiar" : "Subir logo"}
+                  </button>
+                  {form.logo && (
+                    <button onClick={() => upd("logo", null)}
+                      style={{ padding: "6px 14px", borderRadius: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid rgba(200,60,60,0.25)", color: "#e07070" }}>
+                      Quitar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <input ref={logoRef} type="file" accept="image/*" onChange={handleLogo} style={{ display: "none" }} />
+          </div>
+
+          <div style={{ height: 1, background: "var(--separator)" }} />
+
+          {/* Nombre y slogan */}
+          <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
+                Nombre del taller
+              </label>
+              <input value={form.nombre} onChange={e => upd("nombre", e.target.value)}
+                placeholder="Ej: Carpintería del Sur"
+                style={inp}
+                onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                onBlur={e => e.target.style.borderColor = "var(--border)"} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
+                Slogan (opcional)
+              </label>
+              <input value={form.slogan} onChange={e => upd("slogan", e.target.value)}
+                placeholder="Ej: Muebles a medida con calidad"
+                style={inp}
+                onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                onBlur={e => e.target.style.borderColor = "var(--border)"} />
+            </div>
+          </div>
+
+          {/* Contacto */}
+          <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            {[
+              { k: "tel", label: "Teléfono", ph: "Ej: 341 555-1234" },
+              { k: "email", label: "Email", ph: "Ej: taller@mail.com" },
+              { k: "direccion", label: "Dirección", ph: "Ej: Av. San Martín 456" },
+            ].map(({ k, label, ph }) => (
+              <div key={k}>
+                <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
+                  {label}
+                </label>
+                <input value={form[k]} onChange={e => upd(k, e.target.value)}
+                  placeholder={ph} style={inp}
+                  onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                  onBlur={e => e.target.style.borderColor = "var(--border)"} />
+              </div>
+            ))}
+          </div>
+
+          {/* Preview */}
+          {(form.nombre || form.logo) && (
+            <div style={{ padding: "14px 16px", background: "#fff", borderRadius: 8, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+                Vista previa del encabezado
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, borderBottom: "2px solid #a07030", paddingBottom: 10 }}>
+                {form.logo && <img src={form.logo} alt="logo" style={{ height: 40, objectFit: "contain" }} />}
+                <div>
+                  {form.nombre && <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 900, color: "#7a4a10" }}>{form.nombre}</div>}
+                  {form.slogan && <div style={{ fontSize: 11, color: "#9a7040", fontStyle: "italic" }}>{form.slogan}</div>}
+                  <div style={{ fontSize: 10, color: "#aaa", marginTop: 2 }}>
+                    {[form.tel, form.email, form.direccion].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Textos predeterminados */}
+          <div style={{ height: 1, background: "var(--separator)" }} />
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 4 }}>
+              Texto de apertura predeterminado
+            </div>
+            <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>
+              Aparece al inicio de cada presupuesto en Vista Previa. Podés editarlo por presupuesto.
+            </p>
+            <textarea value={form.textoApertura || ""} onChange={e => upd("textoApertura", e.target.value)}
+              rows={3} placeholder="Ej: Estimado cliente, le hacemos llegar el presente presupuesto por los trabajos solicitados."
+              style={{ ...inp, resize: "vertical", lineHeight: 1.5 }}
+              onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+              onBlur={e => e.target.style.borderColor = "var(--border)"} />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 4 }}>
+              Condiciones predeterminadas
+            </div>
+            <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>
+              Aparece al pie de cada presupuesto. Podés editarlo por presupuesto.
+            </p>
+            <textarea value={form.condiciones || ""} onChange={e => upd("condiciones", e.target.value)}
+              rows={3} placeholder="Ej: Validez del presupuesto: 15 días. Precios sin IVA. Seña del 40% para iniciar fabricación."
+              style={{ ...inp, resize: "vertical", lineHeight: 1.5 }}
+              onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+              onBlur={e => e.target.style.borderColor = "var(--border)"} />
+          </div>
+
+          {/* Guardar */}
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button onClick={handleGuardar} style={{
+              padding: "10px 24px", borderRadius: 8, cursor: "pointer",
+              background: guardado ? "rgba(126,207,138,0.15)" : "linear-gradient(135deg,var(--accent),var(--accent-hover))",
+              border: guardado ? "1px solid rgba(126,207,138,0.4)" : "none",
+              color: guardado ? "#7ecf8a" : "var(--text-inverted)",
+              fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700,
+              letterSpacing: "0.08em", transition: "all 0.2s",
+              boxShadow: guardado ? "none" : "0 3px 12px rgba(180,100,20,0.28)",
+            }}>
+              {guardado ? "✓ Guardado" : "Guardar datos del taller"}
+            </button>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -7353,16 +7952,18 @@ function AppInterna() {
   const [modulos, setModulos] = useState(null);
   const [costos, setCostos] = useState(null);
   const [presupuestos, setPresupuestos] = useState({});
+  const [perfil, setPerfil] = useState({ nombre: "", slogan: "", tel: "", email: "", direccion: "", logo: null });
   const [cargando, setCargando] = useState(true);
   const [saveEst, setSaveEst] = useState(null);
   const [items, setItems] = useState([]);
   const [dimOverride, setDimOverride] = useState({});
 
   useEffect(() => {
-    cargarDatos().then(({ modulos, costos, presupuestos }) => {
+    cargarDatos().then(({ modulos, costos, presupuestos, perfil }) => {
       setModulos(modulos);
       setCostos(costos);
       setPresupuestos(presupuestos || {});
+      if (perfil) setPerfil(perfil);
       setCargando(false);
     });
   }, []);
@@ -7471,6 +8072,7 @@ function AppInterna() {
     { id: "caja",        label: "Caja",         icon: "💵" },
     { id: "catalogo",    label: "Catálogo",     icon: "🗂" },
     { id: "costos",      label: "Costos",       icon: "💰" },
+    { id: "config",      label: "Mi taller",    icon: "⚙" },
   ];
 
   if (cargando)
@@ -7559,6 +8161,10 @@ function AppInterna() {
               getModUsado={getModUsado}
               totalGeneral={totalGeneral}
               presupuestos={presupuestos}
+              perfil={perfil}
+              onActualizarPresupuesto={handleActualizarPresupuesto}
+              onCambiarEstado={handleCambiarEstado}
+              onCargarPresupuesto={handleCargarPresupuesto}
             />
           )}
           {vista === "corte" && (
@@ -7578,6 +8184,7 @@ function AppInterna() {
               onCargar={(p) => { handleCargarPresupuesto(p); setVista("presupuesto"); }}
               modulos={modulos}
               costos={costos}
+              onActualizarPresupuesto={handleActualizarPresupuesto}
             />
           )}
           {vista === "caja" && (
@@ -7600,6 +8207,15 @@ function AppInterna() {
           )}
           {vista === "costos" && (
             <HojaCostos costos={costos} setCostos={setCostos} onSave={hSaveC} />
+          )}
+          {vista === "config" && (
+            <PanelPerfil
+              perfil={perfil}
+              onGuardar={(nuevo) => {
+                setPerfil(nuevo);
+                withSave(() => guardarPerfil(nuevo));
+              }}
+            />
           )}
         </main>
       </div>
