@@ -5497,7 +5497,6 @@ function Presupuesto({
         costos={costos}
         getModUsado={getModUsado}
         totalGeneral={totalGeneral}
-        mostrarPrecioUnitario={mostrarPrecioUnitario}
         nombrePresupuesto={nombreTrabajo}
       />
       <ToastContainer />
