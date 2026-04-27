@@ -5800,6 +5800,7 @@ function VistaPrevia({
   onActualizarPresupuesto, onCambiarEstado, onCargarPresupuesto,
   presupuestoSelId, onSeleccionarPresupuesto,
   costosVersion = 0,
+  onVerRentabilidad,
 }) {
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
   const [presSelIdLocal, setPresSelIdLocal] = useState(presupuestoSelId || null);
@@ -5941,16 +5942,37 @@ function VistaPrevia({
                     {p.nombre}
                   </div>
                   {/* Precio — destacado */}
-                  <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", marginBottom: 4 }}>
+                  <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", marginBottom: 6 }}>
                     {fmtPeso(p.total)}
                   </div>
-                  {/* Estado + cliente — secundarios */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, background: `${est.color}20`, color: est.color, border: `1px solid ${est.color}30`, borderRadius: 3, padding: "1px 5px", fontFamily: "'DM Mono',monospace" }}>
-                      {est.icon} {est.label}
-                    </span>
-                    {p.cliente?.nombre && (
-                      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>👤 {p.cliente.nombre}</span>
+                  {/* Estado + cliente + NAVEGACIÓN */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, background: `${est.color}20`, color: est.color, border: `1px solid ${est.color}30`, borderRadius: 3, padding: "1px 5px", fontFamily: "'DM Mono',monospace" }}>
+                        {est.icon} {est.label}
+                      </span>
+                      {p.cliente?.nombre && (
+                        <span style={{ fontSize: 10, color: "var(--text-muted)" }}>👤 {p.cliente.nombre}</span>
+                      )}
+                    </div>
+                    {/* NAVEGACIÓN - Enlace Presupuesto a Caja */}
+                    {onVerRentabilidad && (
+                      <button
+                        onClick={e => { e.stopPropagation(); onVerRentabilidad(id); }}
+                        title="Ver rentabilidad en Caja"
+                        style={{
+                          display: "flex", alignItems: "center", gap: 4,
+                          padding: "2px 8px", borderRadius: 5, cursor: "pointer",
+                          fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                          background: "rgba(126,207,138,0.12)",
+                          border: "1px solid rgba(126,207,138,0.30)",
+                          color: "#7ecf8a", transition: "all 0.15s", flexShrink: 0,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = "rgba(126,207,138,0.25)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "rgba(126,207,138,0.12)"}
+                      >
+                        📊 Rentabilidad
+                      </button>
                     )}
                   </div>
                 </div>
@@ -7163,8 +7185,8 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar, mo
 // 13. CAJA
 // ══════════════════════════════════════════════════════════════════
 // ── PanelCaja ─────────────────────────────────────────────────────
-function FilaCaja({ id, p, onActualizar, modulos, costos }) {
-  const [abierto, setAbierto] = useState(false);
+function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
+  const [abierto, setAbierto] = useState(autoAbrir); // auto-abrir si viene de "Ver Rentabilidad"
   const [montoCobro, setMontoCobro] = useState("");
   const [conceptoCobro, setConceptoCobro] = useState("Seña");
   const [costoReal, setCostoReal] = useState(p.costoReal ?? "");
@@ -7248,7 +7270,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
   };
 
   return (
-    <div className="hover-lift anim-fadeup" style={{
+    <div id={`filacaja-${id}`} className="hover-lift anim-fadeup" style={{
       background: "var(--bg-surface)", border: "1px solid var(--border)",
       borderRadius: 12, overflow: "visible", transition: "border-color 0.18s",
       borderLeft: `3px solid ${est.color}`,
@@ -7586,8 +7608,25 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
   );
 }
 
-function PanelCaja({ presupuestos, onActualizar, modulos, costos }) {
+function PanelCaja({ presupuestos, onActualizar, modulos, costos, cajaPresId, onClearCajaPresId }) {
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
+
+  // NAVEGACIÓN - Enlace Presupuesto a Caja
+  // Si cajaPresId está seteado, hace scroll a esa fila y la marca para auto-abrir.
+  // Se limpia después del primer render para no interferir con la navegación normal.
+  const [autoAbrirId, setAutoAbrirId] = useState(cajaPresId || null);
+  useEffect(() => {
+    if (cajaPresId) {
+      setAutoAbrirId(cajaPresId);
+      // Scroll suave a la fila después de renderizar
+      setTimeout(() => {
+        const el = document.getElementById(`filacaja-${cajaPresId}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        onClearCajaPresId && onClearCajaPresId();
+      }, 150);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cajaPresId]);
 
   // Métricas globales
   const totalPresupuestado = entries.reduce((a, [, p]) => a + p.total, 0);
@@ -7659,7 +7698,7 @@ function PanelCaja({ presupuestos, onActualizar, modulos, costos }) {
           {/* Lista de trabajos */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {entries.map(([id, p]) => (
-              <FilaCaja key={id} id={id} p={p} onActualizar={onActualizar} modulos={modulos} costos={costos} />
+              <FilaCaja key={id} id={id} p={p} onActualizar={onActualizar} modulos={modulos} costos={costos} autoAbrir={autoAbrirId === id} />
             ))}
           </div>
         </>
@@ -8086,6 +8125,10 @@ function AppInterna() {
   const [items, setItems] = useState([]);
   const [dimOverride, setDimOverride] = useState({});
   const [presupuestoVistaPreviaId, setPresupuestoVistaPreviaId] = useState(null);
+  // NAVEGACIÓN - Enlace Presupuesto a Caja
+  // Cuando el usuario hace click en "Ver Rentabilidad" desde Vista Previa,
+  // guardamos el id aquí para que PanelCaja abra esa fila automáticamente.
+  const [cajaPresId, setCajaPresId] = useState(null);
   // Versión de costos: timestamp de la última modificación en la pestaña Costos.
   // Se compara contra el timestamp del presupuesto para saber si sus precios están desactualizados.
   const [costosVersion, setCostosVersion] = useState(leerVersionCostos);
@@ -8327,6 +8370,10 @@ function AppInterna() {
               presupuestoSelId={presupuestoVistaPreviaId}
               onSeleccionarPresupuesto={setPresupuestoVistaPreviaId}
               costosVersion={costosVersion}
+              onVerRentabilidad={(id) => {
+                setCajaPresId(id);
+                setVista("caja");
+              }}
             />
           )}
           {vista === "corte" && (
@@ -8356,6 +8403,8 @@ function AppInterna() {
               onActualizar={handleActualizarPresupuesto}
               modulos={modulos}
               costos={costos}
+              cajaPresId={cajaPresId}
+              onClearCajaPresId={() => setCajaPresId(null)}
             />
           )}
           {vista === "catalogo" && (
