@@ -1,5 +1,32 @@
 import React, { useState, useCallback, useEffect } from "react";
 
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                        CarpiCálc — App.js                       ║
+// ╠══════════════════════════════════════════════════════════════════╣
+// ║  SECCIONES (buscar por el nombre para navegar):                 ║
+// ║  1. DATOS INICIALES      — costoIniciales, modulosIniciales     ║
+// ║  2. PERSISTENCIA         — cargarDatos, guardarXxx, historial   ║
+// ║  3. CÁLCULO              — resolverDim, calcularModulo          ║
+// ║  4. CONSTANTES GLOBALES  — PERFIL_VACIO, TIPO_MAT, CATEGORIAS  ║
+// ║  5. UTILIDADES           — fmtPeso, fmtFecha, helpers           ║
+// ║  6. HOOKS                — useUndo, useTema                     ║
+// ║  7. EXPORTACIÓN          — WhatsApp, PDF, Ficha de Obra         ║
+// ║  8. UI PRIMITIVOS        — Field, TextInput, Card, Btn...       ║
+// ║  9. COSTOS               — HojaCostos y sus sub-componentes     ║
+// ║ 10. CATÁLOGO             — FormModulo, TarjetaModulo...         ║
+// ║ 11. PRESUPUESTO          — GestorPresupuestos, BarraTotal...    ║
+// ║ 12. VISTA PREVIA         — VistaPrevia                          ║
+// ║ 13. LISTA DE CORTE       — ListaCorte y sus sub-componentes     ║
+// ║ 14. TABLERO DE TRABAJOS  — Kanban, FilaLista, tabs internas     ║
+// ║ 15. CAJA                 — FilaCaja, PanelCaja                  ║
+// ║ 16. MI TALLER            — PanelPerfil                          ║
+// ║ 17. APP PRINCIPAL        — Header, Login, AppInterna, App       ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+// ══════════════════════════════════════════════════════════════════
+// 1. DATOS INICIALES
+// ══════════════════════════════════════════════════════════════════
+
 const costoIniciales = {
   materiales: [
     {
@@ -189,7 +216,9 @@ const modulosIniciales = {
   },
 };
 
-// ── Persistencia ──────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// 2. PERSISTENCIA
+// ══════════════════════════════════════════════════════════════════
 const PERFIL_VACIO = { nombre: "", slogan: "", tel: "", email: "", direccion: "", logo: null, textoApertura: "", condiciones: "" };
 
 async function cargarDatos() {
@@ -246,7 +275,9 @@ async function guardarSnapshotPrecios(costos) {
   } catch {}
 }
 
-// ── Cálculo (intacto) ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// 3. CÁLCULO
+// ══════════════════════════════════════════════════════════════════
 function resolverDim(base, offsetEsp, offsetMm, divisor, espesor) {
   const raw = (base || 0) + (offsetEsp || 0) * (espesor || 0) + (offsetMm || 0);
   return Math.max(0, raw / Math.max(1, divisor || 1));
@@ -305,8 +336,11 @@ function calcularModulo(modulo, costos) {
   return { costoMaterial, costoTapacanto, costoMO, costoHerrajes, costoBase, ganancia, total, m2Neto, m2Total, pctDesp, metrosTapacanto, desglosePiezas, espesor: esp };
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
-const fmtPeso = (n) => "$ " + Math.round(n).toLocaleString("es-AR");
+// ══════════════════════════════════════════════════════════════════
+// 4. CONSTANTES GLOBALES + UTILIDADES
+// ══════════════════════════════════════════════════════════════════
+// ─────────────────────────────────
+const fmtPeso   = (n) => "$ " + Math.round(n).toLocaleString("es-AR");
 const fmtNum = (n, d = 2) => Number(n).toFixed(d);
 const fmtFecha = (ts) =>
   new Date(ts).toLocaleDateString("es-AR", {
@@ -321,6 +355,12 @@ const fmtFechaLarga = (ts) =>
     month: "long",
     year: "numeric",
   });
+// Lee el perfil del taller desde localStorage (usable fuera de React)
+function leerPerfil() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:perfil")) || {}; }
+  catch { return {}; }
+}
+
 const TIPO_MAT = {
   melamina: "Melamina",
   mdf: "MDF",
@@ -337,6 +377,9 @@ const CATEGORIAS_DEFAULT = [
   { id: "otros",    label: "Otros",     icon: "📦", color: "#808080" },
 ];
 
+// ══════════════════════════════════════════════════════════════════
+// 5. HOOKS PERSONALIZADOS
+// ══════════════════════════════════════════════════════════════════
 // ── Hook global de Undo ───────────────────────────────────────────
 function useUndo() {
   const [toasts, setToasts] = useState([]);
@@ -783,6 +826,9 @@ const GlobalStyles = () => (
   `}</style>
 );
 
+// ══════════════════════════════════════════════════════════════════
+// 6. UI PRIMITIVOS
+// ══════════════════════════════════════════════════════════════════
 // ── UI Primitives ─────────────────────────────────────────────────
 function Field({ label, children }) {
   return (
@@ -1401,6 +1447,9 @@ const FilaVista = ({ style, onEnter, onLeave, children }) => (
   </div>
 );
 
+// ══════════════════════════════════════════════════════════════════
+// 7. COSTOS
+// ══════════════════════════════════════════════════════════════════
 // ── HojaCostos ────────────────────────────────────────────────────
 function HojaCostos({ costos, setCostos, onSave }) {
   const [nuevoMat, setNuevoMat] = useState({
@@ -3484,6 +3533,9 @@ function FormModulo({
   );
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 8. CATÁLOGO
+// ══════════════════════════════════════════════════════════════════
 // ── CatalogoModulos ───────────────────────────────────────────────
 function AccionesModulo({ onEditar, onEliminar, onDuplicar }) {
   const [confirmar, setConfirmar] = useState(false);
@@ -3818,7 +3870,10 @@ function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onImag
     </div>
   );
 }
-// ── CatalogoModulos ACTUALIZADO (Fase 5.1) ────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// 8. CATÁLOGO
+// ══════════════════════════════════════════════════════════════════
+// ── CatalogoModulos ───────────────────────────────────────────────
 function CatalogoModulos({
   modulos,
   setModulos,
@@ -4345,6 +4400,9 @@ function PanelSelectorModulos({ modulos, onSeleccionar }) {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 9. PRESUPUESTO
+// ══════════════════════════════════════════════════════════════════
 // ── GestorPresupuestos ────────────────────────────────────────────
 function GestorPresupuestos({
   presupuestos,
@@ -4617,12 +4675,6 @@ function imprimirPresupuesto(
     win.document.write(html);
     win.document.close();
   } else alert("El navegador bloqueó la ventana emergente.");
-}
-
-// ── Helpers ───────────────────────────────────────────────────────
-function leerPerfil() {
-  try { return JSON.parse(localStorage.getItem("carpicalc:perfil")) || {}; }
-  catch { return {}; }
 }
 
 // ── Ficha de Obra ─────────────────────────────────────────────────
@@ -5636,6 +5688,9 @@ function Presupuesto({
   );
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 10. VISTA PREVIA
+// ══════════════════════════════════════════════════════════════════
 // ── VistaPrevia ───────────────────────────────────────────────────
 function VistaPrevia({
   items, modulos, costos, onLimpiar, getModUsado,
@@ -5912,6 +5967,9 @@ function VistaPrevia({
   );
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 11. LISTA DE CORTE
+// ══════════════════════════════════════════════════════════════════
 // ── ListaCorte ────────────────────────────────────────────────────
 const thStyle = {
   fontSize: 10,
@@ -6368,6 +6426,9 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
   );
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 12. TABLERO DE TRABAJOS
+// ══════════════════════════════════════════════════════════════════
 // ── TableroKanban ─────────────────────────────────────────────────
 function AccionesTrabajo({ id, p, onCambiarEstado, onEliminar, onCargar, compact }) {
   const [confirmDel, setConfirmDel] = useState(false);
@@ -6891,6 +6952,9 @@ function TableroKanban({ presupuestos, onCambiarEstado, onEliminar, onCargar, mo
   );
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 13. CAJA
+// ══════════════════════════════════════════════════════════════════
 // ── PanelCaja ─────────────────────────────────────────────────────
 function FilaCaja({ id, p, onActualizar, modulos, costos }) {
   const [abierto, setAbierto] = useState(false);
@@ -7293,6 +7357,9 @@ function PanelCaja({ presupuestos, onActualizar, modulos, costos }) {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 14. MI TALLER
+// ══════════════════════════════════════════════════════════════════
 // ── PanelPerfil ───────────────────────────────────────────────────
 function PanelPerfil({ perfil, onGuardar }) {
   const [form, setForm] = useState({ ...perfil });
@@ -7486,6 +7553,9 @@ function PanelPerfil({ perfil, onGuardar }) {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 15. APP PRINCIPAL
+// ══════════════════════════════════════════════════════════════════
 // ── Header ────────────────────────────────────────────────────────
 function Header({ vista, setVista, tabs, saveEst, tema, toggleTema }) {
   return (
@@ -7699,7 +7769,7 @@ function AppInterna() {
   const [modulos, setModulos] = useState(null);
   const [costos, setCostos] = useState(null);
   const [presupuestos, setPresupuestos] = useState({});
-  const [perfil, setPerfil] = useState({ nombre: "", slogan: "", tel: "", email: "", direccion: "", logo: null });
+  const [perfil, setPerfil] = useState({ ...PERFIL_VACIO });
   const [cargando, setCargando] = useState(true);
   const [saveEst, setSaveEst] = useState(null);
   const [items, setItems] = useState([]);
@@ -7712,7 +7782,7 @@ function AppInterna() {
       setCostos(costos);
       setPresupuestos(presupuestos || {});
       if (perfil) setPerfil(perfil);
-      // Recuperar borrador de sessionStorage si existe
+      // Recuperar borrador guardado (persiste entre cierres de pestaña)
       try {
         const borrador = localStorage.getItem("carpicalc:borrador");
         if (borrador) {
@@ -7738,7 +7808,7 @@ function AppInterna() {
     }
   }, [items, dimOverride]);
 
-  // 5. Prevenir pérdida de datos al cerrar/recargar con presupuesto activo
+  // Avisa antes de cerrar si hay un presupuesto sin guardar
   useEffect(() => {
     const handler = (e) => {
       if (items.length > 0) {
@@ -7805,13 +7875,11 @@ function AppInterna() {
     };
     setPresupuestos(nuevo);
     withSave(() => guardarPresupuestos(nuevo));
-    // Limpiar borrador al guardar con éxito
     localStorage.removeItem("carpicalc:borrador");
   };
   const handleCargarPresupuesto = (p) => {
     setItems(p.items ? [...p.items] : []);
     setDimOverride(p.dimOverride && typeof p.dimOverride === "object" ? { ...p.dimOverride } : {});
-    // Al cargar un presupuesto guardado, limpiar el borrador anterior
     localStorage.removeItem("carpicalc:borrador");
   };
   const handleEliminarPresupuesto = async (id) => {
