@@ -87,6 +87,16 @@ const costoIniciales = {
   ],
   desperdicioPct: 20,
   gastosGenerales: 18,
+  // Gastos fijos del taller — se usan para calcular el costo por hora operativo
+  gastosFijos: {
+    items: [
+      { id: 1, nombre: "Alquiler", monto: 80000 },
+      { id: 2, nombre: "Servicios (luz, gas, agua)", monto: 15000 },
+      { id: 3, nombre: "Monotributo / Impuestos", monto: 25000 },
+      { id: 4, nombre: "Seguros", monto: 12000 },
+    ],
+    horasProductivasMes: 160,
+  },
 };
 
 const modulosIniciales = {
@@ -1493,6 +1503,203 @@ function SeccionDesperdicio({ costos, save }) {
   );
 }
 
+// ── SeccionGastosFijos ────────────────────────────────────────────
+// Permite cargar los gastos operativos fijos del taller y calcula
+// automáticamente el costo por hora de taller (COSTO_HORA_TALLER).
+function SeccionGastosFijos({ costos, save }) {
+  const gf = costos.gastosFijos || { items: [], horasProductivasMes: 160 };
+
+  const [nuevoNombre, setNuevoNombre] = useState("");
+  const [nuevoMonto, setNuevoMonto] = useState("");
+
+  // LÓGICA - Cálculo de indicadores operativos
+  const totalMensual = gf.items.reduce((a, i) => a + (parseFloat(i.monto) || 0), 0);
+  const costoDiario  = totalMensual / 22;
+  const costoHora    = gf.horasProductivasMes > 0
+    ? totalMensual / gf.horasProductivasMes
+    : 0;
+
+  const saveGf = (nuevoGf) => save({ ...costos, gastosFijos: nuevoGf });
+
+  const agregarItem = () => {
+    if (!nuevoNombre.trim() || !nuevoMonto) return;
+    const item = {
+      id: Date.now(),
+      nombre: nuevoNombre.trim(),
+      monto: parseFloat(nuevoMonto) || 0,
+    };
+    saveGf({ ...gf, items: [...gf.items, item] });
+    setNuevoNombre("");
+    setNuevoMonto("");
+  };
+
+  const eliminarItem = (id) =>
+    saveGf({ ...gf, items: gf.items.filter((i) => i.id !== id) });
+
+  const actualizarMonto = (id, monto) =>
+    saveGf({ ...gf, items: gf.items.map((i) => i.id === id ? { ...i, monto: parseFloat(monto) || 0 } : i) });
+
+  const actualizarHoras = (h) =>
+    saveGf({ ...gf, horasProductivasMes: parseInt(h) || 160 });
+
+  // Estilo de input compacto reutilizable
+  const inpSm = {
+    fontFamily: "'DM Mono',monospace", fontSize: 13, padding: "7px 10px",
+    background: "var(--bg-base)", border: "1px solid var(--border)",
+    color: "var(--text-primary)", borderRadius: 7, outline: "none",
+    transition: "border-color 0.15s",
+  };
+
+  return (
+    <HcSec icon="🏭" titulo="Gastos Fijos del Taller">
+
+      {/* Tabla de gastos */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "var(--accent-soft)" }}>
+                <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, borderBottom: "1px solid var(--border)" }}>
+                  Concepto
+                </th>
+                <th style={{ padding: "8px 12px", textAlign: "right", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, borderBottom: "1px solid var(--border)", width: 160 }}>
+                  Monto mensual
+                </th>
+                <th style={{ width: 40, borderBottom: "1px solid var(--border)" }} />
+              </tr>
+            </thead>
+            <tbody>
+              {gf.items.length === 0 && (
+                <tr>
+                  <td colSpan={3} style={{ padding: "16px 12px", color: "var(--text-muted)", fontSize: 12, fontStyle: "italic", textAlign: "center" }}>
+                    Sin gastos cargados. Agregá tus costos operativos mensuales.
+                  </td>
+                </tr>
+              )}
+              {gf.items.map((item) => (
+                <tr key={item.id} style={{ borderBottom: "1px solid var(--separator)" }}>
+                  <td style={{ padding: "9px 12px", color: "var(--text-primary)", fontWeight: 500 }}>
+                    {item.nombre}
+                  </td>
+                  <td style={{ padding: "9px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>$</span>
+                      <input
+                        type="number" min="0"
+                        defaultValue={item.monto}
+                        onBlur={(e) => actualizarMonto(item.id, e.target.value)}
+                        style={{ ...inpSm, width: 120, textAlign: "right" }}
+                        onFocus={(e) => e.target.style.borderColor = "var(--accent-border)"}
+                      />
+                    </div>
+                  </td>
+                  <td style={{ padding: "9px 8px", textAlign: "center" }}>
+                    <button
+                      onClick={() => eliminarItem(item.id)}
+                      title="Eliminar gasto"
+                      style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "2px 6px", borderRadius: 5, transition: "background 0.12s" }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(200,60,60,0.10)"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "none"}
+                    >×</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            {gf.items.length > 0 && (
+              <tfoot>
+                <tr>
+                  <td style={{ padding: "10px 12px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.08em", borderTop: "2px solid var(--border)" }}>
+                    Total mensual
+                  </td>
+                  <td style={{ padding: "10px 12px", textAlign: "right", fontFamily: "'DM Mono',monospace", fontSize: 16, fontWeight: 900, color: "var(--accent)", borderTop: "2px solid var(--border)" }}>
+                    {fmtPeso(totalMensual)}
+                  </td>
+                  <td style={{ borderTop: "2px solid var(--border)" }} />
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+
+        {/* Fila para agregar nuevo gasto */}
+        <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            type="text" placeholder="Nombre del gasto (ej: Alquiler)"
+            value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && agregarItem()}
+            style={{ ...inpSm, flex: 1, minWidth: 160 }}
+            onFocus={(e) => e.target.style.borderColor = "var(--accent-border)"}
+            onBlur={(e) => e.target.style.borderColor = "var(--border)"}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>$</span>
+            <input
+              type="number" min="0" placeholder="Monto"
+              value={nuevoMonto} onChange={(e) => setNuevoMonto(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && agregarItem()}
+              style={{ ...inpSm, width: 120, textAlign: "right" }}
+              onFocus={(e) => e.target.style.borderColor = "var(--accent-border)"}
+              onBlur={(e) => e.target.style.borderColor = "var(--border)"}
+            />
+          </div>
+          <button onClick={agregarItem}
+            style={{ padding: "7px 16px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+            + Agregar
+          </button>
+        </div>
+      </div>
+
+      {/* Campo: horas productivas al mes */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--bg-subtle)", borderRadius: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 13, color: "var(--text-secondary)", flex: 1 }}>
+          Horas productivas al mes
+        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            type="number" min="1"
+            defaultValue={gf.horasProductivasMes}
+            onBlur={(e) => actualizarHoras(e.target.value)}
+            style={{ ...inpSm, width: 80, textAlign: "center", fontWeight: 700 }}
+            onFocus={(e) => e.target.style.borderColor = "var(--accent-border)"}
+          />
+          <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>hs/mes</span>
+        </div>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", width: "100%" }}>
+          Promedio: 22 días × 8 hs = 176 hs. Ajustá según tu ritmo real.
+        </span>
+      </div>
+
+      {/* LÓGICA - Indicadores operativos: 3 cards destacadas */}
+      {totalMensual > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          {[
+            { label: "Total mensual", valor: fmtPeso(totalMensual), sub: "gastos fijos del taller", color: "var(--accent)", icon: "📅" },
+            { label: "Costo diario", valor: fmtPeso(Math.round(costoDiario)), sub: "÷ 22 días laborales", color: "#7090c0", icon: "📆" },
+            { label: "Costo por hora", valor: fmtPeso(Math.round(costoHora)), sub: `÷ ${gf.horasProductivasMes} hs productivas`, color: "#7ecf8a", icon: "⏱" },
+          ].map(({ label, valor, sub, color, icon }) => (
+            <div key={label} style={{
+              background: "var(--bg-surface)", border: `1px solid ${color}30`,
+              borderTop: `3px solid ${color}`, borderRadius: 10,
+              padding: "14px 16px", textAlign: "center",
+            }}>
+              <div style={{ fontSize: 18, marginBottom: 6 }}>{icon}</div>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 900, color, letterSpacing: -0.5, lineHeight: 1 }}>
+                {valor}
+              </div>
+              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginTop: 8 }}>
+                {label}
+              </div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>
+                {sub}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </HcSec>
+  );
+}
+
 // ── FilaVista (nivel superior) ─────────────────────────────────────
 const FilaVista = ({ style, onEnter, onLeave, children }) => (
   <div style={style} onMouseEnter={onEnter} onMouseLeave={onLeave}>
@@ -2486,6 +2693,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
       </HcSec>
 
       <SeccionDesperdicio costos={costos} save={save} />
+      <SeccionGastosFijos costos={costos} save={save} />
     </div>
   );
 }
@@ -3448,6 +3656,28 @@ function FormModulo({
                         }))
                       }
                     />
+                    {/* Indicador: impacto de gastos fijos en estas horas */}
+                    {(() => {
+                      const gf = costos.gastosFijos;
+                      if (!gf?.items?.length || !moDeObra.horas) return null;
+                      const totalMensual = gf.items.reduce((a, i) => a + (parseFloat(i.monto) || 0), 0);
+                      const costoHora = gf.horasProductivasMes > 0 ? totalMensual / gf.horasProductivasMes : 0;
+                      const impacto = Math.round(costoHora * moDeObra.horas);
+                      return (
+                        <div style={{
+                          marginTop: 8, padding: "7px 11px", borderRadius: 7,
+                          background: "rgba(112,144,176,0.10)", border: "1px solid rgba(112,144,176,0.25)",
+                          display: "flex", justifyContent: "space-between", alignItems: "center",
+                        }}>
+                          <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                            ⏱ {moDeObra.horas}h × {fmtPeso(Math.round(costoHora))}/h taller
+                          </span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#7090c0", fontFamily: "'DM Mono',monospace" }}>
+                            {fmtPeso(impacto)}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </Card>
