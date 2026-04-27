@@ -1399,101 +1399,70 @@ function HcIS({ value, onChange, options }) {
 function SeccionDesperdicio({ costos, save }) {
   const [desp, setDesp] = useState(String(costos.desperdicioPct));
   const [gan, setGan] = useState(String(costos.gastosGenerales));
-  useEffect(() => {
-    setDesp(String(costos.desperdicioPct));
-  }, [costos.desperdicioPct]);
-  useEffect(() => {
-    setGan(String(costos.gastosGenerales));
-  }, [costos.gastosGenerales]);
+
+  useEffect(() => { setDesp(String(costos.desperdicioPct)); }, [costos.desperdicioPct]);
+  useEffect(() => { setGan(String(costos.gastosGenerales)); }, [costos.gastosGenerales]);
+
+  // Detectar si hay cambios pendientes sin confirmar
+  const despCambiado = parseFloat(desp) !== costos.desperdicioPct;
+  const ganCambiado  = parseFloat(gan)  !== costos.gastosGenerales;
+
+  const confirmarDesp = () => save({ ...costos, desperdicioPct: parseFloat(desp) || 0 });
+  const confirmarGan  = () => save({ ...costos, gastosGenerales: parseFloat(gan) || 0 });
+
+  const btnConfirmar = (cambiado, onClick) => (
+    <button
+      onClick={onClick}
+      disabled={!cambiado}
+      title={cambiado ? "Confirmar cambio" : "Sin cambios pendientes"}
+      style={{
+        marginTop: 8, width: "100%", padding: "7px 0", borderRadius: 7,
+        cursor: cambiado ? "pointer" : "not-allowed",
+        fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
+        background: cambiado ? "var(--accent-soft)" : "transparent",
+        border: `1px solid ${cambiado ? "var(--accent-border)" : "var(--border)"}`,
+        color: cambiado ? "var(--accent)" : "var(--text-muted)",
+        opacity: cambiado ? 1 : 0.45,
+        transition: "all 0.18s",
+      }}>
+      {cambiado ? "✓ Confirmar cambio" : "Sin cambios"}
+    </button>
+  );
+
   return (
     <HcSec icon="📊" titulo="Desperdicio y Ganancia">
-      {/* rsp-grid-1: colapsa a 1 columna en móvil */}
-      <div
-        className="rsp-grid-1"
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
-      >
+      <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         <div>
           <TextInput
             label="% Desperdicio de material"
-            type="number"
-            suffix="%"
-            value={desp}
-            onChange={setDesp}
-            onBlur={(v) =>
-              save({ ...costos, desperdicioPct: parseFloat(v) || 0 })
-            }
+            type="number" suffix="%" value={desp} onChange={setDesp}
           />
-          <p
-            style={{
-              fontSize: 12,
-              marginTop: 8,
-              lineHeight: 1.6,
-              color: "var(--text-muted)",
-            }}
-          >
+          <p style={{ fontSize: 12, marginTop: 8, lineHeight: 1.6, color: "var(--text-muted)" }}>
             Cubre disco de corte, retazos y errores. Recomendado: 15–25%.
           </p>
+          {btnConfirmar(despCambiado, confirmarDesp)}
         </div>
         <div>
           <TextInput
             label="% Ganancia del taller"
-            type="number"
-            suffix="%"
-            value={gan}
-            onChange={setGan}
-            onBlur={(v) =>
-              save({ ...costos, gastosGenerales: parseFloat(v) || 0 })
-            }
+            type="number" suffix="%" value={gan} onChange={setGan}
           />
-          <p
-            style={{
-              fontSize: 12,
-              marginTop: 8,
-              lineHeight: 1.6,
-              color: "var(--text-muted)",
-            }}
-          >
-            Se aplica sobre el costo total. El precio de venta siempre incluye
-            tu margen limpio.
+          <p style={{ fontSize: 12, marginTop: 8, lineHeight: 1.6, color: "var(--text-muted)" }}>
+            Se aplica sobre el costo total. El precio de venta siempre incluye tu margen limpio.
           </p>
+          {btnConfirmar(ganCambiado, confirmarGan)}
         </div>
       </div>
-      <div
-        className="rsp-grid-1"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 10,
-          marginTop: 16,
-        }}
-      >
+      <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
         {[
           ["Desperdicio", desp, "de material extra cubierto"],
           ["Ganancia", gan, "sobre costo total"],
         ].map(([label, val, note]) => (
-          <div
-            key={label}
-            style={{
-              background: "var(--accent-soft)",
-              border: "1px solid var(--accent-border)",
-              borderRadius: 12,
-              padding: "14px 20px",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "'Playfair Display',serif",
-                fontSize: 28,
-                fontWeight: 900,
-                color: "var(--accent)",
-              }}
-            >
+          <div key={label} style={{ background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 12, padding: "14px 20px", textAlign: "center" }}>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 900, color: "var(--accent)" }}>
               {parseFloat(val) || 0}%
             </div>
-            <div
-              style={{ fontSize: 11, marginTop: 4, color: "var(--text-muted)" }}
-            >
+            <div style={{ fontSize: 11, marginTop: 4, color: "var(--text-muted)" }}>
               {label} · {note}
             </div>
           </div>
