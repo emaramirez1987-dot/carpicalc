@@ -4643,12 +4643,6 @@ function imprimirPresupuesto(
 ) {
   const perfil = leerPerfil();
   const fecha = fmtFechaLarga(Date.now());
-  const clienteHtml = cliente && (cliente.nombre || cliente.tel || cliente.dir)
-    ? `<div style="margin-top:12px;padding:10px 14px;background:#fff8ee;border:1px solid #e8d0a0;border-radius:6px;font-size:12px;color:#5a3a10">
-        ${cliente.nombre ? `<div>👤 <b>${cliente.nombre}</b></div>` : ""}
-        ${cliente.tel ? `<div style="margin-top:2px">📞 ${cliente.tel}</div>` : ""}
-        ${cliente.dir ? `<div style="margin-top:2px">📍 ${cliente.dir}</div>` : ""}
-      </div>` : "";
   const encabezadoTaller = perfil?.nombre
     ? `<div style="display:flex;align-items:center;gap:14px">
         ${perfil.logo ? `<img src="${perfil.logo}" style="height:44px;object-fit:contain" />` : ""}
