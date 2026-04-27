@@ -4692,81 +4692,179 @@ function imprimirPresupuesto(
         over.ancho !== modBase.dimensiones.ancho ||
         over.profundidad !== modBase.dimensiones.profundidad ||
         over.alto !== modBase.dimensiones.alto;
-      return `<tr><td style="font-family:monospace;font-size:11px;font-weight:700;color:#8a5a1a;padding:12px 16px;border-bottom:1px solid #e8dcc8;vertical-align:top">${
-        item.codigo
-      }</td><td style="padding:12px 16px;border-bottom:1px solid #e8dcc8;vertical-align:top"><div style="font-size:13px;font-weight:700;color:#1a0e04">${
-        modBase.nombre
-      }</div>${
-        modBase.descripcion
-          ? `<div style="font-size:11px;color:#7a6040;font-style:italic;margin-top:2px">${modBase.descripcion}</div>`
-          : ""
-      }${
-        item.nota && item.nota.trim()
-          ? `<div style="font-size:11px;color:#8a5a1a;font-style:italic;margin-top:4px">📝 ${item.nota}</div>`
-          : ""
-      }<div style="font-size:11px;color:${
-        dimDif ? "#8a5a1a" : "#9a8060"
-      };font-family:monospace;margin-top:4px">${over.ancho}×${
-        over.profundidad
-      }×${over.alto} mm${dimDif ? " ★ personalizado" : ""} · ${
-        TIPO_MAT[modUsado.material]
-      }</div></td><td style="text-align:right;padding:12px 16px;border-bottom:1px solid #e8dcc8;font-family:monospace;font-size:14px;font-weight:700;color:#8a5a1a;vertical-align:top">${
-        item.cantidad
-      }</td>${
-        mostrarPrecioUnitario
-          ? `<td style="text-align:right;padding:12px 16px;border-bottom:1px solid #e8dcc8;font-family:monospace;font-size:12px;color:#6a5040;vertical-align:top">${fmtPeso(
-              calc.total
-            )}</td>`
-          : ""
-      }<td style="text-align:right;padding:12px 16px;border-bottom:1px solid #e8dcc8;font-family:monospace;font-size:14px;font-weight:700;color:#1a6a30;vertical-align:top">${fmtPeso(
-        calc.total * item.cantidad
-      )}</td></tr>`;
+      return `<tr>
+        <td class="cod">${item.codigo}</td>
+        <td>
+          <div class="mod-nombre">${modBase.nombre}</div>
+          ${modBase.descripcion ? `<div class="mod-desc">${modBase.descripcion}</div>` : ""}
+          ${item.nota?.trim() ? `<div class="mod-nota">📝 ${item.nota}</div>` : ""}
+          <div class="mod-dim" style="color:${dimDif ? "#8a5a1a" : "#9a8060"}">
+            ${over.ancho}×${over.profundidad}×${over.alto} mm${dimDif ? " ★ personalizado" : ""} · ${TIPO_MAT[modUsado.material]}
+          </div>
+        </td>
+        <td class="num" style="font-weight:700;color:#8a5a1a">${item.cantidad}</td>
+        ${mostrarPrecioUnitario ? `<td class="num precio-u">${fmtPeso(calc.total)}</td>` : ""}
+        <td class="num subtotal">${fmtPeso(calc.total * item.cantidad)}</td>
+      </tr>`;
     })
     .join("");
   const totalUnid = items.reduce((a, i) => a + i.cantidad, 0);
   const textoAperturaHtml = textoApertura
-    ? `<div style="margin-bottom:20px;padding:12px 16px;background:#fff8ee;border-left:3px solid #c8a060;border-radius:0 6px 6px 0;font-size:13px;color:#5a3a10;line-height:1.6">${textoApertura.replace(/\n/g, "<br>")}</div>`
+    ? `<div style="margin-bottom:20px;padding:12px 16px;background:#fff8ee;border-left:3px solid #c8a060;border-radius:0 6px 6px 0;font-size:13px;color:#5a3a10;line-height:1.7">${textoApertura.replace(/\n/g, "<br>")}</div>`
     : "";
-  const condicionesHtml = condiciones
-    ? `<div style="margin-top:20px;padding:12px 16px;background:#f5f5f5;border-top:1px solid #e0d0b0;font-size:11px;color:#7a6040;line-height:1.6"><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:#9a7040;margin-bottom:6px">Condiciones y observaciones</div>${condiciones.replace(/\n/g, "<br>")}</div>`
-    : "";
-  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>CarpiCálc — ${nombre || "Presupuesto"}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a0e04;padding:32px 40px;max-width:900px;margin:0 auto}@media print{body{padding:16px 20px}}</style></head><body>
-  <div style="border-bottom:2px solid #a07030;margin-bottom:0;padding-bottom:16px">
-    ${encabezadoTaller}
-  </div>
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:16px 0 20px 0;border-bottom:1px solid #e8dcc8;margin-bottom:24px;gap:20px">
-    <div>
-      ${nombre ? `<div style="font-family:'Georgia',serif;font-size:19px;font-weight:900;color:#1a0e04;margin-bottom:4px">${nombre}</div>` : ""}
-      <div style="font-size:11px;color:#888">${fecha}</div>
+
+  // ── Bloque financiero del pie ─────────────────────────────────────
+  // Si hay descuento: subtotal tachado → línea de descuento → total verde
+  // Si hay ganancia: solo muestra el total ajustado
+  const bloqueFinanciero = `
+    <table style="width:100%;border-collapse:collapse;font-family:'Segoe UI',Arial,sans-serif">
+      <tr>
+        <td style="font-size:11px;color:#9a7040;padding:4px 0;text-align:left">Subtotal</td>
+        <td style="font-size:13px;font-weight:700;color:${tv.hayDescuento ? "#b0a090" : "#1a0e04"};text-align:right;padding:4px 0;${tv.hayDescuento ? "text-decoration:line-through;opacity:0.6;letter-spacing:0.02em" : ""}">
+          ${fmtPeso(tv.totalOriginal)}
+        </td>
+      </tr>
+      ${tv.hayDescuento ? `
+      <tr>
+        <td style="font-size:11px;color:#e07070;padding:4px 0;text-align:left">🏷 Descuento</td>
+        <td style="font-size:13px;font-weight:700;color:#e07070;text-align:right;padding:4px 0">− ${fmtPeso(tv.descuentoVal)}</td>
+      </tr>` : ""}
+      ${tv.hayGanancia ? `
+      <tr>
+        <td style="font-size:11px;color:#9a7040;padding:4px 0;text-align:left">Recargo</td>
+        <td style="font-size:13px;font-weight:700;color:#7a5a20;text-align:right;padding:4px 0">+ ${fmtPeso(tv.gananciaVal)}</td>
+      </tr>` : ""}
+      ${tv.hayDescuento || tv.hayGanancia ? `
+      <tr>
+        <td colspan="2" style="padding:6px 0 0 0;border-top:1px solid #c8a060"></td>
+      </tr>` : ""}
+      <tr>
+        <td style="font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#9a7040;padding-top:6px;text-align:left">Total del trabajo</td>
+        <td style="padding-top:6px;text-align:right">
+          <span style="font-family:'Georgia',serif;font-size:28px;font-weight:900;color:#1a6a30;letter-spacing:-0.5px">${fmtPeso(tv.totalFinal)}</span>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" style="font-size:9px;color:#b0a090;padding-top:4px;text-align:right">IVA no incluido</td>
+      </tr>
+    </table>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>${perfil?.nombre || "CarpiCálc"} — ${nombre || "Presupuesto"}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #fff;
+      color: #1a0e04;
+      padding: 36px 44px;
+      max-width: 920px;
+      margin: 0 auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    @media print {
+      body { padding: 16px 20px; font-size: 12px; }
+      @page { margin: 1.2cm 1.4cm; }
+    }
+    /* ── Tabla de ítems ── */
+    .tabla-items { width: 100%; border-collapse: collapse; margin-top: 0; }
+    .tabla-items thead tr { background: #f5ede0; }
+    .tabla-items th {
+      font-size: 9px; text-transform: uppercase; letter-spacing: 0.16em;
+      font-weight: 700; color: #9a7040;
+      padding: 10px 14px;
+      border-bottom: 2px solid #c8a060;
+    }
+    .tabla-items th.num { text-align: right; }
+    .tabla-items th.txt { text-align: left; }
+    .tabla-items td { padding: 11px 14px; border-bottom: 1px solid #ede0cc; vertical-align: top; }
+    .tabla-items tbody tr:nth-child(even) td { background: #fdfaf6; }
+    .cod  { font-family: monospace; font-size: 10px; font-weight: 700; color: #8a5a1a; white-space: nowrap; }
+    .num  { text-align: right; font-family: monospace; }
+    .subtotal { font-size: 14px; font-weight: 700; color: #1a6a30; }
+    .precio-u  { font-size: 12px; color: #6a5040; }
+    .mod-nombre { font-size: 13px; font-weight: 700; color: #1a0e04; }
+    .mod-desc   { font-size: 11px; color: #7a6040; font-style: italic; margin-top: 3px; }
+    .mod-dim    { font-size: 10px; font-family: monospace; margin-top: 4px; }
+    .mod-nota   { font-size: 11px; font-style: italic; margin-top: 4px; color: #8a5a1a; }
+  </style>
+</head>
+<body>
+
+  <!-- ══ ZONA 1: HEADER ══════════════════════════════════════════ -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #a07030;margin-bottom:16px;gap:24px">
+
+    <!-- Columna izquierda: empresa -->
+    <div style="flex:1">
+      ${encabezadoTaller}
     </div>
-    ${cliente && (cliente.nombre || cliente.tel || cliente.dir) ? `
-    <div style="text-align:right;background:#fff8ee;border:1px solid #e8d0a0;border-radius:8px;padding:10px 16px;font-size:12px;color:#5a3a10;min-width:180px">
-      ${cliente.nombre ? `<div style="font-weight:700;font-size:13px;margin-bottom:4px">👤 ${cliente.nombre}</div>` : ""}
-      ${cliente.tel ? `<div style="margin-top:2px">📞 ${cliente.tel}</div>` : ""}
-      ${cliente.dir ? `<div style="margin-top:2px">📍 ${cliente.dir}</div>` : ""}
-    </div>` : ""}
+
+    <!-- Columna derecha: datos del presupuesto y cliente -->
+    <div style="text-align:right;min-width:200px">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.2em;color:#9a7040;margin-bottom:4px">Presupuesto</div>
+      <div style="font-size:11px;color:#888;margin-bottom:12px">${fecha}</div>
+      ${cliente && (cliente.nombre || cliente.tel || cliente.dir) ? `
+      <div style="background:#fff8ee;border:1px solid #e8d0a0;border-radius:8px;padding:10px 14px;font-size:12px;color:#5a3a10;text-align:left;display:inline-block;min-width:180px">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.14em;color:#9a7040;font-weight:700;margin-bottom:6px">Cliente</div>
+        ${cliente.nombre ? `<div style="font-weight:700;font-size:13px;margin-bottom:3px">${cliente.nombre}</div>` : ""}
+        ${cliente.tel ? `<div style="font-size:11px;color:#7a5a30;margin-top:2px">📞 ${cliente.tel}</div>` : ""}
+        ${cliente.dir ? `<div style="font-size:11px;color:#7a5a30;margin-top:2px">📍 ${cliente.dir}</div>` : ""}
+      </div>` : ""}
+    </div>
   </div>
-  ${textoAperturaHtml}<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f5ede0">${[
-    "Código",
-    "Módulo",
-    "Cant.",
-    ...(mostrarPrecioUnitario ? ["P. unit."] : [""]),
-    "Subtotal",
-  ]
-    .filter((h) => h)
-    .map(
-      (h, i) =>
-        `<th style="font-size:9px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:#9a7040;padding:8px 16px;text-align:${
-          i > 1 ? "right" : "left"
-        };border-bottom:2px solid #c8a060">${h}</th>`
-    )
-    .join(
-      ""
-    )}</tr></thead><tbody>${filas}</tbody></table><div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:#f5ede0;border-top:2px solid #a07030;border-radius:0 0 8px 8px"><div style="font-size:11px;color:#9a7040">${totalUnid} unidades · ${
-    items.length
-  } módulo${
-    items.length !== 1 ? "s" : ""
-  } · IVA no incluido</div><div style="text-align:right"><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.2em;color:#9a7040;margin-bottom:4px">Total del trabajo</div>${totalHtml}</div>${condicionesHtml}</div><script>window.onload=()=>window.print();</script></body></html>`;
+
+  <!-- Nombre del proyecto — título centrado bajo el header -->
+  ${nombre ? `<div style="text-align:center;font-family:'Georgia',serif;font-size:18px;font-style:italic;font-weight:700;color:#3a2010;padding:10px 0 20px 0;letter-spacing:0.02em">${nombre}</div>` : ""}
+
+  <!-- Texto de apertura -->
+  ${textoAperturaHtml}
+
+  <!-- ══ ZONA 2: TABLA DE ÍTEMS ══════════════════════════════════ -->
+  <table class="tabla-items">
+    <thead>
+      <tr>
+        <th class="txt" style="width:70px">Código</th>
+        <th class="txt">Módulo / Descripción</th>
+        <th class="num" style="width:52px">Cant.</th>
+        ${mostrarPrecioUnitario ? `<th class="num" style="width:110px">P. unit.</th>` : ""}
+        <th class="num" style="width:120px">Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filas}
+    </tbody>
+  </table>
+
+  <!-- ══ ZONA 3: PIE ════════════════════════════════════════════== -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:32px;margin-top:0;padding:20px 0 0 0;border-top:2px solid #a07030">
+
+    <!-- Izquierda: condiciones -->
+    <div style="flex:1;max-width:55%">
+      ${condiciones ? `
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:#9a7040;margin-bottom:8px">Condiciones y observaciones</div>
+      <div style="font-size:11px;color:#7a6040;line-height:1.7;background:#fdfaf6;border:1px solid #ede0cc;border-radius:6px;padding:10px 14px">${condiciones.replace(/\n/g, "<br>")}</div>
+      ` : `
+      <div style="font-size:11px;color:#c0b090;font-style:italic">Sin condiciones especificadas.</div>
+      `}
+      <div style="margin-top:12px;font-size:10px;color:#c0b090">
+        ${totalUnid} unidad${totalUnid !== 1 ? "es" : ""} · ${items.length} módulo${items.length !== 1 ? "s" : ""}
+      </div>
+    </div>
+
+    <!-- Derecha: bloque financiero alineado con col Subtotal -->
+    <div style="min-width:220px;text-align:right">
+      ${bloqueFinanciero}
+    </div>
+
+  </div>
+
+<script>window.onload=()=>window.print();</script>
+</body>
+</html>`;
   const win = window.open("", "_blank", "width=900,height=700");
   if (win) {
     win.document.write(html);
@@ -5012,9 +5110,14 @@ function ResumenPresupuesto({
   totalGeneral,
   mostrarPrecioUnitario,
   nombrePresupuesto,
+  descuento = 0,
+  gananciaExtra = 0,
 }) {
   const [mostrarIVA, setMostrarIVA] = useState(false);
   const totalConIVA = Math.round(totalGeneral * 1.21);
+  // LÓGICA - Precios Tachados y PDF: usar función centralizada
+  const tv = calcularTotalVisual(totalGeneral, descuento, gananciaExtra);
+  const totalAjustadoConIVA = Math.round(tv.totalFinal * 1.21);
   if (items.length === 0) return null;
   const itemsValidos = items.filter(item => {
     const mod = getModUsado(item);
@@ -5302,16 +5405,49 @@ function ResumenPresupuesto({
               </button>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 4, color: "var(--text-muted)" }}>
-                {mostrarIVA ? "Total + IVA 21%" : "Total sin IVA"}
-              </div>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 30, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1, color: "#7ecf8a", transition: "all 0.2s" }}>
-                {fmtPeso(mostrarIVA ? totalConIVA : totalGeneral)}
-              </div>
-              {mostrarIVA && (
-                <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginTop: 4 }}>
-                  base: {fmtPeso(totalGeneral)} · iva: {fmtPeso(totalConIVA - totalGeneral)}
-                </div>
+              {/* Total original — tachado si hay descuento */}
+              {tv.hayDescuento || tv.hayGanancia ? (
+                <>
+                  <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 2, color: "var(--text-muted)" }}>
+                    {mostrarIVA ? "Total + IVA 21%" : "Total sin IVA"}
+                  </div>
+                  {tv.hayDescuento && (
+                    <div style={{
+                      fontFamily: "'DM Mono',monospace", fontSize: 16, fontWeight: 700,
+                      color: "var(--text-muted)", textDecoration: "line-through",
+                      opacity: 0.55, letterSpacing: "0.02em", marginBottom: 4,
+                    }}>
+                      {fmtPeso(mostrarIVA ? totalConIVA : totalGeneral)}
+                    </div>
+                  )}
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 30, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1, color: "#7ecf8a", transition: "all 0.2s" }}>
+                    {fmtPeso(mostrarIVA ? totalAjustadoConIVA : tv.totalFinal)}
+                  </div>
+                  {tv.hayDescuento && (
+                    <div style={{ fontSize: 10, color: "#e07070", fontFamily: "'DM Mono',monospace", marginTop: 4 }}>
+                      🏷 Precio con descuento
+                    </div>
+                  )}
+                  {mostrarIVA && (
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginTop: 4 }}>
+                      base: {fmtPeso(tv.totalFinal)} · iva: {fmtPeso(totalAjustadoConIVA - tv.totalFinal)}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 4, color: "var(--text-muted)" }}>
+                    {mostrarIVA ? "Total + IVA 21%" : "Total sin IVA"}
+                  </div>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 30, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1, color: "#7ecf8a", transition: "all 0.2s" }}>
+                    {fmtPeso(mostrarIVA ? totalConIVA : totalGeneral)}
+                  </div>
+                  {mostrarIVA && (
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginTop: 4 }}>
+                      base: {fmtPeso(totalGeneral)} · iva: {fmtPeso(totalConIVA - totalGeneral)}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -5322,11 +5458,15 @@ function ResumenPresupuesto({
 }
 
 // ── BarraTotal ────────────────────────────────────────────────────
-function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombrePresupuesto }) {
+function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombrePresupuesto, descuento = 0, gananciaExtra = 0 }) {
   const [expandido, setExpandido] = useState(false);
   const [mostrarIVA, setMostrarIVA] = useState(false);
   const totalConIVA = Math.round(totalGeneral * 1.21);
   const totalUnid = items.reduce((a, i) => a + i.cantidad, 0);
+  // LÓGICA - Precios Tachados: usar función centralizada para reactividiad instantánea
+  const tv = calcularTotalVisual(totalGeneral, descuento, gananciaExtra);
+  const totalFinalConIVA = Math.round(tv.totalFinal * 1.21);
+  const hayAjuste = tv.hayDescuento || tv.hayGanancia;
 
   return (
     <div style={{ borderRadius: expandido ? "10px 10px 0 0" : 10, overflow: "hidden", border: "1px solid var(--accent-border)", background: "var(--bg-surface)" }}>
@@ -5357,10 +5497,21 @@ function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombreP
           </button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* Total original — tachado elegante si hay descuento */}
+          {tv.hayDescuento && (
+            <span style={{
+              fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700,
+              color: "var(--text-muted)", textDecoration: "line-through",
+              opacity: 0.5, letterSpacing: "0.02em",
+            }}>
+              {fmtPeso(mostrarIVA ? totalConIVA : totalGeneral)}
+            </span>
+          )}
+          {/* Total final — verde destacado */}
           <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 900, color: "#7ecf8a", letterSpacing: -0.5 }}>
-            {fmtPeso(mostrarIVA ? totalConIVA : totalGeneral)}
+            {fmtPeso(mostrarIVA ? (hayAjuste ? totalFinalConIVA : totalConIVA) : (hayAjuste ? tv.totalFinal : totalGeneral))}
           </span>
-          {mostrarIVA && (
+          {mostrarIVA && !hayAjuste && (
             <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
               base {fmtPeso(totalGeneral)}
             </span>
@@ -5380,6 +5531,8 @@ function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombreP
           getModUsado={getModUsado}
           totalGeneral={totalGeneral}
           nombrePresupuesto={nombrePresupuesto}
+          descuento={descuento}
+          gananciaExtra={gananciaExtra}
         />
       )}
     </div>
@@ -5775,6 +5928,8 @@ function Presupuesto({
           getModUsado={getModUsado}
           totalGeneral={totalGeneral}
           nombrePresupuesto={nombreTrabajo}
+          descuento={presupuestoActivoId ? (presupuestos[presupuestoActivoId]?.descuento || 0) : 0}
+          gananciaExtra={presupuestoActivoId ? (presupuestos[presupuestoActivoId]?.gananciaExtra || 0) : 0}
         />
       )}
 
@@ -6190,6 +6345,8 @@ function VistaPrevia({
                   totalGeneral={presSel.total}
                   mostrarPrecioUnitario={mostrarPrecioUnitario}
                   nombrePresupuesto={presSel.nombre}
+                  descuento={presSel.descuento || 0}
+                  gananciaExtra={presSel.gananciaExtra || 0}
                 />
 
                 {/* Condiciones editables */}
