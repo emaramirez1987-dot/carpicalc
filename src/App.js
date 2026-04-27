@@ -4957,10 +4957,6 @@ function imprimirPresupuesto(
   };
 
   const p = TEMAS[tema] || TEMAS.dorado;
-
-  // Texto del encabezado: blanco si el tema tiene fondos oscuros (carbón)
-  const hTexto    = p.headerTexto    || p.textoPrincipal;
-  const hTextoSec = p.headerTextoSec || p.textoAcento;
   const encabezadoTaller = perfil?.nombre
     ? `<div style="display:flex;align-items:center;gap:14px">
         ${perfil.logo ? `<img src="${perfil.logo}" style="height:44px;object-fit:contain" />` : ""}
