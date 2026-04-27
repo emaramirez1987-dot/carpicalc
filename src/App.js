@@ -4517,7 +4517,9 @@ function imprimirPresupuesto(
   totalGeneral,
   nombre,
   mostrarPrecioUnitario,
-  cliente
+  cliente,
+  textoApertura = "",
+  condiciones = ""
 ) {
   const perfil = leerPerfil();
   const fecha = fmtFechaLarga(Date.now());
@@ -4581,7 +4583,13 @@ function imprimirPresupuesto(
     })
     .join("");
   const totalUnid = items.reduce((a, i) => a + i.cantidad, 0);
-  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>CarpiCálc — ${nombre || "Presupuesto"}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a0e04;padding:32px 40px;max-width:900px;margin:0 auto}@media print{body{padding:16px 20px}}</style></head><body><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #a07030">${encabezadoTaller}<div style="text-align:right">${nombre ? `<div style="font-size:15px;font-weight:700;color:#1a0e04">${nombre}</div>` : ""}<div style="font-size:11px;color:#666;margin-top:4px">${fecha}</div>${clienteHtml}</div></div><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f5ede0">${[
+  const textoAperturaHtml = textoApertura
+    ? `<div style="margin-bottom:20px;padding:12px 16px;background:#fff8ee;border-left:3px solid #c8a060;border-radius:0 6px 6px 0;font-size:13px;color:#5a3a10;line-height:1.6">${textoApertura.replace(/\n/g, "<br>")}</div>`
+    : "";
+  const condicionesHtml = condiciones
+    ? `<div style="margin-top:20px;padding:12px 16px;background:#f5f5f5;border-top:1px solid #e0d0b0;font-size:11px;color:#7a6040;line-height:1.6"><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:#9a7040;margin-bottom:6px">Condiciones y observaciones</div>${condiciones.replace(/\n/g, "<br>")}</div>`
+    : "";
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>CarpiCálc — ${nombre || "Presupuesto"}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a0e04;padding:32px 40px;max-width:900px;margin:0 auto}@media print{body{padding:16px 20px}}</style></head><body><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #a07030">${encabezadoTaller}<div style="text-align:right">${nombre ? `<div style="font-size:15px;font-weight:700;color:#1a0e04">${nombre}</div>` : ""}<div style="font-size:11px;color:#666;margin-top:4px">${fecha}</div>${clienteHtml}</div></div>${textoAperturaHtml}<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f5ede0">${[
     "Código",
     "Módulo",
     "Cant.",
@@ -4603,7 +4611,7 @@ function imprimirPresupuesto(
     items.length !== 1 ? "s" : ""
   } · IVA no incluido</div><div style="text-align:right"><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.2em;color:#9a7040;margin-bottom:4px">Total del trabajo</div><div style="font-size:26px;font-weight:900;color:#1a6a30;letter-spacing:-0.5px">${fmtPeso(
     totalGeneral
-  )}</div></div></div><script>window.onload=()=>window.print();</script></body></html>`;
+  )}</div></div>${condicionesHtml}</div><script>window.onload=()=>window.print();</script></body></html>`;
   const win = window.open("", "_blank", "width=900,height=700");
   if (win) {
     win.document.write(html);
@@ -5657,8 +5665,8 @@ function VistaPrevia({
 
   useEffect(() => {
     if (presSel) {
-      setTextoApertura(presSel.textoApertura ?? (perfil?.textoApertura || ""));
-      setCondiciones(presSel.condiciones ?? (perfil?.condiciones || ""));
+      setTextoApertura(presSel.textoApertura || perfil?.textoApertura || "");
+      setCondiciones(presSel.condiciones || perfil?.condiciones || "");
       setMostrarLista(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5697,7 +5705,7 @@ function VistaPrevia({
       const dims = (presSel.dimOverride && presSel.dimOverride[`${item.codigo}-${item.id||0}`]) || base?.dimensiones;
       return { ...base, dimensiones: dims };
     };
-    imprimirPresupuesto(presSel.items, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, mostrarPrecioUnitario, presSel.cliente);
+    imprimirPresupuesto(presSel.items, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, mostrarPrecioUnitario, presSel.cliente, textoApertura, condiciones);
   };
 
   const estSel = presSel ? (ESTADOS_TRABAJO.find(e => e.id === (presSel.estado || "nuevo")) || ESTADOS_TRABAJO[0]) : null;
