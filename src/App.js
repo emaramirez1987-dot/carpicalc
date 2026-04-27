@@ -383,7 +383,23 @@ function presupuestoNecesitaActualizacion(presId, costosVersion, p) {
   return referencia < costosVersion;
 }
 
-// Recalcula el total de un presupuesto con los costos actuales.
+// LÓGICA - Precios Tachados y PDF
+// Función centralizada para el cálculo del "Total Visual" que se muestra al cliente.
+// Retorna { totalFinal, hayDescuento, hayGanancia, totalOriginal }
+// - Si hay descuento: el cliente ve el precio tachado + precio con descuento
+// - Si hay ganancia extra: el cliente ve solo el precio final (sin rastro del cálculo)
+function calcularTotalVisual(totalBase, descuento, gananciaExtra) {
+  const d = parseFloat(descuento) || 0;
+  const g = parseFloat(gananciaExtra) || 0;
+  return {
+    totalFinal:    Math.round(totalBase + g - d),
+    totalOriginal: totalBase,
+    hayDescuento:  d > 0,
+    hayGanancia:   g > 0,
+    descuentoVal:  d,
+    gananciaVal:   g,
+  };
+}
 // Retorna el nuevo total o null si hay un error.
 function recalcularTotalPresupuesto(p, modulos, costos) {
   if (!p?.items || !modulos || !costos) return null;
@@ -4641,10 +4657,19 @@ function imprimirPresupuesto(
   mostrarPrecioUnitario,
   cliente,
   textoApertura = "",
-  condiciones = ""
+  condiciones = "",
+  descuento = 0,
+  gananciaExtra = 0
 ) {
   const perfil = leerPerfil();
   const fecha = fmtFechaLarga(Date.now());
+  // LÓGICA - Precios Tachados y PDF
+  const tv = calcularTotalVisual(totalGeneral, descuento, gananciaExtra);
+  const totalHtml = tv.hayDescuento
+    ? `<div style="font-size:14px;color:#9a7040;text-decoration:line-through;opacity:0.6;letter-spacing:0.02em;margin-bottom:4px">${fmtPeso(tv.totalOriginal)}</div>
+       <div style="font-size:26px;font-weight:900;color:#1a6a30;letter-spacing:-0.5px">${fmtPeso(tv.totalFinal)}</div>
+       <div style="font-size:10px;color:#e07070;margin-top:2px">🏷 Precio con descuento</div>`
+    : `<div style="font-size:26px;font-weight:900;color:#1a6a30;letter-spacing:-0.5px">${fmtPeso(tv.totalFinal)}</div>`;
   const encabezadoTaller = perfil?.nombre
     ? `<div style="display:flex;align-items:center;gap:14px">
         ${perfil.logo ? `<img src="${perfil.logo}" style="height:44px;object-fit:contain" />` : ""}
@@ -4741,9 +4766,7 @@ function imprimirPresupuesto(
     items.length
   } módulo${
     items.length !== 1 ? "s" : ""
-  } · IVA no incluido</div><div style="text-align:right"><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.2em;color:#9a7040;margin-bottom:4px">Total del trabajo</div><div style="font-size:26px;font-weight:900;color:#1a6a30;letter-spacing:-0.5px">${fmtPeso(
-    totalGeneral
-  )}</div></div>${condicionesHtml}</div><script>window.onload=()=>window.print();</script></body></html>`;
+  } · IVA no incluido</div><div style="text-align:right"><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.2em;color:#9a7040;margin-bottom:4px">Total del trabajo</div>${totalHtml}</div>${condicionesHtml}</div><script>window.onload=()=>window.print();</script></body></html>`;
   const win = window.open("", "_blank", "width=900,height=700");
   if (win) {
     win.document.write(html);
@@ -5874,7 +5897,7 @@ function VistaPrevia({
       const dims = (presSel.dimOverride && presSel.dimOverride[`${item.codigo}-${item.id||0}`]) || base?.dimensiones;
       return { ...base, dimensiones: dims };
     };
-    imprimirPresupuesto(presSel.items, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, mostrarPrecioUnitario, presSel.cliente, textoApertura, condiciones);
+    imprimirPresupuesto(presSel.items, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, mostrarPrecioUnitario, presSel.cliente, textoApertura, condiciones, presSel.descuento || 0, presSel.gananciaExtra || 0);
   };
 
   const estSel = presSel ? (ESTADOS_TRABAJO.find(e => e.id === (presSel.estado || "nuevo")) || ESTADOS_TRABAJO[0]) : null;
@@ -6076,10 +6099,11 @@ function VistaPrevia({
                             <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>Descuento</span>
                             <span style={{ fontSize: 12, color: "#e07070", fontWeight: 900, fontFamily: "'DM Mono',monospace" }}>−</span>
                           </div>
-                          <input
+                          {/* UI - Acción de Confirmación */}
+                        <input
                             type="number" min="0" value={descuentoVP} placeholder="0"
                             onChange={e => setDescuentoVP(e.target.value)}
-                            onBlur={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
+                            onKeyDown={e => e.key === "Enter" && guardarAjuste(descuentoVP, gananciaExtraVP)}
                             style={{
                               width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700,
                               padding: "6px 10px", textAlign: "right", background: "var(--bg-base)",
@@ -6088,6 +6112,16 @@ function VistaPrevia({
                             }}
                             onFocus={e => e.target.style.borderColor = "#e07070"}
                           />
+                          <button onClick={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
+                            title="Confirmar descuento"
+                            style={{
+                              marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, cursor: "pointer",
+                              background: parseFloat(descuentoVP) !== parseFloat(presSel?.descuento || 0) ? "rgba(224,112,112,0.18)" : "var(--bg-base)",
+                              border: `1px solid ${parseFloat(descuentoVP) !== parseFloat(presSel?.descuento || 0) ? "#e07070" : "var(--border)"}`,
+                              color: "#e07070", fontSize: 13, fontWeight: 700, transition: "all 0.15s",
+                            }}>
+                            ✓ Confirmar
+                          </button>
                         </div>
                         {/* Ganancia Extra */}
                         <div style={{ flex: 1, padding: "10px 14px", background: gananciaActual > 0 ? "rgba(126,207,138,0.06)" : "transparent" }}>
@@ -6096,10 +6130,11 @@ function VistaPrevia({
                             <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>Ganancia extra</span>
                             <span style={{ fontSize: 12, color: "#7ecf8a", fontWeight: 900, fontFamily: "'DM Mono',monospace" }}>+</span>
                           </div>
-                          <input
+                          {/* UI - Acción de Confirmación */}
+                        <input
                             type="number" min="0" value={gananciaExtraVP} placeholder="0"
                             onChange={e => setGananciaExtraVP(e.target.value)}
-                            onBlur={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
+                            onKeyDown={e => e.key === "Enter" && guardarAjuste(descuentoVP, gananciaExtraVP)}
                             style={{
                               width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700,
                               padding: "6px 10px", textAlign: "right", background: "var(--bg-base)",
@@ -6108,6 +6143,16 @@ function VistaPrevia({
                             }}
                             onFocus={e => e.target.style.borderColor = "#7ecf8a"}
                           />
+                          <button onClick={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
+                            title="Confirmar ganancia extra"
+                            style={{
+                              marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, cursor: "pointer",
+                              background: parseFloat(gananciaExtraVP) !== parseFloat(presSel?.gananciaExtra || 0) ? "rgba(126,207,138,0.18)" : "var(--bg-base)",
+                              border: `1px solid ${parseFloat(gananciaExtraVP) !== parseFloat(presSel?.gananciaExtra || 0) ? "#7ecf8a" : "var(--border)"}`,
+                              color: "#7ecf8a", fontSize: 13, fontWeight: 700, transition: "all 0.15s",
+                            }}>
+                            ✓ Confirmar
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -7415,70 +7460,121 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
               </div>
               <div style={{ marginBottom: 12 }}>
 
-                {/* LÓGICA - Cálculo de Totales: precio base siempre visible */}
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Precio base</span>
-                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
-                </div>
+                {/* LÓGICA - Precios Tachados y PDF */}
+                {(() => {
+                  const tv = calcularTotalVisual(p.total, p.descuento, p.gananciaExtra);
+                  return (
+                    <>
+                      {/* Precio base — con tachado elegante si hay descuento */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: tv.hayDescuento ? 4 : 10 }}>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                          {tv.hayDescuento ? "Precio original" : "Precio base"}
+                        </span>
+                        <span style={{
+                          fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700,
+                          color: tv.hayDescuento ? "var(--text-muted)" : "#7ecf8a",
+                          textDecoration: tv.hayDescuento ? "line-through" : "none",
+                          opacity: tv.hayDescuento ? 0.55 : 1,
+                          letterSpacing: tv.hayDescuento ? "0.02em" : "normal",
+                        }}>
+                          {fmtPeso(tv.totalOriginal)}
+                        </span>
+                      </div>
+                      {/* Total con descuento — solo si hay descuento */}
+                      {tv.hayDescuento && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#e07070" }}>🏷 Con descuento</span>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "#7ecf8a" }}>
+                            {fmtPeso(tv.totalFinal)}
+                          </span>
+                        </div>
+                      )}
+                      {/* Total con ganancia — solo si hay ganancia (sin mostrar el original) */}
+                      {tv.hayGanancia && !tv.hayDescuento && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#7ecf8a" }}>💵 Total final</span>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "#7ecf8a" }}>
+                            {fmtPeso(tv.totalFinal)}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
-                {/* UI - Campos de Ajuste: descuento y ganancia extra, siempre visibles */}
+                {/* UI - Acción de Confirmación: campos de ajuste con botón ✔ */}
                 <div style={{ borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", marginBottom: 12 }}>
                   {/* Fila Descuento */}
                   <div style={{
-                    display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
+                    display: "flex", alignItems: "center", gap: 8, padding: "9px 12px",
                     background: descuentoVal > 0 ? "rgba(224,112,112,0.08)" : "var(--bg-subtle)",
                     borderBottom: "1px solid var(--border)",
                   }}>
-                    <span style={{ fontSize: 14, flexShrink: 0 }}>🏷</span>
+                    <span style={{ fontSize: 13, flexShrink: 0 }}>🏷</span>
                     <span style={{ fontSize: 12, color: "var(--text-secondary)", flex: 1, fontWeight: 600 }}>Descuento</span>
                     <span style={{ fontSize: 13, color: "#e07070", fontFamily: "'DM Mono',monospace", fontWeight: 900 }}>−</span>
                     <input
                       type="number" min="0" value={descuento} placeholder="0"
                       onChange={e => setDescuento(e.target.value)}
-                      onBlur={() => onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 })}
+                      onKeyDown={e => { if (e.key === "Enter") { onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 }); e.target.blur(); } }}
                       style={{
                         fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700,
-                        padding: "4px 8px", width: 110, textAlign: "right",
+                        padding: "4px 8px", width: 100, textAlign: "right",
                         background: "var(--bg-base)", border: "1px solid var(--border)",
-                        borderRadius: 6, color: "#e07070", outline: "none", transition: "border-color 0.15s",
+                        borderRadius: 6, color: "#e07070", outline: "none",
                       }}
                       onFocus={e => e.target.style.borderColor = "#e07070"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
-                    <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>$</span>
+                    {/* UI - Acción de Confirmación */}
+                    <button
+                      title="Confirmar descuento"
+                      onClick={() => onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 })}
+                      style={{
+                        width: 26, height: 26, borderRadius: 6, cursor: "pointer", flexShrink: 0,
+                        background: parseFloat(descuento) !== descuentoVal ? "rgba(224,112,112,0.2)" : "var(--bg-base)",
+                        border: `1px solid ${parseFloat(descuento) !== descuentoVal ? "#e07070" : "var(--border)"}`,
+                        color: "#e07070", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "all 0.15s",
+                      }}>
+                      ✓
+                    </button>
                   </div>
                   {/* Fila Ganancia Extra */}
                   <div style={{
-                    display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
+                    display: "flex", alignItems: "center", gap: 8, padding: "9px 12px",
                     background: gananciaExtraVal > 0 ? "rgba(126,207,138,0.08)" : "var(--bg-subtle)",
                   }}>
-                    <span style={{ fontSize: 14, flexShrink: 0 }}>💵</span>
+                    <span style={{ fontSize: 13, flexShrink: 0 }}>💵</span>
                     <span style={{ fontSize: 12, color: "var(--text-secondary)", flex: 1, fontWeight: 600 }}>Ganancia extra</span>
                     <span style={{ fontSize: 13, color: "#7ecf8a", fontFamily: "'DM Mono',monospace", fontWeight: 900 }}>+</span>
                     <input
                       type="number" min="0" value={gananciaExtra} placeholder="0"
                       onChange={e => setGananciaExtra(e.target.value)}
-                      onBlur={() => onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 })}
+                      onKeyDown={e => { if (e.key === "Enter") { onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 }); e.target.blur(); } }}
                       style={{
                         fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700,
-                        padding: "4px 8px", width: 110, textAlign: "right",
+                        padding: "4px 8px", width: 100, textAlign: "right",
                         background: "var(--bg-base)", border: "1px solid var(--border)",
-                        borderRadius: 6, color: "#7ecf8a", outline: "none", transition: "border-color 0.15s",
+                        borderRadius: 6, color: "#7ecf8a", outline: "none",
                       }}
                       onFocus={e => e.target.style.borderColor = "#7ecf8a"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
-                    <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>$</span>
+                    {/* UI - Acción de Confirmación */}
+                    <button
+                      title="Confirmar ganancia extra"
+                      onClick={() => onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 })}
+                      style={{
+                        width: 26, height: 26, borderRadius: 6, cursor: "pointer", flexShrink: 0,
+                        background: parseFloat(gananciaExtra) !== gananciaExtraVal ? "rgba(126,207,138,0.2)" : "var(--bg-base)",
+                        border: `1px solid ${parseFloat(gananciaExtra) !== gananciaExtraVal ? "#7ecf8a" : "var(--border)"}`,
+                        color: "#7ecf8a", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "all 0.15s",
+                      }}>
+                      ✓
+                    </button>
                   </div>
-                  {/* Total ajustado — solo si hay ajustes activos */}
-                  {(descuentoVal > 0 || gananciaExtraVal > 0) && (
-                    <div style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "9px 12px", background: "var(--accent-soft)",
-                      borderTop: "1px solid var(--accent-border)",
-                    }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>Total ajustado</span>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(totalAjustado)}</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Costo calculado automáticamente */}
