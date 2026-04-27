@@ -7173,7 +7173,6 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
   const [editandoVigencia, setEditandoVigencia] = useState(false);
   const [descuento, setDescuento] = useState(p.descuento ?? "");
   const [gananciaExtra, setGananciaExtra] = useState(p.gananciaExtra ?? "");
-  const [editandoAjuste, setEditandoAjuste] = useState(false);
 
   // Costo automático: recalcular con los costos actuales del sistema
   const costoAutomatico = (() => {
