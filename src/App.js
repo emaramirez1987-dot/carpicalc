@@ -4858,22 +4858,119 @@ function imprimirPresupuesto(
   textoApertura = "",
   condiciones = "",
   descuento = 0,
-  gananciaExtra = 0
+  gananciaExtra = 0,
+  tema = "dorado"
 ) {
   const perfil = leerPerfil();
   const fecha = fmtFechaLarga(Date.now());
-  // LÓGICA - Precios Tachados y PDF
   const tv = calcularTotalVisual(totalGeneral, descuento, gananciaExtra);
+
+  // ── Paletas de color premium ───────────────────────────────────
+  const TEMAS = {
+    dorado: {
+      acento:       "#a07030",   // líneas y bordes principales
+      acentoSuave:  "#c8a060",   // borde inferior encabezado tabla
+      fondoHeader:  "#f5ede0",   // fondo encabezado tabla + pie
+      fondoFila:    "#fdfaf6",   // filas alternas
+      fondoCliente: "#fff8ee",   // tarjeta del cliente
+      bordeCliente: "#e8d0a0",
+      textoAcento:  "#9a7040",   // textos en dorado (labels, muted)
+      textoPrincipal:"#1a0e04",  // texto oscuro principal
+      textoSec:     "#7a6040",   // texto secundario
+      totalColor:   "#1a6a30",   // total final (verde)
+      descuentoColor:"#e07070",
+      separador:    "#ede0cc",
+    },
+    gris: {
+      acento:        "#5a5a5a",
+      acentoSuave:   "#9a9a9a",
+      fondoHeader:   "#f0f0f0",
+      fondoFila:     "#fafafa",
+      fondoCliente:  "#f5f5f5",
+      bordeCliente:  "#d8d8d8",
+      textoAcento:   "#777777",
+      textoPrincipal:"#1a1a1a",
+      textoSec:      "#555555",
+      totalColor:    "#222222",
+      descuentoColor:"#888888",
+      separador:     "#e0e0e0",
+    },
+    carbon: {
+      acento:        "#2c2c2c",
+      acentoSuave:   "#555555",
+      fondoHeader:   "#222222",
+      fondoFila:     "#f8f8f8",
+      fondoCliente:  "#1a1a1a",
+      bordeCliente:  "#333333",
+      textoAcento:   "#aaaaaa",
+      textoPrincipal:"#111111",
+      textoSec:      "#444444",
+      totalColor:    "#111111",
+      descuentoColor:"#666666",
+      separador:     "#dddddd",
+      // overrides especiales para encabezado oscuro
+      headerTexto:   "#ffffff",
+      headerTextoSec:"#cccccc",
+    },
+    bosque: {
+      acento:        "#2d5a27",
+      acentoSuave:   "#5a8a54",
+      fondoHeader:   "#edf5ec",
+      fondoFila:     "#f7fbf7",
+      fondoCliente:  "#f0f7ef",
+      bordeCliente:  "#b8d8b4",
+      textoAcento:   "#4a7a44",
+      textoPrincipal:"#0f1e0d",
+      textoSec:      "#3a5a36",
+      totalColor:    "#1a4016",
+      descuentoColor:"#c0392b",
+      separador:     "#c8e0c4",
+    },
+    marino: {
+      acento:        "#1a3a5c",
+      acentoSuave:   "#3a6a9c",
+      fondoHeader:   "#edf2f8",
+      fondoFila:     "#f7f9fc",
+      fondoCliente:  "#eef3f9",
+      bordeCliente:  "#b0c8e0",
+      textoAcento:   "#3a5a7a",
+      textoPrincipal:"#0a1520",
+      textoSec:      "#2a4a6a",
+      totalColor:    "#0a2040",
+      descuentoColor:"#c0392b",
+      separador:     "#c0d4e8",
+    },
+    bordo: {
+      acento:        "#6b1a2a",
+      acentoSuave:   "#9a3a4a",
+      fondoHeader:   "#f8eeef",
+      fondoFila:     "#fdf7f7",
+      fondoCliente:  "#f8eced",
+      bordeCliente:  "#e0b0b8",
+      textoAcento:   "#7a3040",
+      textoPrincipal:"#1a0508",
+      textoSec:      "#5a2030",
+      totalColor:    "#3a0a14",
+      descuentoColor:"#8a1a2a",
+      separador:     "#e8c8cc",
+    },
+  };
+
+  const p = TEMAS[tema] || TEMAS.dorado;
+
+  // Texto del encabezado: blanco si el tema tiene fondos oscuros (carbón)
+  const hTexto    = p.headerTexto    || p.textoPrincipal;
+  const hTextoSec = p.headerTextoSec || p.textoAcento;
   const encabezadoTaller = perfil?.nombre
     ? `<div style="display:flex;align-items:center;gap:14px">
         ${perfil.logo ? `<img src="${perfil.logo}" style="height:44px;object-fit:contain" />` : ""}
         <div>
-          <div style="font-family:'Georgia',serif;font-size:20px;font-weight:900;color:#7a4a10">${perfil.nombre}</div>
-          ${perfil.slogan ? `<div style="font-size:11px;color:#9a7040;font-style:italic">${perfil.slogan}</div>` : ""}
-          <div style="font-size:10px;color:#aaa;margin-top:2px">${[perfil.tel, perfil.email, perfil.direccion].filter(Boolean).join(" · ")}</div>
+          <div style="font-family:'Georgia',serif;font-size:20px;font-weight:900;color:${p.acento}">${perfil.nombre}</div>
+          ${perfil.slogan ? `<div style="font-size:11px;color:${p.textoAcento};font-style:italic">${perfil.slogan}</div>` : ""}
+          <div style="font-size:10px;color:${p.textoAcento};margin-top:2px;opacity:0.7">${[perfil.tel, perfil.email, perfil.direccion].filter(Boolean).join(" · ")}</div>
         </div>
       </div>`
-    : `<div><div style="font-size:22px;font-weight:900;color:#7a4a10">🪵 CarpiCálc</div><div style="font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-top:4px;color:#888">Presupuesto de carpintería</div></div>`;
+    : `<div><div style="font-size:22px;font-weight:900;color:${p.acento}">🪵 CarpiCálc</div><div style="font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-top:4px;color:${p.textoAcento}">Presupuesto de carpintería</div></div>`;
   const filas = items
     .map((item) => {
       const modBase = modulos[item.codigo];
@@ -4887,62 +4984,23 @@ function imprimirPresupuesto(
         over.profundidad !== modBase.dimensiones.profundidad ||
         over.alto !== modBase.dimensiones.alto;
       return `<tr>
-        <td class="cod">${item.codigo}</td>
+        <td class="cod" style="color:${p.acento}">${item.codigo}</td>
         <td>
-          <div class="mod-nombre">${modBase.nombre}</div>
-          ${modBase.descripcion ? `<div class="mod-desc">${modBase.descripcion}</div>` : ""}
-          ${item.nota?.trim() ? `<div class="mod-nota">📝 ${item.nota}</div>` : ""}
-          <div class="mod-dim" style="color:${dimDif ? "#8a5a1a" : "#9a8060"}">
+          <div class="mod-nombre" style="color:${p.textoPrincipal}">${modBase.nombre}</div>
+          ${modBase.descripcion ? `<div class="mod-desc" style="color:${p.textoSec}">${modBase.descripcion}</div>` : ""}
+          ${item.nota?.trim() ? `<div class="mod-nota" style="color:${p.acento}">📝 ${item.nota}</div>` : ""}
+          <div class="mod-dim" style="color:${dimDif ? p.acento : p.textoAcento}">
             ${over.ancho}×${over.profundidad}×${over.alto} mm${dimDif ? " ★ personalizado" : ""} · ${TIPO_MAT[modUsado.material]}
           </div>
         </td>
-        <td class="num" style="font-weight:700;color:#8a5a1a">${item.cantidad}</td>
-        ${mostrarPrecioUnitario ? `<td class="num precio-u">${fmtPeso(calc.total)}</td>` : ""}
-        <td class="num subtotal">${fmtPeso(calc.total * item.cantidad)}</td>
+        <td class="num" style="font-weight:700;color:${p.acento}">${item.cantidad}</td>
+        ${mostrarPrecioUnitario ? `<td class="num precio-u" style="color:${p.textoSec}">${fmtPeso(calc.total)}</td>` : ""}
+        <td class="num subtotal" style="color:${p.totalColor}">${fmtPeso(calc.total * item.cantidad)}</td>
       </tr>`;
     })
     .join("");
   const totalUnid = items.reduce((a, i) => a + i.cantidad, 0);
-  const textoAperturaHtml = textoApertura
-    ? `<div style="margin-bottom:20px;padding:12px 16px;background:#fff8ee;border-left:3px solid #c8a060;border-radius:0 6px 6px 0;font-size:13px;color:#5a3a10;line-height:1.7">${textoApertura.replace(/\n/g, "<br>")}</div>`
-    : "";
-
-  // ── Bloque financiero del pie ─────────────────────────────────────
-  // Si hay descuento: subtotal tachado → línea de descuento → total verde
-  // Si hay ganancia: solo muestra el total ajustado
-  const bloqueFinanciero = `
-    <table style="width:100%;border-collapse:collapse;font-family:'Segoe UI',Arial,sans-serif">
-      <tr>
-        <td style="font-size:11px;color:#9a7040;padding:4px 0;text-align:left">Subtotal</td>
-        <td style="font-size:13px;font-weight:700;color:${tv.hayDescuento ? "#b0a090" : "#1a0e04"};text-align:right;padding:4px 0;${tv.hayDescuento ? "text-decoration:line-through;opacity:0.6;letter-spacing:0.02em" : ""}">
-          ${fmtPeso(tv.totalOriginal)}
-        </td>
-      </tr>
-      ${tv.hayDescuento ? `
-      <tr>
-        <td style="font-size:11px;color:#e07070;padding:4px 0;text-align:left">🏷 Descuento</td>
-        <td style="font-size:13px;font-weight:700;color:#e07070;text-align:right;padding:4px 0">− ${fmtPeso(tv.descuentoVal)}</td>
-      </tr>` : ""}
-      ${tv.hayGanancia ? `
-      <tr>
-        <td style="font-size:11px;color:#9a7040;padding:4px 0;text-align:left">Recargo</td>
-        <td style="font-size:13px;font-weight:700;color:#7a5a20;text-align:right;padding:4px 0">+ ${fmtPeso(tv.gananciaVal)}</td>
-      </tr>` : ""}
-      ${tv.hayDescuento || tv.hayGanancia ? `
-      <tr>
-        <td colspan="2" style="padding:6px 0 0 0;border-top:1px solid #c8a060"></td>
-      </tr>` : ""}
-      <tr>
-        <td style="font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#9a7040;padding-top:6px;text-align:left">Total del trabajo</td>
-        <td style="padding-top:6px;text-align:right">
-          <span style="font-family:'Georgia',serif;font-size:28px;font-weight:900;color:#1a6a30;letter-spacing:-0.5px">${fmtPeso(tv.totalFinal)}</span>
-        </td>
-      </tr>
-      <tr>
-        <td colspan="2" style="font-size:9px;color:#b0a090;padding-top:4px;text-align:right">IVA no incluido</td>
-      </tr>
-    </table>`;
-
+  // ── HTML del PDF ──────────────────────────────────────────────────
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -4953,7 +5011,7 @@ function imprimirPresupuesto(
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
       background: #fff;
-      color: #1a0e04;
+      color: ${p.textoPrincipal};
       padding: 36px 44px;
       max-width: 920px;
       margin: 0 auto;
@@ -4964,60 +5022,50 @@ function imprimirPresupuesto(
       body { padding: 16px 20px; font-size: 12px; }
       @page { margin: 1.2cm 1.4cm; }
     }
-    /* ── Tabla de ítems ── */
-    .tabla-items { width: 100%; border-collapse: collapse; margin-top: 0; }
-    .tabla-items thead tr { background: #f5ede0; }
+    .tabla-items { width: 100%; border-collapse: collapse; }
+    .tabla-items thead tr { background: ${p.fondoHeader}; }
     .tabla-items th {
       font-size: 9px; text-transform: uppercase; letter-spacing: 0.16em;
-      font-weight: 700; color: #9a7040;
-      padding: 10px 14px;
-      border-bottom: 2px solid #c8a060;
+      font-weight: 700; color: ${tema === "carbon" ? p.headerTextoSec : p.textoAcento};
+      padding: 10px 14px; border-bottom: 2px solid ${p.acentoSuave};
     }
     .tabla-items th.num { text-align: right; }
     .tabla-items th.txt { text-align: left; }
-    .tabla-items td { padding: 11px 14px; border-bottom: 1px solid #ede0cc; vertical-align: top; }
-    .tabla-items tbody tr:nth-child(even) td { background: #fdfaf6; }
-    .cod  { font-family: monospace; font-size: 10px; font-weight: 700; color: #8a5a1a; white-space: nowrap; }
+    .tabla-items td { padding: 11px 14px; border-bottom: 1px solid ${p.separador}; vertical-align: top; }
+    .tabla-items tbody tr:nth-child(even) td { background: ${p.fondoFila}; }
+    .cod  { font-family: monospace; font-size: 10px; font-weight: 700; white-space: nowrap; }
     .num  { text-align: right; font-family: monospace; }
-    .subtotal { font-size: 14px; font-weight: 700; color: #1a6a30; }
-    .precio-u  { font-size: 12px; color: #6a5040; }
-    .mod-nombre { font-size: 13px; font-weight: 700; color: #1a0e04; }
-    .mod-desc   { font-size: 11px; color: #7a6040; font-style: italic; margin-top: 3px; }
+    .subtotal { font-size: 14px; font-weight: 700; }
+    .precio-u  { font-size: 12px; }
+    .mod-nombre { font-size: 13px; font-weight: 700; }
+    .mod-desc   { font-size: 11px; font-style: italic; margin-top: 3px; }
     .mod-dim    { font-size: 10px; font-family: monospace; margin-top: 4px; }
-    .mod-nota   { font-size: 11px; font-style: italic; margin-top: 4px; color: #8a5a1a; }
+    .mod-nota   { font-size: 11px; font-style: italic; margin-top: 4px; }
   </style>
 </head>
 <body>
 
-  <!-- ══ ZONA 1: HEADER ══════════════════════════════════════════ -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #a07030;margin-bottom:16px;gap:24px">
-
-    <!-- Columna izquierda: empresa -->
-    <div style="flex:1">
-      ${encabezadoTaller}
-    </div>
-
-    <!-- Columna derecha: datos del presupuesto y cliente -->
+  <!-- ZONA 1: HEADER -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid ${p.acento};margin-bottom:16px;gap:24px">
+    <div style="flex:1">${encabezadoTaller}</div>
     <div style="text-align:right;min-width:200px">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.2em;color:#9a7040;margin-bottom:4px">Presupuesto</div>
-      <div style="font-size:11px;color:#888;margin-bottom:12px">${fecha}</div>
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.2em;color:${p.textoAcento};margin-bottom:4px">Presupuesto</div>
+      <div style="font-size:11px;color:${p.textoAcento};margin-bottom:12px;opacity:0.7">${fecha}</div>
       ${cliente && (cliente.nombre || cliente.tel || cliente.dir) ? `
-      <div style="background:#fff8ee;border:1px solid #e8d0a0;border-radius:8px;padding:10px 14px;font-size:12px;color:#5a3a10;text-align:left;display:inline-block;min-width:180px">
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.14em;color:#9a7040;font-weight:700;margin-bottom:6px">Cliente</div>
-        ${cliente.nombre ? `<div style="font-weight:700;font-size:13px;margin-bottom:3px">${cliente.nombre}</div>` : ""}
-        ${cliente.tel ? `<div style="font-size:11px;color:#7a5a30;margin-top:2px">📞 ${cliente.tel}</div>` : ""}
-        ${cliente.dir ? `<div style="font-size:11px;color:#7a5a30;margin-top:2px">📍 ${cliente.dir}</div>` : ""}
+      <div style="background:${p.fondoCliente};border:1px solid ${p.bordeCliente};border-radius:8px;padding:10px 14px;font-size:12px;color:${p.textoSec};text-align:left;display:inline-block;min-width:180px">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.14em;color:${p.textoAcento};font-weight:700;margin-bottom:6px">Cliente</div>
+        ${cliente.nombre ? `<div style="font-weight:700;font-size:13px;margin-bottom:3px;color:${p.textoPrincipal}">${cliente.nombre}</div>` : ""}
+        ${cliente.tel ? `<div style="font-size:11px;margin-top:2px">📞 ${cliente.tel}</div>` : ""}
+        ${cliente.dir ? `<div style="font-size:11px;margin-top:2px">📍 ${cliente.dir}</div>` : ""}
       </div>` : ""}
     </div>
   </div>
 
-  <!-- Nombre del proyecto — título centrado bajo el header -->
-  ${nombre ? `<div style="text-align:center;font-family:'Georgia',serif;font-size:18px;font-style:italic;font-weight:700;color:#3a2010;padding:10px 0 20px 0;letter-spacing:0.02em">${nombre}</div>` : ""}
+  ${nombre ? `<div style="text-align:center;font-family:'Georgia',serif;font-size:18px;font-style:italic;font-weight:700;color:${p.acento};padding:10px 0 20px 0;letter-spacing:0.02em">${nombre}</div>` : ""}
 
-  <!-- Texto de apertura -->
-  ${textoAperturaHtml}
+  ${textoApertura ? `<div style="margin-bottom:20px;padding:12px 16px;background:${p.fondoCliente};border-left:3px solid ${p.acentoSuave};border-radius:0 6px 6px 0;font-size:13px;color:${p.textoSec};line-height:1.7">${textoApertura.replace(/\n/g, "<br>")}</div>` : ""}
 
-  <!-- ══ ZONA 2: TABLA DE ÍTEMS ══════════════════════════════════ -->
+  <!-- ZONA 2: TABLA -->
   <table class="tabla-items">
     <thead>
       <tr>
@@ -5028,32 +5076,53 @@ function imprimirPresupuesto(
         <th class="num" style="width:120px">Subtotal</th>
       </tr>
     </thead>
-    <tbody>
-      ${filas}
-    </tbody>
+    <tbody>${filas}</tbody>
   </table>
 
-  <!-- ══ ZONA 3: PIE ════════════════════════════════════════════== -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:32px;margin-top:0;padding:20px 0 0 0;border-top:2px solid #a07030">
+  <!-- ZONA 3: PIE -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:32px;margin-top:0;padding:20px 0 0 0;border-top:2px solid ${p.acento}">
 
-    <!-- Izquierda: condiciones -->
     <div style="flex:1;max-width:55%">
       ${condiciones ? `
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:#9a7040;margin-bottom:8px">Condiciones y observaciones</div>
-      <div style="font-size:11px;color:#7a6040;line-height:1.7;background:#fdfaf6;border:1px solid #ede0cc;border-radius:6px;padding:10px 14px">${condiciones.replace(/\n/g, "<br>")}</div>
-      ` : `
-      <div style="font-size:11px;color:#c0b090;font-style:italic">Sin condiciones especificadas.</div>
-      `}
-      <div style="margin-top:12px;font-size:10px;color:#c0b090">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:${p.textoAcento};margin-bottom:8px">Condiciones y observaciones</div>
+      <div style="font-size:11px;color:${p.textoSec};line-height:1.7;background:${p.fondoFila};border:1px solid ${p.separador};border-radius:6px;padding:10px 14px">${condiciones.replace(/\n/g, "<br>")}</div>
+      ` : `<div style="font-size:11px;color:${p.textoAcento};font-style:italic;opacity:0.6">Sin condiciones especificadas.</div>`}
+      <div style="margin-top:12px;font-size:10px;color:${p.textoAcento};opacity:0.7">
         ${totalUnid} unidad${totalUnid !== 1 ? "es" : ""} · ${items.length} módulo${items.length !== 1 ? "s" : ""}
       </div>
     </div>
 
-    <!-- Derecha: bloque financiero alineado con col Subtotal -->
     <div style="min-width:220px;text-align:right">
-      ${bloqueFinanciero}
+      <table style="width:100%;border-collapse:collapse;font-family:'Segoe UI',Arial,sans-serif">
+        <tr>
+          <td style="font-size:11px;color:${p.textoAcento};padding:4px 0;text-align:left">Subtotal</td>
+          <td style="font-size:13px;font-weight:700;color:${tv.hayDescuento ? p.textoAcento : p.textoPrincipal};text-align:right;padding:4px 0;${tv.hayDescuento ? "text-decoration:line-through;opacity:0.55;letter-spacing:0.02em" : ""}">
+            ${fmtPeso(tv.totalOriginal)}
+          </td>
+        </tr>
+        ${tv.hayDescuento ? `
+        <tr>
+          <td style="font-size:11px;color:${p.descuentoColor};padding:4px 0;text-align:left">🏷 Descuento</td>
+          <td style="font-size:13px;font-weight:700;color:${p.descuentoColor};text-align:right;padding:4px 0">− ${fmtPeso(tv.descuentoVal)}</td>
+        </tr>` : ""}
+        ${tv.hayGanancia ? `
+        <tr>
+          <td style="font-size:11px;color:${p.textoAcento};padding:4px 0;text-align:left">Recargo</td>
+          <td style="font-size:13px;font-weight:700;color:${p.textoSec};text-align:right;padding:4px 0">+ ${fmtPeso(tv.gananciaVal)}</td>
+        </tr>` : ""}
+        ${tv.hayDescuento || tv.hayGanancia ? `
+        <tr><td colspan="2" style="padding:6px 0 0 0;border-top:1px solid ${p.acentoSuave}"></td></tr>` : ""}
+        <tr>
+          <td style="font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:${p.textoAcento};padding-top:6px;text-align:left">Total del trabajo</td>
+          <td style="padding-top:6px;text-align:right">
+            <span style="font-family:'Georgia',serif;font-size:28px;font-weight:900;color:${p.totalColor};letter-spacing:-0.5px">${fmtPeso(tv.totalFinal)}</span>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="font-size:9px;color:${p.textoAcento};padding-top:4px;text-align:right;opacity:0.7">IVA no incluido</td>
+        </tr>
+      </table>
     </div>
-
   </div>
 
 <script>window.onload=()=>window.print();</script>
@@ -6185,6 +6254,15 @@ function VistaPrevia({
   };
   const [mostrarLista, setMostrarLista] = useState(!presupuestoSelId);
   const [mostrarPrecioUnitario, setMostrarPrecioUnitario] = useState(true);
+  const [temaPDF, setTemaPDF] = useState(() => {
+    try { return localStorage.getItem("carpicalc:temaPDF") || "dorado"; }
+    catch { return "dorado"; }
+  });
+
+  const cambiarTema = (t) => {
+    setTemaPDF(t);
+    try { localStorage.setItem("carpicalc:temaPDF", t); } catch {}
+  };
   const [whatsappCopiado, setWhatsappCopiado] = useState(false);
   const [guardandoTexto, setGuardandoTexto] = useState(false);
 
@@ -6246,7 +6324,7 @@ function VistaPrevia({
       const dims = (presSel.dimOverride && presSel.dimOverride[`${item.codigo}-${item.id||0}`]) || base?.dimensiones;
       return { ...base, dimensiones: dims };
     };
-    imprimirPresupuesto(presSel.items, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, mostrarPrecioUnitario, presSel.cliente, textoApertura, condiciones, presSel.descuento || 0, presSel.gananciaExtra || 0);
+    imprimirPresupuesto(presSel.items, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, mostrarPrecioUnitario, presSel.cliente, textoApertura, condiciones, presSel.descuento || 0, presSel.gananciaExtra || 0, temaPDF);
   };
 
   const estSel = presSel ? (ESTADOS_TRABAJO.find(e => e.id === (presSel.estado || "nuevo")) || ESTADOS_TRABAJO[0]) : null;
@@ -6402,6 +6480,28 @@ function VistaPrevia({
                     );
                   })()}
                   {btnAcc("wa", whatsappCopiado ? "✓ Copiado" : "📲 WhatsApp", handleWhatsApp)}
+                  {/* Selector de tema de color del PDF */}
+                  <select
+                    value={temaPDF}
+                    onChange={e => cambiarTema(e.target.value)}
+                    title="Tema de color del PDF"
+                    style={{
+                      fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
+                      padding: "7px 10px", borderRadius: 7, cursor: "pointer",
+                      outline: "none", background: "var(--bg-surface)",
+                      border: "1px solid var(--border)", color: "var(--text-secondary)",
+                      transition: "border-color 0.15s",
+                    }}
+                    onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                    onBlur={e => e.target.style.borderColor = "var(--border)"}
+                  >
+                    <option value="dorado">🟡 Dorado</option>
+                    <option value="gris">⬜ Gris Perla</option>
+                    <option value="carbon">⬛ Carbón</option>
+                    <option value="bosque">🟢 Bosque</option>
+                    <option value="marino">🔵 Marino</option>
+                    <option value="bordo">🟥 Burdeos</option>
+                  </select>
                   {btnAcc("gold", "🖨 PDF", handlePDF)}
                 </div>
 
