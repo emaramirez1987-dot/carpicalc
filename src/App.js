@@ -250,10 +250,23 @@ const _save = async (key, data) => {
     return false;
   }
 };
-const guardarModulos = (d) => _save("carpicalc:modulos", d);
-const guardarCostos = (d) => _save("carpicalc:costos", d);
+const guardarModulos     = (d) => _save("carpicalc:modulos", d);
 const guardarPresupuestos = (d) => _save("carpicalc:presupuestos", d);
-const guardarPerfil = (d) => _save("carpicalc:perfil", d);
+const guardarPerfil      = (d) => _save("carpicalc:perfil", d);
+
+// Guarda costos Y actualiza el timestamp de versión.
+// Ese timestamp permite detectar presupuestos creados antes de la última modificación de costos.
+const guardarCostos = (d) => {
+  _save("carpicalc:costos_version", Date.now().toString());
+  return _save("carpicalc:costos", d);
+};
+
+// Devuelve el timestamp (ms) de la última vez que se modificaron los costos.
+// Si nunca se modificaron, retorna 0.
+const leerVersionCostos = () => {
+  try { return parseInt(localStorage.getItem("carpicalc:costos_version") || "0"); }
+  catch { return 0; }
+};
 
 // ── Historial de precios ──────────────────────────────────────────
 async function cargarHistorialPrecios() {
@@ -359,6 +372,28 @@ const fmtFechaLarga = (ts) =>
 function leerPerfil() {
   try { return JSON.parse(localStorage.getItem("carpicalc:perfil")) || {}; }
   catch { return {}; }
+}
+
+// Devuelve true si el presupuesto fue creado o guardado ANTES de la última modificación de costos.
+// Se usa para habilitar el botón "Actualizar precio" en toda la app.
+function presupuestoNecesitaActualizacion(presId, costosVersion) {
+  if (!costosVersion || !presId) return false;
+  return parseInt(presId) < costosVersion;
+}
+
+// Recalcula el total de un presupuesto con los costos actuales.
+// Retorna el nuevo total o null si hay un error.
+function recalcularTotalPresupuesto(p, modulos, costos) {
+  if (!p?.items || !modulos || !costos) return null;
+  return p.items.reduce((acc, item) => {
+    const base = modulos[item.codigo];
+    if (!base) return acc;
+    const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || base.dimensiones;
+    const mod = { ...base, dimensiones: dims };
+    const calc = calcularModulo(mod, costos);
+    if (!calc) return acc;
+    return acc + calc.total * item.cantidad;
+  }, 0);
 }
 
 const TIPO_MAT = {
@@ -4416,6 +4451,10 @@ function GestorPresupuestos({
   clienteInicial = { nombre: "", tel: "", dir: "" },
   onVer,
   itemsActivos = [],
+  costosVersion = 0,
+  onActualizarPresupuesto,
+  modulos,
+  costos,
 }) {
   const [abierto, setAbierto] = useState(false);
   const [confirmDelId, setConfirmDelId] = useState(null);
@@ -4529,6 +4568,29 @@ function GestorPresupuestos({
                       style={{ padding: "4px 10px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
                       ✎ Editar
                     </button>
+                    {/* Botón Actualizar precio — se habilita cuando los costos cambiaron después de crear el presupuesto */}
+                    {onActualizarPresupuesto && modulos && costos && (() => {
+                      const necesita = presupuestoNecesitaActualizacion(id, costosVersion);
+                      return (
+                        <button
+                          disabled={!necesita}
+                          onClick={() => {
+                            const nuevoTotal = recalcularTotalPresupuesto(p, modulos, costos);
+                            if (nuevoTotal !== null) onActualizarPresupuesto(id, { total: Math.round(nuevoTotal) });
+                          }}
+                          title={necesita ? "Los costos cambiaron desde que se creó este presupuesto" : "Los precios están actualizados"}
+                          style={{
+                            padding: "4px 10px", borderRadius: 5, cursor: necesita ? "pointer" : "not-allowed",
+                            fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                            background: necesita ? "rgba(200,160,42,0.15)" : "transparent",
+                            border: `1px solid ${necesita ? "rgba(200,160,42,0.40)" : "var(--border)"}`,
+                            color: necesita ? "#c8a02a" : "var(--text-muted)",
+                            opacity: necesita ? 1 : 0.45, transition: "all 0.2s",
+                          }}>
+                          ↻ Actualizar
+                        </button>
+                      );
+                    })()}
                     {onVer && (
                       <button onClick={() => itemsActivos.length > 0 ? setAvisoVerId(id) : (onVer(id), setAbierto(false))}
                         style={{ padding: "4px 10px", background: "rgba(112,144,176,0.12)", border: "1px solid rgba(112,144,176,0.30)", color: "#7090b0", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
@@ -5306,6 +5368,7 @@ function Presupuesto({
   onCambiarEstado,
   onActualizarPresupuesto,
   onVerPresupuesto,
+  costosVersion = 0,
 }) {
   const [inputCod, setInputCod] = useState("");
   const [inputCant, setInputCant] = useState(1);
@@ -5452,6 +5515,10 @@ function Presupuesto({
           clienteInicial={clienteActivo}
           onVer={onVerPresupuesto}
           itemsActivos={items}
+          costosVersion={costosVersion}
+          onActualizarPresupuesto={onActualizarPresupuesto}
+          modulos={modulos}
+          costos={costos}
         />
       </div>
 
@@ -5486,6 +5553,31 @@ function Presupuesto({
             )}
             {items.length > 0 && (
               <>
+                {/* Botón Actualizar — habilitado solo si los costos cambiaron desde que se cargó el presupuesto */}
+                {presupuestoActivoId && (() => {
+                  const necesita = presupuestoNecesitaActualizacion(presupuestoActivoId, costosVersion);
+                  return (
+                    <button
+                      disabled={!necesita}
+                      onClick={() => {
+                        const pActivo = presupuestos[presupuestoActivoId];
+                        const nuevoTotal = recalcularTotalPresupuesto(pActivo, modulos, costos);
+                        if (nuevoTotal !== null) onActualizarPresupuesto(presupuestoActivoId, { total: Math.round(nuevoTotal) });
+                      }}
+                      title={necesita ? "Los costos cambiaron — actualizá el precio" : "El precio está actualizado"}
+                      style={{
+                        padding: "6px 12px", borderRadius: 7, fontSize: 11,
+                        fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                        cursor: necesita ? "pointer" : "not-allowed",
+                        background: necesita ? "rgba(200,160,42,0.15)" : "transparent",
+                        border: `1px solid ${necesita ? "rgba(200,160,42,0.40)" : "var(--border)"}`,
+                        color: necesita ? "#c8a02a" : "var(--text-muted)",
+                        opacity: necesita ? 1 : 0.45, transition: "all 0.2s",
+                      }}>
+                      ↻ Actualizar
+                    </button>
+                  );
+                })()}
                 <button onClick={() => presupuestoActivoId ? setDialogoGuardar(true) : (() => {
                   onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
                   setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setEditandoCliente(false);
@@ -5697,6 +5789,7 @@ function VistaPrevia({
   totalGeneral, presupuestos, perfil,
   onActualizarPresupuesto, onCambiarEstado, onCargarPresupuesto,
   presupuestoSelId, onSeleccionarPresupuesto,
+  costosVersion = 0,
 }) {
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
   const [presSelIdLocal, setPresSelIdLocal] = useState(presupuestoSelId || null);
@@ -5867,6 +5960,30 @@ function VistaPrevia({
                     {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
                   </select>
                   <ToggleSwitch value={mostrarPrecioUnitario} onChange={setMostrarPrecioUnitario} label="P. unit." />
+                  {/* Botón Actualizar precio — visible siempre, habilitado solo si los costos cambiaron */}
+                  {(() => {
+                    const necesita = presSelId && presupuestoNecesitaActualizacion(presSelId, costosVersion);
+                    return (
+                      <button
+                        disabled={!necesita}
+                        onClick={() => {
+                          const nuevoTotal = recalcularTotalPresupuesto(presSel, modulos, costos);
+                          if (nuevoTotal !== null) onActualizarPresupuesto(presSelId, { total: Math.round(nuevoTotal) });
+                        }}
+                        title={necesita ? "Los costos cambiaron — actualizá el precio" : "El precio está actualizado"}
+                        style={{
+                          padding: "7px 13px", borderRadius: 7, fontSize: 11,
+                          fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                          cursor: necesita ? "pointer" : "not-allowed",
+                          background: necesita ? "rgba(200,160,42,0.15)" : "transparent",
+                          border: `1px solid ${necesita ? "rgba(200,160,42,0.40)" : "var(--border)"}`,
+                          color: necesita ? "#c8a02a" : "var(--text-muted)",
+                          opacity: necesita ? 1 : 0.45, transition: "all 0.2s",
+                        }}>
+                        ↻ Actualizar precio
+                      </button>
+                    );
+                  })()}
                   {btnAcc("wa", whatsappCopiado ? "✓ Copiado" : "📲 WhatsApp", handleWhatsApp)}
                   {btnAcc("gold", "🖨 PDF", handlePDF)}
                 </div>
@@ -6964,15 +7081,40 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
   const [diasVigencia, setDiasVigencia] = useState(p.diasVigencia ?? 15);
   const [editandoCosto, setEditandoCosto] = useState(false);
   const [editandoVigencia, setEditandoVigencia] = useState(false);
+  const [descuento, setDescuento] = useState(p.descuento ?? "");
+  const [gananciaExtra, setGananciaExtra] = useState(p.gananciaExtra ?? "");
+  const [editandoAjuste, setEditandoAjuste] = useState(false);
+
+  // Costo automático: recalcular con los costos actuales del sistema
+  const costoAutomatico = (() => {
+    if (!p.items || !modulos || !costos) return 0;
+    return Math.round(p.items.reduce((acc, item) => {
+      const base = modulos[item.codigo];
+      if (!base) return acc;
+      const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || base.dimensiones;
+      const calc = calcularModulo({ ...base, dimensiones: dims }, costos);
+      if (!calc) return acc;
+      return acc + calc.costoBase * item.cantidad; // solo costo sin ganancia
+    }, 0));
+  })();
+
+  // Prioridad: si el usuario ingresó un costo real manual, se usa ese. Si no, el automático.
+  const costoEfectivo = p.costoReal > 0 ? p.costoReal : costoAutomatico;
+
+  // Total ajustado: precio base + ganancia extra − descuento
+  const descuentoVal = parseFloat(p.descuento) || 0;
+  const gananciaExtraVal = parseFloat(p.gananciaExtra) || 0;
+  const totalAjustado = p.total + gananciaExtraVal - descuentoVal;
 
   const cobros = p.cobros || [];
   const totalCobrado = cobros.reduce((a, c) => a + c.monto, 0);
-  const saldoPendiente = Math.max(0, p.total - totalCobrado);
-  const totalValido = p.total > 0;
-  const pctCobrado = totalValido ? Math.min(100, Math.round((totalCobrado / p.total) * 100)) : 0;
+  const saldoPendiente = Math.max(0, totalAjustado - totalCobrado);
+  const totalValido = totalAjustado > 0;
+  const pctCobrado = totalValido ? Math.min(100, Math.round((totalCobrado / totalAjustado) * 100)) : 0;
 
-  const margen = (totalValido && p.costoReal > 0)
-    ? Math.round(((p.total - p.costoReal) / p.total) * 100)
+  // Margen calculado sobre el total ajustado vs el costo efectivo
+  const margen = (totalValido && costoEfectivo > 0)
+    ? Math.round(((totalAjustado - costoEfectivo) / totalAjustado) * 100)
     : null;
 
   // Vencimiento: solo relevante si está enviado
@@ -7159,12 +7301,77 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
                 📈 Rentabilidad
               </div>
               <div style={{ marginBottom: 12 }}>
+
+                {/* Precio base y ajustes */}
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Precio presupuestado</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Precio base</span>
                   <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
                 </div>
+
+                {/* Descuento y Ganancia Extra */}
+                {editandoAjuste ? (
+                  <div style={{ background: "var(--bg-subtle)", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      Ajustes de precio
+                    </div>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                      <div style={{ flex: 1, minWidth: 120 }}>
+                        <label style={{ fontSize: 10, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Descuento (−)</label>
+                        <input type="number" min="0" value={descuento} onChange={e => setDescuento(e.target.value)}
+                          placeholder="0" style={{ ...inputSm, width: "100%" }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 120 }}>
+                        <label style={{ fontSize: 10, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Ganancia extra (+)</label>
+                        <input type="number" min="0" value={gananciaExtra} onChange={e => setGananciaExtra(e.target.value)}
+                          placeholder="0" style={{ ...inputSm, width: "100%" }} />
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => {
+                        const d = parseFloat(descuento) || 0;
+                        const g = parseFloat(gananciaExtra) || 0;
+                        onActualizar(id, { descuento: d, gananciaExtra: g });
+                        setEditandoAjuste(false);
+                      }} style={{ padding: "5px 12px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
+                        ✓ Aplicar
+                      </button>
+                      <button onClick={() => setEditandoAjuste(false)}
+                        style={{ padding: "5px 10px", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <button onClick={() => setEditandoAjuste(true)}
+                      style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", background: "none", border: "1px dashed var(--border)", borderRadius: 5, padding: "2px 8px", cursor: "pointer" }}>
+                      {(descuentoVal > 0 || gananciaExtraVal > 0)
+                        ? `${descuentoVal > 0 ? `−${fmtPeso(descuentoVal)}` : ""}${descuentoVal > 0 && gananciaExtraVal > 0 ? " / " : ""}${gananciaExtraVal > 0 ? `+${fmtPeso(gananciaExtraVal)}` : ""}`
+                        : "✎ Agregar descuento o recargo"}
+                    </button>
+                    {totalAjustado !== p.total && (
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(totalAjustado)}</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Costo calculado automáticamente */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    Costo calculado
+                    {p.costoReal > 0 && <span style={{ fontSize: 10, color: "#c8a02a", marginLeft: 6 }}>(ignorado)</span>}
+                  </span>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: p.costoReal > 0 ? "var(--text-muted)" : "#e07070", textDecoration: p.costoReal > 0 ? "line-through" : "none", opacity: p.costoReal > 0 ? 0.5 : 1 }}>
+                    {fmtPeso(costoAutomatico)}
+                  </span>
+                </div>
+
+                {/* Costo real manual — prioridad sobre el automático */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Costo real del trabajo</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    Costo real (manual)
+                    {p.costoReal > 0 && <span style={{ fontSize: 10, color: "#7ecf8a", marginLeft: 6 }}>● activo</span>}
+                  </span>
                   {editandoCosto ? (
                     <div style={{ display: "flex", gap: 4 }}>
                       <input type="number" value={costoReal} onChange={e => setCostoReal(e.target.value)}
@@ -7180,12 +7387,14 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
                     </button>
                   )}
                 </div>
+
+                {/* Resultado: ganancia neta y semáforo */}
                 {margen !== null && totalValido && (
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--separator)" }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>Ganancia neta</span>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: (p.total - p.costoReal) >= 0 ? "#7ecf8a" : "#e07070" }}>
-                        {fmtPeso(p.total - p.costoReal)}
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: (totalAjustado - costoEfectivo) >= 0 ? "#7ecf8a" : "#e07070" }}>
+                        {fmtPeso(totalAjustado - costoEfectivo)}
                       </span>
                     </div>
                     <div style={{ height: 8, background: "var(--bg-subtle)", borderRadius: 999, overflow: "hidden", marginTop: 8 }}>
@@ -7207,7 +7416,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
                 )}
                 {margen === null && totalValido && (
                   <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
-                    Ingresá el costo real para ver el margen
+                    Margen calculado automáticamente. Podés ingresar un costo real para mayor precisión.
                   </div>
                 )}
               </div>
@@ -7775,6 +7984,9 @@ function AppInterna() {
   const [items, setItems] = useState([]);
   const [dimOverride, setDimOverride] = useState({});
   const [presupuestoVistaPreviaId, setPresupuestoVistaPreviaId] = useState(null);
+  // Versión de costos: timestamp de la última modificación en la pestaña Costos.
+  // Se compara contra el timestamp del presupuesto para saber si sus precios están desactualizados.
+  const [costosVersion, setCostosVersion] = useState(leerVersionCostos);
 
   useEffect(() => {
     cargarDatos().then(({ modulos, costos, presupuestos, perfil }) => {
@@ -7827,7 +8039,10 @@ function AppInterna() {
     setTimeout(() => setSaveEst(null), 2500);
   };
   const hSaveM = (data) => withSave(() => guardarModulos(data));
-  const hSaveC = (data) => withSave(() => guardarCostos(data));
+  const hSaveC = (data) => {
+    setCostosVersion(Date.now());
+    return withSave(() => guardarCostos(data));
+  };
 
   const getModUsado = useCallback(
     (item) => {
@@ -7991,6 +8206,7 @@ function AppInterna() {
               onCambiarEstado={handleCambiarEstado}
               onActualizarPresupuesto={handleActualizarPresupuesto}
               onVerPresupuesto={(id) => { setPresupuestoVistaPreviaId(id); setVista("preview"); }}
+              costosVersion={costosVersion}
             />
           )}
           {vista === "preview" && (
@@ -8008,6 +8224,7 @@ function AppInterna() {
               onCargarPresupuesto={handleCargarPresupuesto}
               presupuestoSelId={presupuestoVistaPreviaId}
               onSeleccionarPresupuesto={setPresupuestoVistaPreviaId}
+              costosVersion={costosVersion}
             />
           )}
           {vista === "corte" && (
