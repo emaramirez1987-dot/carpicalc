@@ -374,11 +374,13 @@ function leerPerfil() {
   catch { return {}; }
 }
 
-// Devuelve true si el presupuesto fue creado o guardado ANTES de la última modificación de costos.
-// Se usa para habilitar el botón "Actualizar precio" en toda la app.
-function presupuestoNecesitaActualizacion(presId, costosVersion) {
+// Devuelve true si el presupuesto fue actualizado ANTES de la última modificación de costos.
+// Compara contra p.costosVersionAl (timestamp del último "Actualizar precio" aplicado).
+// Si nunca se actualizó, usa el presId (fecha de creación) como fallback.
+function presupuestoNecesitaActualizacion(presId, costosVersion, p) {
   if (!costosVersion || !presId) return false;
-  return parseInt(presId) < costosVersion;
+  const referencia = p?.costosVersionAl ?? parseInt(presId);
+  return referencia < costosVersion;
 }
 
 // Recalcula el total de un presupuesto con los costos actuales.
@@ -4570,13 +4572,13 @@ function GestorPresupuestos({
                     </button>
                     {/* Botón Actualizar precio — se habilita cuando los costos cambiaron después de crear el presupuesto */}
                     {onActualizarPresupuesto && modulos && costos && (() => {
-                      const necesita = presupuestoNecesitaActualizacion(id, costosVersion);
+                      const necesita = presupuestoNecesitaActualizacion(id, costosVersion, p);
                       return (
                         <button
                           disabled={!necesita}
                           onClick={() => {
                             const nuevoTotal = recalcularTotalPresupuesto(p, modulos, costos);
-                            if (nuevoTotal !== null) onActualizarPresupuesto(id, { total: Math.round(nuevoTotal) });
+                            if (nuevoTotal !== null) onActualizarPresupuesto(id, { total: Math.round(nuevoTotal), costosVersionAl: Date.now() });
                           }}
                           title={necesita ? "Los costos cambiaron desde que se creó este presupuesto" : "Los precios están actualizados"}
                           style={{
@@ -5565,14 +5567,14 @@ function Presupuesto({
               <>
                 {/* Botón Actualizar — habilitado solo si los costos cambiaron desde que se cargó el presupuesto */}
                 {presupuestoActivoId && (() => {
-                  const necesita = presupuestoNecesitaActualizacion(presupuestoActivoId, costosVersion);
+                  const necesita = presupuestoNecesitaActualizacion(presupuestoActivoId, costosVersion, presupuestos[presupuestoActivoId]);
                   return (
                     <button
                       disabled={!necesita}
                       onClick={() => {
                         const pActivo = presupuestos[presupuestoActivoId];
                         const nuevoTotal = recalcularTotalPresupuesto(pActivo, modulos, costos);
-                        if (nuevoTotal !== null) onActualizarPresupuesto(presupuestoActivoId, { total: Math.round(nuevoTotal) });
+                        if (nuevoTotal !== null) onActualizarPresupuesto(presupuestoActivoId, { total: Math.round(nuevoTotal), costosVersionAl: Date.now() });
                       }}
                       title={necesita ? "Los costos cambiaron — actualizá el precio" : "El precio está actualizado"}
                       style={{
@@ -6005,13 +6007,13 @@ function VistaPrevia({
                   <ToggleSwitch value={mostrarPrecioUnitario} onChange={setMostrarPrecioUnitario} label="P. unit." />
                   {/* Botón Actualizar precio — visible siempre, habilitado solo si los costos cambiaron */}
                   {(() => {
-                    const necesita = presSelId && presupuestoNecesitaActualizacion(presSelId, costosVersion);
+                    const necesita = presSelId && presupuestoNecesitaActualizacion(presSelId, costosVersion, presSel);
                     return (
                       <button
                         disabled={!necesita}
                         onClick={() => {
                           const nuevoTotal = recalcularTotalPresupuesto(presSel, modulos, costos);
-                          if (nuevoTotal !== null) onActualizarPresupuesto(presSelId, { total: Math.round(nuevoTotal) });
+                          if (nuevoTotal !== null) onActualizarPresupuesto(presSelId, { total: Math.round(nuevoTotal), costosVersionAl: Date.now() });
                         }}
                         title={necesita ? "Los costos cambiaron — actualizá el precio" : "El precio está actualizado"}
                         style={{
