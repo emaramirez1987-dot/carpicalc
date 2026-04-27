@@ -5821,10 +5821,18 @@ function VistaPrevia({
   const [textoApertura, setTextoApertura] = useState("");
   const [condiciones, setCondiciones] = useState("");
 
+  // UI - Campos de Ajuste: sincronizados bidireccionalmente con Caja
+  // Se leen del presupuesto al seleccionarlo y se guardan al cambiar (onBlur)
+  const [descuentoVP, setDescuentoVP] = useState("");
+  const [gananciaExtraVP, setGananciaExtraVP] = useState("");
+
   useEffect(() => {
     if (presSel) {
       setTextoApertura(presSel.textoApertura || perfil?.textoApertura || "");
       setCondiciones(presSel.condiciones || perfil?.condiciones || "");
+      // Sincronización: cargar ajustes desde el presupuesto seleccionado
+      setDescuentoVP(presSel.descuento ?? "");
+      setGananciaExtraVP(presSel.gananciaExtra ?? "");
       setMostrarLista(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6012,6 +6020,75 @@ function VistaPrevia({
                     ))}
                   </div>
                 )}
+
+                {/* UI - Campos de Ajuste en Vista Previa: sincronizados bidireccionalmente con Caja */}
+                {(() => {
+                  const descuentoActual = parseFloat(presSel.descuento) || 0;
+                  const gananciaActual  = parseFloat(presSel.gananciaExtra) || 0;
+                  const totalAjustadoVP = presSel.total + gananciaActual - descuentoActual;
+                  const guardarAjuste = (d, g) => {
+                    onActualizarPresupuesto(presSelId, {
+                      descuento: parseFloat(d) || 0,
+                      gananciaExtra: parseFloat(g) || 0,
+                    });
+                  };
+                  return (
+                    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+                      <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>
+                          💲 Ajustes de precio
+                        </span>
+                        {(descuentoActual > 0 || gananciaActual > 0) && (
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 900, color: "#7ecf8a" }}>
+                            Total ajustado: {fmtPeso(totalAjustadoVP)}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: 0 }}>
+                        {/* Descuento */}
+                        <div style={{ flex: 1, padding: "10px 14px", borderRight: "1px solid var(--border)", background: descuentoActual > 0 ? "rgba(224,112,112,0.06)" : "transparent" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                            <span style={{ fontSize: 13 }}>🏷</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>Descuento</span>
+                            <span style={{ fontSize: 12, color: "#e07070", fontWeight: 900, fontFamily: "'DM Mono',monospace" }}>−</span>
+                          </div>
+                          <input
+                            type="number" min="0" value={descuentoVP} placeholder="0"
+                            onChange={e => setDescuentoVP(e.target.value)}
+                            onBlur={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
+                            style={{
+                              width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700,
+                              padding: "6px 10px", textAlign: "right", background: "var(--bg-base)",
+                              border: "1px solid var(--border)", borderRadius: 7, color: "#e07070",
+                              outline: "none", transition: "border-color 0.15s",
+                            }}
+                            onFocus={e => e.target.style.borderColor = "#e07070"}
+                          />
+                        </div>
+                        {/* Ganancia Extra */}
+                        <div style={{ flex: 1, padding: "10px 14px", background: gananciaActual > 0 ? "rgba(126,207,138,0.06)" : "transparent" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                            <span style={{ fontSize: 13 }}>💵</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>Ganancia extra</span>
+                            <span style={{ fontSize: 12, color: "#7ecf8a", fontWeight: 900, fontFamily: "'DM Mono',monospace" }}>+</span>
+                          </div>
+                          <input
+                            type="number" min="0" value={gananciaExtraVP} placeholder="0"
+                            onChange={e => setGananciaExtraVP(e.target.value)}
+                            onBlur={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
+                            style={{
+                              width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700,
+                              padding: "6px 10px", textAlign: "right", background: "var(--bg-base)",
+                              border: "1px solid var(--border)", borderRadius: 7, color: "#7ecf8a",
+                              outline: "none", transition: "border-color 0.15s",
+                            }}
+                            onFocus={e => e.target.style.borderColor = "#7ecf8a"}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Texto de apertura editable */}
                 <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
@@ -7315,58 +7392,71 @@ function FilaCaja({ id, p, onActualizar, modulos, costos }) {
               </div>
               <div style={{ marginBottom: 12 }}>
 
-                {/* Precio base y ajustes */}
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                {/* LÓGICA - Cálculo de Totales: precio base siempre visible */}
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
                   <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Precio base</span>
                   <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
                 </div>
 
-                {/* Descuento y Ganancia Extra */}
-                {editandoAjuste ? (
-                  <div style={{ background: "var(--bg-subtle)", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                      Ajustes de precio
-                    </div>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-                      <div style={{ flex: 1, minWidth: 120 }}>
-                        <label style={{ fontSize: 10, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Descuento (−)</label>
-                        <input type="number" min="0" value={descuento} onChange={e => setDescuento(e.target.value)}
-                          placeholder="0" style={{ ...inputSm, width: "100%" }} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 120 }}>
-                        <label style={{ fontSize: 10, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Ganancia extra (+)</label>
-                        <input type="number" min="0" value={gananciaExtra} onChange={e => setGananciaExtra(e.target.value)}
-                          placeholder="0" style={{ ...inputSm, width: "100%" }} />
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => {
-                        const d = parseFloat(descuento) || 0;
-                        const g = parseFloat(gananciaExtra) || 0;
-                        onActualizar(id, { descuento: d, gananciaExtra: g });
-                        setEditandoAjuste(false);
-                      }} style={{ padding: "5px 12px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
-                        ✓ Aplicar
-                      </button>
-                      <button onClick={() => setEditandoAjuste(false)}
-                        style={{ padding: "5px 10px", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 11 }}>
-                        Cancelar
-                      </button>
-                    </div>
+                {/* UI - Campos de Ajuste: descuento y ganancia extra, siempre visibles */}
+                <div style={{ borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", marginBottom: 12 }}>
+                  {/* Fila Descuento */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
+                    background: descuentoVal > 0 ? "rgba(224,112,112,0.08)" : "var(--bg-subtle)",
+                    borderBottom: "1px solid var(--border)",
+                  }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>🏷</span>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)", flex: 1, fontWeight: 600 }}>Descuento</span>
+                    <span style={{ fontSize: 13, color: "#e07070", fontFamily: "'DM Mono',monospace", fontWeight: 900 }}>−</span>
+                    <input
+                      type="number" min="0" value={descuento} placeholder="0"
+                      onChange={e => setDescuento(e.target.value)}
+                      onBlur={() => onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 })}
+                      style={{
+                        fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700,
+                        padding: "4px 8px", width: 110, textAlign: "right",
+                        background: "var(--bg-base)", border: "1px solid var(--border)",
+                        borderRadius: 6, color: "#e07070", outline: "none", transition: "border-color 0.15s",
+                      }}
+                      onFocus={e => e.target.style.borderColor = "#e07070"}
+                    />
+                    <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>$</span>
                   </div>
-                ) : (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <button onClick={() => setEditandoAjuste(true)}
-                      style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", background: "none", border: "1px dashed var(--border)", borderRadius: 5, padding: "2px 8px", cursor: "pointer" }}>
-                      {(descuentoVal > 0 || gananciaExtraVal > 0)
-                        ? `${descuentoVal > 0 ? `−${fmtPeso(descuentoVal)}` : ""}${descuentoVal > 0 && gananciaExtraVal > 0 ? " / " : ""}${gananciaExtraVal > 0 ? `+${fmtPeso(gananciaExtraVal)}` : ""}`
-                        : "✎ Agregar descuento o recargo"}
-                    </button>
-                    {totalAjustado !== p.total && (
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(totalAjustado)}</span>
-                    )}
+                  {/* Fila Ganancia Extra */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
+                    background: gananciaExtraVal > 0 ? "rgba(126,207,138,0.08)" : "var(--bg-subtle)",
+                  }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>💵</span>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)", flex: 1, fontWeight: 600 }}>Ganancia extra</span>
+                    <span style={{ fontSize: 13, color: "#7ecf8a", fontFamily: "'DM Mono',monospace", fontWeight: 900 }}>+</span>
+                    <input
+                      type="number" min="0" value={gananciaExtra} placeholder="0"
+                      onChange={e => setGananciaExtra(e.target.value)}
+                      onBlur={() => onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 })}
+                      style={{
+                        fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700,
+                        padding: "4px 8px", width: 110, textAlign: "right",
+                        background: "var(--bg-base)", border: "1px solid var(--border)",
+                        borderRadius: 6, color: "#7ecf8a", outline: "none", transition: "border-color 0.15s",
+                      }}
+                      onFocus={e => e.target.style.borderColor = "#7ecf8a"}
+                    />
+                    <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>$</span>
                   </div>
-                )}
+                  {/* Total ajustado — solo si hay ajustes activos */}
+                  {(descuentoVal > 0 || gananciaExtraVal > 0) && (
+                    <div style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "9px 12px", background: "var(--accent-soft)",
+                      borderTop: "1px solid var(--accent-border)",
+                    }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>Total ajustado</span>
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(totalAjustado)}</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Costo calculado automáticamente */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
