@@ -4709,7 +4709,23 @@ function imprimirPresupuesto(
   const condicionesHtml = condiciones
     ? `<div style="margin-top:20px;padding:12px 16px;background:#f5f5f5;border-top:1px solid #e0d0b0;font-size:11px;color:#7a6040;line-height:1.6"><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:#9a7040;margin-bottom:6px">Condiciones y observaciones</div>${condiciones.replace(/\n/g, "<br>")}</div>`
     : "";
-  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>CarpiCálc — ${nombre || "Presupuesto"}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a0e04;padding:32px 40px;max-width:900px;margin:0 auto}@media print{body{padding:16px 20px}}</style></head><body><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #a07030">${encabezadoTaller}<div style="text-align:right">${nombre ? `<div style="font-size:15px;font-weight:700;color:#1a0e04">${nombre}</div>` : ""}<div style="font-size:11px;color:#666;margin-top:4px">${fecha}</div>${clienteHtml}</div></div>${textoAperturaHtml}<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f5ede0">${[
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>CarpiCálc — ${nombre || "Presupuesto"}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a0e04;padding:32px 40px;max-width:900px;margin:0 auto}@media print{body{padding:16px 20px}}</style></head><body>
+  <div style="border-bottom:2px solid #a07030;margin-bottom:0;padding-bottom:16px">
+    ${encabezadoTaller}
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:16px 0 20px 0;border-bottom:1px solid #e8dcc8;margin-bottom:24px;gap:20px">
+    <div>
+      ${nombre ? `<div style="font-family:'Georgia',serif;font-size:19px;font-weight:900;color:#1a0e04;margin-bottom:4px">${nombre}</div>` : ""}
+      <div style="font-size:11px;color:#888">${fecha}</div>
+    </div>
+    ${cliente && (cliente.nombre || cliente.tel || cliente.dir) ? `
+    <div style="text-align:right;background:#fff8ee;border:1px solid #e8d0a0;border-radius:8px;padding:10px 16px;font-size:12px;color:#5a3a10;min-width:180px">
+      ${cliente.nombre ? `<div style="font-weight:700;font-size:13px;margin-bottom:4px">👤 ${cliente.nombre}</div>` : ""}
+      ${cliente.tel ? `<div style="margin-top:2px">📞 ${cliente.tel}</div>` : ""}
+      ${cliente.dir ? `<div style="margin-top:2px">📍 ${cliente.dir}</div>` : ""}
+    </div>` : ""}
+  </div>
+  ${textoAperturaHtml}<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f5ede0">${[
     "Código",
     "Módulo",
     "Cant.",
@@ -5910,7 +5926,7 @@ function VistaPrevia({
               const activo = presSelId === id;
               return (
                 <div key={id} onClick={() => setPresSelId(id)} style={{
-                  padding: "11px 14px", cursor: "pointer", transition: "background 0.12s",
+                  padding: "12px 14px", cursor: "pointer", transition: "background 0.12s",
                   borderBottom: "1px solid var(--separator)",
                   background: activo ? "var(--accent-soft)" : "transparent",
                   borderLeft: `3px solid ${activo ? "var(--accent)" : "transparent"}`,
@@ -5918,16 +5934,23 @@ function VistaPrevia({
                   onMouseEnter={e => { if (!activo) e.currentTarget.style.background = "var(--bg-subtle)"; }}
                   onMouseLeave={e => { if (!activo) e.currentTarget.style.background = "transparent"; }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: activo ? "var(--accent)" : "var(--text-primary)", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {/* Nombre del presupuesto — principal */}
+                  <div style={{ fontSize: 13, fontWeight: 700, color: activo ? "var(--accent)" : "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 5 }}>
                     {p.nombre}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {/* Precio — destacado */}
+                  <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", marginBottom: 4 }}>
+                    {fmtPeso(p.total)}
+                  </div>
+                  {/* Estado + cliente — secundarios */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 9, fontWeight: 700, background: `${est.color}20`, color: est.color, border: `1px solid ${est.color}30`, borderRadius: 3, padding: "1px 5px", fontFamily: "'DM Mono',monospace" }}>
                       {est.icon} {est.label}
                     </span>
-                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+                    {p.cliente?.nombre && (
+                      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>👤 {p.cliente.nombre}</span>
+                    )}
                   </div>
-                  {p.cliente?.nombre && <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>👤 {p.cliente.nombre}</div>}
                 </div>
               );
             })}
@@ -5948,12 +5971,8 @@ function VistaPrevia({
                   ← Lista de presupuestos
                 </button>
 
-                {/* Toolbar */}
+                {/* Toolbar — sin nombre del cliente, ya figura en la lista lateral */}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", padding: "12px 16px", background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{presSel.nombre}</div>
-                    {presSel.cliente?.nombre && <div style={{ fontSize: 11, color: "var(--text-muted)" }}>👤 {presSel.cliente.nombre}</div>}
-                  </div>
                   {/* Estado */}
                   <select value={presSel.estado || "nuevo"} onChange={e => onCambiarEstado(presSelId, e.target.value)}
                     style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "6px 9px", background: `${estSel.color}18`, border: `1px solid ${estSel.color}44`, color: estSel.color, borderRadius: 7, cursor: "pointer", outline: "none", fontWeight: 700 }}>
