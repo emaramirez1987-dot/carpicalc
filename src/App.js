@@ -4665,11 +4665,6 @@ function imprimirPresupuesto(
   const fecha = fmtFechaLarga(Date.now());
   // LÓGICA - Precios Tachados y PDF
   const tv = calcularTotalVisual(totalGeneral, descuento, gananciaExtra);
-  const totalHtml = tv.hayDescuento
-    ? `<div style="font-size:14px;color:#9a7040;text-decoration:line-through;opacity:0.6;letter-spacing:0.02em;margin-bottom:4px">${fmtPeso(tv.totalOriginal)}</div>
-       <div style="font-size:26px;font-weight:900;color:#1a6a30;letter-spacing:-0.5px">${fmtPeso(tv.totalFinal)}</div>
-       <div style="font-size:10px;color:#e07070;margin-top:2px">🏷 Precio con descuento</div>`
-    : `<div style="font-size:26px;font-weight:900;color:#1a6a30;letter-spacing:-0.5px">${fmtPeso(tv.totalFinal)}</div>`;
   const encabezadoTaller = perfil?.nombre
     ? `<div style="display:flex;align-items:center;gap:14px">
         ${perfil.logo ? `<img src="${perfil.logo}" style="height:44px;object-fit:contain" />` : ""}
