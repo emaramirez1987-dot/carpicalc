@@ -664,9 +664,9 @@ const GlobalStyles = () => (
 
     /* ── Modo oscuro premium (default) ─────────────────────────── */
     :root,[data-theme="dark"]{
-      --bg-base:#0F1115;
-      --bg-surface:#1A1D23;
-      --bg-subtle:rgba(255,255,255,0.03);
+      --bg-base:#080A0D;
+      --bg-surface:#141720;
+      --bg-subtle:rgba(255,255,255,0.04);
       --bg-overlay:rgba(10,12,16,0.97);
       --border:rgba(255,255,255,0.07);
       --border-strong:rgba(212,175,55,0.18);
@@ -688,9 +688,9 @@ const GlobalStyles = () => (
 
     /* ── Modo claro ─────────────────────────────────────────────── */
     [data-theme="light"]{
-      --bg-base:#F5F2EC;
-      --bg-surface:#FFFFFF;
-      --bg-subtle:#EDE8DF;
+      --bg-base:#ECEAE3;
+      --bg-surface:#FAFAF8;
+      --bg-subtle:#E4E0D6;
       --bg-overlay:rgba(245,242,236,0.97);
       --border:#E4DDD0;
       --border-strong:rgba(180,140,30,0.30);
@@ -1552,8 +1552,7 @@ function SeccionGastosFijos({ costos, save }) {
     setNuevoMonto("");
   };
 
-  const eliminarItem = (id) =>
-    saveGf({ ...gf, items: gf.items.filter((i) => i.id !== id) });
+  const [confirmDelFijo, setConfirmDelFijo] = useState(null);
 
   const actualizarMonto = (id, monto) =>
     saveGf({ ...gf, items: gf.items.map((i) => i.id === id ? { ...i, monto: parseFloat(monto) || 0 } : i) });
@@ -1613,13 +1612,17 @@ function SeccionGastosFijos({ costos, save }) {
                     </div>
                   </td>
                   <td style={{ padding: "9px 8px", textAlign: "center" }}>
-                    <button
-                      onClick={() => eliminarItem(item.id)}
-                      title="Eliminar gasto"
-                      style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "2px 6px", borderRadius: 5, transition: "background 0.12s" }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(200,60,60,0.10)"}
-                      onMouseLeave={(e) => e.currentTarget.style.background = "none"}
-                    >×</button>
+                    {confirmDelFijo === item.id ? (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button onClick={() => { saveGf({ ...gf, items: gf.items.filter(i => i.id !== item.id) }); setConfirmDelFijo(null); }}
+                          style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070" }}>✓</button>
+                        <button onClick={() => setConfirmDelFijo(null)}
+                          style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDelFijo(item.id)} title="Eliminar gasto"
+                        style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "2px 6px", borderRadius: 5 }}>×</button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -5939,7 +5942,7 @@ function SeccionAdicionales({ adicionales, setAdicionales, costos, onGuardarFrec
     setInputNombre(""); setInputMonto(""); setSugerencias([]);
   };
 
-  const eliminar = (id) => setAdicionales(prev => prev.filter(x => x.id !== id));
+  const [confirmDelExtra, setConfirmDelExtra] = useState(null);
 
   const inputSm = {
     fontFamily: "'DM Mono',monospace", fontSize: 13, padding: "7px 10px",
@@ -5971,8 +5974,17 @@ function SeccionAdicionales({ adicionales, setAdicionales, costos, onGuardarFrec
               <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--bg-subtle)", borderRadius: 8, border: "1px solid var(--border)" }}>
                 <span style={{ fontSize: 13, flex: 1, color: "var(--text-primary)" }}>{x.nombre}</span>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.monto)}</span>
-                <button onClick={() => eliminar(x.id)}
-                  style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
+                {confirmDelExtra === x.id ? (
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button onClick={() => { setAdicionales(prev => prev.filter(a => a.id !== x.id)); setConfirmDelExtra(null); }}
+                      style={{ padding: "2px 7px", borderRadius: 4, cursor: "pointer", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070" }}>✓</button>
+                    <button onClick={() => setConfirmDelExtra(null)}
+                      style={{ padding: "2px 6px", borderRadius: 4, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmDelExtra(x.id)}
+                    style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
+                )}
               </div>
             ))}
           </div>
@@ -6095,11 +6107,12 @@ function Presupuesto({
   const [nombreTrabajo, setNombreTrabajo] = useState("");
   const [presupuestoActivoId, setPresupuestoActivoId] = useState(null);
   const [dialogoGuardar, setDialogoGuardar] = useState(false);
-  const { pushUndo, ToastContainer } = useUndo();
+  const { ToastContainer } = useUndo();
   const formRef = React.useRef(null);
 
   // LÓGICA - Global Sync: índice del módulo que se está editando (null = agregar nuevo)
   const [editandoModuloIdx, setEditandoModuloIdx] = useState(null);
+  const [confirmDelModulo, setConfirmDelModulo] = useState(null); // keyId del módulo a confirmar borrado
 
   // Carga un módulo existente de vuelta en el formulario para edición
   // El botón Agregar pasará a ser "Actualizar módulo" cuando editandoModuloIdx !== null
@@ -6497,16 +6510,25 @@ function Presupuesto({
                       }}>
                       ✎
                     </button>
-                    <button onClick={() => {
-                      const itemEl = item;
-                      const dimEl = dimOverride[keyId];
-                      setItems(its => its.filter((_, i) => i !== idx));
-                      if (editandoModuloIdx === idx) { setEditandoModuloIdx(null); setInputCod(""); setInputCant(1); setPreDim(null); }
-                      pushUndo({ mensaje: `"${item.codigo}" eliminado del presupuesto`, onDeshacer: () => {
-                        setItems(its => { const n = [...its]; n.splice(idx, 0, itemEl); return n; });
-                        if (dimEl) setDimOverride(d => ({ ...d, [keyId]: dimEl }));
-                      }});
-                    }} style={{ background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px" }}>×</button>
+                    {/* Botón eliminar con confirmación inline */}
+                    {confirmDelModulo === keyId ? (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button onClick={() => {
+                          setItems(its => its.filter((_, i) => i !== idx));
+                          if (editandoModuloIdx === idx) { setEditandoModuloIdx(null); setInputCod(""); setInputCant(1); setPreDim(null); }
+                          setConfirmDelModulo(null);
+                        }} style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070" }}>
+                          ✓
+                        </button>
+                        <button onClick={() => setConfirmDelModulo(null)}
+                          style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDelModulo(keyId)}
+                        style={{ background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px" }}>×</button>
+                    )}
                   </div>
                 </div>
                 {expandido === keyId && (
@@ -6549,11 +6571,18 @@ function Presupuesto({
       {/* 5. Formulario agregar / editar módulo */}
       <div ref={formRef}>
         <Card className="rsp-card no-print" style={{
-          // UI - Premium Refinement: borde dorado cuando hay edición activa
           border: editandoModuloIdx !== null ? "1.5px solid var(--accent)" : undefined,
-          boxShadow: editandoModuloIdx !== null ? "0 0 0 4px rgba(212,175,55,0.10)" : undefined,
+          boxShadow: editandoModuloIdx !== null ? "0 0 0 4px rgba(212,175,55,0.10)" : "0 4px 24px rgba(0,0,0,0.32)",
           transition: "border-color 0.2s, box-shadow 0.2s",
         }}>
+          {/* Label sección — solo cuando no hay edición activa */}
+          {editandoModuloIdx === null && (
+            <div style={{ marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid var(--separator)" }}>
+              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--text-muted)" }}>
+                Agregar ítems del presupuesto
+              </div>
+            </div>
+          )}
           {/* Indicador de modo edición */}
           {editandoModuloIdx !== null && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "7px 12px", background: "var(--accent-soft)", borderRadius: 7, border: "1px solid var(--accent-border)" }}>
