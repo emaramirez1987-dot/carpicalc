@@ -6369,21 +6369,6 @@ function VistaPrevia({
 
   const estSel = presSel ? (ESTADOS_TRABAJO.find(e => e.id === (presSel.estado || "nuevo")) || ESTADOS_TRABAJO[0]) : null;
 
-  const btnAcc = (color, children, onClick) => (
-    <button onClick={onClick} style={{
-      display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px",
-      borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-      cursor: "pointer", transition: "all 0.15s",
-      background: color === "gold" ? "linear-gradient(135deg,var(--accent),var(--accent-hover))" :
-                  color === "wa" ? "rgba(37,211,102,0.15)" : "var(--accent-soft)",
-      border: color === "wa" ? "1px solid rgba(37,211,102,0.35)" :
-              color === "ghost" ? "1px solid var(--accent-border)" : "none",
-      color: color === "gold" ? "var(--text-inverted)" :
-             color === "wa" ? "#25d366" : "var(--accent)",
-      boxShadow: color === "gold" ? "0 3px 12px rgba(180,100,20,0.28)" : "none",
-    }}>{children}</button>
-  );
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
