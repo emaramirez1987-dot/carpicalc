@@ -5885,10 +5885,61 @@ function Presupuesto({
   const [editandoCliente, setEditandoCliente] = useState(false);
   const [clienteActivo, setClienteActivo] = useState({ nombre: "", tel: "", dir: "" });
   const [nombreTrabajo, setNombreTrabajo] = useState("");
-  const [presupuestoActivoId, setPresupuestoActivoId] = useState(null); // id del pres cargado
-  const [dialogoGuardar, setDialogoGuardar] = useState(false); // diálogo actualizar/copia
+  const [presupuestoActivoId, setPresupuestoActivoId] = useState(null);
+  const [dialogoGuardar, setDialogoGuardar] = useState(false);
   const { pushUndo, ToastContainer } = useUndo();
-  const formRef = React.useRef(null); // ref al formulario para autoscroll
+  const formRef = React.useRef(null);
+
+  // LÓGICA - Global Sync: índice del módulo que se está editando (null = agregar nuevo)
+  const [editandoModuloIdx, setEditandoModuloIdx] = useState(null);
+
+  // Carga un módulo existente de vuelta en el formulario para edición
+  // El botón Agregar pasará a ser "Actualizar módulo" cuando editandoModuloIdx !== null
+  const handleEditarModulo = (item, idx) => {
+    const over = dimOverride[item.id || item.codigo];
+    setInputCod(item.codigo);
+    setInputCant(item.cantidad);
+    setEditandoModuloIdx(idx);
+    // Pre-cargar las dimensiones personalizadas si las tiene
+    if (over) {
+      setPreDim({ ...over });
+    } else {
+      const base = modulos[item.codigo];
+      if (base) setPreDim({ ...base.dimensiones });
+    }
+    // Scroll al formulario
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  };
+
+  // LÓGICA - Global Sync: actualiza el módulo en su posición original sin crear uno nuevo.
+  // Dispara recálculo automático en Cortes, Caja y total del presupuesto.
+  const handleUpdateModule = (cod, cant, dims) => {
+    const modBase = modulos[cod];
+    if (!modBase) return;
+    const key = `${cod}-${items[editandoModuloIdx]?.id || 0}`;
+    const nuevoItem = { ...items[editandoModuloIdx], codigo: cod, cantidad: cant };
+    const nuevoItems = items.map((it, i) => i === editandoModuloIdx ? nuevoItem : it);
+    const nuevoDimOverride = { ...dimOverride };
+    if (dims) nuevoDimOverride[key] = dims;
+    setItems(nuevoItems);
+    setDimOverride(nuevoDimOverride);
+    // Persistir si hay presupuesto activo — sincroniza Cortes y Caja automáticamente
+    if (presupuestoActivoId) {
+      const totalNuevo = nuevoItems.reduce((acc, item) => {
+        const base = modulos[item.codigo]; if (!base) return acc;
+        const d = nuevoDimOverride[`${item.codigo}-${item.id || 0}`] || base.dimensiones;
+        const calc = calcularModulo({ ...base, dimensiones: d }, costos);
+        return acc + (calc ? calc.total * item.cantidad : 0);
+      }, 0);
+      onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, {
+        items: nuevoItems,
+        dimOverride: nuevoDimOverride,
+        total: Math.round(totalNuevo),
+      });
+    }
+    setEditandoModuloIdx(null);
+    setInputCod(""); setInputCant(1); setPreDim(null); setError("");
+  };
 
   // Detectar presupuesto desactualizado cuando se carga uno guardado
   const [alertaPrecios, setAlertaPrecios] = useState(null); // { idPres, totalOriginal, totalRecalculado }
@@ -6060,6 +6111,8 @@ function Presupuesto({
             )}
             {items.length > 0 && (
               <>
+                {/* FIX - Responsive Design: flex-wrap para que no se corten en mobile */}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 {/* Botón Actualizar — habilitado solo si los costos cambiaron desde que se cargó el presupuesto */}
                 {presupuestoActivoId && (() => {
                   const necesita = presupuestoNecesitaActualizacion(presupuestoActivoId, costosVersion, presupuestos[presupuestoActivoId]);
@@ -6093,11 +6146,12 @@ function Presupuesto({
                   💾 Guardar
                 </button>
                 <button onClick={() => {
-                  setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setEditandoCliente(false); setAlertaPrecios(null);
+                  setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setEditandoCliente(false); setAlertaPrecios(null); setEditandoModuloIdx(null); setInputCod(""); setPreDim(null);
                 }}
                   style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "transparent", border: "1px solid rgba(200,60,60,0.30)", color: "#e07070", transition: "all 0.15s" }}>
                   ✕ Cancelar
                 </button>
+                </div>
               </>
             )}
             {/* Nuevo presupuesto — solo cuando no hay nada activo */}
@@ -6192,7 +6246,17 @@ function Presupuesto({
             const over = modUsado.dimensiones;
             const dimDif = modBase && (over.ancho !== modBase.dimensiones.ancho || over.profundidad !== modBase.dimensiones.profundidad || over.alto !== modBase.dimensiones.alto);
             return (
-              <div key={keyId} className="hover-lift anim-fadeup" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px" }}>
+              <div key={keyId} className="hover-lift anim-fadeup" style={{
+                background: "var(--bg-surface)", borderRadius: 10, padding: "12px 16px",
+                // UI - Premium Refinement: borde dorado al editar ese módulo específico
+                border: editandoModuloIdx === idx
+                  ? "1.5px solid var(--accent)"
+                  : "1px solid var(--border)",
+                boxShadow: editandoModuloIdx === idx
+                  ? "0 0 0 3px rgba(212,175,55,0.12)"
+                  : "none",
+                transition: "border-color 0.2s, box-shadow 0.2s",
+              }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{item.codigo}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -6212,10 +6276,24 @@ function Presupuesto({
                     <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", minWidth: 80, textAlign: "right" }}>
                       {fmtPeso(calc.total * item.cantidad)}
                     </span>
+                    {/* LÓGICA - Global Sync: botón editar módulo existente */}
+                    <button
+                      onClick={() => handleEditarModulo(item, idx)}
+                      title="Editar dimensiones y material de este módulo"
+                      style={{
+                        background: editandoModuloIdx === idx ? "var(--accent-soft)" : "transparent",
+                        border: `1px solid ${editandoModuloIdx === idx ? "var(--accent-border)" : "var(--border)"}`,
+                        color: editandoModuloIdx === idx ? "var(--accent)" : "var(--text-muted)",
+                        borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px",
+                        fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.15s",
+                      }}>
+                      ✎
+                    </button>
                     <button onClick={() => {
                       const itemEl = item;
                       const dimEl = dimOverride[keyId];
                       setItems(its => its.filter((_, i) => i !== idx));
+                      if (editandoModuloIdx === idx) { setEditandoModuloIdx(null); setInputCod(""); setInputCant(1); setPreDim(null); }
                       pushUndo({ mensaje: `"${item.codigo}" eliminado del presupuesto`, onDeshacer: () => {
                         setItems(its => { const n = [...its]; n.splice(idx, 0, itemEl); return n; });
                         if (dimEl) setDimOverride(d => ({ ...d, [keyId]: dimEl }));
@@ -6252,16 +6330,38 @@ function Presupuesto({
         />
       )}
 
-      {/* 5. Formulario agregar módulo */}
+      {/* 5. Formulario agregar / editar módulo */}
       <div ref={formRef}>
-        <Card className="rsp-card no-print">
+        <Card className="rsp-card no-print" style={{
+          // UI - Premium Refinement: borde dorado cuando hay edición activa
+          border: editandoModuloIdx !== null ? "1.5px solid var(--accent)" : undefined,
+          boxShadow: editandoModuloIdx !== null ? "0 0 0 4px rgba(212,175,55,0.10)" : undefined,
+          transition: "border-color 0.2s, box-shadow 0.2s",
+        }}>
+          {/* Indicador de modo edición */}
+          {editandoModuloIdx !== null && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "7px 12px", background: "var(--accent-soft)", borderRadius: 7, border: "1px solid var(--accent-border)" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", fontFamily: "'DM Mono',monospace" }}>
+                ✎ Editando módulo #{editandoModuloIdx + 1} — {inputCod}
+              </span>
+              <button onClick={() => { setEditandoModuloIdx(null); setInputCod(""); setInputCant(1); setPreDim(null); setError(""); }}
+                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace" }}>
+                ✕ Cancelar edición
+              </button>
+            </div>
+          )}
           <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 100px auto", gap: 12, alignItems: "end" }}>
             <div>
               <TextInput label="Código de módulo" placeholder="MC001" value={inputCod} onChange={handleCodChange} />
               {error && <p style={{ color: "#e07070", fontSize: 12, marginTop: 5 }}>⚠ {error}</p>}
             </div>
             <TextInput label="Cantidad" type="number" value={inputCant} onChange={setInputCant} />
-            <div><Btn onClick={agregar}>Agregar</Btn></div>
+            <div>
+              {editandoModuloIdx !== null
+                ? <Btn onClick={() => handleUpdateModule(inputCod, parseInt(inputCant) || 1, preDim)}>Actualizar</Btn>
+                : <Btn onClick={agregar}>Agregar</Btn>
+              }
+            </div>
           </div>
           {preDim && (
             <div style={{ marginTop: 14, padding: 14, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 8 }}>
