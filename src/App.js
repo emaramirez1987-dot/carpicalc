@@ -6454,9 +6454,47 @@ function Presupuesto({
         </div>
       )}
 
-      {/* 3. Módulos cargados */}
-      {items.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* ══════════════════════════════════════════════════════════
+          CUERPO DEL PRESUPUESTO
+          Tarjeta contenedora para ítems ya agregados.
+          Los formularios de carga quedan FUERA de esta card.
+          ══════════════════════════════════════════════════════════ */}
+      <div style={{
+        background: "var(--bg-surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 16,
+        boxShadow: "0 4px 28px rgba(0,0,0,0.30), 0 1px 4px rgba(0,0,0,0.20)",
+        overflow: "hidden",
+        minHeight: 120,
+      }}>
+        {/* Header de la card */}
+        <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--separator)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--text-muted)" }}>
+            Ítems del presupuesto
+          </span>
+          {(items.length > 0 || adicionales.length > 0) && (
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+              {items.length} módulo{items.length !== 1 ? "s" : ""}{adicionales.length > 0 ? ` · ${adicionales.length} extra${adicionales.length !== 1 ? "s" : ""}` : ""}
+            </span>
+          )}
+        </div>
+
+        {/* Estado vacío — siempre visible con la card */}
+        {items.length === 0 && adicionales.length === 0 && (
+          <div style={{ padding: "52px 20px", textAlign: "center" }}>
+            <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.18 }}>◻</div>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 400, letterSpacing: "0.01em", lineHeight: 1.6 }}>
+              Agregue ítems al presupuesto
+            </p>
+            <p style={{ fontSize: 11, color: "var(--text-muted)", opacity: 0.6, marginTop: 4 }}>
+              Usá los formularios de arriba para sumar módulos o gastos extras
+            </p>
+          </div>
+        )}
+
+        {/* 3. Módulos cargados */}
+        {items.length > 0 && (
+          <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
           {items.map((item, idx) => {
             const keyId = item.id || item.codigo;
             const modUsado = getModUsado(item);
@@ -6543,24 +6581,53 @@ function Presupuesto({
               </div>
             );
           })}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* 4. Barra de total colapsable — entre módulos y formulario */}
-      {items.length > 0 && (
-        <BarraTotal
-          items={items}
-          modulos={modulos}
-          costos={costos}
-          getModUsado={getModUsado}
-          totalGeneral={totalGeneral}
-          nombrePresupuesto={nombreTrabajo}
-          descuento={presupuestoActivoId ? (presupuestos[presupuestoActivoId]?.descuento || 0) : 0}
-          gananciaExtra={presupuestoActivoId ? (presupuestos[presupuestoActivoId]?.gananciaExtra || 0) : 0}
-        />
-      )}
+        {/* Adicionales dentro de la card — con separador si hay módulos */}
+        {adicionales.length > 0 && (
+          <div style={{ padding: "0 16px 12px", borderTop: items.length > 0 ? "1px dashed var(--separator)" : "none", marginTop: items.length > 0 ? 0 : 0 }}>
+            <div style={{ paddingTop: 12, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
+              Gastos extras
+            </div>
+            {adicionales.map(x => (
+              <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", marginBottom: 6, background: "var(--bg-subtle)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <span style={{ fontSize: 13, flex: 1, color: "var(--text-primary)" }}>{x.nombre}</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.monto)}</span>
+                {confirmDelModulo === `extra-${x.id}` ? (
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button onClick={() => { setAdicionales(prev => prev.filter(a => a.id !== x.id)); setConfirmDelModulo(null); }}
+                      style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
+                    <button onClick={() => setConfirmDelModulo(null)}
+                      style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmDelModulo(`extra-${x.id}`)}
+                    style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
-      {/* 4b. Sección de adicionales (flete, instalación, etc.) */}
+        {/* 4. Barra de total colapsable — dentro de la card, al pie */}
+        {(items.length > 0 || adicionales.length > 0) && (
+          <div style={{ borderTop: "1px solid var(--separator)" }}>
+            <BarraTotal
+              items={items}
+              modulos={modulos}
+              costos={costos}
+              getModUsado={getModUsado}
+              totalGeneral={totalGeneral}
+              nombrePresupuesto={nombreTrabajo}
+              descuento={presupuestoActivoId ? (presupuestos[presupuestoActivoId]?.descuento || 0) : 0}
+              gananciaExtra={presupuestoActivoId ? (presupuestos[presupuestoActivoId]?.gananciaExtra || 0) : 0}
+            />
+          </div>
+        )}
+      </div>{/* fin card Cuerpo del Presupuesto */}
+
+      {/* Formulario de extras — fuera de la card, como el formulario de módulos */}
       <SeccionAdicionales
         adicionales={adicionales}
         setAdicionales={setAdicionales}
