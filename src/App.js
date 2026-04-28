@@ -6513,82 +6513,100 @@ function VistaPrevia({
           <div className={`vp-lista ${!mostrarLista ? "vp-lista-hidden" : ""}`} style={{
             width: 260, flexShrink: 0, background: "var(--bg-surface)",
             border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.22)",
           }}>
+            {/* Header con contador */}
             <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", background: "var(--accent-soft)" }}>
               <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--accent)" }}>
                 {entries.length} presupuestos
               </div>
             </div>
+
             {entries.map(([id, p]) => {
               const est = ESTADOS_TRABAJO.find(e => e.id === (p.estado || "nuevo")) || ESTADOS_TRABAJO[0];
               const activo = presSelId === id;
+              const tv = calcularTotalVisual(p.total, p.descuento, p.gananciaExtra);
               return (
                 <div key={id} onClick={() => setPresSelId(id)} style={{
-                  padding: "14px 16px", cursor: "pointer", transition: "all 0.18s",
+                  cursor: "pointer", transition: "all 0.18s",
                   borderBottom: "1px solid var(--separator)",
                   background: activo ? "var(--accent-soft)" : "transparent",
                   borderLeft: `3px solid ${activo ? "var(--accent)" : "transparent"}`,
-                  boxShadow: activo ? "inset 0 0 0 1px var(--accent-border)" : "none",
                 }}
                   onMouseEnter={e => { if (!activo) e.currentTarget.style.background = "var(--bg-subtle)"; }}
                   onMouseLeave={e => { if (!activo) e.currentTarget.style.background = "transparent"; }}
                 >
-                  {/* Nombre del presupuesto — principal */}
-                  <div style={{ fontSize: 13, fontWeight: 700, color: activo ? "var(--accent)" : "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 5 }}>
-                    {p.nombre}
-                  </div>
-                  {/* Precio — destacado */}
-                  <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", marginBottom: 6 }}>
+                  {/* Precio arriba — pequeño, ancho completo */}
+                  <div style={{
+                    padding: "6px 14px 0",
+                    fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
+                    color: tv.hayDescuento ? "var(--text-muted)" : "#7ecf8a",
+                    textDecoration: tv.hayDescuento ? "line-through" : "none",
+                    opacity: tv.hayDescuento ? 0.55 : 1,
+                    letterSpacing: "0.02em",
+                  }}>
                     {fmtPeso(p.total)}
                   </div>
-                  {/* Estado + cliente + NAVEGACIÓN */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {tv.hayDescuento && (
+                    <div style={{ padding: "2px 14px 0", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a" }}>
+                      {fmtPeso(tv.totalFinal)}
+                    </div>
+                  )}
+
+                  {/* Título y nombre del cliente */}
+                  <div style={{ padding: "5px 14px 8px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: activo ? "var(--accent)" : "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 3 }}>
+                      {p.nombre}
+                    </div>
+                    {p.cliente?.nombre && (
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 3 }}>
+                        {p.cliente.nombre}
+                      </div>
+                    )}
+                    {/* Estado */}
+                    <div style={{ marginBottom: 8 }}>
                       <span style={{ fontSize: 9, fontWeight: 700, background: `${est.color}20`, color: est.color, border: `1px solid ${est.color}30`, borderRadius: 3, padding: "1px 5px", fontFamily: "'DM Mono',monospace" }}>
                         {est.icon} {est.label}
                       </span>
-                      {p.cliente?.nombre && (
-                        <span style={{ fontSize: 10, color: "var(--text-muted)" }}>👤 {p.cliente.nombre}</span>
+                    </div>
+                    {/* Última fila: Rentabilidad + Editar */}
+                    <div style={{ display: "flex", gap: 5 }}>
+                      {onVerRentabilidad && (
+                        <button
+                          onClick={e => { e.stopPropagation(); onVerRentabilidad(id); }}
+                          title="Ver rentabilidad en Caja"
+                          style={{
+                            flex: 1, padding: "4px 0", borderRadius: 5, cursor: "pointer",
+                            fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                            background: "rgba(134,200,150,0.15)",
+                            border: "1px solid rgba(134,200,150,0.35)",
+                            color: "#6db885",
+                            transition: "all 0.15s",
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = "rgba(134,200,150,0.28)"}
+                          onMouseLeave={e => e.currentTarget.style.background = "rgba(134,200,150,0.15)"}
+                        >
+                          Rentabilidad
+                        </button>
+                      )}
+                      {onEditarModulos && (
+                        <button
+                          onClick={e => { e.stopPropagation(); onEditarModulos(id, p); }}
+                          title="Editar módulos de este presupuesto"
+                          style={{
+                            flex: 1, padding: "4px 0", borderRadius: 5, cursor: "pointer",
+                            fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                            background: "var(--accent-soft)",
+                            border: "1px solid var(--accent-border)",
+                            color: "var(--accent)", transition: "all 0.15s",
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = "rgba(212,175,55,0.20)"}
+                          onMouseLeave={e => e.currentTarget.style.background = "var(--accent-soft)"}
+                        >
+                          ✎ Editar
+                        </button>
                       )}
                     </div>
-                    {/* NAVEGACIÓN - Enlace Presupuesto a Caja */}
-                    {onVerRentabilidad && (
-                      <button
-                        onClick={e => { e.stopPropagation(); onVerRentabilidad(id); }}
-                        title="Ver rentabilidad en Caja"
-                        style={{
-                          display: "flex", alignItems: "center", gap: 4,
-                          padding: "2px 8px", borderRadius: 5, cursor: "pointer",
-                          fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                          background: "rgba(126,207,138,0.12)",
-                          border: "1px solid rgba(126,207,138,0.30)",
-                          color: "#7ecf8a", transition: "all 0.15s", flexShrink: 0,
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = "rgba(126,207,138,0.25)"}
-                        onMouseLeave={e => e.currentTarget.style.background = "rgba(126,207,138,0.12)"}
-                      >
-                        📊 Rentabilidad
-                      </button>
-                    )}
-                    {/* LOGICA - Edición de Presupuestos Existentes */}
-                    {onEditarModulos && (
-                      <button
-                        onClick={e => { e.stopPropagation(); onEditarModulos(id, p); }}
-                        title="Editar módulos de este presupuesto"
-                        style={{
-                          display: "flex", alignItems: "center", gap: 4,
-                          padding: "2px 8px", borderRadius: 5, cursor: "pointer",
-                          fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                          background: "var(--accent-soft)",
-                          border: "1px solid var(--accent-border)",
-                          color: "var(--accent)", transition: "all 0.15s", flexShrink: 0,
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = "rgba(212,175,55,0.20)"}
-                        onMouseLeave={e => e.currentTarget.style.background = "var(--accent-soft)"}
-                      >
-                        ✎ Editar
-                      </button>
-                    )}
                   </div>
                 </div>
               );
@@ -6611,10 +6629,13 @@ function VistaPrevia({
                   ← Lista de presupuestos
                 </button>
 
-                {/* ── Toolbar Vista Previa — 3 filas con jerarquía ── */}
-                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
-
-                  {/* ROW 1 — ESTADO: ancho completo, color semántico */}
+                {/* ── Toolbar — Estado + Actualizar + Tema PDF ── */}
+                <div style={{
+                  background: "var(--bg-surface)", border: "1px solid var(--border)",
+                  borderRadius: 12, overflow: "hidden",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.22)",
+                }}>
+                  {/* ROW 1 — ESTADO */}
                   <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)" }}>
                     <select
                       value={presSel.estado || "nuevo"}
@@ -6631,56 +6652,8 @@ function VistaPrevia({
                     </select>
                   </div>
 
-                  {/* ROW 2 — ACCIONES PRIMARIAS: WhatsApp + PDF (botones grandes, táctiles) */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "1px solid var(--border)" }}>
-                    {/* WhatsApp — secundario */}
-                    <button onClick={handleWhatsApp}
-                      style={{
-                        padding: "13px 0", border: "none", borderRight: "1px solid var(--border)",
-                        cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700,
-                        background: whatsappCopiado ? "rgba(126,207,138,0.10)" : "transparent",
-                        color: whatsappCopiado ? "#7ecf8a" : "var(--text-secondary)",
-                        transition: "all 0.15s", letterSpacing: "0.03em",
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
-                      onMouseLeave={e => e.currentTarget.style.background = whatsappCopiado ? "rgba(126,207,138,0.10)" : "transparent"}
-                    >
-                      {whatsappCopiado ? "✓ Copiado" : "📲 WhatsApp"}
-                    </button>
-                    {/* PDF — primario, estilo ghost elegante con hover fill */}
-                    <button onClick={handlePDF}
-                      style={{
-                        padding: "13px 0", border: "none", cursor: "pointer",
-                        fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700,
-                        background: "transparent",
-                        borderTop: "none", borderLeft: "1.5px solid var(--accent)",
-                        color: "var(--accent)", letterSpacing: "0.08em",
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-                        transition: "background 0.2s, color 0.2s",
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = "linear-gradient(135deg, var(--accent), var(--accent-hover))";
-                        e.currentTarget.style.color = "var(--text-inverted)";
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--accent)";
-                      }}
-                    >
-                      🖨 PDF
-                    </button>
-                  </div>
-
-                  {/* ROW 3 — CONFIGURACIÓN: opciones secundarias en línea compacta */}
+                  {/* ROW 2 — CONFIGURACIÓN: tema PDF + actualizar */}
                   <div style={{ padding: "8px 14px", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "var(--bg-subtle)" }}>
-                    {/* Toggle precio unitario */}
-                    <ToggleSwitch value={mostrarPrecioUnitario} onChange={setMostrarPrecioUnitario} label="P. unit." />
-
-                    {/* Separador */}
-                    <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
-
-                    {/* Selector tema PDF */}
                     <select value={temaPDF} onChange={e => cambiarTema(e.target.value)}
                       title="Tema de color del PDF"
                       style={{
@@ -6696,11 +6669,7 @@ function VistaPrevia({
                       <option value="marino">🔵 Marino</option>
                       <option value="bordo">🟥 Burdeos</option>
                     </select>
-
-                    {/* Separador */}
                     <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
-
-                    {/* Actualizar precio — solo visible cuando hay cambio pendiente */}
                     {(() => {
                       const necesita = presSelId && presupuestoNecesitaActualizacion(presSelId, costosVersion, presSel);
                       return (
@@ -6731,7 +6700,7 @@ function VistaPrevia({
                 {/* Historial de versiones */}
                 {(presSel.historialVersiones || []).length > 0 && (
                   <div style={{ padding: "8px 14px", background: "rgba(200,160,42,0.08)", border: "1px solid rgba(200,160,42,0.20)", borderRadius: 8, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--accent)", fontWeight: 700 }}>📊 Versiones anteriores:</span>
+                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--accent)", fontWeight: 700 }}>Versiones anteriores:</span>
                     {(presSel.historialVersiones || []).map((v, i) => (
                       <span key={i} style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
                         {fmtFecha(v.fecha)}: {fmtPeso(v.total)}
@@ -6740,7 +6709,7 @@ function VistaPrevia({
                   </div>
                 )}
 
-                {/* UI - Campos de Ajuste en Vista Previa: sincronizados bidireccionalmente con Caja */}
+                {/* Ajustes de precio */}
                 {(() => {
                   const descuentoActual = parseFloat(presSel.descuento) || 0;
                   const gananciaActual  = parseFloat(presSel.gananciaExtra) || 0;
@@ -6752,7 +6721,11 @@ function VistaPrevia({
                     });
                   };
                   return (
-                    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{
+                      background: "var(--bg-surface)", border: "1px solid var(--border)",
+                      borderRadius: 12, overflow: "hidden",
+                      boxShadow: "0 2px 12px rgba(0,0,0,0.22)",
+                    }}>
                       <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>
                           💲 Ajustes de precio
@@ -6764,65 +6737,35 @@ function VistaPrevia({
                         )}
                       </div>
                       <div style={{ display: "flex", gap: 0 }}>
-                        {/* Descuento */}
                         <div style={{ flex: 1, padding: "10px 14px", borderRight: "1px solid var(--border)", background: descuentoActual > 0 ? "rgba(224,112,112,0.06)" : "transparent" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                             <span style={{ fontSize: 13 }}>🏷</span>
                             <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>Descuento</span>
                             <span style={{ fontSize: 12, color: "#e07070", fontWeight: 900, fontFamily: "'DM Mono',monospace" }}>−</span>
                           </div>
-                          {/* UI - Acción de Confirmación */}
-                        <input
-                            type="number" min="0" value={descuentoVP} placeholder="0"
+                          <input type="number" min="0" value={descuentoVP} placeholder="0"
                             onChange={e => setDescuentoVP(e.target.value)}
                             onKeyDown={e => e.key === "Enter" && guardarAjuste(descuentoVP, gananciaExtraVP)}
-                            style={{
-                              width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700,
-                              padding: "6px 10px", textAlign: "right", background: "var(--bg-base)",
-                              border: "1px solid var(--border)", borderRadius: 7, color: "#e07070",
-                              outline: "none", transition: "border-color 0.15s",
-                            }}
-                            onFocus={e => e.target.style.borderColor = "#e07070"}
-                          />
+                            style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "6px 10px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "#e07070", outline: "none" }}
+                            onFocus={e => e.target.style.borderColor = "#e07070"} />
                           <button onClick={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
-                            title="Confirmar descuento"
-                            style={{
-                              marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, cursor: "pointer",
-                              background: parseFloat(descuentoVP) !== parseFloat(presSel?.descuento || 0) ? "rgba(224,112,112,0.18)" : "var(--bg-base)",
-                              border: `1px solid ${parseFloat(descuentoVP) !== parseFloat(presSel?.descuento || 0) ? "#e07070" : "var(--border)"}`,
-                              color: "#e07070", fontSize: 13, fontWeight: 700, transition: "all 0.15s",
-                            }}>
+                            style={{ marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, cursor: "pointer", background: parseFloat(descuentoVP) !== parseFloat(presSel?.descuento || 0) ? "rgba(224,112,112,0.18)" : "var(--bg-base)", border: `1px solid ${parseFloat(descuentoVP) !== parseFloat(presSel?.descuento || 0) ? "#e07070" : "var(--border)"}`, color: "#e07070", fontSize: 13, fontWeight: 700 }}>
                             ✓ Confirmar
                           </button>
                         </div>
-                        {/* Ganancia Extra */}
                         <div style={{ flex: 1, padding: "10px 14px", background: gananciaActual > 0 ? "rgba(126,207,138,0.06)" : "transparent" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                             <span style={{ fontSize: 13 }}>💵</span>
                             <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>Ganancia extra</span>
                             <span style={{ fontSize: 12, color: "#7ecf8a", fontWeight: 900, fontFamily: "'DM Mono',monospace" }}>+</span>
                           </div>
-                          {/* UI - Acción de Confirmación */}
-                        <input
-                            type="number" min="0" value={gananciaExtraVP} placeholder="0"
+                          <input type="number" min="0" value={gananciaExtraVP} placeholder="0"
                             onChange={e => setGananciaExtraVP(e.target.value)}
                             onKeyDown={e => e.key === "Enter" && guardarAjuste(descuentoVP, gananciaExtraVP)}
-                            style={{
-                              width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700,
-                              padding: "6px 10px", textAlign: "right", background: "var(--bg-base)",
-                              border: "1px solid var(--border)", borderRadius: 7, color: "#7ecf8a",
-                              outline: "none", transition: "border-color 0.15s",
-                            }}
-                            onFocus={e => e.target.style.borderColor = "#7ecf8a"}
-                          />
+                            style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "6px 10px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "#7ecf8a", outline: "none" }}
+                            onFocus={e => e.target.style.borderColor = "#7ecf8a"} />
                           <button onClick={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
-                            title="Confirmar ganancia extra"
-                            style={{
-                              marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, cursor: "pointer",
-                              background: parseFloat(gananciaExtraVP) !== parseFloat(presSel?.gananciaExtra || 0) ? "rgba(126,207,138,0.18)" : "var(--bg-base)",
-                              border: `1px solid ${parseFloat(gananciaExtraVP) !== parseFloat(presSel?.gananciaExtra || 0) ? "#7ecf8a" : "var(--border)"}`,
-                              color: "#7ecf8a", fontSize: 13, fontWeight: 700, transition: "all 0.15s",
-                            }}>
+                            style={{ marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, cursor: "pointer", background: parseFloat(gananciaExtraVP) !== parseFloat(presSel?.gananciaExtra || 0) ? "rgba(126,207,138,0.18)" : "var(--bg-base)", border: `1px solid ${parseFloat(gananciaExtraVP) !== parseFloat(presSel?.gananciaExtra || 0) ? "#7ecf8a" : "var(--border)"}`, color: "#7ecf8a", fontSize: 13, fontWeight: 700 }}>
                             ✓ Confirmar
                           </button>
                         </div>
@@ -6831,61 +6774,99 @@ function VistaPrevia({
                   );
                 })()}
 
-                {/* Texto de apertura editable */}
-                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
+                {/* Texto de apertura */}
+                <div style={{
+                  background: "var(--bg-surface)", border: "1px solid var(--border)",
+                  borderRadius: 12, padding: "14px 16px",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.22)",
+                }}>
                   <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
                     📝 Texto de apertura
                   </div>
                   <textarea value={textoApertura} onChange={e => setTextoApertura(e.target.value)}
                     placeholder="Ej: Estimado cliente, le hacemos llegar el presente presupuesto..."
                     rows={3}
-                    style={{
-                      width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13,
-                      padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)",
-                      color: "var(--text-primary)", borderRadius: 8, outline: "none", resize: "vertical",
-                      lineHeight: 1.6, transition: "border-color 0.15s",
-                    }}
+                    style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 8, outline: "none", resize: "vertical", lineHeight: 1.6 }}
                     onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
                     onBlur={e => e.target.style.borderColor = "var(--border)"} />
                 </div>
 
+                {/* Toggle P. unit. — justo encima del listado de módulos */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", background: "var(--bg-subtle)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>Mostrar precio unitario</span>
+                  <ToggleSwitch value={mostrarPrecioUnitario} onChange={setMostrarPrecioUnitario} label="" />
+                </div>
+
                 {/* Resumen del presupuesto */}
-                <ResumenPresupuesto
-                  items={presSel.items}
-                  modulos={modulos}
-                  costos={costos}
-                  getModUsado={(item) => {
-                    const base = modulos[item.codigo];
-                    const dims = (presSel.dimOverride && presSel.dimOverride[`${item.codigo}-${item.id||0}`]) || base?.dimensiones;
-                    return { ...base, dimensiones: dims };
-                  }}
-                  totalGeneral={presSel.total}
-                  mostrarPrecioUnitario={mostrarPrecioUnitario}
-                  nombrePresupuesto={presSel.nombre}
-                  descuento={presSel.descuento || 0}
-                  gananciaExtra={presSel.gananciaExtra || 0}
-                />
+                <div style={{ borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.22)" }}>
+                  <ResumenPresupuesto
+                    items={presSel.items}
+                    modulos={modulos}
+                    costos={costos}
+                    getModUsado={(item) => {
+                      const base = modulos[item.codigo];
+                      const dims = (presSel.dimOverride && presSel.dimOverride[`${item.codigo}-${item.id||0}`]) || base?.dimensiones;
+                      return { ...base, dimensiones: dims };
+                    }}
+                    totalGeneral={presSel.total}
+                    mostrarPrecioUnitario={mostrarPrecioUnitario}
+                    nombrePresupuesto={presSel.nombre}
+                    descuento={presSel.descuento || 0}
+                    gananciaExtra={presSel.gananciaExtra || 0}
+                  />
+                </div>
 
                 {/* Condiciones editables */}
-                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
+                <div style={{
+                  background: "var(--bg-surface)", border: "1px solid var(--border)",
+                  borderRadius: 12, padding: "14px 16px",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.22)",
+                }}>
                   <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
                     📋 Condiciones y observaciones
                   </div>
                   <textarea value={condiciones} onChange={e => setCondiciones(e.target.value)}
                     placeholder="Ej: Validez 15 días. Precios sin IVA. Seña del 40% para iniciar fabricación."
                     rows={3}
-                    style={{
-                      width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13,
-                      padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)",
-                      color: "var(--text-primary)", borderRadius: 8, outline: "none", resize: "vertical",
-                      lineHeight: 1.6, transition: "border-color 0.15s",
-                    }}
+                    style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 8, outline: "none", resize: "vertical", lineHeight: 1.6 }}
                     onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
                     onBlur={e => e.target.style.borderColor = "var(--border)"} />
                 </div>
 
-                {/* Guardar textos */}
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                {/* Fila inferior: WhatsApp + PDF + Guardar cambios — alineados a la izquierda */}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  {/* WhatsApp */}
+                  <button onClick={handleWhatsApp}
+                    style={{
+                      padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontSize: 12,
+                      fontFamily: "'DM Mono',monospace", fontWeight: 700, letterSpacing: "0.03em",
+                      background: whatsappCopiado ? "rgba(126,207,138,0.12)" : "var(--bg-surface)",
+                      border: `1px solid ${whatsappCopiado ? "rgba(126,207,138,0.40)" : "var(--border)"}`,
+                      color: whatsappCopiado ? "#7ecf8a" : "var(--text-secondary)",
+                      transition: "all 0.15s",
+                    }}
+                    onMouseEnter={e => { if (!whatsappCopiado) { e.currentTarget.style.background = "var(--bg-subtle)"; e.currentTarget.style.borderColor = "var(--text-muted)"; }}}
+                    onMouseLeave={e => { if (!whatsappCopiado) { e.currentTarget.style.background = "var(--bg-surface)"; e.currentTarget.style.borderColor = "var(--border)"; }}}
+                  >
+                    {whatsappCopiado ? "✓ Copiado" : "📲 WhatsApp"}
+                  </button>
+                  {/* PDF — ghost con hover fill dorado */}
+                  <button onClick={handlePDF}
+                    style={{
+                      padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontSize: 12,
+                      fontFamily: "'DM Mono',monospace", fontWeight: 700, letterSpacing: "0.06em",
+                      background: "transparent",
+                      border: "1.5px solid var(--accent)",
+                      color: "var(--accent)", transition: "background 0.2s, color 0.2s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg,var(--accent),var(--accent-hover))"; e.currentTarget.style.color = "var(--text-inverted)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--accent)"; }}
+                  >
+                    🖨 PDF
+                  </button>
+                  {/* Separador */}
+                  <div style={{ flex: 1 }} />
+                  {/* Guardar cambios */}
                   <button onClick={guardarTextos} style={{
                     padding: "9px 22px", borderRadius: 8, cursor: "pointer",
                     background: guardandoTexto ? "rgba(126,207,138,0.15)" : "var(--accent-soft)",
