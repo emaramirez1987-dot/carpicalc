@@ -87,6 +87,13 @@ const costoIniciales = {
   ],
   desperdicioPct: 20,
   gastosGenerales: 18,
+  // Extras frecuentes — se sugieren con autocompletado en la sección Adicionales del Presupuesto
+  extrasFrecuentes: [
+    { id: 1, nombre: "Flete", precio: 15000 },
+    { id: 2, nombre: "Instalación / Montaje", precio: 25000 },
+    { id: 3, nombre: "Diseño y planos", precio: 20000 },
+    { id: 4, nombre: "Pintura y terminaciones", precio: 18000 },
+  ],
   // Gastos fijos del taller — se usan para calcular el costo por hora operativo
   gastosFijos: {
     items: [
@@ -2706,6 +2713,37 @@ function HojaCostos({ costos, setCostos, onSave }) {
 
       <SeccionDesperdicio costos={costos} save={save} />
       <SeccionGastosFijos costos={costos} save={save} />
+
+      {/* Extras frecuentes — base para autocompletado en Presupuesto */}
+      <HcSec icon="📦" titulo="Extras y Servicios Frecuentes">
+        <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14, lineHeight: 1.6 }}>
+          Estos ítems aparecen como sugerencias al cargar adicionales en un presupuesto (flete, instalación, etc.).
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {(costos.extrasFrecuentes || []).map(f => (
+            <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--bg-subtle)", borderRadius: 8, border: "1px solid var(--border)" }}>
+              <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>{f.nombre}</span>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>{fmtPeso(f.precio)}</span>
+              <button onClick={() => save({ ...costos, extrasFrecuentes: (costos.extrasFrecuentes || []).filter(x => x.id !== f.id) })}
+                style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <input id="ef-nombre" type="text" placeholder="Nombre del servicio" style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 12, outline: "none" }} />
+          <input id="ef-precio" type="number" placeholder="Precio" style={{ width: 110, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 12, outline: "none", textAlign: "right" }} />
+          <button onClick={() => {
+            const nom = document.getElementById("ef-nombre")?.value.trim();
+            const pre = parseFloat(document.getElementById("ef-precio")?.value) || 0;
+            if (!nom) return;
+            save({ ...costos, extrasFrecuentes: [...(costos.extrasFrecuentes || []), { id: Date.now(), nombre: nom, precio: pre }] });
+            if (document.getElementById("ef-nombre")) document.getElementById("ef-nombre").value = "";
+            if (document.getElementById("ef-precio")) document.getElementById("ef-precio").value = "";
+          }} style={{ padding: "7px 14px", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+            + Agregar
+          </button>
+        </div>
+      </HcSec>
     </div>
   );
 }
@@ -4903,7 +4941,8 @@ function imprimirPresupuesto(
   condiciones = "",
   descuento = 0,
   gananciaExtra = 0,
-  tema = "dorado"
+  tema = "dorado",
+  adicionales = []
 ) {
   const perfil = leerPerfil();
   const fecha = fmtFechaLarga(Date.now());
@@ -5039,6 +5078,21 @@ function imprimirPresupuesto(
       </tr>`;
     })
     .join("");
+
+  // Filas de adicionales — sección separada con divisor visual
+  const filasAdicionales = adicionales.length > 0
+    ? `<tr><td colspan="${mostrarPrecioUnitario ? 5 : 4}" style="padding:10px 14px 4px;border-top:1px dashed ${p.acentoSuave}">
+        <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;color:${p.textoAcento}">Servicios y adicionales</span>
+      </td></tr>` +
+      adicionales.map(x => `<tr>
+        <td style="padding:9px 14px;border-bottom:1px solid ${p.separador};font-size:11px;color:${p.textoAcento}">+</td>
+        <td style="padding:9px 14px;border-bottom:1px solid ${p.separador};color:${p.textoPrincipal};font-style:italic">${x.nombre}</td>
+        <td class="num" style="border-bottom:1px solid ${p.separador};color:${p.textoAcento}">—</td>
+        ${mostrarPrecioUnitario ? `<td class="num" style="border-bottom:1px solid ${p.separador};color:${p.textoSec}">${fmtPeso(x.monto)}</td>` : ""}
+        <td class="num subtotal" style="border-bottom:1px solid ${p.separador};color:${p.totalColor}">${fmtPeso(x.monto)}</td>
+      </tr>`).join("")
+    : "";
+
   const totalUnid = items.reduce((a, i) => a + i.cantidad, 0);
   // ── HTML del PDF ──────────────────────────────────────────────────
   const html = `<!DOCTYPE html>
@@ -5116,7 +5170,7 @@ function imprimirPresupuesto(
         <th class="num" style="width:120px">Subtotal</th>
       </tr>
     </thead>
-    <tbody>${filas}</tbody>
+    <tbody>${filas}${filasAdicionales}</tbody>
   </table>
 
   <!-- ZONA 3: PIE -->
@@ -5842,6 +5896,157 @@ function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombreP
   );
 }
 
+// ── SeccionAdicionales ────────────────────────────────────────────
+// Gastos extra: flete, instalación, diseño, etc.
+// Independiente de los módulos — no afecta Cortes ni Materiales.
+// Integrado con costos.extrasFrecuentes para autocompletado.
+function SeccionAdicionales({ adicionales, setAdicionales, costos, onGuardarFrecuente }) {
+  const [inputNombre, setInputNombre] = useState("");
+  const [inputMonto, setInputMonto] = useState("");
+  const [sugerencias, setSugerencias] = useState([]);
+  const [toastNuevo, setToastNuevo] = useState(null); // nombre del extra nuevo para sugerir guardar
+
+  const frecuentes = costos?.extrasFrecuentes || [];
+
+  const filtrarSugerencias = (texto) => {
+    if (!texto.trim() || texto.length < 2) { setSugerencias([]); return; }
+    const hits = frecuentes.filter(f =>
+      f.nombre.toLowerCase().includes(texto.toLowerCase())
+    );
+    setSugerencias(hits);
+  };
+
+  const seleccionarSugerencia = (f) => {
+    setInputNombre(f.nombre);
+    setInputMonto(String(f.precio));
+    setSugerencias([]);
+  };
+
+  const agregar = () => {
+    const nombre = inputNombre.trim();
+    const monto = parseFloat(inputMonto) || 0;
+    if (!nombre || monto <= 0) return;
+
+    const nuevoExtra = { id: Date.now(), nombre, monto };
+    setAdicionales(prev => [...prev, nuevoExtra]);
+
+    // ¿Es nuevo (no está en frecuentes)? Sugerir guardarlo si tiene monto real
+    const yaExiste = frecuentes.some(f => f.nombre.toLowerCase() === nombre.toLowerCase());
+    if (!yaExiste && monto > 0 && nombre.length >= 3) {
+      setToastNuevo({ nombre, precio: monto });
+    }
+
+    setInputNombre(""); setInputMonto(""); setSugerencias([]);
+  };
+
+  const eliminar = (id) => setAdicionales(prev => prev.filter(x => x.id !== id));
+
+  const inputSm = {
+    fontFamily: "'DM Mono',monospace", fontSize: 13, padding: "7px 10px",
+    background: "var(--bg-base)", border: "1px solid var(--border)",
+    color: "var(--text-primary)", borderRadius: 7, outline: "none",
+  };
+
+  if (!setAdicionales) return null;
+
+  return (
+    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "visible", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+      {/* Header */}
+      <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
+          📦 Gastos Extras / Adicionales
+        </span>
+        {adicionales.length > 0 && (
+          <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>
+            {fmtPeso(adicionales.reduce((a, x) => a + x.monto, 0))}
+          </span>
+        )}
+      </div>
+
+      <div style={{ padding: "12px 16px" }}>
+        {/* Lista de adicionales cargados */}
+        {adicionales.length > 0 && (
+          <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+            {adicionales.map(x => (
+              <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--bg-subtle)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <span style={{ fontSize: 13, flex: 1, color: "var(--text-primary)" }}>{x.nombre}</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.monto)}</span>
+                <button onClick={() => eliminar(x.id)}
+                  style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Toast: sugerir guardar como frecuente */}
+        {toastNuevo && (
+          <div style={{ marginBottom: 10, padding: "9px 12px", borderRadius: 8, background: "rgba(200,160,42,0.10)", border: "1px solid rgba(200,160,42,0.30)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, color: "#c8a02a", flex: 1 }}>
+              💡 <strong>"{toastNuevo.nombre}"</strong> no está en tus extras frecuentes. ¿Guardarlo para próximos presupuestos?
+            </span>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => { onGuardarFrecuente && onGuardarFrecuente(toastNuevo); setToastNuevo(null); }}
+                style={{ padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,160,42,0.18)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a" }}>
+                ✓ Guardar
+              </button>
+              <button onClick={() => setToastNuevo(null)}
+                style={{ padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontSize: 11, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                No
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Formulario de ingreso con autocompletado */}
+        <div style={{ position: "relative" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 140, position: "relative" }}>
+              <input
+                type="text" placeholder="Descripción (ej: Flete, Instalación...)"
+                value={inputNombre}
+                onChange={e => { setInputNombre(e.target.value); filtrarSugerencias(e.target.value); }}
+                onKeyDown={e => e.key === "Enter" && agregar()}
+                style={{ ...inputSm, width: "100%" }}
+                onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                onBlur={e => { e.target.style.borderColor = "var(--border)"; setTimeout(() => setSugerencias([]), 180); }}
+              />
+              {/* Dropdown autocompletado */}
+              {sugerencias.length > 0 && (
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 50, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 6px 20px rgba(0,0,0,0.35)", overflow: "hidden" }}>
+                  {sugerencias.map(f => (
+                    <div key={f.id} onMouseDown={() => seleccionarSugerencia(f)}
+                      style={{ padding: "9px 12px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "background 0.1s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "var(--accent-soft)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                    >
+                      <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{f.nombre}</span>
+                      <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>{fmtPeso(f.precio)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>$</span>
+              <input type="number" min="0" placeholder="Monto" value={inputMonto}
+                onChange={e => setInputMonto(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && agregar()}
+                style={{ ...inputSm, width: 110, textAlign: "right" }}
+                onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                onBlur={e => e.target.style.borderColor = "var(--border)"}
+              />
+            </div>
+            <button onClick={agregar}
+              style={{ padding: "8px 16px", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", flexShrink: 0 }}>
+              + Agregar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Presupuesto ───────────────────────────────────────────────────
 function Presupuesto({
   modulos,
@@ -5862,6 +6067,9 @@ function Presupuesto({
   costosVersion = 0,
   presupuestoParaEditar = null,
   onPresupuestoEditarConsumed,
+  adicionales = [],
+  setAdicionales,
+  onGuardarExtraFrecuente,
 }) {
   // LOGICA - Edición de Presupuestos Existentes
   // Cuando llega un presupuesto desde Vista Previa vía "Editar módulos",
@@ -6330,6 +6538,14 @@ function Presupuesto({
         />
       )}
 
+      {/* 4b. Sección de adicionales (flete, instalación, etc.) */}
+      <SeccionAdicionales
+        adicionales={adicionales}
+        setAdicionales={setAdicionales}
+        costos={costos}
+        onGuardarFrecuente={onGuardarExtraFrecuente}
+      />
+
       {/* 5. Formulario agregar / editar módulo */}
       <div ref={formRef}>
         <Card className="rsp-card no-print" style={{
@@ -6481,7 +6697,7 @@ function VistaPrevia({
       const dims = (presSel.dimOverride && presSel.dimOverride[`${item.codigo}-${item.id||0}`]) || base?.dimensiones;
       return { ...base, dimensiones: dims };
     };
-    imprimirPresupuesto(presSel.items, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, mostrarPrecioUnitario, presSel.cliente, textoApertura, condiciones, presSel.descuento || 0, presSel.gananciaExtra || 0, temaPDF);
+    imprimirPresupuesto(presSel.items, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, mostrarPrecioUnitario, presSel.cliente, textoApertura, condiciones, presSel.descuento || 0, presSel.gananciaExtra || 0, temaPDF, presSel.adicionales || []);
   };
 
   const estSel = presSel ? (ESTADOS_TRABAJO.find(e => e.id === (presSel.estado || "nuevo")) || ESTADOS_TRABAJO[0]) : null;
@@ -8882,6 +9098,8 @@ function AppInterna() {
   const [saveEst, setSaveEst] = useState(null);
   const [items, setItems] = useState([]);
   const [dimOverride, setDimOverride] = useState({});
+  // Adicionales: gastos extra que no son módulos (flete, instalación, etc.)
+  const [adicionales, setAdicionales] = useState([]);
   const [presupuestoVistaPreviaId, setPresupuestoVistaPreviaId] = useState(null);
   // NAVEGACIÓN - Enlace Presupuesto a Caja
   // Cuando el usuario hace click en "Ver Rentabilidad" desde Vista Previa,
@@ -8968,7 +9186,9 @@ function AppInterna() {
     [modulos, dimOverride]
   );
 
-  const totalGeneral = !costos
+  // LÓGICA - Adicionales: totalGeneral incluye módulos + extras (flete, instalación, etc.)
+  // calcularModulo solo se llama para módulos — los adicionales son montos directos
+  const totalModulos = !costos
     ? 0
     : items.reduce((acc, it) => {
         const m = getModUsado(it);
@@ -8977,6 +9197,8 @@ function AppInterna() {
         if (!c) return acc;
         return acc + c.total * it.cantidad;
       }, 0);
+  const totalAdicionales = adicionales.reduce((a, x) => a + (parseFloat(x.monto) || 0), 0);
+  const totalGeneral = totalModulos + totalAdicionales;
 
   const handleGuardarPresupuesto = async (nombre, cliente, nota, presupuestoCompleto) => {
     const id = String(Date.now());
@@ -8989,6 +9211,7 @@ function AppInterna() {
         estado: "nuevo",
         items: [...items],
         dimOverride: { ...dimOverride },
+        adicionales: [...adicionales],  // ← guarda los extras
         total: totalGeneral,
       },
     };
@@ -8997,13 +9220,24 @@ function AppInterna() {
     localStorage.removeItem("carpicalc:borrador");
   };
   // LOGICA - Edición de Presupuestos Existentes
-  // Carga items y dimOverride en el estado activo para edición desde Presupuesto
   const handleCargarPresupuesto = (p, id) => {
     setItems(p.items ? [...p.items] : []);
     setDimOverride(p.dimOverride && typeof p.dimOverride === "object" ? { ...p.dimOverride } : {});
+    setAdicionales(Array.isArray(p.adicionales) ? [...p.adicionales] : []);  // ← carga extras
     localStorage.removeItem("carpicalc:borrador");
   };
-  const handleEliminarPresupuesto = async (id) => {
+  // LÓGICA - Adicionales: guarda un extra nuevo en costos.extrasFrecuentes
+  const handleGuardarExtraFrecuente = (extra) => {
+    const nuevo = {
+      ...costos,
+      extrasFrecuentes: [
+        ...(costos.extrasFrecuentes || []),
+        { id: Date.now(), nombre: extra.nombre, precio: extra.precio },
+      ],
+    };
+    setCostos(nuevo);
+    withSave(() => guardarCostos(nuevo));
+  };
     const nuevo = { ...presupuestos };
     delete nuevo[id];
     setPresupuestos(nuevo);
@@ -9120,6 +9354,9 @@ function AppInterna() {
               costosVersion={costosVersion}
               presupuestoParaEditar={presupuestoParaEditar}
               onPresupuestoEditarConsumed={() => setPresupuestoParaEditar(null)}
+              adicionales={adicionales}
+              setAdicionales={setAdicionales}
+              onGuardarExtraFrecuente={handleGuardarExtraFrecuente}
             />
           )}
           {vista === "preview" && (
