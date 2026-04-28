@@ -6489,62 +6489,114 @@ function VistaPrevia({
                   ← Lista de presupuestos
                 </button>
 
-                {/* Toolbar — sin nombre del cliente, ya figura en la lista lateral */}
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", padding: "12px 16px", background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10 }}>
-                  {/* Estado */}
-                  <select value={presSel.estado || "nuevo"} onChange={e => onCambiarEstado(presSelId, e.target.value)}
-                    style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "6px 9px", background: `${estSel.color}18`, border: `1px solid ${estSel.color}44`, color: estSel.color, borderRadius: 7, cursor: "pointer", outline: "none", fontWeight: 700 }}>
-                    {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
-                  </select>
-                  <ToggleSwitch value={mostrarPrecioUnitario} onChange={setMostrarPrecioUnitario} label="P. unit." />
-                  {/* Botón Actualizar precio — visible siempre, habilitado solo si los costos cambiaron */}
-                  {(() => {
-                    const necesita = presSelId && presupuestoNecesitaActualizacion(presSelId, costosVersion, presSel);
-                    return (
-                      <button
-                        disabled={!necesita}
-                        onClick={() => {
-                          const nuevoTotal = recalcularTotalPresupuesto(presSel, modulos, costos);
-                          if (nuevoTotal !== null) onActualizarPresupuesto(presSelId, { total: Math.round(nuevoTotal), costosVersionAl: Date.now() });
-                        }}
-                        title={necesita ? "Los costos cambiaron — actualizá el precio" : "El precio está actualizado"}
-                        style={{
-                          padding: "7px 13px", borderRadius: 7, fontSize: 11,
-                          fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                          cursor: necesita ? "pointer" : "not-allowed",
-                          background: necesita ? "rgba(200,160,42,0.15)" : "transparent",
-                          border: `1px solid ${necesita ? "rgba(200,160,42,0.40)" : "var(--border)"}`,
-                          color: necesita ? "#c8a02a" : "var(--text-muted)",
-                          opacity: necesita ? 1 : 0.45, transition: "all 0.2s",
-                        }}>
-                        ↻ Actualizar precio
-                      </button>
-                    );
-                  })()}
-                  {btnAcc("wa", whatsappCopiado ? "✓ Copiado" : "📲 WhatsApp", handleWhatsApp)}
-                  {/* Selector de tema de color del PDF */}
-                  <select
-                    value={temaPDF}
-                    onChange={e => cambiarTema(e.target.value)}
-                    title="Tema de color del PDF"
-                    style={{
-                      fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
-                      padding: "7px 10px", borderRadius: 7, cursor: "pointer",
-                      outline: "none", background: "var(--bg-surface)",
-                      border: "1px solid var(--border)", color: "var(--text-secondary)",
-                      transition: "border-color 0.15s",
-                    }}
-                    onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                    onBlur={e => e.target.style.borderColor = "var(--border)"}
-                  >
-                    <option value="dorado">🟡 Dorado</option>
-                    <option value="gris">⬜ Gris Perla</option>
-                    <option value="carbon">⬛ Carbón</option>
-                    <option value="bosque">🟢 Bosque</option>
-                    <option value="marino">🔵 Marino</option>
-                    <option value="bordo">🟥 Burdeos</option>
-                  </select>
-                  {btnAcc("gold", "🖨 PDF", handlePDF)}
+                {/* ── Toolbar Vista Previa — 3 filas con jerarquía ── */}
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
+
+                  {/* ROW 1 — ESTADO: ancho completo, color semántico */}
+                  <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)" }}>
+                    <select
+                      value={presSel.estado || "nuevo"}
+                      onChange={e => onCambiarEstado(presSelId, e.target.value)}
+                      style={{
+                        width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 12,
+                        padding: "9px 12px", borderRadius: 8, cursor: "pointer",
+                        outline: "none", fontWeight: 700, letterSpacing: "0.04em",
+                        background: `${estSel.color}14`,
+                        border: `1.5px solid ${estSel.color}50`,
+                        color: estSel.color,
+                      }}>
+                      {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
+                    </select>
+                  </div>
+
+                  {/* ROW 2 — ACCIONES PRIMARIAS: WhatsApp + PDF (botones grandes, táctiles) */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "1px solid var(--border)" }}>
+                    {/* WhatsApp — secundario */}
+                    <button onClick={handleWhatsApp}
+                      style={{
+                        padding: "13px 0", border: "none", borderRight: "1px solid var(--border)",
+                        cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700,
+                        background: whatsappCopiado ? "rgba(126,207,138,0.10)" : "transparent",
+                        color: whatsappCopiado ? "#7ecf8a" : "var(--text-secondary)",
+                        transition: "all 0.15s", letterSpacing: "0.03em",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
+                      onMouseLeave={e => e.currentTarget.style.background = whatsappCopiado ? "rgba(126,207,138,0.10)" : "transparent"}
+                    >
+                      {whatsappCopiado ? "✓ Copiado" : "📲 WhatsApp"}
+                    </button>
+                    {/* PDF — primario */}
+                    <button onClick={handlePDF}
+                      style={{
+                        padding: "13px 0", border: "none", cursor: "pointer",
+                        fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700,
+                        background: "linear-gradient(135deg, var(--accent), var(--accent-hover))",
+                        color: "var(--text-inverted)", letterSpacing: "0.06em",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                        transition: "opacity 0.15s",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+                      onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                    >
+                      🖨 PDF
+                    </button>
+                  </div>
+
+                  {/* ROW 3 — CONFIGURACIÓN: opciones secundarias en línea compacta */}
+                  <div style={{ padding: "8px 14px", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "var(--bg-subtle)" }}>
+                    {/* Toggle precio unitario */}
+                    <ToggleSwitch value={mostrarPrecioUnitario} onChange={setMostrarPrecioUnitario} label="P. unit." />
+
+                    {/* Separador */}
+                    <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
+
+                    {/* Selector tema PDF */}
+                    <select value={temaPDF} onChange={e => cambiarTema(e.target.value)}
+                      title="Tema de color del PDF"
+                      style={{
+                        fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 600,
+                        padding: "5px 8px", borderRadius: 6, cursor: "pointer", outline: "none",
+                        background: "transparent", border: "1px solid var(--border)",
+                        color: "var(--text-muted)", flex: 1, minWidth: 90,
+                      }}>
+                      <option value="dorado">🟡 Dorado</option>
+                      <option value="gris">⬜ Gris Perla</option>
+                      <option value="carbon">⬛ Carbón</option>
+                      <option value="bosque">🟢 Bosque</option>
+                      <option value="marino">🔵 Marino</option>
+                      <option value="bordo">🟥 Burdeos</option>
+                    </select>
+
+                    {/* Separador */}
+                    <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
+
+                    {/* Actualizar precio — solo visible cuando hay cambio pendiente */}
+                    {(() => {
+                      const necesita = presSelId && presupuestoNecesitaActualizacion(presSelId, costosVersion, presSel);
+                      return (
+                        <button
+                          disabled={!necesita}
+                          onClick={() => {
+                            const nuevoTotal = recalcularTotalPresupuesto(presSel, modulos, costos);
+                            if (nuevoTotal !== null) onActualizarPresupuesto(presSelId, { total: Math.round(nuevoTotal), costosVersionAl: Date.now() });
+                          }}
+                          title={necesita ? "Costos actualizados — recalculá el precio" : "Precio al día"}
+                          style={{
+                            padding: "5px 10px", borderRadius: 6, fontSize: 11,
+                            fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                            cursor: necesita ? "pointer" : "default",
+                            background: necesita ? "rgba(200,160,42,0.15)" : "transparent",
+                            border: `1px solid ${necesita ? "rgba(200,160,42,0.40)" : "transparent"}`,
+                            color: necesita ? "#c8a02a" : "var(--text-muted)",
+                            opacity: necesita ? 1 : 0.35,
+                            transition: "all 0.2s", whiteSpace: "nowrap",
+                          }}>
+                          ↻ Actualizar
+                        </button>
+                      );
+                    })()}
+                  </div>
                 </div>
 
                 {/* Historial de versiones */}
