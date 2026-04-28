@@ -8636,9 +8636,6 @@ function LoginScreen({ onAccess }) {
             <div style={{ fontSize: 9, letterSpacing: "0.26em", textTransform: "uppercase", marginTop: 6, color: "var(--text-muted)", fontWeight: 400, fontFamily: "'DM Mono',monospace" }}>
               Diseño & Gestión de Costos
             </div>
-          </div>", marginTop: 6, color: "var(--text-muted)", fontWeight: 300, fontFamily: "'DM Mono',monospace" }}>
-              Diseño & Gestión de Costos
-            </div>
           </div>
 
           {/* Campo contraseña */}
