@@ -713,6 +713,15 @@ const GlobalStyles = () => (
       100% { transform: scale(1); }
     }
 
+    /* Animación de entrada al cambiar de pestaña */
+    @keyframes tabEnter {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .tab-view {
+      animation: tabEnter 0.32s cubic-bezier(0.22,1,0.36,1) both;
+    }
+
     /* Stagger de tarjetas — cada nth-child recibe delay */
     .anim-fadein    { animation: fadeIn  0.35s ease both; }
     .anim-fadeup    { animation: fadeUp  0.40s cubic-bezier(0.22,1,0.36,1) both; }
@@ -1067,14 +1076,14 @@ function Card({ children, style, highlight, onClick, className }) {
       className={className}
       style={{
         background: highlight ? "var(--accent-soft)" : "var(--bg-surface)",
-        border: `1px solid ${
-          highlight ? "var(--accent-border)" : "var(--border)"
-        }`,
-        borderRadius: 12,
+        border: `1px solid ${highlight ? "var(--accent-border)" : "var(--border)"}`,
+        borderRadius: 14,
         padding: 20,
-        boxShadow: "var(--shadow)",
+        boxShadow: highlight
+          ? "0 4px 24px rgba(212,175,55,0.08), var(--shadow-sm)"
+          : "0 2px 12px rgba(0,0,0,0.28), var(--shadow-sm)",
         cursor: onClick ? "pointer" : undefined,
-        transition: "border-color 0.2s",
+        transition: "border-color 0.2s, box-shadow 0.2s, transform 0.18s",
         ...style,
       }}
     >
@@ -1108,20 +1117,14 @@ function Badge({ children, color }) {
 function SectionTitle({ children, sub }) {
   return (
     <div className="anim-fadeup" style={{ marginBottom: 24 }}>
-      <h2
-        style={{
-          fontFamily: "'Playfair Display',serif",
-          fontSize: 26,
-          fontWeight: 900,
-          color: "var(--accent)",
-          letterSpacing: -0.8,
-          lineHeight: 1,
-        }}
-      >
-        {children}
-      </h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: sub ? 8 : 0 }}>
+        <div style={{ width: 3, height: 28, borderRadius: 999, background: "linear-gradient(180deg, var(--accent) 0%, var(--accent-border) 100%)", flexShrink: 0 }} />
+        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 26, fontWeight: 900, color: "var(--text-primary)", letterSpacing: -0.8, lineHeight: 1 }}>
+          {children}
+        </h2>
+      </div>
       {sub && (
-        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 7, fontWeight: 300, letterSpacing: "0.01em" }}>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4, marginLeft: 15, fontWeight: 300, letterSpacing: "0.01em", lineHeight: 1.5 }}>
           {sub}
         </p>
       )}
@@ -4517,9 +4520,10 @@ function CatalogoModulos({
       })()}
 
       {Object.keys(modulos).length === 0 && (
-        <div style={{ textAlign: "center", padding: "60px 0", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🗂</div>
-          <p style={{ fontSize: 14 }}>No hay módulos en el catálogo.</p>
+        <div style={{ textAlign: "center", padding: "60px 20px", borderRadius: 16, border: "1px dashed var(--border)", color: "var(--text-muted)", background: "var(--bg-subtle)" }}>
+          <div style={{ marginBottom: 18, opacity: 0.7 }} dangerouslySetInnerHTML={{ __html: `<svg width="52" height="52" viewBox="0 0 52 52" fill="none"><rect x="8" y="8" width="36" height="36" rx="8" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.5"/><path d="M20 26h12M26 20v12" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" opacity="0.7"/></svg>` }} />
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Catálogo vacío</p>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>No hay módulos en el catálogo.
           <p style={{ fontSize: 12, marginTop: 6 }}>
             Hacé clic en <strong style={{ color: "var(--accent)" }}>+ Nuevo módulo</strong> para empezar.
           </p>
@@ -6356,8 +6360,9 @@ function VistaPrevia({
 
       {entries.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 0", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>📄</div>
-          <p style={{ fontSize: 14 }}>No hay presupuestos guardados todavía.</p>
+          <div style={{ marginBottom: 18, opacity: 0.7 }} dangerouslySetInnerHTML={{ __html: `<svg width="52" height="52" viewBox="0 0 52 52" fill="none"><rect x="10" y="8" width="32" height="36" rx="6" stroke="var(--accent)" stroke-width="1.5" opacity="0.5"/><line x1="18" y1="20" x2="34" y2="20" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/><line x1="18" y1="27" x2="34" y2="27" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/><line x1="18" y1="34" x2="26" y2="34" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity="0.25"/></svg>` }} />
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Sin presupuestos guardados</p>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>Todavía no hay nada acá.</p>
           <p style={{ fontSize: 12, marginTop: 6 }}>Guardá uno desde <strong style={{ color: "var(--accent)" }}>📋 Presupuesto</strong>.</p>
         </div>
       ) : (
@@ -6431,9 +6436,10 @@ function VistaPrevia({
           {/* ── Panel derecho: documento ── */}
           <div className={`vp-doc ${mostrarLista && !presSel ? "vp-doc-hidden" : ""}`} style={{ flex: 1, minWidth: 0 }}>
             {!presSel ? (
-              <div style={{ textAlign: "center", padding: "60px 20px", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
-                <div style={{ fontSize: 36, marginBottom: 12 }}>👈</div>
-                <p style={{ fontSize: 14 }}>Seleccioná un presupuesto de la lista</p>
+              <div style={{ textAlign: "center", padding: "60px 20px", borderRadius: 16, border: "1px dashed var(--border)", color: "var(--text-muted)", background: "var(--bg-subtle)" }}>
+                <div style={{ marginBottom: 18, opacity: 0.7 }} dangerouslySetInnerHTML={{ __html: `<svg width="52" height="52" viewBox="0 0 52 52" fill="none"><path d="M16 26l10 10 18-18" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><circle cx="26" cy="26" r="18" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.25"/></svg>` }} />
+                <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Seleccioná un presupuesto</p>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>Elegí uno de la lista para ver el detalle</p>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -8472,13 +8478,16 @@ function Header({ vista, setVista, tabs, saveEst, tema, toggleTema }) {
         transition: "background 0.3s",
       }}
     >
-      {/* Brand */}
-      <div className="rsp-brand" style={{ padding: "16px 0", flexShrink: 0 }}>
-        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 19, fontWeight: 900, color: "var(--accent)", lineHeight: 1, letterSpacing: "-0.01em" }}>
-          🪵 CarpiCálc
-        </div>
-        <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", marginTop: 3, color: "var(--text-muted)", fontWeight: 300 }}>
-          Sistema de presupuestos
+      {/* Brand — isotipo SVG geométrico */}
+      <div className="rsp-brand" style={{ padding: "14px 0", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
+        <div dangerouslySetInnerHTML={{ __html: '<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="2" y="2" width="28" height="28" rx="7" fill="none" stroke-opacity="0.12" style="fill:rgba(212,175,55,0.12)"/><rect x="2" y="2" width="28" height="28" rx="7" stroke="#D4AF37" stroke-width="1.2" fill="none"/><line x1="8" y1="24" x2="24" y2="8" stroke="#D4AF37" stroke-width="2.2" stroke-linecap="round"/><line x1="8" y1="16" x2="16" y2="8" stroke="#D4AF37" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/><line x1="16" y1="24" x2="24" y2="16" stroke="#D4AF37" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/></svg>' }} style={{ lineHeight: 0, flexShrink: 0 }} />
+        <div>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 900, color: "var(--accent)", lineHeight: 1, letterSpacing: "-0.02em" }}>
+            CarpiCálc
+          </div>
+          <div style={{ fontSize: 8, letterSpacing: "0.26em", textTransform: "uppercase", marginTop: 3, color: "var(--text-muted)", fontWeight: 400 }}>
+            Presupuestos
+          </div>
         </div>
       </div>
 
@@ -8879,6 +8888,8 @@ function AppInterna() {
           className="rsp-main"
           style={{ maxWidth: 980, margin: "0 auto", padding: "28px 20px" }}
         >
+          {/* tab-view: animación de entrada al cambiar de pestaña */}
+          <div key={vista} className="tab-view">
           {vista === "presupuesto" && (
             <Presupuesto
               modulos={modulos}
@@ -8980,6 +8991,7 @@ function AppInterna() {
               }}
             />
           )}
+          </div>{/* cierre tab-view */}
         </main>
       </div>
     </>
