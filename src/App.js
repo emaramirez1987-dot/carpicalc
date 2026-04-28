@@ -818,8 +818,9 @@ const GlobalStyles = () => (
         gap: 0px 10px !important;
         padding: 0 12px !important;
       }
-      .rsp-brand { padding: 14px 0 !important; }
-      .rsp-brand > div:first-child { font-size: 17px !important; }
+      .rsp-brand { padding: 12px 0 !important; }
+      .rsp-brand-text { display: none !important; }
+      .rsp-brand > div:first-child { transform: scale(0.9); }
       .rsp-nav {
         order: 3 !important;
         width: 100% !important;
@@ -8478,15 +8479,15 @@ function Header({ vista, setVista, tabs, saveEst, tema, toggleTema }) {
         transition: "background 0.3s",
       }}
     >
-      {/* Brand — isotipo SVG geométrico */}
-      <div className="rsp-brand" style={{ padding: "14px 0", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
-        <div dangerouslySetInnerHTML={{ __html: '<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="2" y="2" width="28" height="28" rx="7" fill="none" stroke-opacity="0.12" style="fill:rgba(212,175,55,0.12)"/><rect x="2" y="2" width="28" height="28" rx="7" stroke="#D4AF37" stroke-width="1.2" fill="none"/><line x1="8" y1="24" x2="24" y2="8" stroke="#D4AF37" stroke-width="2.2" stroke-linecap="round"/><line x1="8" y1="16" x2="16" y2="8" stroke="#D4AF37" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/><line x1="16" y1="24" x2="24" y2="16" stroke="#D4AF37" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/></svg>' }} style={{ lineHeight: 0, flexShrink: 0 }} />
-        <div>
+      {/* Brand — isotipo CarpiCálc (sierra + compás + C-shape) */}
+      <div className="rsp-brand" style={{ padding: "12px 0", flexShrink: 0, display: "flex", alignItems: "center", gap: 9 }}>
+        <div dangerouslySetInnerHTML={{ __html: `<svg viewBox="0 0 100 100" width="34" height="34" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M 40.0,31.0 L 46.2,24.7 L 49.1,33.1 L 57.5,30.1 L 56.4,38.9 L 65.2,39.9 L 60.5,47.3 L 68.0,52.0 L 60.5,56.7 L 65.2,64.1 L 56.4,65.1 L 57.5,73.9 L 49.1,70.9 L 46.2,79.3 L 40.0,73.0 L 33.8,79.3 L 30.9,70.9 L 22.5,73.9 L 23.6,65.1 L 14.8,64.1 L 19.5,56.7 L 12.0,52.0 L 19.5,47.3 L 14.8,39.9 L 23.6,38.9 L 22.5,30.1 L 30.9,33.1 L 33.8,24.7 L 40.0,31.0 Z" stroke="var(--accent)" stroke-width="1.2" stroke-linejoin="round"/><circle cx="40" cy="52" r="4.5" stroke="var(--accent)" stroke-width="1.0"/><path d="M 60,16 L 88,34 L 88,70 L 60,88" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M 86,22 L 42,82" stroke="var(--accent)" stroke-width="1.0" stroke-linecap="round" opacity="0.75"/><circle cx="58" cy="20" r="3.5" stroke="var(--accent)" stroke-width="1.0"/><line x1="55" y1="23" x2="36" y2="78" stroke="var(--accent)" stroke-width="1.1" stroke-linecap="round"/><line x1="61" y1="23" x2="72" y2="78" stroke="var(--accent)" stroke-width="1.1" stroke-linecap="round"/><path d="M 33,80 L 36,74 L 39,80" stroke="var(--accent)" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"/><path d="M 69,80 L 72,74 L 75,80" stroke="var(--accent)" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"/></svg>` }} style={{ lineHeight: 0, flexShrink: 0 }} />
+        <div className="rsp-brand-text">
           <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 900, color: "var(--accent)", lineHeight: 1, letterSpacing: "-0.02em" }}>
             CarpiCálc
           </div>
-          <div style={{ fontSize: 8, letterSpacing: "0.26em", textTransform: "uppercase", marginTop: 3, color: "var(--text-muted)", fontWeight: 400 }}>
-            Presupuestos
+          <div style={{ fontSize: 8, letterSpacing: "0.24em", textTransform: "uppercase", marginTop: 3, color: "var(--text-muted)", fontWeight: 400, fontFamily: "'DM Mono',monospace" }}>
+            Diseño & Costos
           </div>
         </div>
       </div>
@@ -8837,11 +8838,13 @@ function AppInterna() {
         <GlobalStyles />
         <div style={{ minHeight: "100vh", background: "var(--bg-base)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div className="anim-scalein" style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 42, fontWeight: 900, color: "var(--accent)", letterSpacing: "-0.02em", marginBottom: 8 }}>
-              🪵 CarpiCálc
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}
+              dangerouslySetInnerHTML={{ __html: `<svg viewBox="0 0 100 100" width="84" height="84" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M 40.0,31.0 L 46.2,24.7 L 49.1,33.1 L 57.5,30.1 L 56.4,38.9 L 65.2,39.9 L 60.5,47.3 L 68.0,52.0 L 60.5,56.7 L 65.2,64.1 L 56.4,65.1 L 57.5,73.9 L 49.1,70.9 L 46.2,79.3 L 40.0,73.0 L 33.8,79.3 L 30.9,70.9 L 22.5,73.9 L 23.6,65.1 L 14.8,64.1 L 19.5,56.7 L 12.0,52.0 L 19.5,47.3 L 14.8,39.9 L 23.6,38.9 L 22.5,30.1 L 30.9,33.1 L 33.8,24.7 L 40.0,31.0 Z" stroke="var(--accent)" stroke-width="1.2" stroke-linejoin="round"/><circle cx="40" cy="52" r="4.5" stroke="var(--accent)" stroke-width="1.0"/><path d="M 60,16 L 88,34 L 88,70 L 60,88" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M 86,22 L 42,82" stroke="var(--accent)" stroke-width="1.0" stroke-linecap="round" opacity="0.75"/><circle cx="58" cy="20" r="3.5" stroke="var(--accent)" stroke-width="1.0"/><line x1="55" y1="23" x2="36" y2="78" stroke="var(--accent)" stroke-width="1.1" stroke-linecap="round"/><line x1="61" y1="23" x2="72" y2="78" stroke="var(--accent)" stroke-width="1.1" stroke-linecap="round"/><path d="M 33,80 L 36,74 L 39,80" stroke="var(--accent)" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"/><path d="M 69,80 L 72,74 L 75,80" stroke="var(--accent)" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"/></svg>` }} />
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 36, fontWeight: 900, color: "var(--accent)", letterSpacing: "-0.02em", marginBottom: 6 }}>
+              CarpiCálc
             </div>
-            <div style={{ fontSize: 10, letterSpacing: "0.28em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 28, fontWeight: 300 }}>
-              Sistema de presupuestos
+            <div style={{ fontSize: 9, letterSpacing: "0.30em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 28, fontWeight: 400, fontFamily: "'DM Mono',monospace" }}>
+              Diseño & Gestión de Costos
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               {[0, 1, 2].map(i => (
