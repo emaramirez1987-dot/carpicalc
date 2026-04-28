@@ -5860,7 +5860,23 @@ function Presupuesto({
   onActualizarPresupuesto,
   onVerPresupuesto,
   costosVersion = 0,
+  presupuestoParaEditar = null,
+  onPresupuestoEditarConsumed,
 }) {
+  // LOGICA - Edición de Presupuestos Existentes
+  // Cuando llega un presupuesto desde Vista Previa vía "Editar módulos",
+  // lo cargamos en el estado activo y notificamos que fue consumido
+  useEffect(() => {
+    if (!presupuestoParaEditar) return;
+    const { id, p } = presupuestoParaEditar;
+    onCargarPresupuesto(p);
+    setClienteActivo(p.cliente || { nombre: "", tel: "", dir: "" });
+    setNombreTrabajo(p.nombre || "");
+    setPresupuestoActivoId(id);
+    setEditandoCliente(false);
+    onPresupuestoEditarConsumed && onPresupuestoEditarConsumed();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presupuestoParaEditar]);
   const [inputCod, setInputCod] = useState("");
   const [inputCant, setInputCant] = useState(1);
   const [error, setError] = useState("");
@@ -6284,6 +6300,7 @@ function VistaPrevia({
   presupuestoSelId, onSeleccionarPresupuesto,
   costosVersion = 0,
   onVerRentabilidad,
+  onEditarModulos,
 }) {
   const entries = Object.entries(presupuestos).sort((a, b) => b[0] - a[0]);
   const [presSelIdLocal, setPresSelIdLocal] = useState(presupuestoSelId || null);
@@ -6407,10 +6424,11 @@ function VistaPrevia({
               const activo = presSelId === id;
               return (
                 <div key={id} onClick={() => setPresSelId(id)} style={{
-                  padding: "12px 14px", cursor: "pointer", transition: "background 0.12s",
+                  padding: "14px 16px", cursor: "pointer", transition: "all 0.18s",
                   borderBottom: "1px solid var(--separator)",
                   background: activo ? "var(--accent-soft)" : "transparent",
                   borderLeft: `3px solid ${activo ? "var(--accent)" : "transparent"}`,
+                  boxShadow: activo ? "inset 0 0 0 1px var(--accent-border)" : "none",
                 }}
                   onMouseEnter={e => { if (!activo) e.currentTarget.style.background = "var(--bg-subtle)"; }}
                   onMouseLeave={e => { if (!activo) e.currentTarget.style.background = "transparent"; }}
@@ -6450,6 +6468,25 @@ function VistaPrevia({
                         onMouseLeave={e => e.currentTarget.style.background = "rgba(126,207,138,0.12)"}
                       >
                         📊 Rentabilidad
+                      </button>
+                    )}
+                    {/* LOGICA - Edición de Presupuestos Existentes */}
+                    {onEditarModulos && (
+                      <button
+                        onClick={e => { e.stopPropagation(); onEditarModulos(id, p); }}
+                        title="Editar módulos de este presupuesto"
+                        style={{
+                          display: "flex", alignItems: "center", gap: 4,
+                          padding: "2px 8px", borderRadius: 5, cursor: "pointer",
+                          fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                          background: "var(--accent-soft)",
+                          border: "1px solid var(--accent-border)",
+                          color: "var(--accent)", transition: "all 0.15s", flexShrink: 0,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = "rgba(212,175,55,0.20)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "var(--accent-soft)"}
+                      >
+                        ✎ Editar
                       </button>
                     )}
                   </div>
@@ -6511,18 +6548,25 @@ function VistaPrevia({
                     >
                       {whatsappCopiado ? "✓ Copiado" : "📲 WhatsApp"}
                     </button>
-                    {/* PDF — primario */}
+                    {/* PDF — primario, estilo ghost elegante con hover fill */}
                     <button onClick={handlePDF}
                       style={{
                         padding: "13px 0", border: "none", cursor: "pointer",
                         fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700,
-                        background: "linear-gradient(135deg, var(--accent), var(--accent-hover))",
-                        color: "var(--text-inverted)", letterSpacing: "0.06em",
+                        background: "transparent",
+                        borderTop: "none", borderLeft: "1.5px solid var(--accent)",
+                        color: "var(--accent)", letterSpacing: "0.08em",
                         display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-                        transition: "opacity 0.15s",
+                        transition: "background 0.2s, color 0.2s",
                       }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
-                      onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = "linear-gradient(135deg, var(--accent), var(--accent-hover))";
+                        e.currentTarget.style.color = "var(--text-inverted)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--accent)";
+                      }}
                     >
                       🖨 PDF
                     </button>
@@ -8762,8 +8806,9 @@ function AppInterna() {
   // Cuando el usuario hace click en "Ver Rentabilidad" desde Vista Previa,
   // guardamos el id aquí para que PanelCaja abra esa fila automáticamente.
   const [cajaPresId, setCajaPresId] = useState(null);
+  // LOGICA - Edición de Presupuestos Existentes: puente para que Presupuesto sepa que está editando uno existente
+  const [presupuestoParaEditar, setPresupuestoParaEditar] = useState(null);
   // Versión de costos: timestamp de la última modificación en la pestaña Costos.
-  // Se compara contra el timestamp del presupuesto para saber si sus precios están desactualizados.
   const [costosVersion, setCostosVersion] = useState(leerVersionCostos);
 
   useEffect(() => {
@@ -8870,7 +8915,9 @@ function AppInterna() {
     withSave(() => guardarPresupuestos(nuevo));
     localStorage.removeItem("carpicalc:borrador");
   };
-  const handleCargarPresupuesto = (p) => {
+  // LOGICA - Edición de Presupuestos Existentes
+  // Carga items y dimOverride en el estado activo para edición desde Presupuesto
+  const handleCargarPresupuesto = (p, id) => {
     setItems(p.items ? [...p.items] : []);
     setDimOverride(p.dimOverride && typeof p.dimOverride === "object" ? { ...p.dimOverride } : {});
     localStorage.removeItem("carpicalc:borrador");
@@ -8990,6 +9037,8 @@ function AppInterna() {
               onActualizarPresupuesto={handleActualizarPresupuesto}
               onVerPresupuesto={(id) => { setPresupuestoVistaPreviaId(id); setVista("preview"); }}
               costosVersion={costosVersion}
+              presupuestoParaEditar={presupuestoParaEditar}
+              onPresupuestoEditarConsumed={() => setPresupuestoParaEditar(null)}
             />
           )}
           {vista === "preview" && (
@@ -9011,6 +9060,15 @@ function AppInterna() {
               onVerRentabilidad={(id) => {
                 setCajaPresId(id);
                 setVista("caja");
+              }}
+              // LOGICA - Edición de Presupuestos Existentes
+              // Carga el presupuesto en el estado activo y navega a Presupuesto para edición completa
+              onEditarModulos={(id, p) => {
+                handleCargarPresupuesto(p, id);
+                // Disparar handleCargar del componente Presupuesto para setear presupuestoActivoId
+                // lo hacemos seteando un estado puente que Presupuesto consume al montar
+                setPresupuestoParaEditar({ id, p });
+                setVista("presupuesto");
               }}
             />
           )}
