@@ -9238,6 +9238,7 @@ function AppInterna() {
     setCostos(nuevo);
     withSave(() => guardarCostos(nuevo));
   };
+  const handleEliminarPresupuesto = async (id) => {
     const nuevo = { ...presupuestos };
     delete nuevo[id];
     setPresupuestos(nuevo);
