@@ -6652,6 +6652,8 @@ function Presupuesto({
             );
           })}
           </div>
+        )}
+
         {/* Adicionales dentro de la card — acordeón con edición y sync costos */}
         {adicionales.length > 0 && (
           <div style={{ padding: "0 16px 12px", borderTop: items.length > 0 ? "1px dashed var(--separator)" : "none" }}>
