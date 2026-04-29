@@ -5349,9 +5349,6 @@ function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombreP
   );
 }
 
-  );
-}
-
 // ════════════════════════════════════════════════════════════════════════════
 // SeccionCostosDirectos
 // ════════════════════════════════════════════════════════════════════════════
