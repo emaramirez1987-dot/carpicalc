@@ -6460,7 +6460,7 @@ function Presupuesto({
             <span style={{ fontSize: 12, color: "#c8a02a", fontWeight: 600 }}>
               ↩ Borrador recuperado — tenés {items.length} módulo{items.length !== 1 ? "s" : ""} sin guardar
             </span>
-            <button onClick={() => setBorradorRecuperado(false)}
+            <button onClick={() => onDismissBorrador && onDismissBorrador()}
               style={{ fontSize: 11, background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>✕</button>
           </div>
         )}
