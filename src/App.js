@@ -2698,62 +2698,6 @@ function FormModulo({
       : null;
   return (
     <div>
-      {/* Modal de decisión — aparece al guardar desde Nivel 3 */}
-      {modalDecision && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalDecision(null); }}>
-          <div style={{ background: "var(--bg-surface)", borderRadius: 16, padding: "24px 28px", width: "100%", maxWidth: 420, boxShadow: "0 24px 64px rgba(0,0,0,0.6)", border: "1px solid var(--border)" }}>
-            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 900, color: "var(--text-primary)", marginBottom: 6 }}>
-              ¿Qué hacemos con esta variante?
-            </div>
-            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 18 }}>
-              Editaste el módulo. Elegí cómo guardarlo.
-            </div>
-
-            {modalDecision === "nombre" ? (
-              <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>Nombre en el catálogo:</div>
-                <input autoFocus value={nombreCatalogo} onChange={e => setNombreCatalogo(e.target.value)}
-                  placeholder="Nombre del nuevo módulo..."
-                  style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)", outline: "none", marginBottom: 12 }}
-                  onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                  onBlur={e => e.target.style.borderColor = "var(--border)"} />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => {
-                    onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true });
-                    setModalDecision(null);
-                  }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
-                    ✓ Guardar en catálogo
-                  </button>
-                  <button onClick={() => setModalDecision("pidiendo")}
-                    style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>← Volver</button>
-                </div>
-              </>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button onClick={() => { onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), _soloPresupuesto: true }); setModalDecision(null); }}
-                  style={{ padding: "12px 16px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", fontSize: 13, fontWeight: 700 }}>
-                  📋 Solo en este presupuesto
-                  <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>
-                    El catálogo no cambia. Se borra cuando eliminés el presupuesto.
-                  </div>
-                </button>
-                <button onClick={() => setModalDecision("nombre")}
-                  style={{ padding: "12px 16px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 13, fontWeight: 700 }}>
-                  📚 Guardar en catálogo como módulo nuevo
-                  <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>
-                    Quedará disponible para futuros presupuestos.
-                  </div>
-                </button>
-                <button onClick={() => setModalDecision(null)}
-                  style={{ padding: "8px 0", borderRadius: 8, cursor: "pointer", fontSize: 11, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                  Cancelar
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
       <StepIndicator paso={paso} />
       {error && (
         <div
@@ -3064,24 +3008,77 @@ function FormModulo({
                 </div>
               </Card>
             )}
-            <div
-              style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}
-            >
-              <Btn
-                variant="ghost"
-                onClick={() => { setPaso(1); setError(""); }}
-              >
-                ← Volver
-              </Btn>
-              {esEdicion && (
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <Btn variant="ghost" onClick={() => { setPaso(1); setError(""); }}>← Volver</Btn>
+              {esEdicion && !modalDecision && (
                 <Btn variant="ghost" onClick={guardar} style={{ borderColor: "var(--accent-border)", color: "var(--accent)" }}>
                   💾 Guardar y cerrar
                 </Btn>
               )}
-              <Btn onClick={siguiente} disabled={piezas.length === 0}>
-                Siguiente → Herrajes
-              </Btn>
+              {!modalDecision && (
+                <Btn onClick={siguiente} disabled={piezas.length === 0}>
+                  Siguiente → Herrajes
+                </Btn>
+              )}
             </div>
+
+            {/* Acordeón de decisión inline — reemplaza al modal superpuesto */}
+            {modalDecision && (
+              <div className="anim-fadeup" style={{ marginTop: 14, background: "var(--bg-subtle)", border: "1px solid var(--accent-border)", borderRadius: 12, padding: 16 }}>
+                <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent)", marginBottom: 12 }}>
+                  ¿Dónde guardás esta variante?
+                </div>
+
+                {modalDecision === "nombre" ? (
+                  <>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>Nombre en el catálogo:</div>
+                    <input autoFocus value={nombreCatalogo} onChange={e => setNombreCatalogo(e.target.value)}
+                      placeholder="Nombre del nuevo módulo..."
+                      style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "8px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+                      onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"}
+                      onKeyDown={e => e.key === "Enter" && onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true })} />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => {
+                        onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true });
+                        setModalDecision(null);
+                      }} style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
+                        ✓ Confirmar nombre
+                      </button>
+                      <button onClick={() => setModalDecision("pidiendo")}
+                        style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                        ← Volver
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <button onClick={() => { onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), _soloPresupuesto: true }); setModalDecision(null); }}
+                      style={{ padding: "11px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700, transition: "border-color 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
+                      📋 Solo en este presupuesto
+                      <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>
+                        El catálogo no cambia. Se elimina con el presupuesto.
+                      </div>
+                    </button>
+                    <button onClick={() => { setNombreCatalogo(datos.nombre || ""); setModalDecision("nombre"); }}
+                      style={{ padding: "11px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700, transition: "border-color 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
+                      📚 Guardar en catálogo
+                      <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>
+                        Disponible para futuros presupuestos.
+                      </div>
+                    </button>
+                    <button onClick={() => setModalDecision(null)}
+                      style={{ padding: "7px 0", borderRadius: 8, cursor: "pointer", fontSize: 11, background: "transparent", border: "none", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                      ✕ Cancelar
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
