@@ -6652,58 +6652,6 @@ function Presupuesto({
             );
           })}
           </div>
-        )}
-            return (
-              <div key={keyId} className="hover-lift anim-fadeup" style={{
-                background: "var(--bg-surface)", borderRadius: 10, padding: "12px 16px",
-                // UI - Premium Refinement: borde dorado al editar ese módulo específico
-                border: editandoModuloIdx === idx
-                  ? "1.5px solid var(--accent)"
-                  : "1px solid var(--border)",
-                boxShadow: editandoModuloIdx === idx
-                  ? "0 0 0 3px rgba(212,175,55,0.12)"
-                  : "none",
-                transition: "border-color 0.2s, box-shadow 0.2s",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{item.codigo}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{modUsado.nombre}</div>
-                    <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: dimDif ? "var(--accent)" : "var(--text-muted)", marginTop: 2 }}>
-                      {over.ancho}×{over.profundidad}×{over.alto} mm{dimDif ? " ★ personalizado" : ""} · {TIPO_MAT[modUsado.material]}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: Math.max(1, it.cantidad - 1) } : it))}
-                        style={{ width: 26, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, minWidth: 22, textAlign: "center" }}>{item.cantidad}</span>
-                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: it.cantidad + 1 } : it))}
-                        style={{ width: 26, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-                    </div>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", minWidth: 80, textAlign: "right" }}>
-                      {fmtPeso(calc.total * item.cantidad)}
-                    </span>
-                    {/* LÓGICA - Global Sync: botón editar abre modal Nivel 2 */}
-                    <button
-                      onClick={() => setModalEdicion({ item, idx, modBase, dimOverride: dimOverride[keyId] })}
-                      title="Editar dimensiones, material y cantidad"
-                      style={{
-                        background: "var(--accent-soft)", border: "1px solid var(--accent-border)",
-                        color: "var(--accent)", borderRadius: 5, cursor: "pointer",
-                        fontSize: 11, padding: "3px 8px", fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                      }}>
-                      ✎
-                    </button>
-                    {/* Botón eliminar con confirmación inline */}
-                    {confirmDelModulo === keyId ? (
-                      <div style={{ display: "flex", gap: 4 }}>
-                        <button onClick={() => {
-                          setItems(its => its.filter((_, i) => i !== idx));
-                          if (editandoModuloIdx === idx) { setEditandoModuloIdx(null); setInputCod(""); setInputCant(1); setPreDim(null); }
-                          setConfirmDelModulo(null);
-                        }} style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070" }}>
-                          ✓
         {/* Adicionales dentro de la card — acordeón con edición y sync costos */}
         {adicionales.length > 0 && (
           <div style={{ padding: "0 16px 12px", borderTop: items.length > 0 ? "1px dashed var(--separator)" : "none" }}>
