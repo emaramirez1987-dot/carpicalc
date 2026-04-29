@@ -6711,8 +6711,8 @@ function Presupuesto({
         )}
       </div>{/* fin card Cuerpo del Presupuesto */}
 
-      {/* Bloqueo visual si no hay nombre — overlay sobre el cuerpo */}
-      {!nombreTrabajo.trim() && (
+      {/* Bloqueo visual si no hay nombre Y no hay ítems cargados */}
+      {!nombreTrabajo.trim() && items.length === 0 && adicionales.length === 0 && costosDirectos.length === 0 && (
         <div style={{
           padding: "18px 20px", borderRadius: 12,
           background: "var(--bg-surface)", border: "1px dashed var(--border)",
@@ -6724,8 +6724,8 @@ function Presupuesto({
         </div>
       )}
 
-      {/* ══ Secciones de carga — solo visibles cuando hay nombre ══ */}
-      {nombreTrabajo.trim() && (<>
+      {/* ══ Secciones de carga — visibles si hay nombre O si ya hay ítems cargados ══ */}
+      {(nombreTrabajo.trim() || items.length > 0 || adicionales.length > 0 || costosDirectos.length > 0) && (<>
 
       {/* Costos directos del taller (MO, materiales, herrajes, tapacanto) */}
       <SeccionCostosDirectos
