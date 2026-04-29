@@ -6250,7 +6250,6 @@ function Presupuesto({
   const [error, setError] = useState("");
   const [expandido, setExpandido] = useState(null);
   const [preDim, setPreDim] = useState(null);
-  const [editandoCliente, setEditandoCliente] = useState(false);
   const [clienteActivo, setClienteActivo] = useState({ nombre: "", tel: "", dir: "" });
   const [nombreTrabajo, setNombreTrabajo] = useState("");
   const [presupuestoActivoId, setPresupuestoActivoId] = useState(null);
@@ -6263,24 +6262,6 @@ function Presupuesto({
   const [confirmDelModulo, setConfirmDelModulo] = useState(null);
   // Modal Nivel 2 de edición
   const [modalEdicion, setModalEdicion] = useState(null); // { item, idx, modBase, dimOverride }
-
-  // Carga un módulo existente de vuelta en el formulario para edición
-  // El botón Agregar pasará a ser "Actualizar módulo" cuando editandoModuloIdx !== null
-  const handleEditarModulo = (item, idx) => {
-    const over = dimOverride[item.id || item.codigo];
-    setInputCod(item.codigo);
-    setInputCant(item.cantidad);
-    setEditandoModuloIdx(idx);
-    // Pre-cargar las dimensiones personalizadas si las tiene
-    if (over) {
-      setPreDim({ ...over });
-    } else {
-      const base = modulos[item.codigo];
-      if (base) setPreDim({ ...base.dimensiones });
-    }
-    // Scroll al formulario
-    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
-  };
 
   // LÓGICA - Global Sync: actualiza el módulo en su posición original sin crear uno nuevo.
   // Dispara recálculo automático en Cortes, Caja y total del presupuesto.
