@@ -5455,7 +5455,7 @@ function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombreP
 // Casos: horas de MO extra, m² de material, herrajes sueltos, tapacanto.
 // Cada ítem guarda refId para poder actualizarse si el precio cambia en Costos.
 // Los Cortes NO leen estos ítems — son montos directos al total.
-function SeccionCostosDirectos({ costosDirectos, setCostosDirectos, costos }) {
+function SeccionCostosDirectos({ costosDirectos, setCostosDirectos, costos, sinCard = false }) {
   const [tipoSel,    setTipoSel]    = useState("mo");
   const [refSel,     setRefSel]     = useState("");
   const [cant,       setCant]       = useState(1);
@@ -5516,16 +5516,8 @@ function SeccionCostosDirectos({ costosDirectos, setCostosDirectos, costos }) {
   const BADGE = { mo: "MO", material: "MAT", herraje: "HRJ", tapacanto: "TC" };
   const inpSt = { fontFamily: "'DM Mono',monospace", fontSize: 13, padding: "7px 10px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-primary)", outline: "none" };
 
-  return (
-    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", overflow: "visible" }}>
-      <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
-          🔩 Costos directos del taller
-        </span>
-        {costosDirectos.length > 0 && <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(totalSeccion)}</span>}
-      </div>
-
-      <div style={{ padding: "12px 16px" }}>
+  const inner = (
+    <div style={{ padding: "12px 16px" }}>
         {/* Ítems cargados */}
         {costosDirectos.length > 0 && (
           <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -5636,6 +5628,18 @@ function SeccionCostosDirectos({ costosDirectos, setCostosDirectos, costos }) {
           </button>
         </div>
       </div>
+  );
+
+  if (sinCard) return inner;
+  return (
+    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", overflow: "visible" }}>
+      <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
+          🔩 Costos directos del taller
+        </span>
+        {costosDirectos.length > 0 && <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(totalSeccion)}</span>}
+      </div>
+      {inner}
     </div>
   );
 }
@@ -5644,7 +5648,7 @@ function SeccionCostosDirectos({ costosDirectos, setCostosDirectos, costos }) {
 // Gastos extra: flete, instalación, diseño, etc.
 // Independiente de los módulos — no afecta Cortes ni Materiales.
 // Integrado con costos.extrasFrecuentes para autocompletado.
-function SeccionAdicionales({ adicionales, setAdicionales, costos, onGuardarFrecuente }) {
+function SeccionAdicionales({ adicionales, setAdicionales, costos, onGuardarFrecuente, sinCard = false }) {
   const [inputNombre, setInputNombre] = useState("");
   const [inputMonto, setInputMonto] = useState("");
   const [sugerencias, setSugerencias] = useState([]);
@@ -5693,21 +5697,8 @@ function SeccionAdicionales({ adicionales, setAdicionales, costos, onGuardarFrec
 
   if (!setAdicionales) return null;
 
-  return (
-    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "visible", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
-      {/* Header */}
-      <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
-          📦 Gastos Extras / Adicionales
-        </span>
-        {adicionales.length > 0 && (
-          <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>
-            {fmtPeso(adicionales.reduce((a, x) => a + x.monto, 0))}
-          </span>
-        )}
-      </div>
-
-      <div style={{ padding: "12px 16px" }}>
+  const innerAd = (
+    <div style={{ padding: "12px 16px" }}>
         {/* Lista de adicionales cargados */}
         {adicionales.length > 0 && (
           <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -5796,6 +5787,22 @@ function SeccionAdicionales({ adicionales, setAdicionales, costos, onGuardarFrec
           </div>
         </div>
       </div>
+  );
+
+  if (sinCard) return innerAd;
+  return (
+    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "visible", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+      <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
+          🧾 Gastos Extras / Adicionales
+        </span>
+        {adicionales.length > 0 && (
+          <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>
+            {fmtPeso(adicionales.reduce((a, x) => a + x.monto, 0))}
+          </span>
+        )}
+      </div>
+      {innerAd}
     </div>
   );
 }
@@ -5870,6 +5877,7 @@ function Presupuesto({
   const [confirmDelModulo, setConfirmDelModulo] = useState(null);
   // Modal Nivel 2 de edición
   const [modalEdicion, setModalEdicion] = useState(null);
+  const [pestañaActiva, setPestañaActiva] = useState("modulos"); // "modulos" | "costos" | "extras"
   // Fix timing Nivel 3: pendingDeepLink espera que modulos[tempCod] exista
   // antes de navegar. El useEffect lo detecta después del re-render.
   const [pendingDeepLink, setPendingDeepLink] = useState(null);
@@ -6721,83 +6729,124 @@ function Presupuesto({
         </div>
       )}
 
-      {/* ══ Secciones de carga — visibles si hay nombre O si ya hay ítems cargados ══ */}
+      {/* ══ Card unificada de carga — 3 pestañas ══ */}
       {(nombreTrabajo.trim() || items.length > 0 || adicionales.length > 0 || costosDirectos.length > 0) && (<>
 
-      {/* Costos directos del taller (MO, materiales, herrajes, tapacanto) */}
-      <SeccionCostosDirectos
-        costosDirectos={costosDirectos}
-        setCostosDirectos={setCostosDirectos}
-        costos={costos}
-      />
+      <div ref={formRef} style={{
+        background: "var(--bg-surface)",
+        border: editandoModuloIdx !== null ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+        borderRadius: 14,
+        boxShadow: "0 4px 24px rgba(0,0,0,0.28)",
+        overflow: "hidden",
+        transition: "border-color 0.2s, box-shadow 0.2s",
+      }}>
 
-      {/* Gastos extras de monto libre (flete, diseño, etc.) */}
-      <SeccionAdicionales
-        adicionales={adicionales}
-        setAdicionales={setAdicionales}
-        costos={costos}
-        onGuardarFrecuente={onGuardarExtraFrecuente}
-      />
-
-      {/* 5. Formulario agregar / editar módulo */}
-      <div ref={formRef}>
-        <Card className="rsp-card no-print" style={{
-          border: editandoModuloIdx !== null ? "1.5px solid var(--accent)" : undefined,
-          boxShadow: editandoModuloIdx !== null ? "0 0 0 4px rgba(212,175,55,0.10)" : "0 4px 24px rgba(0,0,0,0.32)",
-          transition: "border-color 0.2s, box-shadow 0.2s",
+        {/* ── Barra de pestañas ── */}
+        <div style={{
+          display: "flex",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--bg-subtle)",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
         }}>
-          {/* Label sección — solo cuando no hay edición activa */}
-          {editandoModuloIdx === null && (
-            <div style={{ marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid var(--separator)" }}>
-              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--text-muted)" }}>
-                Agregar ítems del presupuesto
+          {[
+            { id: "modulos",  label: "📦 Módulos"        },
+            { id: "costos",   label: "🔩 Costos directos" },
+            { id: "extras",   label: "🧾 Extras"          },
+          ].map(tab => (
+            <button key={tab.id} onClick={() => setPestañaActiva(tab.id)}
+              style={{
+                flexShrink: 0,
+                padding: "11px 18px",
+                border: "none",
+                borderBottom: pestañaActiva === tab.id ? "2px solid var(--accent)" : "2px solid transparent",
+                background: "transparent",
+                cursor: "pointer",
+                fontSize: 11,
+                fontFamily: "'DM Mono',monospace",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                color: pestañaActiva === tab.id ? "var(--accent)" : "var(--text-muted)",
+                transition: "color 0.15s, border-color 0.15s",
+                whiteSpace: "nowrap",
+              }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Contenido de pestaña: Módulos ── */}
+        {pestañaActiva === "modulos" && (
+          <div style={{ padding: "16px 20px" }}>
+            {/* Indicador de modo edición */}
+            {editandoModuloIdx !== null && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "7px 12px", background: "var(--accent-soft)", borderRadius: 7, border: "1px solid var(--accent-border)" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", fontFamily: "'DM Mono',monospace" }}>
+                  ✎ Editando módulo #{editandoModuloIdx + 1} — {inputCod}
+                </span>
+                <button onClick={() => { setEditandoModuloIdx(null); setInputCod(""); setInputCant(1); setPreDim(null); setError(""); }}
+                  style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace" }}>
+                  ✕ Cancelar edición
+                </button>
+              </div>
+            )}
+            <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 100px auto", gap: 12, alignItems: "end" }}>
+              <div>
+                <TextInput label="Código de módulo" placeholder="MC001" value={inputCod} onChange={handleCodChange} />
+                {error && <p style={{ color: "#e07070", fontSize: 12, marginTop: 5 }}>⚠ {error}</p>}
+              </div>
+              <TextInput label="Cantidad" type="number" value={inputCant} onChange={setInputCant} />
+              <div>
+                {editandoModuloIdx !== null
+                  ? <Btn onClick={() => handleUpdateModule(inputCod, parseInt(inputCant) || 1, preDim)}>Actualizar</Btn>
+                  : <Btn onClick={agregar}>Agregar</Btn>
+                }
               </div>
             </div>
-          )}
-          {/* Indicador de modo edición */}
-          {editandoModuloIdx !== null && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "7px 12px", background: "var(--accent-soft)", borderRadius: 7, border: "1px solid var(--accent-border)" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", fontFamily: "'DM Mono',monospace" }}>
-                ✎ Editando módulo #{editandoModuloIdx + 1} — {inputCod}
-              </span>
-              <button onClick={() => { setEditandoModuloIdx(null); setInputCod(""); setInputCant(1); setPreDim(null); setError(""); }}
-                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace" }}>
-                ✕ Cancelar edición
-              </button>
-            </div>
-          )}
-          <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 100px auto", gap: 12, alignItems: "end" }}>
-            <div>
-              <TextInput label="Código de módulo" placeholder="MC001" value={inputCod} onChange={handleCodChange} />
-              {error && <p style={{ color: "#e07070", fontSize: 12, marginTop: 5 }}>⚠ {error}</p>}
-            </div>
-            <TextInput label="Cantidad" type="number" value={inputCant} onChange={setInputCant} />
-            <div>
-              {editandoModuloIdx !== null
-                ? <Btn onClick={() => handleUpdateModule(inputCod, parseInt(inputCant) || 1, preDim)}>Actualizar</Btn>
-                : <Btn onClick={agregar}>Agregar</Btn>
-              }
-            </div>
+            {preDim && (
+              <div style={{ marginTop: 14, padding: 14, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", marginBottom: 10 }}>
+                  ✎ Dimensiones para {inputCod} <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(editables antes de agregar)</span>
+                </div>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  {["ancho", "profundidad", "alto"].map(dim => (
+                    <div key={dim} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>{dim}</label>
+                      <input type="number" value={preDim[dim]} onChange={e => setPreDim(p => ({ ...p, [dim]: parseInt(e.target.value) || 0 }))}
+                        style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "6px 10px", background: "var(--bg-base)", border: "1px solid var(--accent-border)", color: "var(--text-primary)", borderRadius: 6, outline: "none", width: 90 }} />
+                      <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>mm</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <PanelSelectorModulos modulos={modulos} onSeleccionar={cod => handleCodChange(cod)} />
           </div>
-          {preDim && (
-            <div style={{ marginTop: 14, padding: 14, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 8 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", marginBottom: 10 }}>
-                ✎ Dimensiones para {inputCod} <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(editables antes de agregar)</span>
-              </div>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                {["ancho", "profundidad", "alto"].map(dim => (
-                  <div key={dim} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <label style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>{dim}</label>
-                    <input type="number" value={preDim[dim]} onChange={e => setPreDim(p => ({ ...p, [dim]: parseInt(e.target.value) || 0 }))}
-                      style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "6px 10px", background: "var(--bg-base)", border: "1px solid var(--accent-border)", color: "var(--text-primary)", borderRadius: 6, outline: "none", width: 90 }} />
-                    <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>mm</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <PanelSelectorModulos modulos={modulos} onSeleccionar={cod => handleCodChange(cod)} />
-        </Card>
+        )}
+
+        {/* ── Contenido de pestaña: Costos directos ── */}
+        {pestañaActiva === "costos" && (
+          <SeccionCostosDirectos
+            costosDirectos={costosDirectos}
+            setCostosDirectos={setCostosDirectos}
+            costos={costos}
+            sinCard
+          />
+        )}
+
+        {/* ── Contenido de pestaña: Extras ── */}
+        {pestañaActiva === "extras" && (
+          <SeccionAdicionales
+            adicionales={adicionales}
+            setAdicionales={setAdicionales}
+            costos={costos}
+            onGuardarFrecuente={onGuardarExtraFrecuente}
+            sinCard
+          />
+        )}
+
       </div>
       </>)}{/* fin secciones de carga */}
 
