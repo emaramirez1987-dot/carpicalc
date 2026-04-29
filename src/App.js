@@ -4091,9 +4091,10 @@ function PanelSelectorModulos({ modulos, onSeleccionar }) {
   const buscando = busqueda.trim().length > 0;
   const termino = busqueda.toLowerCase();
 
-  // Agrupar módulos por categoría
+  // Agrupar módulos por categoría — excluir temporales
   const grupos = {};
   Object.entries(modulos).forEach(([cod, mod]) => {
+    if (mod.temporal) return; // ← TEMP_ nunca aparecen en el selector
     if (buscando) {
       const match = cod.toLowerCase().includes(termino) || mod.nombre.toLowerCase().includes(termino);
       if (!match) return;
@@ -6211,7 +6212,28 @@ function Presupuesto({
                         // Así tanto la edición rápida como el Nivel 3 trabajan sobre la misma copia.
                         // Nunca se toca el módulo original.
                         const modOrig = modulos[item.codigo];
-                        const origenBase = item.codigo;
+
+                        // Si el ítem ya apunta a un TEMP existente, reutilizarlo
+                        // conservando todos los cambios previos (piezas, dimensiones, etc.)
+                        if (modOrig?.temporal) {
+                          setModalEdicion({
+                            item,
+                            idx,
+                            modBase:     modOrig,
+                            dims:        { ...modOrig.dimensiones },
+                            material:    modOrig.material || "melamina",
+                            cantidad:    item.cantidad,
+                            dialogoGuardar: false,
+                            tempCod:     item.codigo,
+                            origenCodigo: modOrig.origenCodigo || item.codigo,
+                          });
+                          return;
+                        }
+
+                        // Ítem apunta al original → crear copia TEMP
+                        // El TEMP hereda todas las piezas y datos del original
+                        const origenBase    = item.codigo;
+                        const modOrigenReal = modOrig;
 
                         // Calcular número de variante incremental
                         const varianteN = Object.values(modulos).filter(m =>
@@ -6220,18 +6242,21 @@ function Presupuesto({
 
                         const tempCod = `TEMP_${Date.now()}`;
                         const copiaInicial = {
-                          ...modOrig,
-                          nombre: `${modOrig?.nombre || origenBase} - Variante ${varianteN}`,
+                          ...modOrigenReal,
+                          nombre: `${modOrigenReal?.nombre || origenBase} - Variante ${varianteN}`,
                           temporal:      true,
                           origenCodigo:  origenBase,
-                          presupuestoId: presupuestoActivoId || null, // para limpieza al eliminar
-                          // Copia profunda de piezas para que la edición no afecte el original
-                          piezas:   (modOrig?.piezas   || []).map(p => ({ ...p })),
-                          herrajes: (modOrig?.herrajes  || []).map(h => ({ ...h })),
+                          presupuestoId: presupuestoActivoId || null,
+                          piezas:   (modOrigenReal?.piezas   || []).map(p => ({ ...p })),
+                          herrajes: (modOrigenReal?.herrajes  || []).map(h => ({ ...h })),
                         };
 
-                        // Registrar la copia en modulos (solo memoria, no localStorage)
-                        setModulos && setModulos(prev => ({ ...prev, [tempCod]: copiaInicial }));
+                        // Si el ítem ya era un TEMP lo reutilizamos (ver bloque arriba).
+                        // Llegando aquí siempre es un módulo original → crear TEMP nuevo.
+                        setModulos && setModulos(prev => ({
+                          ...prev,
+                          [tempCod]: copiaInicial,
+                        }));
 
                         // Redirigir el item del presupuesto a la copia
                         const nuevoItem = { ...item, codigo: tempCod };
