@@ -6131,7 +6131,6 @@ function Presupuesto({
             const dimDif = modBase && (over.ancho !== modBase.dimensiones.ancho || over.profundidad !== modBase.dimensiones.profundidad || over.alto !== modBase.dimensiones.alto);
             const estaEditando = modalEdicion?.idx === idx;
             const esTemp = !!modBase?.temporal;
-            const tieneOverride = modBase?.origenCodigo && modBase.origenCodigo !== item.codigo;
 
             return (
               <div key={keyId} style={{
