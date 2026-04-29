@@ -3663,9 +3663,9 @@ function CatalogoModulos({
   // Deep Link Nivel 3: abrir automáticamente el formulario de edición del módulo
   useEffect(() => {
     if (deepLinkCodigo && modulos[deepLinkCodigo]) {
-      setModo({ tipo: "editar", codigo: deepLinkCodigo });
+      // Pasar el módulo completo — FormModulo lo usa para inicializar piezas y datos
+      setModo({ tipo: "editar", codigo: deepLinkCodigo, modulo: modulos[deepLinkCodigo] });
       onDeepLinkConsumed && onDeepLinkConsumed();
-      // Scroll al formulario
       setTimeout(() => {
         document.getElementById("catalogo-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 200);
