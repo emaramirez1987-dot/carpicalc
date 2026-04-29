@@ -8,7 +8,6 @@ import React, { useState, useCallback, useEffect } from "react";
 import {
   PASS_HASH, PASS_KEY, PERFIL_VACIO,
   TIPO_MAT, CATEGORIAS_DEFAULT, ESTADOS_TRABAJO,
-  costoIniciales, modulosIniciales,
 } from "./constants.js";
 import {
   fmtPeso, fmtNum, fmtFecha, fmtFechaLarga,
@@ -18,7 +17,7 @@ import {
   generarTextoWhatsApp, comprimirImagen,
 } from "./utils.js";
 import {
-  cargarDatos, _save,
+  cargarDatos,
   guardarModulos, guardarPresupuestos, guardarPerfil, guardarCostos,
   leerVersionCostos, cargarHistorialPrecios, guardarSnapshotPrecios,
 } from "./storage.js";
