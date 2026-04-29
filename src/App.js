@@ -2579,12 +2579,14 @@ function FormModulo({
   onCancelar,
   moduloBase,
   codigoEditar,
+  esDeepLinkPresupuesto = false, // true = viene de Nivel 3, mostrar modal antes de guardar
 }) {
   const esEdicion = !!codigoEditar;
-  // En modo edición el paso 1 (datos básicos) ya está completo.
-  // Saltear directamente al paso 2 (piezas) para que el usuario
-  // pueda editar lo que necesita sin tener que pasar por el código bloqueado.
   const [paso, setPaso] = useState(esEdicion ? 2 : 1);
+  // Modal de decisión: aparece al guardar desde Nivel 3
+  // null = cerrado, "pidiendo" = mostrando opciones, "nombre" = ingresando nombre para catálogo
+  const [modalDecision, setModalDecision] = useState(null);
+  const [nombreCatalogo, setNombreCatalogo] = useState("");
   const [datos, setDatos] = useState(() =>
     moduloBase
       ? {
@@ -2670,23 +2672,88 @@ function FormModulo({
       setPaso(3);
     }
   };
-  const guardar = () =>
-    onGuardar(datos.codigo.trim().toUpperCase(), {
-      nombre: datos.nombre,
-      descripcion: datos.descripcion,
-      dimensiones: datos.dimensiones,
-      material: datos.material,
-      categoria: datos.categoria || "otros",
-      piezas,
-      herrajes,
-      moDeObra,
-    });
+  const datosGuardar = () => ({
+    nombre:      datos.nombre,
+    descripcion: datos.descripcion,
+    dimensiones: datos.dimensiones,
+    material:    datos.material,
+    categoria:   datos.categoria || "otros",
+    piezas,
+    herrajes,
+    moDeObra,
+  });
+
+  const guardar = () => {
+    // Si viene de Nivel 3, mostrar modal de decisión antes de guardar
+    if (esDeepLinkPresupuesto) {
+      setNombreCatalogo(datos.nombre || "");
+      setModalDecision("pidiendo");
+      return;
+    }
+    onGuardar(datos.codigo.trim().toUpperCase(), datosGuardar());
+  };
   const preview =
     piezas.length > 0
       ? calcularModulo({ ...datos, piezas, herrajes, moDeObra }, costos)
       : null;
   return (
     <div>
+      {/* Modal de decisión — aparece al guardar desde Nivel 3 */}
+      {modalDecision && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={e => { if (e.target === e.currentTarget) setModalDecision(null); }}>
+          <div style={{ background: "var(--bg-surface)", borderRadius: 16, padding: "24px 28px", width: "100%", maxWidth: 420, boxShadow: "0 24px 64px rgba(0,0,0,0.6)", border: "1px solid var(--border)" }}>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 900, color: "var(--text-primary)", marginBottom: 6 }}>
+              ¿Qué hacemos con esta variante?
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 18 }}>
+              Editaste el módulo. Elegí cómo guardarlo.
+            </div>
+
+            {modalDecision === "nombre" ? (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>Nombre en el catálogo:</div>
+                <input autoFocus value={nombreCatalogo} onChange={e => setNombreCatalogo(e.target.value)}
+                  placeholder="Nombre del nuevo módulo..."
+                  style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)", outline: "none", marginBottom: 12 }}
+                  onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                  onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => {
+                    onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true });
+                    setModalDecision(null);
+                  }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
+                    ✓ Guardar en catálogo
+                  </button>
+                  <button onClick={() => setModalDecision("pidiendo")}
+                    style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>← Volver</button>
+                </div>
+              </>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button onClick={() => { onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), _soloPresupuesto: true }); setModalDecision(null); }}
+                  style={{ padding: "12px 16px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", fontSize: 13, fontWeight: 700 }}>
+                  📋 Solo en este presupuesto
+                  <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>
+                    El catálogo no cambia. Se borra cuando eliminés el presupuesto.
+                  </div>
+                </button>
+                <button onClick={() => setModalDecision("nombre")}
+                  style={{ padding: "12px 16px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 13, fontWeight: 700 }}>
+                  📚 Guardar en catálogo como módulo nuevo
+                  <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>
+                    Quedará disponible para futuros presupuestos.
+                  </div>
+                </button>
+                <button onClick={() => setModalDecision(null)}
+                  style={{ padding: "8px 0", borderRadius: 8, cursor: "pointer", fontSize: 11, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                  Cancelar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <StepIndicator paso={paso} />
       {error && (
         <div
@@ -3694,28 +3761,49 @@ function CatalogoModulos({
   };
 
   const guardar = (codigo, datos) => {
+    const soloPresupuesto  = datos._soloPresupuesto;
+    const guardarCatalogo  = datos._guardarEnCatalogo;
+    // Limpiar flags internos antes de guardar
+    const datosSinFlags = { ...datos };
+    delete datosSinFlags._soloPresupuesto;
+    delete datosSinFlags._guardarEnCatalogo;
+
     const existente = modulos[codigo];
-    const datosConImagen = existente?.imagen && !datos.imagen
-      ? { ...datos, imagen: existente.imagen }
-      : datos;
-    const todosMods = { ...modulos, [codigo]: datosConImagen };
-    // Opción B: persistir TODO incluyendo temporales.
-    // El catálogo los filtra en render (!mod.temporal).
-    // La limpieza de huérfanos ocurre en cargarDatos() al iniciar.
-    setModulos(todosMods);
-    onSave(todosMods);
-    setModo(null);
-    showMsg(
-      modo?.tipo === "editar"
-        ? `"${codigo}" actualizado.`
-        : modo?.tipo === "duplicar"
-        ? `"${codigo}" duplicado.`
+    const datosConImagen = existente?.imagen && !datosSinFlags.imagen
+      ? { ...datosSinFlags, imagen: existente.imagen }
+      : datosSinFlags;
+
+    if (guardarCatalogo) {
+      // Opción B: migración TEMP → módulo permanente en catálogo
+      // El handler onGuardarModuloCatalogo en AppInterna hace la migración completa
+      if (onGuardarModuloCatalogo && origenEdicion?.tempCod) {
+        onGuardarModuloCatalogo(datosConImagen, datosConImagen.nombre, origenEdicion.tempCod, origenEdicion.presupuestoId);
+      } else {
+        // Fallback: guardar directamente con nuevo código
+        const newId = `MC${String(Date.now()).slice(-6)}`;
+        const todosMods = { ...modulos, [newId]: { ...datosConImagen, temporal: false } };
+        if (existente?.temporal) delete todosMods[codigo];
+        setModulos(todosMods);
+        onSave(todosMods);
+      }
+      setModo(null);
+      showMsg(`"${datosConImagen.nombre}" guardado en catálogo.`);
+    } else {
+      // Opción A: solo en presupuesto (temporal) o guardado normal sin deep link
+      const todosMods = { ...modulos, [codigo]: { ...datosConImagen, temporal: soloPresupuesto ? true : (existente?.temporal ?? false) } };
+      setModulos(todosMods);
+      onSave(todosMods);
+      setModo(null);
+      showMsg(
+        modo?.tipo === "editar"  ? `"${codigo}" actualizado.`
+        : modo?.tipo === "duplicar" ? `"${codigo}" duplicado.`
         : `"${codigo}" guardado.`
-    );
-    // Cierre completo del ciclo: si venimos de Presupuesto (Nivel 3), volver.
-    // El timeout permite que el mensaje sea visible antes de navegar.
+      );
+    }
+
+    // Cierre completo del ciclo: volver al presupuesto
     if (onVolverAlPresupuesto) {
-      setTimeout(() => onVolverAlPresupuesto(), 800);
+      setTimeout(() => onVolverAlPresupuesto(), 600);
     }
   };
 
@@ -3972,6 +4060,7 @@ function CatalogoModulos({
             onCancelar={() => setModo(null)}
             moduloBase={modo.tipo !== "nuevo" ? modo.modulo : null}
             codigoEditar={modo.tipo === "editar" ? modo.codigo : null}
+            esDeepLinkPresupuesto={!!origenEdicion && origenEdicion.tipo === "presupuesto"}
           />
         </Card>
         </div>
@@ -5747,7 +5836,8 @@ function Presupuesto({
   onVerCatalogo,
   onVolverDesCatalogo,
   setModulos,
-  hSaveModulos,   // persiste modulos en localStorage (usado para TEMP y cancelaciones)
+  hSaveModulos,
+  onLimpiarTemps,   // limpia TEMP activos al cancelar el presupuesto
   onActualizarCatalogo,
   onGuardarModuloCatalogo,
   borradorRecuperado = false,
@@ -6016,13 +6106,13 @@ function Presupuesto({
                 })()}
                 <button onClick={() => presupuestoActivoId ? setDialogoGuardar(true) : (() => {
                   onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
-                  setItems([]); setDimOverride({}); setAdicionales([]); setCostosDirectos([]); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setAlertaPrecios(null); onDismissBorrador && onDismissBorrador();
+                  onLimpiarTemps && onLimpiarTemps(items); setItems([]); setDimOverride({}); setAdicionales([]); setCostosDirectos([]); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setAlertaPrecios(null); onDismissBorrador && onDismissBorrador();
                 })()}
                   style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 2px 8px rgba(180,100,20,0.25)" }}>
                   💾 Guardar
                 </button>
                 <button onClick={() => {
-                  setItems([]); setDimOverride({}); setAdicionales([]); setCostosDirectos([]); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setAlertaPrecios(null); setEditandoModuloIdx(null); setInputCod(""); setPreDim(null); onDismissBorrador && onDismissBorrador();
+                  onLimpiarTemps && onLimpiarTemps(items); setItems([]); setDimOverride({}); setAdicionales([]); setCostosDirectos([]); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setAlertaPrecios(null); setEditandoModuloIdx(null); setInputCod(""); setPreDim(null); onDismissBorrador && onDismissBorrador();
                 }} style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "transparent", border: "1px solid rgba(200,60,60,0.30)", color: "#e07070" }}>
                   ✕ Cancelar
                 </button>
@@ -9421,17 +9511,24 @@ function AppInterna() {
     withSave(() => guardarCostos(nuevo));
   };
   const handleEliminarPresupuesto = async (id) => {
-    // Fix: limpiar temporales vinculados a este presupuesto usando presupuestoId
-    // y persistir inmediatamente para que no reaparezcan al recargar
+    // Fix 3: filtrar por códigos TEMP efectivamente usados por los items
+    // No depender de presupuestoId (puede ser null si el pres nunca se guardó formalmente)
+    const presEliminado = presupuestos[id];
+    const codigosEnUso  = new Set(
+      (presEliminado?.items || []).map(it => it.codigo).filter(c => c?.startsWith("TEMP_"))
+    );
+    // También limpiar TEMP con presupuestoId === id (por si acaso)
     const nuevosModulos = Object.fromEntries(
-      Object.entries(modulos).filter(([, m]) =>
-        !(m.temporal === true && m.presupuestoId === id)
-      )
+      Object.entries(modulos).filter(([cod, m]) => {
+        if (!m.temporal) return true;                    // permanente → conservar
+        if (codigosEnUso.has(cod)) return false;         // usado en este presupuesto → eliminar
+        if (m.presupuestoId === id) return false;         // vinculado por id → eliminar
+        return true;                                      // temporal de otro presupuesto → conservar
+      })
     );
     const seEliminaronTemporales = Object.keys(nuevosModulos).length < Object.keys(modulos).length;
     if (seEliminaronTemporales) {
       setModulos(nuevosModulos);
-      // Persistir la limpieza — evita que temporales reaparezcan al recargar
       withSave(() => guardarModulos(nuevosModulos));
     }
     const nuevo = { ...presupuestos };
@@ -9566,6 +9663,14 @@ function AppInterna() {
               onVolverDesCatalogo={() => setVista("presupuesto")}
               setModulos={setModulos}
               hSaveModulos={hSaveM}
+              onLimpiarTemps={(itemsActuales) => {
+                // Limpiar TEMP usados por el presupuesto que se está cancelando
+                const codsTemp = itemsActuales.filter(it => it.codigo?.startsWith("TEMP_")).map(it => it.codigo);
+                if (codsTemp.length === 0) return;
+                const nuevos = Object.fromEntries(Object.entries(modulos).filter(([c]) => !codsTemp.includes(c)));
+                setModulos(nuevos);
+                hSaveM(nuevos);
+              }}
               onActualizarCatalogo={(codigo, modActualizado) => {
                 const nuevos = { ...modulos, [codigo]: modActualizado };
                 setModulos(nuevos);
@@ -9686,7 +9791,13 @@ function AppInterna() {
               onDeepLinkConsumed={() => setCatalogoModuloDeepLink(null)}
               origenEdicion={origenEdicion}
               onVolverAlPresupuesto={origenEdicion?.tipo === "presupuesto"
-                ? () => { setVista("presupuesto"); setOrigenEdicion(null); }
+                ? () => {
+                    // Restaurar estado completo del presupuesto
+                    // para que el carpintero pueda seguir trabajando normalmente
+                    setVista("presupuesto");
+                    setOrigenEdicion(null);
+                    setCatalogoModuloDeepLink(null);
+                  }
                 : (catalogoModuloDeepLink ? () => setVista("presupuesto") : null)
               }
             />
