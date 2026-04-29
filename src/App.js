@@ -6167,16 +6167,65 @@ function Presupuesto({
                       {fmtPeso(calc.total * item.cantidad)}
                     </span>
                     <button
-                      onClick={() => setModalEdicion(estaEditando ? null : {
-                        item, idx, modBase,
-                        dimOverride: dimOverride[keyId],
-                        // Estado local del acordeón
-                        dims: dimOverride[keyId] || modBase?.dimensiones || { ancho: 600, profundidad: 550, alto: 700 },
-                        material: modBase?.material || "melamina",
-                        cantidad: item.cantidad,
-                        dialogoGuardar: false,
-                      })}
-                      title={estaEditando ? "Cerrar edición" : "Editar dimensiones"}
+                      onClick={() => {
+                        if (estaEditando) {
+                          // Revertir: eliminar la copia temporal y restaurar el item al original
+                          if (modalEdicion?.tempCod && modalEdicion?.origenCodigo) {
+                            setModulos && setModulos(prev => {
+                              const n = { ...prev };
+                              delete n[modalEdicion.tempCod];
+                              return n;
+                            });
+                            setItems(its => its.map((it, i) =>
+                              i === idx ? { ...it, codigo: modalEdicion.origenCodigo } : it
+                            ));
+                          }
+                          setModalEdicion(null);
+                          return;
+                        }
+                        // ── Crear copia del módulo INMEDIATAMENTE al abrir el acordeón ──
+                        // Así tanto la edición rápida como el Nivel 3 trabajan sobre la misma copia.
+                        // Nunca se toca el módulo original.
+                        const modOrig = modulos[item.codigo];
+                        const origenBase = item.codigo;
+
+                        // Calcular número de variante incremental
+                        const varianteN = Object.values(modulos).filter(m =>
+                          m.origenCodigo === origenBase && m.temporal
+                        ).length + 1;
+
+                        const tempCod = `TEMP_${Date.now()}`;
+                        const copiaInicial = {
+                          ...modOrig,
+                          nombre: `${modOrig?.nombre || origenBase} - Variante ${varianteN}`,
+                          temporal:     true,
+                          origenCodigo: origenBase,
+                          // Copia profunda de piezas para que la edición no afecte el original
+                          piezas:   (modOrig?.piezas   || []).map(p => ({ ...p })),
+                          herrajes: (modOrig?.herrajes  || []).map(h => ({ ...h })),
+                        };
+
+                        // Registrar la copia en modulos (solo memoria, no localStorage)
+                        setModulos && setModulos(prev => ({ ...prev, [tempCod]: copiaInicial }));
+
+                        // Redirigir el item del presupuesto a la copia
+                        const nuevoItem = { ...item, codigo: tempCod };
+                        setItems(its => its.map((it, i) => i === idx ? nuevoItem : it));
+
+                        // Abrir el acordeón sobre la copia
+                        setModalEdicion({
+                          item: nuevoItem,    // item ya apunta a la copia
+                          idx,
+                          modBase: copiaInicial,
+                          dims: { ...copiaInicial.dimensiones },
+                          material: copiaInicial.material || "melamina",
+                          cantidad: item.cantidad,
+                          dialogoGuardar: false,
+                          tempCod,            // guardamos el código para Nivel 3
+                          origenCodigo: origenBase,
+                        });
+                      }}
+                      title={estaEditando ? "Cerrar edición" : "Editar módulo (crea variante automática)"}
                       style={{
                         background: estaEditando ? "var(--accent-soft)" : "transparent",
                         border: `1px solid ${estaEditando ? "var(--accent-border)" : "var(--border)"}`,
@@ -6240,9 +6289,30 @@ function Presupuesto({
                             style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 3px 10px rgba(180,100,20,0.25)" }}>
                             ✓ Confirmar cambio
                           </button>
-                          <button onClick={() => setModalEdicion(null)}
+                          <button onClick={() => {
+                            // Cancelar: revertir al original
+                            if (modalEdicion?.tempCod && modalEdicion?.origenCodigo) {
+                              setModulos && setModulos(prev => { const n = { ...prev }; delete n[modalEdicion.tempCod]; return n; });
+                              setItems(its => its.map((it, i) => i === idx ? { ...it, codigo: modalEdicion.origenCodigo } : it));
+                            }
+                            setModalEdicion(null);
+                          }}
                             style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>Cancelar</button>
-                          <button onClick={() => { onVerCatalogo && onVerCatalogo(item.codigo); setModalEdicion(null); }}
+                          <button onClick={() => {
+                            // Nivel 3: enviar la COPIA al catálogo (ya tiene todas las piezas del original)
+                            const codigoCopia = modalEdicion.tempCod || item.codigo;
+                            // Actualizar la copia con las dims editadas en el acordeón antes de ir al catálogo
+                            setModulos && setModulos(prev => ({
+                              ...prev,
+                              [codigoCopia]: {
+                                ...prev[codigoCopia],
+                                dimensiones: modalEdicion.dims,
+                                material: modalEdicion.material,
+                              }
+                            }));
+                            onVerCatalogo && onVerCatalogo(codigoCopia);
+                            setModalEdicion(null);
+                          }}
                             style={{ width: "100%", padding: "8px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
                             🔧 Editar piezas en Catálogo (Nivel 3)
                           </button>
@@ -6257,41 +6327,38 @@ function Presupuesto({
                         <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 14 }}>La copia tiene las nuevas dimensiones. El original no fue tocado.</div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
 
-                          {/* Opción A: solo en este presupuesto */}
+                          {/* Opción A: solo en este presupuesto — la copia ya existe */}
                           <button onClick={() => {
-                            // Crear copia temporal en memoria (no en localStorage)
-                            const tempCod = `TEMP_${Date.now()}`;
-                            const modBase = modulos[item.codigo];
-                            const copiaTemp = {
-                              ...modBase,
-                              nombre: `${modBase?.nombre || item.codigo} (editado)`,
-                              dimensiones: modalEdicion.dims,
-                              material: modalEdicion.material,
-                              temporal: true,                    // flag para limpieza automática
-                              origenCodigo: item.codigo,         // trazabilidad
-                            };
-                            // Agregar la copia al estado de modulos (solo memoria)
-                            setModulos && setModulos(prev => ({ ...prev, [tempCod]: copiaTemp }));
-                            // Actualizar el item del presupuesto para que apunte a la copia
-                            const nuevoItem = { ...item, codigo: tempCod, cantidad: modalEdicion.cantidad || item.cantidad };
-                            const nuevoItems = items.map((it, i) => i === idx ? nuevoItem : it);
-                            setItems(nuevoItems);
+                            const tempCod = modalEdicion.tempCod || item.codigo;
+                            // Actualizar dimensiones y material en la copia existente
+                            setModulos && setModulos(prev => ({
+                              ...prev,
+                              [tempCod]: {
+                                ...prev[tempCod],
+                                dimensiones: modalEdicion.dims,
+                                material: modalEdicion.material,
+                              }
+                            }));
                             // Persistir si hay presupuesto activo
                             if (presupuestoActivoId) {
+                              const nuevoItems = items.map((it, i) => i === idx ? modalEdicion.item : it);
                               const totalNuevo = nuevoItems.reduce((acc, it) => {
-                                const base = modulos[it.codigo] || (it.codigo === tempCod ? copiaTemp : null);
+                                const base = modulos[it.codigo];
                                 if (!base) return acc;
-                                const calc = calcularModulo(base, costos);
+                                const calc = calcularModulo({ ...base, dimensiones: it.codigo === tempCod ? modalEdicion.dims : base.dimensiones }, costos);
                                 return acc + (calc ? calc.total * it.cantidad : 0);
                               }, 0);
-                              onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { items: nuevoItems, total: Math.round(totalNuevo) });
+                              onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, {
+                                items: nuevoItems,
+                                total: Math.round(totalNuevo),
+                              });
                             }
                             setModalEdicion(null);
                           }} style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", fontSize: 12, fontWeight: 700 }}>
                             📋 Solo en este presupuesto
                             <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginTop: 2 }}>
-                              El catálogo no cambia. Badge "Temporal" en el ítem.
-                              Si eliminás el presupuesto, se borra automáticamente.
+                              El catálogo no cambia. Badge ✦ Temporal en el ítem.
+                              Se borra automáticamente si eliminás el presupuesto.
                             </div>
                           </button>
 
