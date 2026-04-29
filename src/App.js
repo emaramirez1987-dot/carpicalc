@@ -3723,7 +3723,8 @@ function CatalogoModulos({
   deepLinkCodigo = null,
   onDeepLinkConsumed,
   onVolverAlPresupuesto = null,
-  origenEdicion = null,  // { tipo, presupuestoId, itemIdx, tempCod }
+  origenEdicion = null,
+  onGuardarPermanente = null, // (tempCod, newId) → actualiza referencias en presupuesto
 }) {
   const [modo, setModo] = useState(null);
 
@@ -3774,20 +3775,18 @@ function CatalogoModulos({
       : datosSinFlags;
 
     if (guardarCatalogo) {
-      // Opción B: migración TEMP → módulo permanente en catálogo
-      // El handler onGuardarModuloCatalogo en AppInterna hace la migración completa
-      if (onGuardarModuloCatalogo && origenEdicion?.tempCod) {
-        onGuardarModuloCatalogo(datosConImagen, datosConImagen.nombre, origenEdicion.tempCod, origenEdicion.presupuestoId);
-      } else {
-        // Fallback: guardar directamente con nuevo código
-        const newId = `MC${String(Date.now()).slice(-6)}`;
-        const todosMods = { ...modulos, [newId]: { ...datosConImagen, temporal: false } };
-        if (existente?.temporal) delete todosMods[codigo];
-        setModulos(todosMods);
-        onSave(todosMods);
-      }
+      // Opción B: crear módulo permanente y eliminar el TEMP
+      const newId = `MC${String(Date.now()).slice(-6)}`;
+      const modPermanente = { ...datosConImagen, temporal: false, presupuestoId: undefined, origenCodigo: undefined };
+      const todosMods = { ...modulos, [newId]: modPermanente };
+      // Eliminar el TEMP original si existía
+      if (existente?.temporal) delete todosMods[codigo];
+      setModulos(todosMods);
+      onSave(todosMods);
+      // Notificar a AppInterna para que actualice referencias en el presupuesto
+      if (onGuardarPermanente) onGuardarPermanente(codigo, newId);
       setModo(null);
-      showMsg(`"${datosConImagen.nombre}" guardado en catálogo.`);
+      showMsg(`"${modPermanente.nombre}" guardado en catálogo.`);
     } else {
       // Opción A: solo en presupuesto (temporal) o guardado normal sin deep link
       const todosMods = { ...modulos, [codigo]: { ...datosConImagen, temporal: soloPresupuesto ? true : (existente?.temporal ?? false) } };
@@ -9790,6 +9789,20 @@ function AppInterna() {
               deepLinkCodigo={catalogoModuloDeepLink}
               onDeepLinkConsumed={() => setCatalogoModuloDeepLink(null)}
               origenEdicion={origenEdicion}
+              onGuardarPermanente={(tempCod, newId) => {
+                // Actualizar referencias del presupuesto: TEMP → MC permanente
+                if (origenEdicion?.presupuestoId && presupuestos[origenEdicion.presupuestoId]) {
+                  const pres = presupuestos[origenEdicion.presupuestoId];
+                  const itemsActualizados = (pres.items || []).map(it =>
+                    it.codigo === tempCod ? { ...it, codigo: newId } : it
+                  );
+                  const nuevosPres = { ...presupuestos, [origenEdicion.presupuestoId]: { ...pres, items: itemsActualizados } };
+                  setPresupuestos(nuevosPres);
+                  withSave(() => guardarPresupuestos(nuevosPres));
+                }
+                // También actualizar items del presupuesto activo en memoria
+                setItems(prev => prev.map(it => it.codigo === tempCod ? { ...it, codigo: newId } : it));
+              }}
               onVolverAlPresupuesto={origenEdicion?.tipo === "presupuesto"
                 ? () => {
                     // Restaurar estado completo del presupuesto
