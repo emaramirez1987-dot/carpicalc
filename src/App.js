@@ -3655,6 +3655,7 @@ function CatalogoModulos({
   onGuardarPerfil,
   deepLinkCodigo = null,
   onDeepLinkConsumed,
+  onVolverAlPresupuesto = null, // callback para volver al presupuesto tras guardar en modo Nivel 3
 }) {
   const [modo, setModo] = useState(null);
 
@@ -3707,6 +3708,10 @@ function CatalogoModulos({
         ? `"${codigo}" duplicado.`
         : `"${codigo}" guardado.`
     );
+    // Si llegamos por deep link desde Presupuesto (Nivel 3), volver automáticamente
+    if (onVolverAlPresupuesto) {
+      setTimeout(() => onVolverAlPresupuesto(), 800); // pequeño delay para que el msg sea visible
+    }
   };
 
   const handleImagenChange = (cod, base64) => {
@@ -5731,8 +5736,10 @@ function Presupuesto({
   onGuardarExtraFrecuente,
   // Nivel 3: integración con catálogo
   onVerCatalogo,
+  onVolverDesCatalogo,
+  setModulos,
   onActualizarCatalogo,
-  onCrearModuloCatalogo,
+  onGuardarModuloCatalogo,
   borradorRecuperado = false,
   onDismissBorrador,
 }) {
@@ -6123,6 +6130,8 @@ function Presupuesto({
             const over = modUsado.dimensiones;
             const dimDif = modBase && (over.ancho !== modBase.dimensiones.ancho || over.profundidad !== modBase.dimensiones.profundidad || over.alto !== modBase.dimensiones.alto);
             const estaEditando = modalEdicion?.idx === idx;
+            const esTemp = !!modBase?.temporal;
+            const tieneOverride = modBase?.origenCodigo && modBase.origenCodigo !== item.codigo;
 
             return (
               <div key={keyId} style={{
@@ -6136,8 +6145,15 @@ function Presupuesto({
                   <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{item.codigo}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{modUsado.nombre}</div>
-                    <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: dimDif ? "var(--accent)" : "var(--text-muted)", marginTop: 2 }}>
-                      {over.ancho}×{over.profundidad}×{over.alto} mm{dimDif ? " ★" : ""} · {TIPO_MAT[modUsado.material]}
+                    <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap", marginTop: 2 }}>
+                      <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: dimDif ? "var(--accent)" : "var(--text-muted)" }}>
+                        {over.ancho}×{over.profundidad}×{over.alto} mm{dimDif ? " ★" : ""} · {TIPO_MAT[modUsado.material]}
+                      </div>
+                      {esTemp && (
+                        <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.35)", color: "#c8a02a", borderRadius: 4, padding: "1px 5px" }}>
+                          ✦ Temporal
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -6185,86 +6201,152 @@ function Presupuesto({
                   </div>
                 </div>
 
-                {/* Acordeón de edición — se despliega inline */}
+                {/* Acordeón nuevo flujo — copia automática, nunca toca el original */}
                 {estaEditando && modalEdicion && (
                   <div style={{ borderTop: "1px solid var(--border)", padding: "14px 16px", background: "var(--bg-subtle)" }}>
-                    {/* Dimensiones */}
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>Dimensiones (mm)</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                        {[["Ancho", "ancho"], ["Prof.", "profundidad"], ["Alto", "alto"]].map(([label, key]) => (
-                          <div key={key}>
-                            <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, textAlign: "center" }}>{label}</div>
-                            <input type="number" min="1"
-                              value={modalEdicion.dims[key]}
-                              onChange={e => setModalEdicion(m => ({ ...m, dims: { ...m.dims, [key]: parseInt(e.target.value) || 0 } }))}
-                              style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "7px 8px", textAlign: "center", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-primary)", outline: "none" }}
-                              onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                              onBlur={e => e.target.style.borderColor = "var(--border)"} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {/* Material */}
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>Material</div>
-                      <select value={modalEdicion.material}
-                        onChange={e => setModalEdicion(m => ({ ...m, material: e.target.value }))}
-                        style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 12, outline: "none" }}>
-                        {Object.entries(TIPO_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                      </select>
-                    </div>
 
-                    {/* Diálogo de 3 opciones o botón confirmar */}
-                    {modalEdicion.dialogoGuardar ? (
-                      <div style={{ background: "var(--bg-surface)", borderRadius: 10, padding: "14px", border: "1px solid var(--border)" }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>¿Cómo aplicar este cambio?</div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          {[
-                            { op: "presupuesto", icon: "📋", title: "Solo este presupuesto", desc: "El catálogo queda sin cambios" },
-                            { op: "catalogo",    icon: "📚", title: "Actualizar en Catálogo", desc: "Afecta futuros presupuestos" },
-                            { op: "nuevo",       icon: "➕", title: "Guardar como módulo nuevo", desc: "Crea una variante en el catálogo" },
-                          ].map(({ op, icon, title, desc }) => (
-                            <button key={op} onClick={() => {
-                              const key = `${item.codigo}-${item.id || 0}`;
-                              const nuevoItem = { ...item, cantidad: modalEdicion.cantidad };
-                              const nuevoItems = items.map((it, i) => i === idx ? nuevoItem : it);
-                              const nuevoDimOverride = { ...dimOverride, [key]: modalEdicion.dims };
-                              setItems(nuevoItems);
-                              setDimOverride(nuevoDimOverride);
-                              if (op === "catalogo" && modBase) onActualizarCatalogo && onActualizarCatalogo(item.codigo, { ...modBase, dimensiones: modalEdicion.dims, material: modalEdicion.material });
-                              if (op === "nuevo" && modBase) onCrearModuloCatalogo && onCrearModuloCatalogo({ ...modBase, nombre: `${modBase.nombre} (variante)`, dimensiones: modalEdicion.dims, material: modalEdicion.material });
-                              if (presupuestoActivoId) {
-                                const totalNuevo = nuevoItems.reduce((acc, it) => {
-                                  const base = modulos[it.codigo]; if (!base) return acc;
-                                  const d = nuevoDimOverride[`${it.codigo}-${it.id || 0}`] || base.dimensiones;
-                                  const calc = calcularModulo({ ...base, dimensiones: d }, costos);
-                                  return acc + (calc ? calc.total * it.cantidad : 0);
-                                }, 0);
-                                onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { items: nuevoItems, dimOverride: nuevoDimOverride, total: Math.round(totalNuevo) });
-                              }
-                              setModalEdicion(null);
-                            }} style={{ padding: "9px 12px", borderRadius: 7, cursor: "pointer", textAlign: "left", background: op === "presupuesto" ? "var(--accent-soft)" : "var(--bg-surface)", border: `1px solid ${op === "presupuesto" ? "var(--accent-border)" : "var(--border)"}`, color: op === "presupuesto" ? "var(--accent)" : "var(--text-primary)", fontSize: 12, fontWeight: 700 }}>
-                              {icon} {title}
-                              <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginTop: 2 }}>{desc}</div>
+                    {/* Estado 1: edición de dimensiones */}
+                    {!modalEdicion.dialogoGuardar && (
+                      <>
+                        <div style={{ fontSize: 11, color: "var(--accent)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 6px", fontSize: 10 }}>COPIA</span>
+                          Editás una copia — el original queda intacto
+                        </div>
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>Dimensiones (mm)</div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                            {[["Ancho", "ancho"], ["Prof.", "profundidad"], ["Alto", "alto"]].map(([label, key]) => (
+                              <div key={key}>
+                                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, textAlign: "center" }}>{label}</div>
+                                <input type="number" min="1"
+                                  value={modalEdicion.dims[key]}
+                                  onChange={e => setModalEdicion(m => ({ ...m, dims: { ...m.dims, [key]: parseInt(e.target.value) || 0 } }))}
+                                  style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "7px 8px", textAlign: "center", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-primary)", outline: "none" }}
+                                  onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                                  onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>Material</div>
+                          <select value={modalEdicion.material}
+                            onChange={e => setModalEdicion(m => ({ ...m, material: e.target.value }))}
+                            style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 12, outline: "none" }}>
+                            {Object.entries(TIPO_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                          </select>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button onClick={() => setModalEdicion(m => ({ ...m, dialogoGuardar: true }))}
+                            style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 3px 10px rgba(180,100,20,0.25)" }}>
+                            ✓ Confirmar cambio
+                          </button>
+                          <button onClick={() => setModalEdicion(null)}
+                            style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>Cancelar</button>
+                          <button onClick={() => { onVerCatalogo && onVerCatalogo(item.codigo); setModalEdicion(null); }}
+                            style={{ width: "100%", padding: "8px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
+                            🔧 Editar piezas en Catálogo (Nivel 3)
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Estado 2: modal de decisión */}
+                    {modalEdicion.dialogoGuardar && (
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>¿Dónde guardás este módulo editado?</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 14 }}>La copia tiene las nuevas dimensiones. El original no fue tocado.</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+
+                          {/* Opción A: solo en este presupuesto */}
+                          <button onClick={() => {
+                            // Crear copia temporal en memoria (no en localStorage)
+                            const tempCod = `TEMP_${Date.now()}`;
+                            const modBase = modulos[item.codigo];
+                            const copiaTemp = {
+                              ...modBase,
+                              nombre: `${modBase?.nombre || item.codigo} (editado)`,
+                              dimensiones: modalEdicion.dims,
+                              material: modalEdicion.material,
+                              temporal: true,                    // flag para limpieza automática
+                              origenCodigo: item.codigo,         // trazabilidad
+                            };
+                            // Agregar la copia al estado de modulos (solo memoria)
+                            setModulos && setModulos(prev => ({ ...prev, [tempCod]: copiaTemp }));
+                            // Actualizar el item del presupuesto para que apunte a la copia
+                            const nuevoItem = { ...item, codigo: tempCod, cantidad: modalEdicion.cantidad || item.cantidad };
+                            const nuevoItems = items.map((it, i) => i === idx ? nuevoItem : it);
+                            setItems(nuevoItems);
+                            // Persistir si hay presupuesto activo
+                            if (presupuestoActivoId) {
+                              const totalNuevo = nuevoItems.reduce((acc, it) => {
+                                const base = modulos[it.codigo] || (it.codigo === tempCod ? copiaTemp : null);
+                                if (!base) return acc;
+                                const calc = calcularModulo(base, costos);
+                                return acc + (calc ? calc.total * it.cantidad : 0);
+                              }, 0);
+                              onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { items: nuevoItems, total: Math.round(totalNuevo) });
+                            }
+                            setModalEdicion(null);
+                          }} style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", fontSize: 12, fontWeight: 700 }}>
+                            📋 Solo en este presupuesto
+                            <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginTop: 2 }}>
+                              El catálogo no cambia. Badge "Temporal" en el ítem.
+                              Si eliminás el presupuesto, se borra automáticamente.
+                            </div>
+                          </button>
+
+                          {/* Opción B: guardar en catálogo */}
+                          {!modalEdicion.pidiendonombre ? (
+                            <button onClick={() => setModalEdicion(m => ({ ...m, pidiendonombre: true, nombreNuevo: `${modulos[item.codigo]?.nombre || item.codigo} (variante)` }))}
+                              style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700 }}>
+                              📚 Guardar en catálogo como módulo nuevo
+                              <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginTop: 2 }}>
+                                Quedará disponible para futuros presupuestos. Podés darle un nombre.
+                              </div>
                             </button>
-                          ))}
+                          ) : (
+                            <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-surface)", border: "1px solid var(--accent-border)" }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>📚 Nombre en el catálogo:</div>
+                              <input
+                                value={modalEdicion.nombreNuevo || ""}
+                                onChange={e => setModalEdicion(m => ({ ...m, nombreNuevo: e.target.value }))}
+                                style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "8px 10px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-primary)", outline: "none", marginBottom: 8 }}
+                                placeholder="Nombre del nuevo módulo..."
+                                autoFocus
+                                onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                                onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <button onClick={() => {
+                                  const modBase = modulos[item.codigo];
+                                  const nombreFinal = (modalEdicion.nombreNuevo || "").trim() || `${modBase?.nombre} (variante)`;
+                                  // Guardar permanentemente en catálogo
+                                  const newId = onGuardarModuloCatalogo && onGuardarModuloCatalogo({
+                                    ...modBase,
+                                    dimensiones: modalEdicion.dims,
+                                    material: modalEdicion.material,
+                                  }, nombreFinal);
+                                  // Actualizar el item para apuntar al nuevo módulo permanente
+                                  const nuevoItem = { ...item, codigo: newId || item.codigo, cantidad: modalEdicion.cantidad || item.cantidad };
+                                  const nuevoItems = items.map((it, i) => i === idx ? nuevoItem : it);
+                                  setItems(nuevoItems);
+                                  if (presupuestoActivoId) {
+                                    onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { items: nuevoItems });
+                                  }
+                                  setModalEdicion(null);
+                                }} style={{ flex: 1, padding: "8px 0", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
+                                  ✓ Confirmar y guardar
+                                </button>
+                                <button onClick={() => setModalEdicion(m => ({ ...m, pidiendonombre: false }))}
+                                  style={{ padding: "8px 12px", borderRadius: 7, cursor: "pointer", fontSize: 11, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                                  ← Volver
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <button onClick={() => setModalEdicion(m => ({ ...m, dialogoGuardar: false }))}
-                          style={{ marginTop: 8, width: "100%", padding: "6px 0", borderRadius: 6, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 11 }}>← Volver</button>
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button onClick={() => setModalEdicion(m => ({ ...m, dialogoGuardar: true }))}
-                          style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 3px 10px rgba(180,100,20,0.25)" }}>
-                          ✓ Confirmar cambio
-                        </button>
-                        <button onClick={() => setModalEdicion(null)}
-                          style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>Cancelar</button>
-                        <button onClick={() => { onVerCatalogo && onVerCatalogo(item.codigo); setModalEdicion(null); }}
-                          style={{ width: "100%", padding: "8px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
-                          🔧 Editar piezas en Catálogo (Nivel 3)
-                        </button>
+                          style={{ marginTop: 8, width: "100%", padding: "6px 0", borderRadius: 6, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 11 }}>← Volver a editar</button>
                       </div>
                     )}
                   </div>
@@ -9205,6 +9287,26 @@ function AppInterna() {
     withSave(() => guardarCostos(nuevo));
   };
   const handleEliminarPresupuesto = async (id) => {
+    // Limpiar módulos temporales que pertenecían SOLO a este presupuesto
+    // Un módulo temporal es temporal:true y no está referenciado en ningún otro presupuesto
+    const presEliminado = presupuestos[id];
+    if (presEliminado?.items) {
+      const codigosTemp = presEliminado.items
+        .map(it => it.codigo)
+        .filter(cod => modulos[cod]?.temporal === true);
+      // Verificar que no los use otro presupuesto
+      const otrosPresupuestos = Object.entries(presupuestos)
+        .filter(([pid]) => pid !== id);
+      const codigosAEliminar = codigosTemp.filter(cod =>
+        !otrosPresupuestos.some(([, p]) => p.items?.some(it => it.codigo === cod))
+      );
+      if (codigosAEliminar.length > 0) {
+        const nuevosModulos = { ...modulos };
+        codigosAEliminar.forEach(cod => delete nuevosModulos[cod]);
+        setModulos(nuevosModulos);
+        // Los temporales NO se guardan en localStorage — solo limpiar en memoria
+      }
+    }
     const nuevo = { ...presupuestos };
     delete nuevo[id];
     setPresupuestos(nuevo);
@@ -9332,16 +9434,21 @@ function AppInterna() {
                 setCatalogoModuloDeepLink(codigo);
                 setVista("catalogo");
               }}
+              onVolverDesCatalogo={() => setVista("presupuesto")}
+              setModulos={setModulos}
               onActualizarCatalogo={(codigo, modActualizado) => {
                 const nuevos = { ...modulos, [codigo]: modActualizado };
                 setModulos(nuevos);
                 hSaveM(nuevos);
               }}
-              onCrearModuloCatalogo={(nuevoMod) => {
-                const newId = `MOD${String(Date.now()).slice(-6)}`;
-                const nuevos = { ...modulos, [newId]: nuevoMod };
+              onGuardarModuloCatalogo={(nuevoMod, nombreFinal) => {
+                // Guardar módulo temporal como permanente en el catálogo
+                const newId = `MC${String(Date.now()).slice(-6)}`;
+                const modPermanente = { ...nuevoMod, nombre: nombreFinal || nuevoMod.nombre, temporal: false };
+                const nuevos = { ...modulos, [newId]: modPermanente };
                 setModulos(nuevos);
                 hSaveM(nuevos);
+                return newId;
               }}
             />
           )}
@@ -9423,6 +9530,7 @@ function AppInterna() {
               }}
               deepLinkCodigo={catalogoModuloDeepLink}
               onDeepLinkConsumed={() => setCatalogoModuloDeepLink(null)}
+              onVolverAlPresupuesto={catalogoModuloDeepLink ? () => setVista("presupuesto") : null}
             />
           )}
           {vista === "costos" && (
