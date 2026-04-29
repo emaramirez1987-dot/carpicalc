@@ -6283,11 +6283,6 @@ function Presupuesto({
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 80);
   };
-    setItems((its) =>
-      its.map((it) =>
-        (it.id || it.codigo) === keyId ? { ...it, nota: v } : it
-      )
-    );
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
