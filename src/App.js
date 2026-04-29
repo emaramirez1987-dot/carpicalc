@@ -3655,7 +3655,8 @@ function CatalogoModulos({
   onGuardarPerfil,
   deepLinkCodigo = null,
   onDeepLinkConsumed,
-  onVolverAlPresupuesto = null, // callback para volver al presupuesto tras guardar en modo Nivel 3
+  onVolverAlPresupuesto = null,
+  origenEdicion = null,  // { tipo, presupuestoId, itemIdx, tempCod }
 }) {
   const [modo, setModo] = useState(null);
 
@@ -3697,9 +3698,12 @@ function CatalogoModulos({
     const datosConImagen = existente?.imagen && !datos.imagen
       ? { ...datos, imagen: existente.imagen }
       : datos;
-    const nuevo = { ...modulos, [codigo]: datosConImagen };
-    setModulos(nuevo);
-    onSave(nuevo);
+    const todosMods = { ...modulos, [codigo]: datosConImagen };
+    // Opción B: persistir TODO incluyendo temporales.
+    // El catálogo los filtra en render (!mod.temporal).
+    // La limpieza de huérfanos ocurre en cargarDatos() al iniciar.
+    setModulos(todosMods);
+    onSave(todosMods);
     setModo(null);
     showMsg(
       modo?.tipo === "editar"
@@ -3708,9 +3712,10 @@ function CatalogoModulos({
         ? `"${codigo}" duplicado.`
         : `"${codigo}" guardado.`
     );
-    // Si llegamos por deep link desde Presupuesto (Nivel 3), volver automáticamente
+    // Cierre completo del ciclo: si venimos de Presupuesto (Nivel 3), volver.
+    // El timeout permite que el mensaje sea visible antes de navegar.
     if (onVolverAlPresupuesto) {
-      setTimeout(() => onVolverAlPresupuesto(), 800); // pequeño delay para que el msg sea visible
+      setTimeout(() => onVolverAlPresupuesto(), 800);
     }
   };
 
@@ -3974,8 +3979,11 @@ function CatalogoModulos({
 
       {/* Grid / List view agrupado por categorías */}
       {(() => {
+        // Fix: excluir módulos temporales del catálogo visible.
+        // Los TEMP_ solo existen para la sesión de edición de un presupuesto.
         const filtrados = Object.entries(modulos).filter(([cod, mod]) =>
-          !busqueda || cod.toLowerCase().includes(busqueda.toLowerCase()) || mod.nombre.toLowerCase().includes(busqueda.toLowerCase())
+          !mod.temporal &&
+          (!busqueda || cod.toLowerCase().includes(busqueda.toLowerCase()) || mod.nombre.toLowerCase().includes(busqueda.toLowerCase()))
         );
         if (filtrados.length === 0 && Object.keys(modulos).length > 0) {
           return <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)", fontSize: 13 }}>Sin resultados para "{busqueda}"</div>;
@@ -5738,6 +5746,7 @@ function Presupuesto({
   onVerCatalogo,
   onVolverDesCatalogo,
   setModulos,
+  hSaveModulos,   // persiste modulos en localStorage (usado para TEMP y cancelaciones)
   onActualizarCatalogo,
   onGuardarModuloCatalogo,
   borradorRecuperado = false,
@@ -5774,6 +5783,22 @@ function Presupuesto({
   const [confirmDelModulo, setConfirmDelModulo] = useState(null);
   // Modal Nivel 2 de edición
   const [modalEdicion, setModalEdicion] = useState(null);
+  // Fix timing Nivel 3: pendingDeepLink espera que modulos[tempCod] exista
+  // antes de navegar. El useEffect lo detecta después del re-render.
+  const [pendingDeepLink, setPendingDeepLink] = useState(null);
+  const [pendingDeepLinkContexto, setPendingDeepLinkContexto] = useState(null);
+
+  useEffect(() => {
+    if (!pendingDeepLink) return;
+    if (modulos[pendingDeepLink]) {
+      // Limpiar PRIMERO: si onVerCatalogo falla, el estado queda limpio
+      const contexto = pendingDeepLinkContexto;
+      setPendingDeepLink(null);
+      setPendingDeepLinkContexto(null);
+      onVerCatalogo && onVerCatalogo(pendingDeepLink, contexto);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingDeepLink, modulos]);
   // Edición inline de extras frecuentes
   const [editandoExtraId, setEditandoExtraId] = useState(null);
   const [editandoExtraForm, setEditandoExtraForm] = useState(null);
@@ -6171,11 +6196,10 @@ function Presupuesto({
                         if (estaEditando) {
                           // Revertir: eliminar la copia temporal y restaurar el item al original
                           if (modalEdicion?.tempCod && modalEdicion?.origenCodigo) {
-                            setModulos && setModulos(prev => {
-                              const n = { ...prev };
-                              delete n[modalEdicion.tempCod];
-                              return n;
-                            });
+                            const nuevosModulos = { ...modulos };
+                            delete nuevosModulos[modalEdicion.tempCod];
+                            setModulos && setModulos(nuevosModulos);
+                            hSaveModulos && hSaveModulos(nuevosModulos); // persiste limpieza
                             setItems(its => its.map((it, i) =>
                               i === idx ? { ...it, codigo: modalEdicion.origenCodigo } : it
                             ));
@@ -6198,8 +6222,9 @@ function Presupuesto({
                         const copiaInicial = {
                           ...modOrig,
                           nombre: `${modOrig?.nombre || origenBase} - Variante ${varianteN}`,
-                          temporal:     true,
-                          origenCodigo: origenBase,
+                          temporal:      true,
+                          origenCodigo:  origenBase,
+                          presupuestoId: presupuestoActivoId || null, // para limpieza al eliminar
                           // Copia profunda de piezas para que la edición no afecte el original
                           piezas:   (modOrig?.piezas   || []).map(p => ({ ...p })),
                           herrajes: (modOrig?.herrajes  || []).map(h => ({ ...h })),
@@ -6290,27 +6315,38 @@ function Presupuesto({
                             ✓ Confirmar cambio
                           </button>
                           <button onClick={() => {
-                            // Cancelar: revertir al original
+                            // Cancelar: revertir al original y persistir limpieza
                             if (modalEdicion?.tempCod && modalEdicion?.origenCodigo) {
-                              setModulos && setModulos(prev => { const n = { ...prev }; delete n[modalEdicion.tempCod]; return n; });
+                              const nuevosModulos = { ...modulos };
+                              delete nuevosModulos[modalEdicion.tempCod];
+                              setModulos && setModulos(nuevosModulos);
+                              hSaveModulos && hSaveModulos(nuevosModulos);
                               setItems(its => its.map((it, i) => i === idx ? { ...it, codigo: modalEdicion.origenCodigo } : it));
                             }
                             setModalEdicion(null);
                           }}
                             style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>Cancelar</button>
                           <button onClick={() => {
-                            // Nivel 3: enviar la COPIA al catálogo (ya tiene todas las piezas del original)
+                            // Nivel 3: actualiza las dims en la copia y setea el pendingDeepLink.
+                            // El useEffect detectará cuando modulos[tempCod] exista y navegará.
                             const codigoCopia = modalEdicion.tempCod || item.codigo;
-                            // Actualizar la copia con las dims editadas en el acordeón antes de ir al catálogo
                             setModulos && setModulos(prev => ({
                               ...prev,
                               [codigoCopia]: {
                                 ...prev[codigoCopia],
                                 dimensiones: modalEdicion.dims,
-                                material: modalEdicion.material,
+                                material:    modalEdicion.material,
                               }
                             }));
-                            onVerCatalogo && onVerCatalogo(codigoCopia);
+                            // Setear pendingDeepLink — el useEffect navega cuando el módulo esté listo
+                            setPendingDeepLink(codigoCopia);
+                            // Guardar contexto de retorno para cierre completo del ciclo
+                            setPendingDeepLinkContexto({
+                              tipo:          "presupuesto",
+                              presupuestoId: presupuestoActivoId,
+                              itemIdx:       idx,
+                              tempCod:       codigoCopia,
+                            });
                             setModalEdicion(null);
                           }}
                             style={{ width: "100%", padding: "8px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
@@ -6331,21 +6367,23 @@ function Presupuesto({
                           <button onClick={() => {
                             const tempCod = modalEdicion.tempCod || item.codigo;
                             // Actualizar dimensiones y material en la copia existente
-                            setModulos && setModulos(prev => ({
-                              ...prev,
+                            const nuevosModulos = {
+                              ...modulos,
                               [tempCod]: {
-                                ...prev[tempCod],
+                                ...modulos[tempCod],
                                 dimensiones: modalEdicion.dims,
-                                material: modalEdicion.material,
+                                material:    modalEdicion.material,
                               }
-                            }));
-                            // Persistir si hay presupuesto activo
+                            };
+                            setModulos && setModulos(nuevosModulos);
+                            hSaveModulos && hSaveModulos(nuevosModulos); // persiste TEMP actualizado
+                            // Persistir presupuesto
                             if (presupuestoActivoId) {
                               const nuevoItems = items.map((it, i) => i === idx ? modalEdicion.item : it);
                               const totalNuevo = nuevoItems.reduce((acc, it) => {
-                                const base = modulos[it.codigo];
+                                const base = nuevosModulos[it.codigo];
                                 if (!base) return acc;
-                                const calc = calcularModulo({ ...base, dimensiones: it.codigo === tempCod ? modalEdicion.dims : base.dimensiones }, costos);
+                                const calc = calcularModulo(base, costos);
                                 return acc + (calc ? calc.total * it.cantidad : 0);
                               }, 0);
                               onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, {
@@ -9216,6 +9254,11 @@ function AppInterna() {
   const [presupuestoParaEditar, setPresupuestoParaEditar] = useState(null);
   // Deep Link Nivel 3: código del módulo a abrir directamente en Catálogo
   const [catalogoModuloDeepLink, setCatalogoModuloDeepLink] = useState(null);
+  // origenEdicion: contexto de retorno después de edición profunda (Nivel 3).
+  // Se setea al navegar al catálogo desde Presupuesto y se consume al guardar.
+  // Permite cerrar el ciclo: Presupuesto → Catálogo → guardar → volver al mismo punto.
+  const [origenEdicion, setOrigenEdicion] = useState(null);
+  // { tipo: "presupuesto", presupuestoId, itemIdx, tempCod }
   // Versión de costos: timestamp de la última modificación en la pestaña Costos.
   const [costosVersion, setCostosVersion] = useState(leerVersionCostos);
   // Notificación de borrador recuperado
@@ -9353,25 +9396,18 @@ function AppInterna() {
     withSave(() => guardarCostos(nuevo));
   };
   const handleEliminarPresupuesto = async (id) => {
-    // Limpiar módulos temporales que pertenecían SOLO a este presupuesto
-    // Un módulo temporal es temporal:true y no está referenciado en ningún otro presupuesto
-    const presEliminado = presupuestos[id];
-    if (presEliminado?.items) {
-      const codigosTemp = presEliminado.items
-        .map(it => it.codigo)
-        .filter(cod => modulos[cod]?.temporal === true);
-      // Verificar que no los use otro presupuesto
-      const otrosPresupuestos = Object.entries(presupuestos)
-        .filter(([pid]) => pid !== id);
-      const codigosAEliminar = codigosTemp.filter(cod =>
-        !otrosPresupuestos.some(([, p]) => p.items?.some(it => it.codigo === cod))
-      );
-      if (codigosAEliminar.length > 0) {
-        const nuevosModulos = { ...modulos };
-        codigosAEliminar.forEach(cod => delete nuevosModulos[cod]);
-        setModulos(nuevosModulos);
-        // Los temporales NO se guardan en localStorage — solo limpiar en memoria
-      }
+    // Fix: limpiar temporales vinculados a este presupuesto usando presupuestoId
+    // y persistir inmediatamente para que no reaparezcan al recargar
+    const nuevosModulos = Object.fromEntries(
+      Object.entries(modulos).filter(([, m]) =>
+        !(m.temporal === true && m.presupuestoId === id)
+      )
+    );
+    const seEliminaronTemporales = Object.keys(nuevosModulos).length < Object.keys(modulos).length;
+    if (seEliminaronTemporales) {
+      setModulos(nuevosModulos);
+      // Persistir la limpieza — evita que temporales reaparezcan al recargar
+      withSave(() => guardarModulos(nuevosModulos));
     }
     const nuevo = { ...presupuestos };
     delete nuevo[id];
@@ -9496,24 +9532,51 @@ function AppInterna() {
               costosDirectos={costosDirectos}
               setCostosDirectos={setCostosDirectos}
               onGuardarExtraFrecuente={handleGuardarExtraFrecuente}
-              onVerCatalogo={(codigo) => {
+              onVerCatalogo={(codigo, contexto) => {
                 setCatalogoModuloDeepLink(codigo);
+                // Guardar contexto de retorno para cerrar el ciclo al guardar
+                if (contexto) setOrigenEdicion(contexto);
                 setVista("catalogo");
               }}
               onVolverDesCatalogo={() => setVista("presupuesto")}
               setModulos={setModulos}
+              hSaveModulos={hSaveM}
               onActualizarCatalogo={(codigo, modActualizado) => {
                 const nuevos = { ...modulos, [codigo]: modActualizado };
                 setModulos(nuevos);
                 hSaveM(nuevos);
               }}
-              onGuardarModuloCatalogo={(nuevoMod, nombreFinal) => {
-                // Guardar módulo temporal como permanente en el catálogo
+              onGuardarModuloCatalogo={(nuevoMod, nombreFinal, tempCod, presupuestoId) => {
+                // Migración explícita TEMP → MC_xxx (sin mutación in-place):
+                // 1. Crear nuevo módulo permanente con código MC_xxx
+                // 2. Actualizar referencias en el presupuesto
+                // 3. Eliminar TEMP original
+                // 4. Persistir ambos en el mismo ciclo
                 const newId = `MC${String(Date.now()).slice(-6)}`;
-                const modPermanente = { ...nuevoMod, nombre: nombreFinal || nuevoMod.nombre, temporal: false };
-                const nuevos = { ...modulos, [newId]: modPermanente };
-                setModulos(nuevos);
-                hSaveM(nuevos);
+                const modPermanente = {
+                  ...nuevoMod,
+                  nombre:    nombreFinal || nuevoMod.nombre,
+                  temporal:  false,
+                  presupuestoId: undefined,  // ya no es temporal
+                  origenCodigo:  undefined,
+                };
+                // Aplicar migración al estado de módulos
+                const nuevosModulos = { ...modulos };
+                nuevosModulos[newId] = modPermanente;
+                if (tempCod && nuevosModulos[tempCod]) delete nuevosModulos[tempCod];
+                setModulos(nuevosModulos);
+                hSaveM(nuevosModulos);  // persistir inmediatamente
+                // Actualizar referencias en el presupuesto afectado
+                if (presupuestoId && tempCod && presupuestos[presupuestoId]) {
+                  const pres = presupuestos[presupuestoId];
+                  const itemsActualizados = (pres.items || []).map(it =>
+                    it.codigo === tempCod ? { ...it, codigo: newId } : it
+                  );
+                  const presMigrado = { ...pres, items: itemsActualizados };
+                  const nuevosPres = { ...presupuestos, [presupuestoId]: presMigrado };
+                  setPresupuestos(nuevosPres);
+                  withSave(() => guardarPresupuestos(nuevosPres));  // persistir inmediatamente
+                }
                 return newId;
               }}
             />
@@ -9596,7 +9659,11 @@ function AppInterna() {
               }}
               deepLinkCodigo={catalogoModuloDeepLink}
               onDeepLinkConsumed={() => setCatalogoModuloDeepLink(null)}
-              onVolverAlPresupuesto={catalogoModuloDeepLink ? () => setVista("presupuesto") : null}
+              origenEdicion={origenEdicion}
+              onVolverAlPresupuesto={origenEdicion?.tipo === "presupuesto"
+                ? () => { setVista("presupuesto"); setOrigenEdicion(null); }
+                : (catalogoModuloDeepLink ? () => setVista("presupuesto") : null)
+              }
             />
           )}
           {vista === "costos" && (

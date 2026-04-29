@@ -61,14 +61,38 @@ export async function cargarDatos() {
     const rc  = localStorage.getItem("carpicalc:costos");
     const rp  = localStorage.getItem("carpicalc:presupuestos");
     const rpf = localStorage.getItem("carpicalc:perfil");
+
+    const presupuestos = rp ? JSON.parse(rp) : {};
+    let   modulos      = rm ? JSON.parse(rm)  : modulosIniciales;
+
+    // ── Limpieza de módulos temporales huérfanos ──────────────────────────
+    // Ocurre ANTES de retornar los datos para que el estado de React
+    // nunca vea referencias inconsistentes.
+    //
+    // Un TEMP es huérfano cuando su presupuestoId ya no existe en presupuestos
+    // (el presupuesto fue eliminado en una sesión anterior sin limpiar correctamente).
+    const presIds = new Set(Object.keys(presupuestos));
+    const modulosLimpios = Object.fromEntries(
+      Object.entries(modulos).filter(([, m]) => {
+        if (!m.temporal) return true;               // permanente → conservar
+        if (!m.presupuestoId) return false;         // temporal sin dueño → huérfano
+        return presIds.has(m.presupuestoId);        // solo si el presupuesto existe
+      })
+    );
+    const huboCambios = Object.keys(modulosLimpios).length < Object.keys(modulos).length;
+    if (huboCambios) {
+      // Persistir limpieza inmediatamente para que la próxima carga también esté limpia
+      localStorage.setItem("carpicalc:modulos", JSON.stringify(modulosLimpios));
+      modulos = modulosLimpios;
+    }
+
     return {
-      modulos:       rm  ? JSON.parse(rm)  : modulosIniciales,
-      costos:        rc  ? JSON.parse(rc)  : costoIniciales,
-      presupuestos:  rp  ? JSON.parse(rp)  : {},
-      perfil:        rpf ? { ...PERFIL_VACIO, ...JSON.parse(rpf) } : { ...PERFIL_VACIO },
+      modulos,
+      costos:       rc  ? JSON.parse(rc)  : costoIniciales,
+      presupuestos,
+      perfil:       rpf ? { ...PERFIL_VACIO, ...JSON.parse(rpf) } : { ...PERFIL_VACIO },
     };
   } catch {
-    // Si hay un error de parse (datos corruptos), arranca desde cero
     return {
       modulos:      modulosIniciales,
       costos:       costoIniciales,
@@ -85,6 +109,8 @@ export async function cargarDatos() {
 // sobre qué están guardando (mejor legibilidad, más fácil de buscar).
 
 /** Guarda el catálogo de módulos del carpintero */
+// Incluye temporales (temporal:true) — el catálogo los filtra en render, no aquí.
+// Huérfanos se limpian en cargarDatos() al iniciar la app.
 export const guardarModulos      = (d) => _save("carpicalc:modulos", d);
 
 /** Guarda los trabajos/presupuestos guardados */
