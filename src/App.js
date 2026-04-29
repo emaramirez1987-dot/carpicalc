@@ -4220,8 +4220,23 @@ function CatalogoModulos({
   presupuestos,
   perfil,
   onGuardarPerfil,
+  deepLinkCodigo = null,
+  onDeepLinkConsumed,
 }) {
   const [modo, setModo] = useState(null);
+
+  // Deep Link Nivel 3: abrir automáticamente el formulario de edición del módulo
+  useEffect(() => {
+    if (deepLinkCodigo && modulos[deepLinkCodigo]) {
+      setModo({ tipo: "editar", codigo: deepLinkCodigo });
+      onDeepLinkConsumed && onDeepLinkConsumed();
+      // Scroll al formulario
+      setTimeout(() => {
+        document.getElementById("catalogo-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 200);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkCodigo]);
   const [msg, setMsg] = useState(null);
   const [vistaLayout, setVista] = useState("grid");
   const [busqueda, setBusqueda] = useState("");
@@ -4483,7 +4498,7 @@ function CatalogoModulos({
       )}
 
       {modo && (
-        <div ref={formRef}>
+        <div id="catalogo-form" ref={formRef}>
         <Card className="rsp-card" highlight style={{ padding: 24 }}>
           <div
             style={{
@@ -6064,143 +6079,6 @@ function SeccionAdicionales({ adicionales, setAdicionales, costos, onGuardarFrec
 // ── ModalEdicionModulo — Nivel 2 ──────────────────────────────────
 // Edición rápida de dimensiones + material sin tocar el catálogo.
 // Nivel 3 disponible via botón "Editar en Catálogo".
-function ModalEdicionModulo({ item, modBase, dimOverride, costos, TIPO_MAT, onConfirmar, onCancelar, onIrCatalogo }) {
-  const overActual = dimOverride || modBase?.dimensiones || {};
-  const [dims, setDims] = useState({
-    ancho: overActual.ancho || 600,
-    profundidad: overActual.profundidad || 550,
-    alto: overActual.alto || 700,
-  });
-  const [material, setMaterial] = useState(modBase?.material || "melamina");
-  const [cantidad, setCantidad] = useState(item.cantidad || 1);
-  const [dialogoGuardar, setDialogoGuardar] = useState(false);
-
-  const inpNum = {
-    fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700,
-    padding: "8px 10px", textAlign: "center", width: "100%",
-    background: "var(--bg-base)", border: "1px solid var(--border)",
-    borderRadius: 8, color: "var(--text-primary)", outline: "none",
-  };
-
-  return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 200,
-      background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-    }}
-      onClick={e => { if (e.target === e.currentTarget) onCancelar(); }}>
-      <div style={{
-        background: "var(--bg-surface)", borderRadius: 16, padding: "24px 28px",
-        width: "100%", maxWidth: 440, boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
-        border: "1px solid var(--border)",
-      }}>
-        {/* Header */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--text-muted)", marginBottom: 4 }}>
-            Editando módulo
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 900, fontFamily: "'Playfair Display',serif", color: "var(--text-primary)" }}>
-            {modBase?.nombre || item.codigo}
-          </div>
-          <div style={{ fontSize: 12, color: "var(--accent)", fontFamily: "'DM Mono',monospace", marginTop: 2 }}>
-            {item.codigo}
-          </div>
-        </div>
-
-        {/* Dimensiones */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 10 }}>
-            Dimensiones (mm)
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-            {[["Ancho", "ancho"], ["Prof.", "profundidad"], ["Alto", "alto"]].map(([label, key]) => (
-              <div key={key}>
-                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 5, textAlign: "center" }}>{label}</div>
-                <input type="number" value={dims[key]} min="1"
-                  onChange={e => setDims(d => ({ ...d, [key]: parseInt(e.target.value) || 0 }))}
-                  style={inpNum}
-                  onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                  onBlur={e => e.target.style.borderColor = "var(--border)"} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Material */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
-            Material
-          </div>
-          <select value={material} onChange={e => setMaterial(e.target.value)}
-            style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 13, outline: "none" }}>
-            {Object.entries(TIPO_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </div>
-
-        {/* Cantidad */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
-            Cantidad
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => setCantidad(c => Math.max(1, c - 1))}
-              style={{ width: 34, height: 34, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 20, fontWeight: 900, minWidth: 40, textAlign: "center" }}>{cantidad}</span>
-            <button onClick={() => setCantidad(c => c + 1)}
-              style={{ width: 34, height: 34, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-          </div>
-        </div>
-
-        {/* Diálogo de 3 opciones de guardado */}
-        {dialogoGuardar ? (
-          <div style={{ background: "var(--bg-subtle)", borderRadius: 10, padding: "16px", border: "1px solid var(--border)", marginBottom: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>
-              ¿Cómo aplicar este cambio?
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <button onClick={() => { onConfirmar({ dims, material, cantidad, opcion: "presupuesto" }); }}
-                style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", fontSize: 12, fontWeight: 700 }}>
-                📋 Solo este presupuesto
-                <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginTop: 2 }}>Las dimensiones cambian solo aquí, el catálogo queda igual</div>
-              </button>
-              <button onClick={() => { onConfirmar({ dims, material, cantidad, opcion: "catalogo" }); }}
-                style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700 }}>
-                📚 Actualizar también en Catálogo
-                <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginTop: 2 }}>Modifica el módulo original — afecta futuros presupuestos</div>
-              </button>
-              <button onClick={() => { onConfirmar({ dims, material, cantidad, opcion: "nuevo" }); }}
-                style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700 }}>
-                ➕ Guardar como módulo nuevo
-                <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginTop: 2 }}>Crea una variante nueva en el catálogo con estas medidas</div>
-              </button>
-            </div>
-            <button onClick={() => setDialogoGuardar(false)}
-              style={{ marginTop: 10, width: "100%", padding: "7px 0", borderRadius: 7, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 11 }}>
-              ← Volver
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button onClick={() => setDialogoGuardar(true)}
-              style={{ flex: 1, padding: "10px 0", borderRadius: 9, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 3px 12px rgba(180,100,20,0.30)" }}>
-              ✓ Confirmar cambio
-            </button>
-            <button onClick={onCancelar}
-              style={{ padding: "10px 16px", borderRadius: 9, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-              Cancelar
-            </button>
-            <button onClick={() => onIrCatalogo(item.codigo)}
-              style={{ width: "100%", padding: "9px 0", marginTop: 4, borderRadius: 9, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)" }}
-              title="Edición completa: piezas, herrajes y tapacanto">
-              🔧 Editar piezas en Catálogo (Nivel 3)
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Presupuesto ───────────────────────────────────────────────────
 function Presupuesto({
   modulos,
@@ -6261,7 +6139,11 @@ function Presupuesto({
   const [editandoModuloIdx, setEditandoModuloIdx] = useState(null);
   const [confirmDelModulo, setConfirmDelModulo] = useState(null);
   // Modal Nivel 2 de edición
-  const [modalEdicion, setModalEdicion] = useState(null); // { item, idx, modBase, dimOverride }
+  const [modalEdicion, setModalEdicion] = useState(null);
+  // Edición inline de extras frecuentes
+  const [editandoExtraId, setEditandoExtraId] = useState(null);
+  const [editandoExtraForm, setEditandoExtraForm] = useState(null);
+  const [toastExtraSync, setToastExtraSync] = useState(null);
 
   // LÓGICA - Global Sync: actualiza el módulo en su posición original sin crear uno nuevo.
   // Dispara recálculo automático en Cortes, Caja y total del presupuesto.
@@ -6607,7 +6489,7 @@ function Presupuesto({
           </div>
         )}
 
-        {/* 3. Módulos cargados */}
+        {/* 3. Módulos cargados — acordeón inline para edición */}
         {items.length > 0 && (
           <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
           {items.map((item, idx) => {
@@ -6619,6 +6501,158 @@ function Presupuesto({
             const modBase = modulos[item.codigo];
             const over = modUsado.dimensiones;
             const dimDif = modBase && (over.ancho !== modBase.dimensiones.ancho || over.profundidad !== modBase.dimensiones.profundidad || over.alto !== modBase.dimensiones.alto);
+            const estaEditando = modalEdicion?.idx === idx;
+
+            return (
+              <div key={keyId} style={{
+                background: "var(--bg-surface)", borderRadius: 10,
+                border: estaEditando ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                boxShadow: estaEditando ? "0 0 0 3px rgba(212,175,55,0.10)" : "none",
+                overflow: "hidden", transition: "border-color 0.2s, box-shadow 0.2s",
+              }}>
+                {/* Fila principal del módulo */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 16px" }}>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{item.codigo}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{modUsado.nombre}</div>
+                    <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: dimDif ? "var(--accent)" : "var(--text-muted)", marginTop: 2 }}>
+                      {over.ancho}×{over.profundidad}×{over.alto} mm{dimDif ? " ★" : ""} · {TIPO_MAT[modUsado.material]}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: Math.max(1, it.cantidad - 1) } : it))}
+                        style={{ width: 26, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, minWidth: 22, textAlign: "center" }}>{item.cantidad}</span>
+                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: it.cantidad + 1 } : it))}
+                        style={{ width: 26, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                    </div>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", minWidth: 80, textAlign: "right" }}>
+                      {fmtPeso(calc.total * item.cantidad)}
+                    </span>
+                    <button
+                      onClick={() => setModalEdicion(estaEditando ? null : {
+                        item, idx, modBase,
+                        dimOverride: dimOverride[keyId],
+                        // Estado local del acordeón
+                        dims: dimOverride[keyId] || modBase?.dimensiones || { ancho: 600, profundidad: 550, alto: 700 },
+                        material: modBase?.material || "melamina",
+                        cantidad: item.cantidad,
+                        dialogoGuardar: false,
+                      })}
+                      title={estaEditando ? "Cerrar edición" : "Editar dimensiones"}
+                      style={{
+                        background: estaEditando ? "var(--accent-soft)" : "transparent",
+                        border: `1px solid ${estaEditando ? "var(--accent-border)" : "var(--border)"}`,
+                        color: estaEditando ? "var(--accent)" : "var(--text-muted)",
+                        borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px",
+                        fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                      }}>
+                      {estaEditando ? "▲" : "✎"}
+                    </button>
+                    {confirmDelModulo === keyId ? (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button onClick={() => { setItems(its => its.filter((_, i) => i !== idx)); if (estaEditando) setModalEdicion(null); setConfirmDelModulo(null); }}
+                          style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
+                        <button onClick={() => setConfirmDelModulo(null)}
+                          style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDelModulo(keyId)}
+                        style={{ background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px" }}>×</button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Acordeón de edición — se despliega inline */}
+                {estaEditando && modalEdicion && (
+                  <div style={{ borderTop: "1px solid var(--border)", padding: "14px 16px", background: "var(--bg-subtle)" }}>
+                    {/* Dimensiones */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>Dimensiones (mm)</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                        {[["Ancho", "ancho"], ["Prof.", "profundidad"], ["Alto", "alto"]].map(([label, key]) => (
+                          <div key={key}>
+                            <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, textAlign: "center" }}>{label}</div>
+                            <input type="number" min="1"
+                              value={modalEdicion.dims[key]}
+                              onChange={e => setModalEdicion(m => ({ ...m, dims: { ...m.dims, [key]: parseInt(e.target.value) || 0 } }))}
+                              style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "7px 8px", textAlign: "center", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-primary)", outline: "none" }}
+                              onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                              onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Material */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>Material</div>
+                      <select value={modalEdicion.material}
+                        onChange={e => setModalEdicion(m => ({ ...m, material: e.target.value }))}
+                        style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 12, outline: "none" }}>
+                        {Object.entries(TIPO_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      </select>
+                    </div>
+
+                    {/* Diálogo de 3 opciones o botón confirmar */}
+                    {modalEdicion.dialogoGuardar ? (
+                      <div style={{ background: "var(--bg-surface)", borderRadius: 10, padding: "14px", border: "1px solid var(--border)" }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>¿Cómo aplicar este cambio?</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {[
+                            { op: "presupuesto", icon: "📋", title: "Solo este presupuesto", desc: "El catálogo queda sin cambios" },
+                            { op: "catalogo",    icon: "📚", title: "Actualizar en Catálogo", desc: "Afecta futuros presupuestos" },
+                            { op: "nuevo",       icon: "➕", title: "Guardar como módulo nuevo", desc: "Crea una variante en el catálogo" },
+                          ].map(({ op, icon, title, desc }) => (
+                            <button key={op} onClick={() => {
+                              const key = `${item.codigo}-${item.id || 0}`;
+                              const nuevoItem = { ...item, cantidad: modalEdicion.cantidad };
+                              const nuevoItems = items.map((it, i) => i === idx ? nuevoItem : it);
+                              const nuevoDimOverride = { ...dimOverride, [key]: modalEdicion.dims };
+                              setItems(nuevoItems);
+                              setDimOverride(nuevoDimOverride);
+                              if (op === "catalogo" && modBase) onActualizarCatalogo && onActualizarCatalogo(item.codigo, { ...modBase, dimensiones: modalEdicion.dims, material: modalEdicion.material });
+                              if (op === "nuevo" && modBase) onCrearModuloCatalogo && onCrearModuloCatalogo({ ...modBase, nombre: `${modBase.nombre} (variante)`, dimensiones: modalEdicion.dims, material: modalEdicion.material });
+                              if (presupuestoActivoId) {
+                                const totalNuevo = nuevoItems.reduce((acc, it) => {
+                                  const base = modulos[it.codigo]; if (!base) return acc;
+                                  const d = nuevoDimOverride[`${it.codigo}-${it.id || 0}`] || base.dimensiones;
+                                  const calc = calcularModulo({ ...base, dimensiones: d }, costos);
+                                  return acc + (calc ? calc.total * it.cantidad : 0);
+                                }, 0);
+                                onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { items: nuevoItems, dimOverride: nuevoDimOverride, total: Math.round(totalNuevo) });
+                              }
+                              setModalEdicion(null);
+                            }} style={{ padding: "9px 12px", borderRadius: 7, cursor: "pointer", textAlign: "left", background: op === "presupuesto" ? "var(--accent-soft)" : "var(--bg-surface)", border: `1px solid ${op === "presupuesto" ? "var(--accent-border)" : "var(--border)"}`, color: op === "presupuesto" ? "var(--accent)" : "var(--text-primary)", fontSize: 12, fontWeight: 700 }}>
+                              {icon} {title}
+                              <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginTop: 2 }}>{desc}</div>
+                            </button>
+                          ))}
+                        </div>
+                        <button onClick={() => setModalEdicion(m => ({ ...m, dialogoGuardar: false }))}
+                          style={{ marginTop: 8, width: "100%", padding: "6px 0", borderRadius: 6, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 11 }}>← Volver</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button onClick={() => setModalEdicion(m => ({ ...m, dialogoGuardar: true }))}
+                          style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 3px 10px rgba(180,100,20,0.25)" }}>
+                          ✓ Confirmar cambio
+                        </button>
+                        <button onClick={() => setModalEdicion(null)}
+                          style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>Cancelar</button>
+                        <button onClick={() => { onVerCatalogo && onVerCatalogo(item.codigo); setModalEdicion(null); }}
+                          style={{ width: "100%", padding: "8px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
+                          🔧 Editar piezas en Catálogo (Nivel 3)
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          </div>
+        )}
             return (
               <div key={keyId} className="hover-lift anim-fadeup" style={{
                 background: "var(--bg-surface)", borderRadius: 10, padding: "12px 16px",
@@ -6670,56 +6704,100 @@ function Presupuesto({
                           setConfirmDelModulo(null);
                         }} style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070" }}>
                           ✓
-                        </button>
-                        <button onClick={() => setConfirmDelModulo(null)}
-                          style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setConfirmDelModulo(keyId)}
-                        style={{ background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px" }}>×</button>
-                    )}
-                  </div>
-                </div>
-                {expandido === keyId && (
-                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--separator)" }}>
-                    <TextInput label="Nota del ítem" placeholder="Observación..." small value={item.nota || ""} onChange={v => setNota(keyId, v)} />
-                  </div>
-                )}
-                <button onClick={() => setExpandido(expandido === keyId ? null : keyId)}
-                  style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 11, marginTop: 4, padding: 0, fontFamily: "'DM Mono',monospace" }}>
-                  {expandido === keyId ? "▲ menos" : "▼ detalle"}
-                </button>
-              </div>
-            );
-          })}
-          </div>
-        )}
-
-        {/* Adicionales dentro de la card — con separador si hay módulos */}
+        {/* Adicionales dentro de la card — acordeón con edición y sync costos */}
         {adicionales.length > 0 && (
-          <div style={{ padding: "0 16px 12px", borderTop: items.length > 0 ? "1px dashed var(--separator)" : "none", marginTop: items.length > 0 ? 0 : 0 }}>
+          <div style={{ padding: "0 16px 12px", borderTop: items.length > 0 ? "1px dashed var(--separator)" : "none" }}>
             <div style={{ paddingTop: 12, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
               Gastos extras
             </div>
-            {adicionales.map(x => (
-              <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", marginBottom: 6, background: "var(--bg-subtle)", borderRadius: 8, border: "1px solid var(--border)" }}>
-                <span style={{ fontSize: 13, flex: 1, color: "var(--text-primary)" }}>{x.nombre}</span>
-                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.monto)}</span>
-                {confirmDelModulo === `extra-${x.id}` ? (
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button onClick={() => { setAdicionales(prev => prev.filter(a => a.id !== x.id)); setConfirmDelModulo(null); }}
-                      style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
-                    <button onClick={() => setConfirmDelModulo(null)}
-                      style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+            {adicionales.map(x => {
+              const editandoEste = editandoExtraId === x.id;
+              const esFrecuente = (costos?.extrasFrecuentes || []).some(f => f.nombre.toLowerCase() === x.nombre.toLowerCase());
+              return (
+                <div key={x.id} style={{
+                  marginBottom: 6, borderRadius: 8, overflow: "hidden",
+                  border: editandoEste ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                  boxShadow: editandoEste ? "0 0 0 3px rgba(212,175,55,0.08)" : "none",
+                  background: "var(--bg-surface)",
+                  transition: "border-color 0.2s",
+                }}>
+                  {/* Fila principal */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px" }}>
+                    <span style={{ fontSize: 13, flex: 1, color: "var(--text-primary)", fontWeight: 500 }}>{x.nombre}</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.monto)}</span>
+                    <button onClick={() => {
+                      if (editandoEste) { setEditandoExtraId(null); setEditandoExtraForm(null); }
+                      else { setEditandoExtraId(x.id); setEditandoExtraForm({ nombre: x.nombre, monto: String(x.monto) }); }
+                    }} style={{ background: editandoEste ? "var(--accent-soft)" : "transparent", border: `1px solid ${editandoEste ? "var(--accent-border)" : "var(--border)"}`, color: editandoEste ? "var(--accent)" : "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px", fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                      {editandoEste ? "▲" : "✎"}
+                    </button>
+                    {confirmDelModulo === `extra-${x.id}` ? (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button onClick={() => { setAdicionales(prev => prev.filter(a => a.id !== x.id)); setConfirmDelModulo(null); if (editandoEste) { setEditandoExtraId(null); setEditandoExtraForm(null); } }}
+                          style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
+                        <button onClick={() => setConfirmDelModulo(null)}
+                          style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDelModulo(`extra-${x.id}`)}
+                        style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
+                    )}
                   </div>
-                ) : (
-                  <button onClick={() => setConfirmDelModulo(`extra-${x.id}`)}
-                    style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
-                )}
-              </div>
-            ))}
+                  {/* Acordeón edición */}
+                  {editandoEste && editandoExtraForm && (
+                    <div style={{ borderTop: "1px solid var(--border)", padding: "12px", background: "var(--bg-subtle)" }}>
+                      <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                        <input type="text" value={editandoExtraForm.nombre}
+                          onChange={e => setEditandoExtraForm(f => ({ ...f, nombre: e.target.value }))}
+                          style={{ flex: 1, minWidth: 120, fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "7px 10px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-primary)", outline: "none" }}
+                          onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                          onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                        <input type="number" min="0" value={editandoExtraForm.monto}
+                          onChange={e => setEditandoExtraForm(f => ({ ...f, monto: e.target.value }))}
+                          style={{ width: 110, fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "7px 10px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "#7ecf8a", outline: "none" }}
+                          onFocus={e => e.target.style.borderColor = "#7ecf8a"}
+                          onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button onClick={() => {
+                          const nuevoNombre = editandoExtraForm.nombre.trim();
+                          const nuevoMonto = parseFloat(editandoExtraForm.monto) || 0;
+                          setAdicionales(prev => prev.map(a => a.id === x.id ? { ...a, nombre: nuevoNombre, monto: nuevoMonto } : a));
+                          // Sync con costos si el nombre cambió y era frecuente
+                          if (esFrecuente && nuevoNombre !== x.nombre) {
+                            setToastExtraSync({ viejo: x.nombre, nuevo: nuevoNombre, monto: nuevoMonto, id: x.id });
+                          } else if (esFrecuente) {
+                            // Actualizar precio en frecuentes
+                            onGuardarExtraFrecuente && onGuardarExtraFrecuente({ nombre: nuevoNombre, precio: nuevoMonto, actualizar: x.nombre });
+                          }
+                          setEditandoExtraId(null); setEditandoExtraForm(null);
+                        }} style={{ flex: 1, padding: "7px 0", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
+                          ✓ Confirmar
+                        </button>
+                        <button onClick={() => { setEditandoExtraId(null); setEditandoExtraForm(null); }}
+                          style={{ padding: "7px 12px", borderRadius: 7, cursor: "pointer", fontSize: 11, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                          Cancelar
+                        </button>
+                      </div>
+                      {/* Toast sync con costos */}
+                      {toastExtraSync?.id === x.id && (
+                        <div style={{ marginTop: 10, padding: "9px 12px", borderRadius: 7, background: "rgba(200,160,42,0.10)", border: "1px solid rgba(200,160,42,0.30)", fontSize: 11, color: "#c8a02a" }}>
+                          <div style={{ marginBottom: 6 }}>💡 Este extra existe en tus recurrentes. ¿Actualizarlo en Costos?</div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button onClick={() => { onGuardarExtraFrecuente && onGuardarExtraFrecuente({ nombre: toastExtraSync.nuevo, precio: toastExtraSync.monto, actualizar: toastExtraSync.viejo }); setToastExtraSync(null); }}
+                              style={{ padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,160,42,0.18)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a", fontFamily: "'DM Mono',monospace" }}>Actualizar</button>
+                            <button onClick={() => { onGuardarExtraFrecuente && onGuardarExtraFrecuente({ nombre: toastExtraSync.nuevo, precio: toastExtraSync.monto }); setToastExtraSync(null); }}
+                              style={{ padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "transparent", border: "1px solid rgba(200,160,42,0.30)", color: "#c8a02a", fontFamily: "'DM Mono',monospace" }}>Agregar nuevo</button>
+                            <button onClick={() => setToastExtraSync(null)}
+                              style={{ padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>No</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -6828,48 +6906,7 @@ function Presupuesto({
 
       <ToastContainer />
 
-      {/* ── Modal Nivel 2: edición rápida de módulo ── */}
-      {modalEdicion && (
-        <ModalEdicionModulo
-          item={modalEdicion.item}
-          modBase={modulos[modalEdicion.item.codigo]}
-          dimOverride={modalEdicion.dimOverride}
-          costos={costos}
-          TIPO_MAT={TIPO_MAT}
-          onCancelar={() => setModalEdicion(null)}
-          onIrCatalogo={(codigo) => {
-            setModalEdicion(null);
-            // Nivel 3: navegar al catálogo con el módulo pre-seleccionado
-            onVerCatalogo && onVerCatalogo(codigo);
-          }}
-          onConfirmar={({ dims, material, cantidad, opcion }) => {
-            const { item, idx } = modalEdicion;
-            const key = `${item.codigo}-${item.id || 0}`;
-            const modBase = modulos[item.codigo];
-            const nuevoItem = { ...item, cantidad };
-            const nuevoItems = items.map((it, i) => i === idx ? nuevoItem : it);
-            const nuevoDimOverride = { ...dimOverride, [key]: dims };
-            setItems(nuevoItems);
-            setDimOverride(nuevoDimOverride);
-            if (opcion === "catalogo" && modBase)
-              onActualizarCatalogo && onActualizarCatalogo(item.codigo, { ...modBase, dimensiones: dims, material });
-            if (opcion === "nuevo" && modBase)
-              onCrearModuloCatalogo && onCrearModuloCatalogo({ ...modBase, nombre: `${modBase.nombre} (variante)`, dimensiones: dims, material });
-            if (presupuestoActivoId) {
-              const totalNuevo = nuevoItems.reduce((acc, it) => {
-                const base = modulos[it.codigo]; if (!base) return acc;
-                const d = nuevoDimOverride[`${it.codigo}-${it.id || 0}`] || base.dimensiones;
-                const calc = calcularModulo({ ...base, dimensiones: d }, costos);
-                return acc + (calc ? calc.total * it.cantidad : 0);
-              }, 0);
-              onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, {
-                items: nuevoItems, dimOverride: nuevoDimOverride, total: Math.round(totalNuevo),
-              });
-            }
-            setModalEdicion(null);
-          }}
-        />
-      )}
+
     </div>
   );
 }
@@ -9408,6 +9445,8 @@ function AppInterna() {
   const [cajaPresId, setCajaPresId] = useState(null);
   // LOGICA - Edición de Presupuestos Existentes: puente para que Presupuesto sepa que está editando uno existente
   const [presupuestoParaEditar, setPresupuestoParaEditar] = useState(null);
+  // Deep Link Nivel 3: código del módulo a abrir directamente en Catálogo
+  const [catalogoModuloDeepLink, setCatalogoModuloDeepLink] = useState(null);
   // Versión de costos: timestamp de la última modificación en la pestaña Costos.
   const [costosVersion, setCostosVersion] = useState(leerVersionCostos);
   // Notificación de borrador recuperado
@@ -9664,7 +9703,10 @@ function AppInterna() {
               adicionales={adicionales}
               setAdicionales={setAdicionales}
               onGuardarExtraFrecuente={handleGuardarExtraFrecuente}
-              onVerCatalogo={(codigo) => { setVista("catalogo"); }}
+              onVerCatalogo={(codigo) => {
+                setCatalogoModuloDeepLink(codigo);
+                setVista("catalogo");
+              }}
               onActualizarCatalogo={(codigo, modActualizado) => {
                 const nuevos = { ...modulos, [codigo]: modActualizado };
                 setModulos(nuevos);
@@ -9754,6 +9796,8 @@ function AppInterna() {
                 setPerfil(nuevo);
                 withSave(() => guardarPerfil(nuevo));
               }}
+              deepLinkCodigo={catalogoModuloDeepLink}
+              onDeepLinkConsumed={() => setCatalogoModuloDeepLink(null)}
             />
           )}
           {vista === "costos" && (
