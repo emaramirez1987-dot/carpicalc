@@ -6241,7 +6241,7 @@ function Presupuesto({
     setClienteActivo(p.cliente || { nombre: "", tel: "", dir: "" });
     setNombreTrabajo(p.nombre || "");
     setPresupuestoActivoId(id);
-    setEditandoCliente(false);
+    
     onPresupuestoEditarConsumed && onPresupuestoEditarConsumed();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presupuestoParaEditar]);
@@ -6322,7 +6322,7 @@ function Presupuesto({
     setNombreTrabajo(p.nombre || "");
     setPresupuestoActivoId(id || null);
     setAlertaPrecios(null);
-    setEditandoCliente(false);
+    
     verificarPrecios(p, id);
   };
 
@@ -6332,7 +6332,7 @@ function Presupuesto({
     setNombreTrabajo("");
     setPresupuestoActivoId(null);
     setAlertaPrecios(null);
-    setEditandoCliente(true); // abre panel de cliente
+     // abre panel de cliente
   };
 
   const handleCodChange = (val) => {
@@ -6527,14 +6527,14 @@ function Presupuesto({
             <button onClick={() => {
               onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, total: totalGeneral });
               setDialogoGuardar(false);
-              setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setEditandoCliente(false);
+              setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null);
             }} style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
               ✓ Actualizar original
             </button>
             <button onClick={() => {
               onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
               setDialogoGuardar(false);
-              setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setEditandoCliente(false);
+              setItems([]); setDimOverride({}); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null);
             }}
               style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
               + Guardar como copia
