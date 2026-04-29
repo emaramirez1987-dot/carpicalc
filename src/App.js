@@ -2346,6 +2346,20 @@ function FilaPieza({ pieza, idx, onDelete, dims, espesor, tapacanto }) {
 
 // ── FormPieza ─────────────────────────────────────────────────────
 // ── DimRow ── (fuera de FormPieza para evitar re-mount en cada render)
+
+// Dimensiones disponibles para parametrizar piezas del catálogo
+const DIMS = ["ancho", "alto", "profundidad"];
+
+// Estado inicial vacío de una pieza nueva en el formulario
+const PIEZA_VACIA = {
+  nombre: "", cantidad: 1,
+  usaDim: "ancho", usaDim2: "alto",
+  offsetEsp: 0, offsetMm: 0, divisor: 1,
+  offsetEsp2: 0, offsetMm2: 0, divisor2: 1,
+  tc: { id: 1, lados1: 0, lados2: 0 },
+  especial: false, dimLibre1: "", dimLibre2: "",
+};
+
 function DimRow({ titulo, dimKey, espKey, mmKey, divKey, resultado, fp, setFp, espesor }) {
   const divVal = parseInt(fp[divKey]) || 1;
   return (
