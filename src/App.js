@@ -6126,7 +6126,6 @@ function Presupuesto({
   const [inputCod, setInputCod] = useState("");
   const [inputCant, setInputCant] = useState(1);
   const [error, setError] = useState("");
-  const [expandido, setExpandido] = useState(null);
   const [preDim, setPreDim] = useState(null);
   const [clienteActivo, setClienteActivo] = useState({ nombre: "", tel: "", dir: "" });
   const [nombreTrabajo, setNombreTrabajo] = useState("");
@@ -6284,7 +6283,6 @@ function Presupuesto({
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 80);
   };
-  const setNota = (keyId, v) =>
     setItems((its) =>
       its.map((it) =>
         (it.id || it.codigo) === keyId ? { ...it, nota: v } : it
