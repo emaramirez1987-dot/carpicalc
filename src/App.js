@@ -5349,6 +5349,201 @@ function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombreP
   );
 }
 
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SeccionCostosDirectos
+// ════════════════════════════════════════════════════════════════════════════
+// Carga ítems de la tabla de Costos directamente en el presupuesto.
+// Casos: horas de MO extra, m² de material, herrajes sueltos, tapacanto.
+// Cada ítem guarda refId para poder actualizarse si el precio cambia en Costos.
+// Los Cortes NO leen estos ítems — son montos directos al total.
+function SeccionCostosDirectos({ costosDirectos, setCostosDirectos, costos }) {
+  const [tipoSel,    setTipoSel]    = useState("mo");
+  const [refSel,     setRefSel]     = useState("");
+  const [cant,       setCant]       = useState(1);
+  const [precio,     setPrecio]     = useState("");
+  const [editId,     setEditId]     = useState(null);
+  const [editForm,   setEditForm]   = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  const TIPOS = [
+    { id: "mo",        label: "Mano de obra", unidad: "hs",  items: costos?.manoDeObra || [] },
+    { id: "material",  label: "Materiales",   unidad: "m²",  items: costos?.materiales || [] },
+    { id: "herraje",   label: "Herrajes",     unidad: "u",   items: costos?.herrajes   || [] },
+    { id: "tapacanto", label: "Tapacanto",    unidad: "ml",  items: costos?.tapacanto  || [] },
+  ];
+  const tipoActual = TIPOS.find(t => t.id === tipoSel);
+
+  const getItemCostos = (tipo, refId) =>
+    (TIPOS.find(x => x.id === tipo)?.items || []).find(x => String(x.id) === String(refId)) || null;
+
+  const getPrecioRef = (tipo, refId) => {
+    const item = getItemCostos(tipo, refId);
+    if (!item) return 0;
+    return tipo === "material" ? (item.precioM2 || 0) : (item.precio || 0);
+  };
+
+  const handleSelItem = (refId) => {
+    setRefSel(refId);
+    const p = getPrecioRef(tipoSel, refId);
+    setPrecio(p ? String(p) : "");
+  };
+
+  const agregar = () => {
+    if (!refSel) return;
+    const item     = getItemCostos(tipoSel, refSel);
+    if (!item) return;
+    const cantNum  = parseFloat(cant)   || 1;
+    const precNum  = parseFloat(precio) || getPrecioRef(tipoSel, refSel);
+    const precBase = getPrecioRef(tipoSel, refSel);
+    setCostosDirectos(prev => [...prev, {
+      id: Date.now(), tipo: tipoSel, refId: refSel,
+      nombre: item.nombre, unidad: tipoActual?.unidad || "u",
+      cantidad: cantNum, precioUnit: precNum,
+      precioManual: precNum !== precBase,
+      subtotal: Math.round(cantNum * precNum),
+    }]);
+    setRefSel(""); setCant(1); setPrecio("");
+  };
+
+  const actualizarPrecio = (id) => {
+    setCostosDirectos(prev => prev.map(x => {
+      if (x.id !== id) return x;
+      const pAct = getPrecioRef(x.tipo, x.refId);
+      return { ...x, precioUnit: pAct, precioManual: false, subtotal: Math.round(x.cantidad * pAct) };
+    }));
+  };
+
+  const totalSeccion = costosDirectos.reduce((a, x) => a + (x.subtotal || 0), 0);
+  const BADGE = { mo: "MO", material: "MAT", herraje: "HRJ", tapacanto: "TC" };
+  const inpSt = { fontFamily: "'DM Mono',monospace", fontSize: 13, padding: "7px 10px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-primary)", outline: "none" };
+
+  return (
+    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", overflow: "visible" }}>
+      <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
+          🔩 Costos directos del taller
+        </span>
+        {costosDirectos.length > 0 && <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(totalSeccion)}</span>}
+      </div>
+
+      <div style={{ padding: "12px 16px" }}>
+        {/* Ítems cargados */}
+        {costosDirectos.length > 0 && (
+          <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+            {costosDirectos.map(x => {
+              const precActual = getPrecioRef(x.tipo, x.refId);
+              const hayCambio  = precActual > 0 && precActual !== x.precioUnit;
+              const editando   = editId === x.id;
+              return (
+                <div key={x.id} style={{ borderRadius: 8, overflow: "hidden", border: editando ? "1.5px solid var(--accent)" : "1px solid var(--border)", background: "var(--bg-surface)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", background: "var(--bg-subtle)", padding: "2px 5px", borderRadius: 4, border: "1px solid var(--border)", flexShrink: 0 }}>
+                      {BADGE[x.tipo]}
+                    </span>
+                    <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)", fontWeight: 500 }}>{x.nombre}</span>
+                    <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>{x.cantidad} {x.unidad} × {fmtPeso(x.precioUnit)}</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.subtotal)}</span>
+                    {hayCambio && (
+                      <button onClick={() => actualizarPrecio(x.id)} title={`Precio actual en Costos: ${fmtPeso(precActual)}`}
+                        style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, cursor: "pointer", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.35)", color: "#c8a02a", fontFamily: "'DM Mono',monospace", fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
+                        ↻ {fmtPeso(precActual)}
+                      </button>
+                    )}
+                    <button onClick={() => { if (editando) { setEditId(null); setEditForm(null); } else { setEditId(x.id); setEditForm({ cantidad: String(x.cantidad), precioUnit: String(x.precioUnit) }); } }}
+                      style={{ background: editando ? "var(--accent-soft)" : "transparent", border: `1px solid ${editando ? "var(--accent-border)" : "var(--border)"}`, color: editando ? "var(--accent)" : "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px", fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                      {editando ? "▲" : "✎"}
+                    </button>
+                    {confirmDel === x.id ? (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button onClick={() => { setCostosDirectos(p => p.filter(a => a.id !== x.id)); setConfirmDel(null); if (editando) { setEditId(null); setEditForm(null); } }}
+                          style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
+                        <button onClick={() => setConfirmDel(null)} style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDel(x.id)} style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
+                    )}
+                  </div>
+                  {editando && editForm && (
+                    <div style={{ borderTop: "1px solid var(--border)", padding: "10px 12px", background: "var(--bg-subtle)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>Cantidad ({x.unidad})</div>
+                        <input type="number" min="0.1" step="0.1" value={editForm.cantidad}
+                          onChange={e => setEditForm(f => ({ ...f, cantidad: e.target.value }))}
+                          style={{ ...inpSt, width: 90, textAlign: "right" }}
+                          onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                          onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>Precio unit.</div>
+                        <input type="number" min="0" value={editForm.precioUnit}
+                          onChange={e => setEditForm(f => ({ ...f, precioUnit: e.target.value }))}
+                          style={{ ...inpSt, width: 110, textAlign: "right" }}
+                          onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                          onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                      </div>
+                      <button onClick={() => {
+                        const c2 = parseFloat(editForm.cantidad)  || x.cantidad;
+                        const p2 = parseFloat(editForm.precioUnit) || x.precioUnit;
+                        const pb = getPrecioRef(x.tipo, x.refId);
+                        setCostosDirectos(prev => prev.map(a => a.id === x.id ? { ...a, cantidad: c2, precioUnit: p2, precioManual: p2 !== pb, subtotal: Math.round(c2 * p2) } : a));
+                        setEditId(null); setEditForm(null);
+                      }} style={{ padding: "8px 14px", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>✓ Confirmar</button>
+                      <button onClick={() => { setEditId(null); setEditForm(null); }}
+                        style={{ padding: "8px 12px", borderRadius: 7, cursor: "pointer", fontSize: 11, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>Cancelar</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pestañas de tipo */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+          {TIPOS.map(t => (
+            <button key={t.id} onClick={() => { setTipoSel(t.id); setRefSel(""); setPrecio(""); }}
+              style={{ padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.15s",
+                background: tipoSel === t.id ? "var(--accent-soft)" : "transparent",
+                border: tipoSel === t.id ? "1px solid var(--accent-border)" : "1px solid var(--border)",
+                color: tipoSel === t.id ? "var(--accent)" : "var(--text-muted)" }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Selector + cantidad + precio */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <select value={refSel} onChange={e => handleSelItem(e.target.value)} style={{ ...inpSt, flex: 1, minWidth: 140 }}>
+            <option value="">— Seleccioná un ítem —</option>
+            {(tipoActual?.items || []).map(it => (
+              <option key={it.id} value={String(it.id)}>
+                {it.nombre} — {fmtPeso(tipoSel === "material" ? it.precioM2 : it.precio)}/{tipoActual?.unidad}
+              </option>
+            ))}
+          </select>
+          <div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>Cant. ({tipoActual?.unidad})</div>
+            <input type="number" min="0.1" step="0.1" placeholder="1" value={cant}
+              onChange={e => setCant(e.target.value)} style={{ ...inpSt, width: 80, textAlign: "right" }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>Precio unit.</div>
+            <input type="number" min="0" placeholder="auto" value={precio}
+              onChange={e => setPrecio(e.target.value)} style={{ ...inpSt, width: 110, textAlign: "right" }} />
+          </div>
+          <button onClick={agregar} disabled={!refSel}
+            style={{ padding: "8px 16px", borderRadius: 7, cursor: refSel ? "pointer" : "not-allowed", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, opacity: refSel ? 1 : 0.45, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+            + Agregar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── SeccionAdicionales ────────────────────────────────────────────
 // Gastos extra: flete, instalación, diseño, etc.
 // Independiente de los módulos — no afecta Cortes ni Materiales.
@@ -5534,6 +5729,8 @@ function Presupuesto({
   onPresupuestoEditarConsumed,
   adicionales = [],
   setAdicionales,
+  costosDirectos = [],
+  setCostosDirectos,
   onGuardarExtraFrecuente,
   // Nivel 3: integración con catálogo
   onVerCatalogo,
@@ -5552,7 +5749,8 @@ function Presupuesto({
     setClienteActivo(p.cliente || { nombre: "", tel: "", dir: "" });
     setNombreTrabajo(p.nombre || "");
     setPresupuestoActivoId(id);
-    
+    if (typeof setCostosDirectos === "function")
+      setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
     onPresupuestoEditarConsumed && onPresupuestoEditarConsumed();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presupuestoParaEditar]);
@@ -5788,13 +5986,13 @@ function Presupuesto({
                 })()}
                 <button onClick={() => presupuestoActivoId ? setDialogoGuardar(true) : (() => {
                   onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
-                  setItems([]); setDimOverride({}); setAdicionales([]); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setAlertaPrecios(null); onDismissBorrador && onDismissBorrador();
+                  setItems([]); setDimOverride({}); setAdicionales([]); setCostosDirectos([]); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setAlertaPrecios(null); onDismissBorrador && onDismissBorrador();
                 })()}
                   style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 2px 8px rgba(180,100,20,0.25)" }}>
                   💾 Guardar
                 </button>
                 <button onClick={() => {
-                  setItems([]); setDimOverride({}); setAdicionales([]); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setAlertaPrecios(null); setEditandoModuloIdx(null); setInputCod(""); setPreDim(null); onDismissBorrador && onDismissBorrador();
+                  setItems([]); setDimOverride({}); setAdicionales([]); setCostosDirectos([]); setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" }); setPresupuestoActivoId(null); setAlertaPrecios(null); setEditandoModuloIdx(null); setInputCod(""); setPreDim(null); onDismissBorrador && onDismissBorrador();
                 }} style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "transparent", border: "1px solid rgba(200,60,60,0.30)", color: "#e07070" }}>
                   ✕ Cancelar
                 </button>
@@ -6177,7 +6375,29 @@ function Presupuesto({
           </div>
         )}
 
-        {/* 4. Barra de total colapsable — dentro de la card, al pie */}
+        {/* Costos directos dentro de la card */}
+        {costosDirectos.length > 0 && (
+          <div style={{ padding: "0 16px 12px", borderTop: (items.length > 0 || adicionales.length > 0) ? "1px dashed var(--separator)" : "none" }}>
+            <div style={{ paddingTop: 12, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
+              Costos directos
+            </div>
+            {costosDirectos.map(x => {
+              const BADGE = { mo: "MO", material: "MAT", herraje: "HRJ", tapacanto: "TC" };
+              return (
+                <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", marginBottom: 6, background: "var(--bg-subtle)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                  <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", background: "var(--bg-surface)", padding: "2px 5px", borderRadius: 4, border: "1px solid var(--border)", flexShrink: 0 }}>
+                    {BADGE[x.tipo]}
+                  </span>
+                  <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>{x.nombre}</span>
+                  <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+                    {x.cantidad} {x.unidad}
+                  </span>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.subtotal)}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {(items.length > 0 || adicionales.length > 0) && (
           <div style={{ borderTop: "1px solid var(--separator)" }}>
             <BarraTotal
@@ -6210,7 +6430,14 @@ function Presupuesto({
       {/* ══ Secciones de carga — solo visibles cuando hay nombre ══ */}
       {nombreTrabajo.trim() && (<>
 
-      {/* Formulario de extras — fuera de la card */}
+      {/* Costos directos del taller (MO, materiales, herrajes, tapacanto) */}
+      <SeccionCostosDirectos
+        costosDirectos={costosDirectos}
+        setCostosDirectos={setCostosDirectos}
+        costos={costos}
+      />
+
+      {/* Gastos extras de monto libre (flete, diseño, etc.) */}
       <SeccionAdicionales
         adicionales={adicionales}
         setAdicionales={setAdicionales}
@@ -6574,8 +6801,29 @@ function VistaPrevia({
                         <button
                           disabled={!necesita}
                           onClick={() => {
-                            const nuevoTotal = recalcularTotalPresupuesto(presSel, modulos, costos);
-                            if (nuevoTotal !== null) onActualizarPresupuesto(presSelId, { total: Math.round(nuevoTotal), costosVersionAl: Date.now() });
+                            // Recalcula módulos
+                            const nuevoTotalModulos = recalcularTotalPresupuesto(presSel, modulos, costos);
+                            // Recalcula costos directos vinculados (usa precio actual de la tabla)
+                            const PRECIO_REF = (tipo, refId) => {
+                              const tabla = { mo: costos?.manoDeObra, material: costos?.materiales, herraje: costos?.herrajes, tapacanto: costos?.tapacanto };
+                              const it = (tabla[tipo] || []).find(x => String(x.id) === String(refId));
+                              if (!it) return null;
+                              return tipo === "material" ? it.precioM2 : it.precio;
+                            };
+                            const nuevosCostosDirectos = (presSel.costosDirectos || []).map(x => {
+                              if (x.precioManual) return x; // precio sobreescrito manualmente → no tocar
+                              const precActual = PRECIO_REF(x.tipo, x.refId);
+                              if (!precActual) return x;
+                              return { ...x, precioUnit: precActual, subtotal: Math.round(x.cantidad * precActual) };
+                            });
+                            const totalCD = nuevosCostosDirectos.reduce((a, x) => a + (x.subtotal || 0), 0);
+                            const totalAd = (presSel.adicionales || []).reduce((a, x) => a + (parseFloat(x.monto) || 0), 0);
+                            const nuevoTotal = (nuevoTotalModulos || 0) + totalCD + totalAd;
+                            onActualizarPresupuesto(presSelId, {
+                              total: Math.round(nuevoTotal),
+                              costosVersionAl: Date.now(),
+                              costosDirectos: nuevosCostosDirectos,
+                            });
                           }}
                           title={necesita ? "Costos actualizados — recalculá el precio" : "Precio al día"}
                           style={{
@@ -8810,8 +9058,10 @@ function AppInterna() {
   const [saveEst, setSaveEst] = useState(null);
   const [items, setItems] = useState([]);
   const [dimOverride, setDimOverride] = useState({});
-  // Adicionales: gastos extra que no son módulos (flete, instalación, etc.)
+  // Adicionales: gastos extra de monto libre (flete, diseño, etc.)
   const [adicionales, setAdicionales] = useState([]);
+  // Costos Directos: ítems vinculados a la tabla de costos (MO, materiales, herrajes, tapacanto)
+  const [costosDirectos, setCostosDirectos] = useState([]);
   const [presupuestoVistaPreviaId, setPresupuestoVistaPreviaId] = useState(null);
   // NAVEGACIÓN - Enlace Presupuesto a Caja
   // Cuando el usuario hace click en "Ver Rentabilidad" desde Vista Previa,
@@ -8903,8 +9153,8 @@ function AppInterna() {
     [modulos, dimOverride]
   );
 
-  // LÓGICA - Adicionales: totalGeneral incluye módulos + extras (flete, instalación, etc.)
-  // calcularModulo solo se llama para módulos — los adicionales son montos directos
+  // totalGeneral = módulos + adicionales libres + costos directos vinculados a tabla
+  // Solo los módulos usan calcularModulo — los otros dos son montos directos
   const totalModulos = !costos
     ? 0
     : items.reduce((acc, it) => {
@@ -8914,8 +9164,9 @@ function AppInterna() {
         if (!c) return acc;
         return acc + c.total * it.cantidad;
       }, 0);
-  const totalAdicionales = adicionales.reduce((a, x) => a + (parseFloat(x.monto) || 0), 0);
-  const totalGeneral = totalModulos + totalAdicionales;
+  const totalAdicionales  = adicionales.reduce((a, x) => a + (parseFloat(x.monto) || 0), 0);
+  const totalCostosDirectos = costosDirectos.reduce((a, x) => a + (parseFloat(x.subtotal) || 0), 0);
+  const totalGeneral = totalModulos + totalAdicionales + totalCostosDirectos;
 
   const handleGuardarPresupuesto = async (nombre, cliente, nota, presupuestoCompleto) => {
     const id = String(Date.now());
@@ -8923,24 +9174,25 @@ function AppInterna() {
       ...presupuestos,
       [id]: presupuestoCompleto || {
         nombre,
-        cliente: cliente || { nombre: "", tel: "", dir: "" },
-        nota: nota || "",
-        estado: "nuevo",
-        items: [...items],
-        dimOverride: { ...dimOverride },
-        adicionales: [...adicionales],  // ← guarda los extras
-        total: totalGeneral,
+        cliente:       cliente || { nombre: "", tel: "", dir: "" },
+        nota:          nota || "",
+        estado:        "nuevo",
+        items:         [...items],
+        dimOverride:   { ...dimOverride },
+        adicionales:   [...adicionales],
+        costosDirectos:[...costosDirectos],
+        total:         totalGeneral,
       },
     };
     setPresupuestos(nuevo);
     withSave(() => guardarPresupuestos(nuevo));
     localStorage.removeItem("carpicalc:borrador");
   };
-  // LOGICA - Edición de Presupuestos Existentes
   const handleCargarPresupuesto = (p, id) => {
     setItems(p.items ? [...p.items] : []);
     setDimOverride(p.dimOverride && typeof p.dimOverride === "object" ? { ...p.dimOverride } : {});
-    setAdicionales(Array.isArray(p.adicionales) ? [...p.adicionales] : []);  // ← carga extras
+    setAdicionales(Array.isArray(p.adicionales) ? [...p.adicionales] : []);
+    setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
     localStorage.removeItem("carpicalc:borrador");
   };
   // LÓGICA - Adicionales: guarda un extra nuevo en costos.extrasFrecuentes
@@ -9076,6 +9328,8 @@ function AppInterna() {
               onDismissBorrador={() => setBorradorRecuperado(false)}
               adicionales={adicionales}
               setAdicionales={setAdicionales}
+              costosDirectos={costosDirectos}
+              setCostosDirectos={setCostosDirectos}
               onGuardarExtraFrecuente={handleGuardarExtraFrecuente}
               onVerCatalogo={(codigo) => {
                 setCatalogoModuloDeepLink(codigo);
