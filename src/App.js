@@ -2581,7 +2581,10 @@ function FormModulo({
   codigoEditar,
 }) {
   const esEdicion = !!codigoEditar;
-  const [paso, setPaso] = useState(1);
+  // En modo edición el paso 1 (datos básicos) ya está completo.
+  // Saltear directamente al paso 2 (piezas) para que el usuario
+  // pueda editar lo que necesita sin tener que pasar por el código bloqueado.
+  const [paso, setPaso] = useState(esEdicion ? 2 : 1);
   const [datos, setDatos] = useState(() =>
     moduloBase
       ? {
@@ -2722,7 +2725,13 @@ function FormModulo({
                 setDatos((d) => ({ ...d, codigo: v.toUpperCase() }))
               }
               disabled={esEdicion}
+              style={esEdicion ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
             />
+            {esEdicion && (
+              <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", marginTop: -6 }}>
+                El código no se puede modificar en modo edición
+              </div>
+            )}
             <TextInput
               label="Nombre"
               placeholder="Módulo bajo mesada 80cm"
