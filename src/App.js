@@ -3760,7 +3760,14 @@ function CatalogoModulos({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deepLinkCodigo]);
   const [msg, setMsg] = useState(null);
-  const [vistaLayout, setVista] = useState("grid");
+  const [vistaLayout, setVistaLayout] = useState(() => {
+    try { return localStorage.getItem("carpicalc:catalogo_vista") || "grid"; }
+    catch { return "grid"; }
+  });
+  const setVista = (v) => {
+    setVistaLayout(v);
+    try { localStorage.setItem("carpicalc:catalogo_vista", v); } catch {}
+  };
   const [busqueda, setBusqueda] = useState("");
   const [categoriasColapsadas, setCategoriasColapsadas] = useState({});
   const { ToastContainer } = useUndo();
@@ -5328,8 +5335,9 @@ function ResumenPresupuesto({
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                {items.reduce((a, i) => a + i.cantidad, 0)} unidades ·{" "}
-                {items.length} módulo{items.length !== 1 ? "s" : ""}
+                {items.reduce((a, i) => a + i.cantidad, 0)} u · {items.length} mód.
+                {adicionales.length > 0 && ` · ${adicionales.length} extra${adicionales.length !== 1 ? "s" : ""}`}
+                {costosDirectos.length > 0 && ` · ${costosDirectos.length} costo${costosDirectos.length !== 1 ? "s" : ""}`}
               </div>
               <button onClick={() => setMostrarIVA(v => !v)}
                 style={{
@@ -5398,7 +5406,7 @@ function ResumenPresupuesto({
 }
 
 // ── BarraTotal ────────────────────────────────────────────────────
-function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombrePresupuesto, descuento = 0, gananciaExtra = 0 }) {
+function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombrePresupuesto, descuento = 0, gananciaExtra = 0, adicionales = [], costosDirectos = [], mostrarExtras = true, mostrarCostosDirectos = true }) {
   const [expandido, setExpandido] = useState(false);
   const [mostrarIVA, setMostrarIVA] = useState(false);
   const totalConIVA = Math.round(totalGeneral * 1.21);
@@ -5908,7 +5916,10 @@ function Presupuesto({
   const [confirmDelModulo, setConfirmDelModulo] = useState(null);
   // Modal Nivel 2 de edición
   const [modalEdicion, setModalEdicion] = useState(null);
-  const [pestañaActiva, setPestañaActiva] = useState("modulos"); // "modulos" | "costos" | "extras"
+  const [pestañaActiva, setPestañaActiva] = useState("modulos");
+  // Toggle visual por sección — no afecta el cálculo del total
+  const [mostrarExtras, setMostrarExtras] = useState(true);
+  const [mostrarCostosDirectos, setMostrarCostosDirectos] = useState(true);
   // Fix timing Nivel 3: pendingDeepLink espera que modulos[tempCod] exista
   // antes de navegar. El useEffect lo detecta después del re-render.
   const [pendingDeepLink, setPendingDeepLink] = useState(null);
@@ -6244,19 +6255,38 @@ function Presupuesto({
         minHeight: 120,
       }}>
         {/* Header de la card */}
-        <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--separator)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--separator)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--text-muted)" }}>
             Ítems del presupuesto
           </span>
-          {(items.length > 0 || adicionales.length > 0) && (
-            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
-              {items.length} módulo{items.length !== 1 ? "s" : ""}{adicionales.length > 0 ? ` · ${adicionales.length} extra${adicionales.length !== 1 ? "s" : ""}` : ""}
-            </span>
-          )}
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            {/* Desglose del contador */}
+            {(items.length > 0 || adicionales.length > 0 || costosDirectos.length > 0) && (
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+                {items.length} mód.
+                {adicionales.length > 0 && ` · ${adicionales.length} extra${adicionales.length !== 1 ? "s" : ""}`}
+                {costosDirectos.length > 0 && ` · ${costosDirectos.length} costo${costosDirectos.length !== 1 ? "s" : ""}`}
+              </span>
+            )}
+            {/* Toggle 👁 extras */}
+            {adicionales.length > 0 && (
+              <button onClick={() => setMostrarExtras(v => !v)} title={mostrarExtras ? "Ocultar extras del resumen" : "Mostrar extras en el resumen"}
+                style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", padding: "2px 8px", borderRadius: 5, cursor: "pointer", border: `1px solid ${mostrarExtras ? "var(--border)" : "rgba(200,160,42,0.40)"}`, background: mostrarExtras ? "transparent" : "rgba(200,160,42,0.10)", color: mostrarExtras ? "var(--text-muted)" : "#c8a02a", transition: "all 0.15s" }}>
+                {mostrarExtras ? "👁 extras" : "👁 extras"}
+              </button>
+            )}
+            {/* Toggle 👁 costos directos */}
+            {costosDirectos.length > 0 && (
+              <button onClick={() => setMostrarCostosDirectos(v => !v)} title={mostrarCostosDirectos ? "Ocultar costos directos del resumen" : "Mostrar costos directos en el resumen"}
+                style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", padding: "2px 8px", borderRadius: 5, cursor: "pointer", border: `1px solid ${mostrarCostosDirectos ? "var(--border)" : "rgba(200,160,42,0.40)"}`, background: mostrarCostosDirectos ? "transparent" : "rgba(200,160,42,0.10)", color: mostrarCostosDirectos ? "var(--text-muted)" : "#c8a02a", transition: "all 0.15s" }}>
+                {mostrarCostosDirectos ? "👁 costos" : "👁 costos"}
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Estado vacío — siempre visible con la card */}
-        {items.length === 0 && adicionales.length === 0 && (
+        {/* Estado vacío */}
+        {items.length === 0 && adicionales.length === 0 && costosDirectos.length === 0 && (
           <div style={{ padding: "52px 20px", textAlign: "center" }}>
             <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.18 }}>◻</div>
             <p style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 400, letterSpacing: "0.01em", lineHeight: 1.6 }}>
@@ -6289,9 +6319,9 @@ function Presupuesto({
                 borderBottom: estaEditando ? "none" : "1px solid rgba(255,255,255,0.04)",
                 transition: "background 0.15s",
               }}>
-                {/* Fila principal del módulo — compacta */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "8px 16px" }}>
-                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, fontWeight: 700, color: "var(--accent)", flexShrink: 0, opacity: 0.7 }}>{item.codigo.startsWith("TEMP_") ? "VAR" : item.codigo}</span>
+                {/* Fila principal del módulo — misma grilla que extras y costos */}
+                <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto auto", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "8px 16px" }}>
+                  <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--accent)", whiteSpace: "nowrap", opacity: 0.7 }}>{item.codigo.startsWith("TEMP_") ? "VAR" : item.codigo}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                       {modUsado.nombre}
@@ -6610,39 +6640,42 @@ function Presupuesto({
           </div>
         )}
 
-        {/* Adicionales — integrados fluidamente, sin título de sección */}
+        {/* Adicionales — misma grilla que módulos, con toggle de visibilidad */}
         {adicionales.length > 0 && (
-          <div style={{ padding: "0 16px 4px" }}>
+          <div style={{ padding: "0 16px 4px", opacity: mostrarExtras ? 1 : 0.45, transition: "opacity 0.2s" }}>
             {items.length > 0 && <div style={{ height: 1, background: "var(--separator)", margin: "0 0 4px", opacity: 0.5 }} />}
             {adicionales.map(x => {
               const editandoEste = editandoExtraId === x.id;
               const esFrecuente = (costos?.extrasFrecuentes || []).some(f => f.nombre.toLowerCase() === x.nombre.toLowerCase());
               return (
                 <div key={x.id} style={{ borderBottom: editandoEste ? "none" : "1px solid rgba(255,255,255,0.04)", overflow: "hidden" }}>
-                  {/* Fila principal — compacta */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 4px" }}>
-                    <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#c8a02a", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0, minWidth: 56 }}>
+                  {/* Fila principal — misma grilla que módulos */}
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto auto", alignItems: "center", gap: 10, padding: "7px 4px" }}>
+                    <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#c8a02a", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
                       Extra
                     </span>
-                    <span style={{ flex: 1, fontSize: 12, color: "var(--text-secondary)" }}>{x.nombre}</span>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.monto)}</span>
-                    <button onClick={() => {
-                      if (editandoEste) { setEditandoExtraId(null); setEditandoExtraForm(null); }
-                      else { setEditandoExtraId(x.id); setEditandoExtraForm({ nombre: x.nombre, monto: String(x.monto) }); }
-                    }} style={{ background: "none", border: "none", color: editandoEste ? "var(--accent)" : "var(--text-muted)", cursor: "pointer", fontSize: 11, padding: "2px 5px", fontFamily: "'DM Mono',monospace", fontWeight: 700, opacity: 0.7 }}>
-                      {editandoEste ? "▲" : "✎"}
-                    </button>
-                    {confirmDelModulo === `extra-${x.id}` ? (
-                      <div style={{ display: "flex", gap: 3 }}>
-                        <button onClick={() => { setAdicionales(prev => prev.filter(a => a.id !== x.id)); setConfirmDelModulo(null); if (editandoEste) { setEditandoExtraId(null); setEditandoExtraForm(null); } }}
-                          style={{ padding: "2px 7px", borderRadius: 4, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
-                        <button onClick={() => setConfirmDelModulo(null)}
-                          style={{ padding: "2px 6px", borderRadius: 4, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setConfirmDelModulo(`extra-${x.id}`)}
-                        style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: "2px 4px", opacity: 0.5, lineHeight: 1 }}>×</button>
-                    )}
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.nombre}</span>
+                    <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textAlign: "right" }}>—</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", textAlign: "right", whiteSpace: "nowrap" }}>{fmtPeso(x.monto)}</span>
+                    <div style={{ display: "flex", gap: 3, justifyContent: "flex-end" }}>
+                      <button onClick={() => {
+                        if (editandoEste) { setEditandoExtraId(null); setEditandoExtraForm(null); }
+                        else { setEditandoExtraId(x.id); setEditandoExtraForm({ nombre: x.nombre, monto: String(x.monto) }); }
+                      }} style={{ background: "none", border: "none", color: editandoEste ? "var(--accent)" : "var(--text-muted)", cursor: "pointer", fontSize: 11, padding: "2px 5px", fontFamily: "'DM Mono',monospace", fontWeight: 700, opacity: 0.7 }}>
+                        {editandoEste ? "▲" : "✎"}
+                      </button>
+                      {confirmDelModulo === `extra-${x.id}` ? (
+                        <>
+                          <button onClick={() => { setAdicionales(prev => prev.filter(a => a.id !== x.id)); setConfirmDelModulo(null); if (editandoEste) { setEditandoExtraId(null); setEditandoExtraForm(null); } }}
+                            style={{ padding: "2px 7px", borderRadius: 4, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
+                          <button onClick={() => setConfirmDelModulo(null)}
+                            style={{ padding: "2px 6px", borderRadius: 4, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                        </>
+                      ) : (
+                        <button onClick={() => setConfirmDelModulo(`extra-${x.id}`)}
+                          style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: "2px 4px", opacity: 0.5, lineHeight: 1 }}>×</button>
+                      )}
+                    </div>
                   </div>
                   {/* Acordeón edición — inline */}
                   {editandoEste && editandoExtraForm && (
@@ -6691,9 +6724,9 @@ function Presupuesto({
           </div>
         )}
 
-        {/* Costos directos dentro de la card — sin título, integrados fluidamente */}
+        {/* Costos directos — misma grilla que módulos, con botón × y toggle */}
         {costosDirectos.length > 0 && (
-          <div style={{ padding: "0 16px 4px" }}>
+          <div style={{ padding: "0 16px 4px", opacity: mostrarCostosDirectos ? 1 : 0.45, transition: "opacity 0.2s" }}>
             {items.length > 0 || adicionales.length > 0
               ? <div style={{ height: 1, background: "var(--separator)", margin: "0 0 4px", opacity: 0.5 }} />
               : null}
@@ -6701,15 +6734,29 @@ function Presupuesto({
               const COLOR = { mo: "#9b7fd4", material: "#7090c0", herraje: "#c0906a", tapacanto: "#6aab8e" };
               const LABEL = { mo: "Mano de obra", material: "Material", herraje: "Herraje", tapacanto: "Tapacanto" };
               return (
-                <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 4px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                  <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: COLOR[x.tipo], textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0, minWidth: 56 }}>
+                <div key={x.id} style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto auto", alignItems: "center", gap: 10, padding: "7px 4px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: COLOR[x.tipo], textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
                     {LABEL[x.tipo]}
                   </span>
-                  <span style={{ flex: 1, fontSize: 12, color: "var(--text-secondary)" }}>{x.nombre}</span>
-                  <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginRight: 4 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.nombre}</span>
+                  <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textAlign: "right", whiteSpace: "nowrap" }}>
                     {x.cantidad} {x.unidad}
                   </span>
-                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.subtotal)}</span>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", textAlign: "right", whiteSpace: "nowrap" }}>{fmtPeso(x.subtotal)}</span>
+                  {/* Botón × con confirmación */}
+                  <div style={{ display: "flex", gap: 3, justifyContent: "flex-end" }}>
+                    {confirmDelModulo === `cd-${x.id}` ? (
+                      <>
+                        <button onClick={() => { setCostosDirectos(prev => prev.filter(a => a.id !== x.id)); setConfirmDelModulo(null); }}
+                          style={{ padding: "2px 7px", borderRadius: 4, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
+                        <button onClick={() => setConfirmDelModulo(null)}
+                          style={{ padding: "2px 6px", borderRadius: 4, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                      </>
+                    ) : (
+                      <button onClick={() => setConfirmDelModulo(`cd-${x.id}`)}
+                        style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: "2px 4px", opacity: 0.5, lineHeight: 1 }}>×</button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -6726,6 +6773,10 @@ function Presupuesto({
               nombrePresupuesto={nombreTrabajo}
               descuento={presupuestoActivoId ? (presupuestos[presupuestoActivoId]?.descuento || 0) : 0}
               gananciaExtra={presupuestoActivoId ? (presupuestos[presupuestoActivoId]?.gananciaExtra || 0) : 0}
+              adicionales={adicionales}
+              costosDirectos={costosDirectos}
+              mostrarExtras={mostrarExtras}
+              mostrarCostosDirectos={mostrarCostosDirectos}
             />
           </div>
         )}
