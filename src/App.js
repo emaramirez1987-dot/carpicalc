@@ -6300,9 +6300,9 @@ function Presupuesto({
           </div>
         )}
 
-        {/* 3. Módulos cargados — acordeón inline para edición */}
+        {/* Módulos cargados — mismo sistema visual que FilaModuloLista del catálogo */}
         {items.length > 0 && (
-          <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
           {items.map((item, idx) => {
             const keyId = item.id || item.codigo;
             const modUsado = getModUsado(item);
@@ -6317,46 +6317,68 @@ function Presupuesto({
 
             return (
               <div key={keyId} style={{
+                borderRadius: 10,
+                border: `1px solid ${estaEditando ? "var(--accent-border)" : "var(--border)"}`,
+                background: "var(--bg-surface)",
                 overflow: "hidden",
-                borderBottom: estaEditando ? "none" : "1px solid rgba(255,255,255,0.04)",
-                transition: "background 0.15s",
-              }}>
-                {/* Fila principal del módulo — misma grilla que extras y costos */}
-                <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto auto", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "8px 16px" }}>
-                  <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--accent)", whiteSpace: "nowrap", opacity: 0.7 }}>{item.codigo.startsWith("TEMP_") ? "VAR" : item.codigo}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                      {modUsado.nombre}
+                transition: "border-color 0.15s",
+              }}
+                onMouseEnter={e => { if (!estaEditando) e.currentTarget.style.borderColor = "var(--accent-border)"; }}
+                onMouseLeave={e => { if (!estaEditando) e.currentTarget.style.borderColor = "var(--border)"; }}
+              >
+                {/* Fila principal — mismo layout que FilaModuloLista */}
+                <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 14px", flexWrap: "wrap" }}>
+                  {/* Código */}
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>
+                    {item.codigo.startsWith("TEMP_") ? "VAR" : item.codigo}
+                  </span>
+
+                  {/* Nombre + badge temp + dimensiones */}
+                  <div style={{ flex: 2, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{modUsado.nombre}</span>
                       {esTemp && (
-                        <span style={{ fontSize: 8, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.30)", color: "#c8a02a", borderRadius: 3, padding: "1px 4px" }}>
-                          ✦ temp
+                        <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.30)", color: "#c8a02a", borderRadius: 3, padding: "1px 5px" }}>
+                          ✦ var
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: dimDif ? "var(--accent)" : "var(--text-muted)", marginTop: 1, opacity: 0.8 }}>
-                      {over.ancho}×{over.profundidad}×{over.alto} · {TIPO_MAT[modUsado.material]}
+                    <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: dimDif ? "var(--accent)" : "var(--text-muted)", marginTop: 2 }}>
+                      {over.ancho}×{over.profundidad}×{over.alto} mm
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: Math.max(1, it.cantidad - 1) } : it))}
-                        style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.7 }}>−</button>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, minWidth: 18, textAlign: "center" }}>{item.cantidad}</span>
-                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: it.cantidad + 1 } : it))}
-                        style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.7 }}>+</button>
-                    </div>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", minWidth: 72, textAlign: "right" }}>
-                      {fmtPeso(calc.total * item.cantidad)}
-                    </span>
+
+                  {/* Material + espesor — mismo Badge del catálogo */}
+                  <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                    <Badge>{TIPO_MAT[modUsado.material]}</Badge>
+                    {calc.espesor && <Badge color="#705090">{calc.espesor}mm</Badge>}
+                  </div>
+
+                  {/* Cantidad − n + */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                    <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: Math.max(1, it.cantidad - 1) } : it))}
+                      style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, minWidth: 18, textAlign: "center", color: "var(--accent)" }}>{item.cantidad}</span>
+                    <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: it.cantidad + 1 } : it))}
+                      style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                  </div>
+
+                  {/* Precio — mismo estilo que catálogo */}
+                  <div style={{ display: "flex", gap: 16, flexShrink: 0, fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
+                    <span style={{ color: "#9ab080" }}>{fmtNum(calc.m2Neto)} m²</span>
+                    <span style={{ color: "#7ecf8a", fontWeight: 700 }}>{fmtPeso(calc.total * item.cantidad)}</span>
+                  </div>
+
+                  {/* Acciones: ✎ y × */}
+                  <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
                     <button
                       onClick={() => {
                         if (estaEditando) {
-                          // Revertir: eliminar la copia temporal y restaurar el item al original
                           if (modalEdicion?.tempCod && modalEdicion?.origenCodigo) {
                             const nuevosModulos = { ...modulos };
                             delete nuevosModulos[modalEdicion.tempCod];
                             setModulos && setModulos(nuevosModulos);
-                            hSaveModulos && hSaveModulos(nuevosModulos); // persiste limpieza
+                            hSaveModulos && hSaveModulos(nuevosModulos);
                             setItems(its => its.map((it, i) =>
                               i === idx ? { ...it, codigo: modalEdicion.origenCodigo } : it
                             ));
@@ -6364,70 +6386,57 @@ function Presupuesto({
                           setModalEdicion(null);
                           return;
                         }
-                        // ── Crear copia del módulo INMEDIATAMENTE al abrir el acordeón ──
-                        // Así tanto la edición rápida como el Nivel 3 trabajan sobre la misma copia.
-                        // Nunca se toca el módulo original.
                         const modOrig = modulos[item.codigo];
-
-                        // Si el ítem ya apunta a un TEMP existente, reutilizarlo
-                        // conservando todos los cambios previos (piezas, dimensiones, etc.)
                         if (modOrig?.temporal) {
                           setModalEdicion({
-                            item,
-                            idx,
-                            modBase:     modOrig,
-                            dims:        { ...modOrig.dimensiones },
-                            material:    modOrig.material || "melamina",
-                            cantidad:    item.cantidad,
-                            dialogoGuardar: false,
-                            tempCod:     item.codigo,
+                            item, idx, modBase: modOrig,
+                            dims: { ...modOrig.dimensiones },
+                            material: modOrig.material || "melamina",
+                            cantidad: item.cantidad, dialogoGuardar: false,
+                            tempCod: item.codigo,
                             origenCodigo: modOrig.origenCodigo || item.codigo,
                           });
                           return;
                         }
-
-                        // Ítem apunta al original → crear copia TEMP
-                        // El TEMP hereda todas las piezas y datos del original
-                        const origenBase    = item.codigo;
+                        const origenBase = item.codigo;
                         const modOrigenReal = modOrig;
-
-                        // Calcular número de variante incremental
-                        const varianteN = Object.values(modulos).filter(m =>
-                          m.origenCodigo === origenBase && m.temporal
-                        ).length + 1;
-
+                        const varianteN = Object.values(modulos).filter(m => m.origenCodigo === origenBase && m.temporal).length + 1;
                         const tempCod = `TEMP_${Date.now()}`;
                         const copiaInicial = {
                           ...modOrigenReal,
                           nombre: `${modOrigenReal?.nombre || origenBase} - Variante ${varianteN}`,
-                          temporal:      true,
-                          origenCodigo:  origenBase,
+                          temporal: true, origenCodigo: origenBase,
                           presupuestoId: presupuestoActivoId || null,
                           piezas:   (modOrigenReal?.piezas   || []).map(p => ({ ...p })),
                           herrajes: (modOrigenReal?.herrajes  || []).map(h => ({ ...h })),
                         };
-
-                        // Si el ítem ya era un TEMP lo reutilizamos (ver bloque arriba).
-                        // Llegando aquí siempre es un módulo original → crear TEMP nuevo.
-                        setModulos && setModulos(prev => ({
-                          ...prev,
-                          [tempCod]: copiaInicial,
-                        }));
-
-                        // Redirigir el item del presupuesto a la copia
+                        setModulos && setModulos(prev => ({ ...prev, [tempCod]: copiaInicial }));
                         const nuevoItem = { ...item, codigo: tempCod };
                         setItems(its => its.map((it, i) => i === idx ? nuevoItem : it));
-
-                        // Abrir el acordeón sobre la copia
                         setModalEdicion({
-                          item: nuevoItem,    // item ya apunta a la copia
-                          idx,
-                          modBase: copiaInicial,
+                          item: nuevoItem, idx, modBase: copiaInicial,
                           dims: { ...copiaInicial.dimensiones },
                           material: copiaInicial.material || "melamina",
-                          cantidad: item.cantidad,
-                          dialogoGuardar: false,
-                          tempCod,            // guardamos el código para Nivel 3
+                          cantidad: item.cantidad, dialogoGuardar: false,
+                          tempCod, origenCodigo: origenBase,
+                        });
+                      }}
+                      style={{ padding: "4px 10px", borderRadius: 5, border: `1px solid ${estaEditando ? "var(--accent-border)" : "var(--border)"}`, background: estaEditando ? "var(--accent-soft)" : "transparent", color: estaEditando ? "var(--accent)" : "var(--text-muted)", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.15s" }}>
+                      {estaEditando ? "▲" : "✎"}
+                    </button>
+                    {confirmDelModulo === keyId ? (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button onClick={() => { setItems(its => its.filter((_, i) => i !== idx)); if (estaEditando) setModalEdicion(null); setConfirmDelModulo(null); }}
+                          style={{ padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
+                        <button onClick={() => setConfirmDelModulo(null)}
+                          style={{ padding: "4px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDelModulo(keyId)}
+                        style={{ padding: "4px 8px", borderRadius: 5, border: "1px solid rgba(200,60,60,0.22)", background: "transparent", color: "#e07070", cursor: "pointer", fontSize: 11, transition: "all 0.15s" }}>×</button>
+                    )}
+                  </div>
+                </div>
                           origenCodigo: origenBase,
                         });
                       }}
@@ -6642,40 +6651,45 @@ function Presupuesto({
           </div>
         )}
 
-        {/* Adicionales — misma grilla que módulos, con toggle de visibilidad */}
+        {/* Adicionales — mismo sistema visual que módulos */}
         {adicionales.length > 0 && (
-          <div style={{ padding: "0 16px 4px", opacity: mostrarExtras ? 1 : 0.45, transition: "opacity 0.2s" }}>
-            {items.length > 0 && <div style={{ height: 1, background: "var(--separator)", margin: "0 0 4px", opacity: 0.5 }} />}
+          <div style={{ padding: "0 12px 10px", opacity: mostrarExtras ? 1 : 0.45, transition: "opacity 0.2s" }}>
+            {items.length > 0 && <div style={{ height: 1, background: "var(--separator)", margin: "0 0 6px", opacity: 0.4 }} />}
             {adicionales.map(x => {
               const editandoEste = editandoExtraId === x.id;
               const esFrecuente = (costos?.extrasFrecuentes || []).some(f => f.nombre.toLowerCase() === x.nombre.toLowerCase());
               return (
-                <div key={x.id} style={{ borderBottom: editandoEste ? "none" : "1px solid rgba(255,255,255,0.04)", overflow: "hidden" }}>
-                  {/* Fila principal — misma grilla que módulos */}
-                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto auto", alignItems: "center", gap: 10, padding: "7px 4px" }}>
-                    <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#c8a02a", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+                <div key={x.id} style={{
+                  borderRadius: 10, border: `1px solid ${editandoEste ? "var(--accent-border)" : "var(--border)"}`,
+                  background: "var(--bg-surface)", overflow: "hidden", marginBottom: 6, transition: "border-color 0.15s",
+                }}
+                  onMouseEnter={e => { if (!editandoEste) e.currentTarget.style.borderColor = "var(--accent-border)"; }}
+                  onMouseLeave={e => { if (!editandoEste) e.currentTarget.style.borderColor = "var(--border)"; }}
+                >
+                  {/* Fila principal — mismo layout que módulos */}
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto", alignItems: "center", gap: 14, padding: "10px 14px" }}>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "#c8a02a", flexShrink: 0 }}>
                       Extra
                     </span>
-                    <span style={{ fontSize: 12, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.nombre}</span>
-                    <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textAlign: "right" }}>—</span>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", textAlign: "right", whiteSpace: "nowrap" }}>{fmtPeso(x.monto)}</span>
-                    <div style={{ display: "flex", gap: 3, justifyContent: "flex-end" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.nombre}</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", whiteSpace: "nowrap" }}>{fmtPeso(x.monto)}</span>
+                    <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
                       <button onClick={() => {
                         if (editandoEste) { setEditandoExtraId(null); setEditandoExtraForm(null); }
                         else { setEditandoExtraId(x.id); setEditandoExtraForm({ nombre: x.nombre, monto: String(x.monto) }); }
-                      }} style={{ background: "none", border: "none", color: editandoEste ? "var(--accent)" : "var(--text-muted)", cursor: "pointer", fontSize: 11, padding: "2px 5px", fontFamily: "'DM Mono',monospace", fontWeight: 700, opacity: 0.7 }}>
+                      }} style={{ padding: "4px 10px", borderRadius: 5, border: `1px solid ${editandoEste ? "var(--accent-border)" : "var(--border)"}`, background: editandoEste ? "var(--accent-soft)" : "transparent", color: editandoEste ? "var(--accent)" : "var(--text-muted)", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
                         {editandoEste ? "▲" : "✎"}
                       </button>
                       {confirmDelModulo === `extra-${x.id}` ? (
                         <>
                           <button onClick={() => { setAdicionales(prev => prev.filter(a => a.id !== x.id)); setConfirmDelModulo(null); if (editandoEste) { setEditandoExtraId(null); setEditandoExtraForm(null); } }}
-                            style={{ padding: "2px 7px", borderRadius: 4, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
+                            style={{ padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
                           <button onClick={() => setConfirmDelModulo(null)}
-                            style={{ padding: "2px 6px", borderRadius: 4, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                            style={{ padding: "4px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
                         </>
                       ) : (
                         <button onClick={() => setConfirmDelModulo(`extra-${x.id}`)}
-                          style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: "2px 4px", opacity: 0.5, lineHeight: 1 }}>×</button>
+                          style={{ padding: "4px 8px", borderRadius: 5, border: "1px solid rgba(200,60,60,0.22)", background: "transparent", color: "#e07070", cursor: "pointer", fontSize: 11 }}>×</button>
                       )}
                     </div>
                   </div>
@@ -6726,42 +6740,50 @@ function Presupuesto({
           </div>
         )}
 
-        {/* Costos directos — misma grilla que módulos, con botón × y toggle */}
+        {/* Costos directos — mismo sistema visual que módulos */}
         {costosDirectos.length > 0 && (
-          <div style={{ padding: "0 16px 4px", opacity: mostrarCostosDirectos ? 1 : 0.45, transition: "opacity 0.2s" }}>
-            {items.length > 0 || adicionales.length > 0
-              ? <div style={{ height: 1, background: "var(--separator)", margin: "0 0 4px", opacity: 0.5 }} />
-              : null}
+          <div style={{ padding: `0 12px 10px`, opacity: mostrarCostosDirectos ? 1 : 0.45, transition: "opacity 0.2s" }}>
+            {(items.length > 0 || adicionales.length > 0) && <div style={{ height: 1, background: "var(--separator)", margin: "0 0 6px", opacity: 0.4 }} />}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {costosDirectos.map(x => {
               const COLOR = { mo: "#9b7fd4", material: "#7090c0", herraje: "#c0906a", tapacanto: "#6aab8e" };
               const LABEL = { mo: "Mano de obra", material: "Material", herraje: "Herraje", tapacanto: "Tapacanto" };
               return (
-                <div key={x.id} style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto auto", alignItems: "center", gap: 10, padding: "7px 4px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                  <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: COLOR[x.tipo], textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
-                    {LABEL[x.tipo]}
-                  </span>
-                  <span style={{ fontSize: 12, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.nombre}</span>
-                  <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textAlign: "right", whiteSpace: "nowrap" }}>
-                    {x.cantidad} {x.unidad}
-                  </span>
-                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", textAlign: "right", whiteSpace: "nowrap" }}>{fmtPeso(x.subtotal)}</span>
-                  {/* Botón × con confirmación */}
-                  <div style={{ display: "flex", gap: 3, justifyContent: "flex-end" }}>
-                    {confirmDelModulo === `cd-${x.id}` ? (
-                      <>
-                        <button onClick={() => { setCostosDirectos(prev => prev.filter(a => a.id !== x.id)); setConfirmDelModulo(null); }}
-                          style={{ padding: "2px 7px", borderRadius: 4, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
-                        <button onClick={() => setConfirmDelModulo(null)}
-                          style={{ padding: "2px 6px", borderRadius: 4, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
-                      </>
-                    ) : (
-                      <button onClick={() => setConfirmDelModulo(`cd-${x.id}`)}
-                        style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: "2px 4px", opacity: 0.5, lineHeight: 1 }}>×</button>
-                    )}
+                <div key={x.id} style={{
+                  borderRadius: 10, border: "1px solid var(--border)", background: "var(--bg-surface)", overflow: "hidden", transition: "border-color 0.15s",
+                }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
+                >
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto", alignItems: "center", gap: 14, padding: "10px 14px" }}>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: COLOR[x.tipo], flexShrink: 0 }}>
+                      {LABEL[x.tipo]}
+                    </span>
+                    <div>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{x.nombre}</span>
+                      <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                        {x.cantidad} {x.unidad}
+                      </div>
+                    </div>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", whiteSpace: "nowrap" }}>{fmtPeso(x.subtotal)}</span>
+                    <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                      {confirmDelModulo === `cd-${x.id}` ? (
+                        <>
+                          <button onClick={() => { setCostosDirectos(prev => prev.filter(a => a.id !== x.id)); setConfirmDelModulo(null); }}
+                            style={{ padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
+                          <button onClick={() => setConfirmDelModulo(null)}
+                            style={{ padding: "4px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                        </>
+                      ) : (
+                        <button onClick={() => setConfirmDelModulo(`cd-${x.id}`)}
+                          style={{ padding: "4px 8px", borderRadius: 5, border: "1px solid rgba(200,60,60,0.22)", background: "transparent", color: "#e07070", cursor: "pointer", fontSize: 11 }}>×</button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
             })}
+            </div>
           </div>
         )}
         {(items.length > 0 || adicionales.length > 0 || costosDirectos.length > 0) && (
