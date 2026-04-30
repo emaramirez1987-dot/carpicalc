@@ -6437,31 +6437,6 @@ function Presupuesto({
                     )}
                   </div>
                 </div>
-                          origenCodigo: origenBase,
-                        });
-                      }}
-                      title={estaEditando ? "Cerrar edición" : "Editar módulo (crea variante automática)"}
-                      style={{
-                        background: estaEditando ? "var(--accent-soft)" : "transparent",
-                        border: `1px solid ${estaEditando ? "var(--accent-border)" : "var(--border)"}`,
-                        color: estaEditando ? "var(--accent)" : "var(--text-muted)",
-                        borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px",
-                        fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                      }}>
-                      {estaEditando ? "▲" : "✎"}
-                    </button>
-                    {confirmDelModulo === keyId ? (
-                      <div style={{ display: "flex", gap: 4 }}>
-                        <button onClick={() => { setItems(its => its.filter((_, i) => i !== idx)); if (estaEditando) setModalEdicion(null); setConfirmDelModulo(null); }}
-                          style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
-                        <button onClick={() => setConfirmDelModulo(null)}
-                          style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setConfirmDelModulo(keyId)}
-                        style={{ background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070", borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px" }}>×</button>
-                    )}
-                  </div>
                 </div>
 
                 {/* Acordeón nuevo flujo — copia automática, nunca toca el original */}
