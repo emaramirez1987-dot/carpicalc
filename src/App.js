@@ -6437,7 +6437,6 @@ function Presupuesto({
                     )}
                   </div>
                 </div>
-                </div>
 
                 {/* Acordeón nuevo flujo — copia automática, nunca toca el original */}
                 {estaEditando && modalEdicion && (
