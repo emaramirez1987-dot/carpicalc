@@ -3684,7 +3684,7 @@ function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onIm
             </div>
           </div>
           {/* Botones — columna derecha */}
-          <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} />
+          <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} presupuestosAfectados={presupuestosAfectados} />
         </div>
       </div>
     </Card>
@@ -3721,7 +3721,7 @@ function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onImag
         <span style={{ color: "#9ab080" }}>{fmtNum(c.m2Neto)} m²</span>
         <span style={{ color: "#7ecf8a", fontWeight: 700 }}>{fmtPeso(c.total)}</span>
       </div>
-      <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} />
+      <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} presupuestosAfectados={presupuestosAfectados} />
     </div>
   );
 }
