@@ -5059,6 +5059,8 @@ function ResumenPresupuesto({
   nombrePresupuesto,
   descuento = 0,
   gananciaExtra = 0,
+  adicionales = [],
+  costosDirectos = [],
 }) {
   const [mostrarIVA, setMostrarIVA] = useState(false);
   const totalConIVA = Math.round(totalGeneral * 1.21);
