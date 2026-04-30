@@ -5336,8 +5336,8 @@ function ResumenPresupuesto({
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                 {items.reduce((a, i) => a + i.cantidad, 0)} u · {items.length} mód.
-                {adicionales.length > 0 && ` · ${adicionales.length} extra${adicionales.length !== 1 ? "s" : ""}`}
-                {costosDirectos.length > 0 && ` · ${costosDirectos.length} costo${costosDirectos.length !== 1 ? "s" : ""}`}
+                {(adicionales || []).length > 0 && ` · ${adicionales.length} extra${adicionales.length !== 1 ? "s" : ""}`}
+                {(costosDirectos || []).length > 0 && ` · ${costosDirectos.length} costo${costosDirectos.length !== 1 ? "s" : ""}`}
               </div>
               <button onClick={() => setMostrarIVA(v => !v)}
                 style={{
