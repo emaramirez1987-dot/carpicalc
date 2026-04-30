@@ -2270,57 +2270,6 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
     </div>
   );
 }
-  const d1 = pieza.especial
-    ? (parseInt(pieza.dimLibre1) || 0)
-    : resolverDim(dims[pieza.usaDim], pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1, espesor);
-  const d2 = pieza.especial
-    ? (parseInt(pieza.dimLibre2) || 0)
-    : resolverDim(dims[pieza.usaDim2], pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1, espesor);
-  const area = (d1 * d2 * pieza.cantidad) / 1_000_000;
-  const tcDef = tapacanto?.find((t) => t.id === pieza.tc?.id);
-  const mTc = pieza.tc?.id
-    ? (pieza.cantidad *
-        ((pieza.tc.lados1 || 0) * d1 + (pieza.tc.lados2 || 0) * d2)) /
-      1000
-    : 0;
-  const offsetLabel = (esp, mm, div) => {
-    const p = [];
-    if (esp) p.push(`${esp > 0 ? "+" : ""}${esp} esp.`);
-    if (mm) p.push(`${mm > 0 ? "+" : ""}${mm} mm`);
-    if (div && div > 1) p.push(`÷${div}`);
-    return p.length ? `(${p.join(", ")})` : "";
-  };
-  return (
-    <div
-      style={{
-        padding: "10px 12px",
-        background: "var(--accent-soft)",
-        border: "1px solid var(--border)",
-        borderRadius: 8,
-        marginBottom: 6,
-      }}
-    >
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 36px 130px 90px 90px 24px",
-          gap: 8,
-          alignItems: "center",
-        }}
-      >
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
-              {pieza.nombre}
-              {pieza.especial && (
-                <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(212,175,55,0.18)", color: "var(--accent)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>✦ ESP</span>
-              )}
-            </div>
-            <div style={{ fontSize: 11, marginTop: 2, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {pieza.especial
-                ? `libre: ${pieza.dimLibre1 || 0} × ${pieza.dimLibre2 || 0} mm`
-                : `${pieza.usaDim} ${offsetLabel(pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1)} × ${pieza.usaDim2} ${offsetLabel(pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1)}`}
-            </div>
-          </div>
 // ── FormPieza ─────────────────────────────────────────────────────
 // ── DimRow ── (fuera de FormPieza para evitar re-mount en cada render)
 
