@@ -3392,8 +3392,9 @@ function FormModulo({
 // 8. CATÁLOGO
 // ══════════════════════════════════════════════════════════════════
 // ── CatalogoModulos ───────────────────────────────────────────────
-function AccionesModulo({ onEditar, onEliminar, onDuplicar }) {
+function AccionesModulo({ onEditar, onEliminar, onDuplicar, presupuestosAfectados = [] }) {
   const [confirmar, setConfirmar] = useState(false);
+  const tieneAfectados = presupuestosAfectados.length > 0;
   const s = (type) => ({
     padding: "5px 12px", borderRadius: 6, fontSize: 11,
     fontWeight: 700, fontFamily: "'DM Mono',monospace",
@@ -3415,9 +3416,30 @@ function AccionesModulo({ onEditar, onEliminar, onDuplicar }) {
       <button onClick={onDuplicar} style={s("dup")}>⧉ duplicar</button>
       {confirmar ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {/* Aviso de presupuestos afectados */}
+          {tieneAfectados && (
+            <div style={{ padding: "7px 8px", borderRadius: 6, background: "rgba(200,100,50,0.12)", border: "1px solid rgba(200,100,50,0.30)", marginBottom: 2 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#d47a50", fontFamily: "'DM Mono',monospace", marginBottom: 4 }}>
+                ⚠ Usado en {presupuestosAfectados.length} presupuesto{presupuestosAfectados.length > 1 ? "s" : ""}:
+              </div>
+              {presupuestosAfectados.slice(0, 3).map((nombre, i) => (
+                <div key={i} style={{ fontSize: 10, color: "var(--text-muted)", paddingLeft: 6, lineHeight: 1.6 }}>
+                  · {nombre || "Sin nombre"}
+                </div>
+              ))}
+              {presupuestosAfectados.length > 3 && (
+                <div style={{ fontSize: 10, color: "var(--text-muted)", paddingLeft: 6 }}>
+                  · y {presupuestosAfectados.length - 3} más...
+                </div>
+              )}
+              <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 4, fontStyle: "italic" }}>
+                Esos ítems quedarán como referencia rota.
+              </div>
+            </div>
+          )}
           <button onClick={() => { onEliminar(); setConfirmar(false); }}
             style={{ ...s("del"), background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", fontWeight: 900 }}>
-            ✓ confirmar
+            ✓ {tieneAfectados ? "borrar igual" : "confirmar"}
           </button>
           <button onClick={() => setConfirmar(false)}
             style={{ ...s("del"), color: "var(--text-muted)", border: "1px solid var(--border)" }}>
@@ -3614,7 +3636,7 @@ function ModalImagen({ imagen, cod, onClose, onBorrar, onCambiar }) {
   );
 }
 
-function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onImagenChange }) {
+function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onImagenChange, presupuestosAfectados = [] }) {
   return (
     <Card className="rsp-card">
       <ImagenModulo
@@ -3669,7 +3691,7 @@ function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onIm
   );
 }
 
-function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onImagenChange }) {
+function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onImagenChange, presupuestosAfectados = [] }) {
   return (
     <div
       className="rsp-lista-item"
@@ -3811,6 +3833,13 @@ function CatalogoModulos({
     setModulos(nuevo);
     onSave(nuevo);
   };
+
+
+  // Helper: nombres de presupuestos que usan un módulo dado
+  const presupuestosQueUsan = (cod) =>
+    Object.values(presupuestos || {})
+      .filter(p => (p.items || []).some(it => it.codigo === cod))
+      .map(p => p.nombre || "Sin nombre");
 
   const eliminar = (cod) => {
     const n = { ...modulos };
@@ -4126,7 +4155,8 @@ function CatalogoModulos({
                         onEditar={() => abrirModo({ tipo: "editar", codigo: cod, modulo: mod })}
                         onEliminar={() => eliminar(cod)}
                         onDuplicar={() => abrirModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
-                        onImagenChange={handleImagenChange} />;
+                        onImagenChange={handleImagenChange}
+                        presupuestosAfectados={presupuestosQueUsan(cod)} />;
                     })}
                   </div>
                 ) : (
@@ -4138,7 +4168,8 @@ function CatalogoModulos({
                         onEditar={() => abrirModo({ tipo: "editar", codigo: cod, modulo: mod })}
                         onEliminar={() => eliminar(cod)}
                         onDuplicar={() => abrirModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
-                        onImagenChange={handleImagenChange} />;
+                        onImagenChange={handleImagenChange}
+                        presupuestosAfectados={presupuestosQueUsan(cod)} />;
                     })}
                   </div>
                 )
@@ -6254,36 +6285,35 @@ function Presupuesto({
 
             return (
               <div key={keyId} style={{
-                background: "var(--bg-surface)", borderRadius: 10,
-                border: estaEditando ? "1.5px solid var(--accent)" : "1px solid var(--border)",
-                boxShadow: estaEditando ? "0 0 0 3px rgba(212,175,55,0.10)" : "none",
-                overflow: "hidden", transition: "border-color 0.2s, box-shadow 0.2s",
+                overflow: "hidden",
+                borderBottom: estaEditando ? "none" : "1px solid rgba(255,255,255,0.04)",
+                transition: "background 0.15s",
               }}>
-                {/* Fila principal del módulo */}
-                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 16px" }}>
-                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{item.codigo}</span>
+                {/* Fila principal del módulo — compacta */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "8px 16px" }}>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, fontWeight: 700, color: "var(--accent)", flexShrink: 0, opacity: 0.7 }}>{item.codigo.startsWith("TEMP_") ? "VAR" : item.codigo}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{modUsado.nombre}</div>
-                    <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap", marginTop: 2 }}>
-                      <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: dimDif ? "var(--accent)" : "var(--text-muted)" }}>
-                        {over.ancho}×{over.profundidad}×{over.alto} mm{dimDif ? " ★" : ""} · {TIPO_MAT[modUsado.material]}
-                      </div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      {modUsado.nombre}
                       {esTemp && (
-                        <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.35)", color: "#c8a02a", borderRadius: 4, padding: "1px 5px" }}>
-                          ✦ Temporal
+                        <span style={{ fontSize: 8, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.30)", color: "#c8a02a", borderRadius: 3, padding: "1px 4px" }}>
+                          ✦ temp
                         </span>
                       )}
                     </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: Math.max(1, it.cantidad - 1) } : it))}
-                        style={{ width: 26, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, minWidth: 22, textAlign: "center" }}>{item.cantidad}</span>
-                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: it.cantidad + 1 } : it))}
-                        style={{ width: 26, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                    <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: dimDif ? "var(--accent)" : "var(--text-muted)", marginTop: 1, opacity: 0.8 }}>
+                      {over.ancho}×{over.profundidad}×{over.alto} · {TIPO_MAT[modUsado.material]}
                     </div>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", minWidth: 80, textAlign: "right" }}>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: Math.max(1, it.cantidad - 1) } : it))}
+                        style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.7 }}>−</button>
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, minWidth: 18, textAlign: "center" }}>{item.cantidad}</span>
+                      <button onClick={() => setItems(its => its.map((it, i) => i === idx ? { ...it, cantidad: it.cantidad + 1 } : it))}
+                        style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.7 }}>+</button>
+                    </div>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", minWidth: 72, textAlign: "right" }}>
                       {fmtPeso(calc.total * item.cantidad)}
                     </span>
                     <button
@@ -6395,7 +6425,7 @@ function Presupuesto({
 
                 {/* Acordeón nuevo flujo — copia automática, nunca toca el original */}
                 {estaEditando && modalEdicion && (
-                  <div style={{ borderTop: "1px solid var(--border)", padding: "14px 16px", background: "var(--bg-subtle)" }}>
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 16px", background: "rgba(0,0,0,0.12)" }}>
 
                     {/* Estado 1: edición de dimensiones */}
                     {!modalEdicion.dialogoGuardar && (
@@ -6580,95 +6610,79 @@ function Presupuesto({
           </div>
         )}
 
-        {/* Adicionales dentro de la card — acordeón con edición y sync costos */}
+        {/* Adicionales — integrados fluidamente, sin título de sección */}
         {adicionales.length > 0 && (
-          <div style={{ padding: "0 16px 12px", borderTop: items.length > 0 ? "1px dashed var(--separator)" : "none" }}>
-            <div style={{ paddingTop: 12, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
-              Gastos extras
-            </div>
+          <div style={{ padding: "0 16px 4px" }}>
+            {items.length > 0 && <div style={{ height: 1, background: "var(--separator)", margin: "0 0 4px", opacity: 0.5 }} />}
             {adicionales.map(x => {
               const editandoEste = editandoExtraId === x.id;
               const esFrecuente = (costos?.extrasFrecuentes || []).some(f => f.nombre.toLowerCase() === x.nombre.toLowerCase());
               return (
-                <div key={x.id} style={{
-                  marginBottom: 6, borderRadius: 8, overflow: "hidden",
-                  border: editandoEste ? "1.5px solid var(--accent)" : "1px solid var(--border)",
-                  boxShadow: editandoEste ? "0 0 0 3px rgba(212,175,55,0.08)" : "none",
-                  background: "var(--bg-surface)",
-                  transition: "border-color 0.2s",
-                }}>
-                  {/* Fila principal */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px" }}>
-                    <span style={{ fontSize: 13, flex: 1, color: "var(--text-primary)", fontWeight: 500 }}>{x.nombre}</span>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.monto)}</span>
+                <div key={x.id} style={{ borderBottom: editandoEste ? "none" : "1px solid rgba(255,255,255,0.04)", overflow: "hidden" }}>
+                  {/* Fila principal — compacta */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 4px" }}>
+                    <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#c8a02a", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0, minWidth: 56 }}>
+                      Extra
+                    </span>
+                    <span style={{ flex: 1, fontSize: 12, color: "var(--text-secondary)" }}>{x.nombre}</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.monto)}</span>
                     <button onClick={() => {
                       if (editandoEste) { setEditandoExtraId(null); setEditandoExtraForm(null); }
                       else { setEditandoExtraId(x.id); setEditandoExtraForm({ nombre: x.nombre, monto: String(x.monto) }); }
-                    }} style={{ background: editandoEste ? "var(--accent-soft)" : "transparent", border: `1px solid ${editandoEste ? "var(--accent-border)" : "var(--border)"}`, color: editandoEste ? "var(--accent)" : "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 11, padding: "3px 8px", fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                    }} style={{ background: "none", border: "none", color: editandoEste ? "var(--accent)" : "var(--text-muted)", cursor: "pointer", fontSize: 11, padding: "2px 5px", fontFamily: "'DM Mono',monospace", fontWeight: 700, opacity: 0.7 }}>
                       {editandoEste ? "▲" : "✎"}
                     </button>
                     {confirmDelModulo === `extra-${x.id}` ? (
-                      <div style={{ display: "flex", gap: 4 }}>
+                      <div style={{ display: "flex", gap: 3 }}>
                         <button onClick={() => { setAdicionales(prev => prev.filter(a => a.id !== x.id)); setConfirmDelModulo(null); if (editandoEste) { setEditandoExtraId(null); setEditandoExtraForm(null); } }}
-                          style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
+                          style={{ padding: "2px 7px", borderRadius: 4, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
                         <button onClick={() => setConfirmDelModulo(null)}
-                          style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                          style={{ padding: "2px 6px", borderRadius: 4, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
                       </div>
                     ) : (
                       <button onClick={() => setConfirmDelModulo(`extra-${x.id}`)}
-                        style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
+                        style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: "2px 4px", opacity: 0.5, lineHeight: 1 }}>×</button>
                     )}
                   </div>
-                  {/* Acordeón edición */}
+                  {/* Acordeón edición — inline */}
                   {editandoEste && editandoExtraForm && (
-                    <div style={{ borderTop: "1px solid var(--border)", padding: "12px", background: "var(--bg-subtle)" }}>
-                      <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-                        <input type="text" value={editandoExtraForm.nombre}
-                          onChange={e => setEditandoExtraForm(f => ({ ...f, nombre: e.target.value }))}
-                          style={{ flex: 1, minWidth: 120, fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "7px 10px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-primary)", outline: "none" }}
-                          onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                          onBlur={e => e.target.style.borderColor = "var(--border)"} />
-                        <input type="number" min="0" value={editandoExtraForm.monto}
-                          onChange={e => setEditandoExtraForm(f => ({ ...f, monto: e.target.value }))}
-                          style={{ width: 110, fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "7px 10px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "#7ecf8a", outline: "none" }}
-                          onFocus={e => e.target.style.borderColor = "#7ecf8a"}
-                          onBlur={e => e.target.style.borderColor = "var(--border)"} />
-                      </div>
+                    <div style={{ padding: "8px 4px 10px", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+                      <input type="text" value={editandoExtraForm.nombre}
+                        onChange={e => setEditandoExtraForm(f => ({ ...f, nombre: e.target.value }))}
+                        style={{ flex: 1, minWidth: 120, fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 12, padding: "6px 10px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-primary)", outline: "none" }}
+                        onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                        onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                      <input type="number" min="0" value={editandoExtraForm.monto}
+                        onChange={e => setEditandoExtraForm(f => ({ ...f, monto: e.target.value }))}
+                        style={{ width: 100, fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: "6px 10px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "#7ecf8a", outline: "none" }}
+                        onFocus={e => e.target.style.borderColor = "#7ecf8a"}
+                        onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                      <button onClick={() => {
+                        const nuevoNombre = editandoExtraForm.nombre.trim();
+                        const nuevoMonto = parseFloat(editandoExtraForm.monto) || 0;
+                        setAdicionales(prev => prev.map(a => a.id === x.id ? { ...a, nombre: nuevoNombre, monto: nuevoMonto } : a));
+                        if (esFrecuente && nuevoNombre !== x.nombre) {
+                          setToastExtraSync({ viejo: x.nombre, nuevo: nuevoNombre, monto: nuevoMonto, id: x.id });
+                        } else if (esFrecuente) {
+                          onGuardarExtraFrecuente && onGuardarExtraFrecuente({ nombre: nuevoNombre, precio: nuevoMonto, actualizar: x.nombre });
+                        }
+                        setEditandoExtraId(null); setEditandoExtraForm(null);
+                      }} style={{ padding: "6px 12px", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
+                        ✓
+                      </button>
+                      <button onClick={() => { setEditandoExtraId(null); setEditandoExtraForm(null); }}
+                        style={{ padding: "6px 10px", borderRadius: 7, cursor: "pointer", fontSize: 11, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+                    </div>
+                  )}
+                  {toastExtraSync?.id === x.id && (
+                    <div style={{ margin: "0 4px 8px", padding: "8px 12px", borderRadius: 7, background: "rgba(200,160,42,0.10)", border: "1px solid rgba(200,160,42,0.25)", fontSize: 11, color: "#c8a02a" }}>
+                      <div style={{ marginBottom: 6 }}>💡 ¿Actualizar "{x.nombre}" en tus recurrentes de Costos?</div>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => {
-                          const nuevoNombre = editandoExtraForm.nombre.trim();
-                          const nuevoMonto = parseFloat(editandoExtraForm.monto) || 0;
-                          setAdicionales(prev => prev.map(a => a.id === x.id ? { ...a, nombre: nuevoNombre, monto: nuevoMonto } : a));
-                          // Sync con costos si el nombre cambió y era frecuente
-                          if (esFrecuente && nuevoNombre !== x.nombre) {
-                            setToastExtraSync({ viejo: x.nombre, nuevo: nuevoNombre, monto: nuevoMonto, id: x.id });
-                          } else if (esFrecuente) {
-                            // Actualizar precio en frecuentes
-                            onGuardarExtraFrecuente && onGuardarExtraFrecuente({ nombre: nuevoNombre, precio: nuevoMonto, actualizar: x.nombre });
-                          }
-                          setEditandoExtraId(null); setEditandoExtraForm(null);
-                        }} style={{ flex: 1, padding: "7px 0", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
-                          ✓ Confirmar
-                        </button>
-                        <button onClick={() => { setEditandoExtraId(null); setEditandoExtraForm(null); }}
-                          style={{ padding: "7px 12px", borderRadius: 7, cursor: "pointer", fontSize: 11, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                          Cancelar
-                        </button>
+                        <button onClick={() => { onGuardarExtraFrecuente && onGuardarExtraFrecuente({ nombre: toastExtraSync.nuevo, precio: toastExtraSync.monto, actualizar: toastExtraSync.viejo }); setToastExtraSync(null); }}
+                          style={{ padding: "3px 10px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,160,42,0.18)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a", fontFamily: "'DM Mono',monospace" }}>Actualizar</button>
+                        <button onClick={() => setToastExtraSync(null)}
+                          style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>No</button>
                       </div>
-                      {/* Toast sync con costos */}
-                      {toastExtraSync?.id === x.id && (
-                        <div style={{ marginTop: 10, padding: "9px 12px", borderRadius: 7, background: "rgba(200,160,42,0.10)", border: "1px solid rgba(200,160,42,0.30)", fontSize: 11, color: "#c8a02a" }}>
-                          <div style={{ marginBottom: 6 }}>💡 Este extra existe en tus recurrentes. ¿Actualizarlo en Costos?</div>
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button onClick={() => { onGuardarExtraFrecuente && onGuardarExtraFrecuente({ nombre: toastExtraSync.nuevo, precio: toastExtraSync.monto, actualizar: toastExtraSync.viejo }); setToastExtraSync(null); }}
-                              style={{ padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,160,42,0.18)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a", fontFamily: "'DM Mono',monospace" }}>Actualizar</button>
-                            <button onClick={() => { onGuardarExtraFrecuente && onGuardarExtraFrecuente({ nombre: toastExtraSync.nuevo, precio: toastExtraSync.monto }); setToastExtraSync(null); }}
-                              style={{ padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "transparent", border: "1px solid rgba(200,160,42,0.30)", color: "#c8a02a", fontFamily: "'DM Mono',monospace" }}>Agregar nuevo</button>
-                            <button onClick={() => setToastExtraSync(null)}
-                              style={{ padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>No</button>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -6677,31 +6691,32 @@ function Presupuesto({
           </div>
         )}
 
-        {/* Costos directos dentro de la card */}
+        {/* Costos directos dentro de la card — sin título, integrados fluidamente */}
         {costosDirectos.length > 0 && (
-          <div style={{ padding: "0 16px 12px", borderTop: (items.length > 0 || adicionales.length > 0) ? "1px dashed var(--separator)" : "none" }}>
-            <div style={{ paddingTop: 12, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
-              Costos directos
-            </div>
+          <div style={{ padding: "0 16px 4px" }}>
+            {items.length > 0 || adicionales.length > 0
+              ? <div style={{ height: 1, background: "var(--separator)", margin: "0 0 4px", opacity: 0.5 }} />
+              : null}
             {costosDirectos.map(x => {
-              const BADGE = { mo: "MO", material: "MAT", herraje: "HRJ", tapacanto: "TC" };
+              const COLOR = { mo: "#9b7fd4", material: "#7090c0", herraje: "#c0906a", tapacanto: "#6aab8e" };
+              const LABEL = { mo: "Mano de obra", material: "Material", herraje: "Herraje", tapacanto: "Tapacanto" };
               return (
-                <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", marginBottom: 6, background: "var(--bg-subtle)", borderRadius: 8, border: "1px solid var(--border)" }}>
-                  <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", background: "var(--bg-surface)", padding: "2px 5px", borderRadius: 4, border: "1px solid var(--border)", flexShrink: 0 }}>
-                    {BADGE[x.tipo]}
+                <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 4px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: COLOR[x.tipo], textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0, minWidth: 56 }}>
+                    {LABEL[x.tipo]}
                   </span>
-                  <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>{x.nombre}</span>
-                  <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+                  <span style={{ flex: 1, fontSize: 12, color: "var(--text-secondary)" }}>{x.nombre}</span>
+                  <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginRight: 4 }}>
                     {x.cantidad} {x.unidad}
                   </span>
-                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.subtotal)}</span>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.subtotal)}</span>
                 </div>
               );
             })}
           </div>
         )}
-        {(items.length > 0 || adicionales.length > 0) && (
-          <div style={{ borderTop: "1px solid var(--separator)" }}>
+        {(items.length > 0 || adicionales.length > 0 || costosDirectos.length > 0) && (
+          <div style={{ borderTop: "1px solid var(--separator)", marginTop: 4 }}>
             <BarraTotal
               items={items}
               modulos={modulos}
