@@ -2184,7 +2184,92 @@ function HojaCostos({ costos, setCostos, onSave }) {
 }
 
 // ── FilaPieza ─────────────────────────────────────────────────────
-function FilaPieza({ pieza, idx, onDelete, dims, espesor, tapacanto }) {
+function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMoveDown, onChangeCantidad, dims, espesor, tapacanto, isFirst, isLast }) {
+  const d1 = pieza.especial
+    ? (parseInt(pieza.dimLibre1) || 0)
+    : resolverDim(dims[pieza.usaDim], pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1, espesor);
+  const d2 = pieza.especial
+    ? (parseInt(pieza.dimLibre2) || 0)
+    : resolverDim(dims[pieza.usaDim2], pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1, espesor);
+  const area = (d1 * d2 * pieza.cantidad) / 1_000_000;
+  const tcDef = tapacanto?.find((t) => t.id === pieza.tc?.id);
+  const mTc = pieza.tc?.id
+    ? (pieza.cantidad * ((pieza.tc.lados1 || 0) * d1 + (pieza.tc.lados2 || 0) * d2)) / 1000
+    : 0;
+  const offsetLabel = (esp, mm, div) => {
+    const p = [];
+    if (esp) p.push(`${esp > 0 ? "+" : ""}${esp} esp.`);
+    if (mm) p.push(`${mm > 0 ? "+" : ""}${mm} mm`);
+    if (div && div > 1) p.push(`÷${div}`);
+    return p.length ? `(${p.join(", ")})` : "";
+  };
+
+  const btnSt = { background: "transparent", border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", color: "var(--text-muted)", fontSize: 11, padding: "3px 7px", fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.15s" };
+
+  return (
+    <div style={{ padding: "10px 12px", background: "var(--accent-soft)", border: "1px solid var(--border)", borderRadius: 8, marginBottom: 6 }}>
+      {/* Fila principal */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 130px 90px 90px", gap: 8, alignItems: "center" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+            {pieza.nombre}
+            {pieza.especial && (
+              <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(212,175,55,0.18)", color: "var(--accent)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>✦ ESP</span>
+            )}
+          </div>
+          <div style={{ fontSize: 11, marginTop: 2, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {pieza.especial
+              ? `libre: ${pieza.dimLibre1 || 0} × ${pieza.dimLibre2 || 0} mm`
+              : `${pieza.usaDim} ${offsetLabel(pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1)} × ${pieza.usaDim2} ${offsetLabel(pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1)}`}
+          </div>
+        </div>
+
+        {/* Cantidad con +/- */}
+        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+          <button onClick={() => onChangeCantidad(Math.max(1, pieza.cantidad - 1))}
+            style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--accent)", minWidth: 22, textAlign: "center" }}>×{pieza.cantidad}</span>
+          <button onClick={() => onChangeCantidad(pieza.cantidad + 1)}
+            style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+        </div>
+
+        <div style={{ textAlign: "right", minWidth: 0, overflow: "hidden" }}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", whiteSpace: "nowrap" }}>medidas reales</div>
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#c8d098", whiteSpace: "nowrap" }}>{Math.round(d1)}×{Math.round(d2)} mm</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>área</div>
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#7ecf8a" }}>{fmtNum(area)} m²</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          {tcDef ? (
+            <>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>tapacanto</div>
+              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "var(--accent)" }}>{fmtNum(mTc, 2)} m</div>
+            </>
+          ) : (
+            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>sin tapac.</div>
+          )}
+        </div>
+      </div>
+
+      {/* Barra de acciones */}
+      <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <button onClick={() => onEdit(idx)} style={{ ...btnSt, color: "var(--accent)", borderColor: "var(--accent-border)", background: "var(--accent-soft)" }}>✎ editar</button>
+        <button onClick={() => onDuplicate(idx)} style={{ ...btnSt }}>⧉ duplicar</button>
+        <button onClick={() => onMoveUp(idx)} disabled={isFirst}
+          style={{ ...btnSt, opacity: isFirst ? 0.3 : 1 }}>↑</button>
+        <button onClick={() => onMoveDown(idx)} disabled={isLast}
+          style={{ ...btnSt, opacity: isLast ? 0.3 : 1 }}>↓</button>
+        <div style={{ flex: 1 }} />
+        <button onClick={() => onDelete(idx)}
+          style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 18, lineHeight: 1, opacity: 0.6, transition: "opacity 0.15s" }}
+          onMouseEnter={e => e.target.style.opacity = 1}
+          onMouseLeave={e => e.target.style.opacity = 0.6}>×</button>
+      </div>
+    </div>
+  );
+}
   const d1 = pieza.especial
     ? (parseInt(pieza.dimLibre1) || 0)
     : resolverDim(dims[pieza.usaDim], pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1, espesor);
@@ -2236,113 +2321,6 @@ function FilaPieza({ pieza, idx, onDelete, dims, espesor, tapacanto }) {
                 : `${pieza.usaDim} ${offsetLabel(pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1)} × ${pieza.usaDim2} ${offsetLabel(pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1)}`}
             </div>
           </div>
-        <div
-          style={{
-            textAlign: "center",
-            fontFamily: "'DM Mono',monospace",
-            fontSize: 13,
-            color: "var(--accent)",
-          }}
-        >
-          ×{pieza.cantidad}
-        </div>
-        <div style={{ textAlign: "right", minWidth: 0, overflow: "hidden" }}>
-          <div
-            style={{
-              fontSize: 10,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: "var(--text-muted)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            medidas reales
-          </div>
-          <div
-            style={{
-              fontFamily: "'DM Mono',monospace",
-              fontSize: 12,
-              color: "#c8d098",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {Math.round(d1)}×{Math.round(d2)} mm
-          </div>
-        </div>
-        <div style={{ textAlign: "right", minWidth: 0, overflow: "hidden" }}>
-          <div
-            style={{
-              fontSize: 10,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: "var(--text-muted)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            área
-          </div>
-          <div
-            style={{
-              fontFamily: "'DM Mono',monospace",
-              fontSize: 12,
-              color: "#7ecf8a",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {fmtNum(area)} m²
-          </div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          {tcDef ? (
-            <>
-              <div
-                style={{
-                  fontSize: 10,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  color: "var(--text-muted)",
-                }}
-              >
-                tapacanto
-              </div>
-              <div
-                style={{
-                  fontFamily: "'DM Mono',monospace",
-                  fontSize: 12,
-                  color: "var(--accent)",
-                }}
-              >
-                {fmtNum(mTc, 2)} m
-              </div>
-            </>
-          ) : (
-            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-              sin tapac.
-            </div>
-          )}
-        </div>
-        <button
-          onClick={() => onDelete(idx)}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#e07070",
-            cursor: "pointer",
-            fontSize: 18,
-            lineHeight: 1,
-            opacity: 0.6,
-            transition: "opacity 0.15s",
-          }}
-          onMouseEnter={(e) => (e.target.style.opacity = 1)}
-          onMouseLeave={(e) => (e.target.style.opacity = 0.6)}
-        >
-          ×
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── FormPieza ─────────────────────────────────────────────────────
 // ── DimRow ── (fuera de FormPieza para evitar re-mount en cada render)
 
@@ -2411,7 +2389,7 @@ function DimRowLibre({ titulo, valKey, fp, setFp }) {
   );
 }
 
-function FormPieza({ fp, setFp, onAgregar, error, dims, espesor, tapacanto }) {
+function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, espesor, tapacanto, nombresSugeridos }) {
   const esEspecial = !!fp.especial;
   const d1 = esEspecial
     ? (parseInt(fp.dimLibre1) || 0)
@@ -2420,35 +2398,85 @@ function FormPieza({ fp, setFp, onAgregar, error, dims, espesor, tapacanto }) {
     ? (parseInt(fp.dimLibre2) || 0)
     : resolverDim(dims[fp.usaDim2], parseInt(fp.offsetEsp2) || 0, parseInt(fp.offsetMm2) || 0, parseInt(fp.divisor2) || 1, espesor);
 
+  const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
+
   return (
-    <Card className="rsp-card" highlight>
+    <Card id="form-pieza" className="rsp-card" highlight style={{ border: editando ? "1.5px solid var(--accent)" : undefined }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <h4 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent)" }}>
-          ➕ Agregar pieza
+        <h4 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: editando ? "var(--accent)" : "var(--text-muted)" }}>
+          {editando ? "✎ Editando pieza" : "➕ Agregar pieza"}
         </h4>
-        {/* Toggle pieza especial */}
-        <button
-          onClick={() => setFp(p => ({ ...p, especial: !p.especial, dimLibre1: p.dimLibre1 || 0, dimLibre2: p.dimLibre2 || 0 }))}
-          title="Pieza especial: medidas libres sin fórmula"
-          style={{
-            display: "flex", alignItems: "center", gap: 5, padding: "3px 10px",
-            borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer",
-            fontFamily: "'DM Mono',monospace", transition: "all 0.15s",
-            background: esEspecial ? "rgba(212,175,55,0.18)" : "transparent",
-            border: `1px solid ${esEspecial ? "var(--accent-border)" : "var(--border)"}`,
-            color: esEspecial ? "var(--accent)" : "var(--text-muted)",
-          }}>
-          ✦ {esEspecial ? "Especial activa" : "Pieza especial"}
-        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          {editando && (
+            <button onClick={onCancelar}
+              style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+              ✕ Cancelar
+            </button>
+          )}
+          <button
+            onClick={() => setFp(p => ({ ...p, especial: !p.especial, dimLibre1: p.dimLibre1 || 0, dimLibre2: p.dimLibre2 || 0 }))}
+            title="Pieza especial: medidas libres sin fórmula"
+            style={{
+              display: "flex", alignItems: "center", gap: 5, padding: "3px 10px",
+              borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer",
+              fontFamily: "'DM Mono',monospace", transition: "all 0.15s",
+              background: esEspecial ? "rgba(212,175,55,0.18)" : "transparent",
+              border: `1px solid ${esEspecial ? "var(--accent-border)" : "var(--border)"}`,
+              color: esEspecial ? "var(--accent)" : "var(--text-muted)",
+            }}>
+            ✦ {esEspecial ? "Especial activa" : "Pieza especial"}
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
-          <TextInput label="Nombre" placeholder="Lateral, Base, Puerta..." value={fp.nombre}
-            onChange={(v) => setFp((p) => ({ ...p, nombre: v }))} small />
-          <TextInput label="Cantidad" type="number" value={fp.cantidad}
-            onChange={(v) => setFp((p) => ({ ...p, cantidad: v }))} small />
+        {/* Nombre con sugeridos */}
+        <div style={{ position: "relative" }}>
+          <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
+            <div>
+              <TextInput label="Nombre" placeholder="Lateral, Base, Puerta..." value={fp.nombre}
+                onChange={(v) => setFp((p) => ({ ...p, nombre: v }))}
+                onFocus={() => setMostrarSugeridos(true)}
+                onBlur={() => setTimeout(() => setMostrarSugeridos(false), 150)}
+                small />
+              {mostrarSugeridos && (nombresSugeridos || []).length > 0 && (
+                <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 50, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 4, boxShadow: "0 4px 16px rgba(0,0,0,0.3)", display: "flex", flexWrap: "wrap", gap: 4, marginTop: 2, minWidth: 220 }}>
+                  {(nombresSugeridos || []).map(n => (
+                    <button key={n} onMouseDown={() => { setFp(p => ({ ...p, nombre: n })); setMostrarSugeridos(false); }}
+                      style={{ padding: "3px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-secondary)", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Cantidad con +/- */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>Cantidad</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button onClick={() => setFp(p => ({ ...p, cantidad: Math.max(1, (parseInt(p.cantidad) || 1) - 1) }))}
+                  style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                <input type="number" value={fp.cantidad} min="1"
+                  onChange={e => setFp(p => ({ ...p, cantidad: e.target.value }))}
+                  style={{ width: 42, textAlign: "center", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "5px 4px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--accent)", outline: "none" }} />
+                <button onClick={() => setFp(p => ({ ...p, cantidad: (parseInt(p.cantidad) || 1) + 1 }))}
+                  style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Preview en tiempo real */}
+        {(d1 > 0 || d2 > 0) && (
+          <div style={{ padding: "6px 12px", background: "rgba(126,207,138,0.08)", border: "1px solid rgba(126,207,138,0.20)", borderRadius: 7, display: "flex", gap: 16, alignItems: "center" }}>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "#9ab080" }}>
+              Medida real: <strong style={{ color: "#7ecf8a" }}>{Math.round(d1)} × {Math.round(d2)} mm</strong>
+            </span>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)" }}>
+              Área: <strong>{fmtNum((d1 * d2 * (parseInt(fp.cantidad) || 1)) / 1_000_000)} m²</strong>
+            </span>
+          </div>
+        )}
 
         {esEspecial ? (
           <>
@@ -2490,7 +2518,9 @@ function FormPieza({ fp, setFp, onAgregar, error, dims, espesor, tapacanto }) {
         </div>
 
         {error && <p style={{ color: "#e07070", fontSize: 12 }}>⚠ {error}</p>}
-        <Btn onClick={onAgregar} full>+ Agregar esta pieza</Btn>
+        <Btn onClick={onAgregar} full style={{ background: editando ? "linear-gradient(135deg,var(--accent),var(--accent-hover))" : undefined }}>
+          {editando ? "✓ Actualizar pieza" : "+ Agregar esta pieza"}
+        </Btn>
       </div>
     </Card>
   );
@@ -2625,35 +2655,70 @@ function FormModulo({
   const [error, setError] = useState("");
   const [fp, setFp] = useState({ ...PIEZA_VACIA });
   const [fpError, setFpError] = useState("");
+  // Edición de pieza existente: idx !== null = modo edición
+  const [editandoPiezaIdx, setEditandoPiezaIdx] = useState(null);
+  // Nombres sugeridos para autocompletado rápido
+  const NOMBRES_SUGERIDOS = ["Lateral", "Base", "Techo", "Fondo", "Puerta", "Entrepaño", "Zarpa", "Zócalo", "Cajón"];
   const matDef =
     costos.materiales.find((m) => m.tipo === datos.material) ||
     costos.materiales[0];
   const espesor = matDef?.espesor || 18;
+  const normalizarPieza = (p) => ({
+    ...p,
+    cantidad: Math.max(1, parseInt(p.cantidad) || 1),
+    offsetEsp: parseInt(p.offsetEsp) || 0,
+    offsetMm: parseInt(p.offsetMm) || 0,
+    divisor: Math.max(1, parseInt(p.divisor) || 1),
+    offsetEsp2: parseInt(p.offsetEsp2) || 0,
+    offsetMm2: parseInt(p.offsetMm2) || 0,
+    divisor2: Math.max(1, parseInt(p.divisor2) || 1),
+    tc: {
+      id: parseInt(p.tc?.id) || 0,
+      lados1: parseInt(p.tc?.lados1) || 0,
+      lados2: parseInt(p.tc?.lados2) || 0,
+    },
+  });
+
   const agregarPieza = () => {
-    if (!fp.nombre.trim()) {
-      setFpError("Ingresá el nombre.");
-      return;
+    if (!fp.nombre.trim()) { setFpError("Ingresá el nombre."); return; }
+    const nueva = normalizarPieza(fp);
+    if (editandoPiezaIdx !== null) {
+      // Modo edición — reemplazar la pieza en su posición
+      setPiezas(prev => prev.map((p, i) => i === editandoPiezaIdx ? nueva : p));
+      setEditandoPiezaIdx(null);
+    } else {
+      setPiezas(prev => [...prev, nueva]);
     }
-    setPiezas((prev) => [
-      ...prev,
-      {
-        ...fp,
-        cantidad: parseInt(fp.cantidad) || 1,
-        offsetEsp: parseInt(fp.offsetEsp) || 0,
-        offsetMm: parseInt(fp.offsetMm) || 0,
-        divisor: Math.max(1, parseInt(fp.divisor) || 1),
-        offsetEsp2: parseInt(fp.offsetEsp2) || 0,
-        offsetMm2: parseInt(fp.offsetMm2) || 0,
-        divisor2: Math.max(1, parseInt(fp.divisor2) || 1),
-        tc: {
-          id: parseInt(fp.tc.id) || 0,
-          lados1: parseInt(fp.tc.lados1) || 0,
-          lados2: parseInt(fp.tc.lados2) || 0,
-        },
-      },
-    ]);
     setFp({ ...PIEZA_VACIA });
     setFpError("");
+  };
+
+  const editarPieza = (idx) => {
+    setFp({ ...piezas[idx] });
+    setEditandoPiezaIdx(idx);
+    // Scroll al formulario
+    setTimeout(() => document.getElementById("form-pieza")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  };
+
+  const cancelarEdicion = () => {
+    setFp({ ...PIEZA_VACIA });
+    setEditandoPiezaIdx(null);
+    setFpError("");
+  };
+
+  const duplicarPieza = (idx) => {
+    const copia = { ...piezas[idx], nombre: `${piezas[idx].nombre} (copia)` };
+    setPiezas(prev => [...prev.slice(0, idx + 1), copia, ...prev.slice(idx + 1)]);
+  };
+
+  const moverPieza = (idx, dir) => {
+    const dest = idx + dir;
+    if (dest < 0 || dest >= piezas.length) return;
+    setPiezas(prev => {
+      const n = [...prev];
+      [n[idx], n[dest]] = [n[dest], n[idx]];
+      return n;
+    });
   };
   const siguiente = () => {
     if (paso === 1) {
@@ -2883,13 +2948,15 @@ function FormModulo({
             }}
           >
             <FormPieza
-              fp={fp}
-              setFp={setFp}
+              fp={fp} setFp={setFp}
               onAgregar={agregarPieza}
+              onCancelar={cancelarEdicion}
+              editando={editandoPiezaIdx !== null}
               error={fpError}
               dims={datos.dimensiones}
               espesor={espesor}
               tapacanto={costos.tapacanto}
+              nombresSugeridos={NOMBRES_SUGERIDOS}
             />
           </div>
           <div
@@ -2948,9 +3015,17 @@ function FormModulo({
                   dims={datos.dimensiones}
                   espesor={espesor}
                   tapacanto={costos.tapacanto}
-                  onDelete={(i) =>
-                    setPiezas((prev) => prev.filter((_, j) => j !== i))
-                  }
+                  isFirst={i === 0}
+                  isLast={i === piezas.length - 1}
+                  onDelete={(i) => {
+                    setPiezas(prev => prev.filter((_, j) => j !== i));
+                    if (editandoPiezaIdx === i) cancelarEdicion();
+                  }}
+                  onEdit={editarPieza}
+                  onDuplicate={duplicarPieza}
+                  onMoveUp={(i) => moverPieza(i, -1)}
+                  onMoveDown={(i) => moverPieza(i, 1)}
+                  onChangeCantidad={(cant) => setPiezas(prev => prev.map((px, j) => j === i ? { ...px, cantidad: cant } : px))}
                 />
               ))
             )}
