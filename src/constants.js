@@ -19,7 +19,7 @@
 // Codificada en base64 para evitar que quede en texto plano en el bundle.
 // Para cambiarla: btoa("nueva_contraseña")
 export const PASS_HASH = btoa("carpicalc2025");
-export const PASS_KEY  = "carpicalc:auth";
+export const PASS_KEY  = "carpicalc:password"; // clave separada del flag de sesión (carpicalc:auth)
 
 // ── Perfil vacío del taller ───────────────────────────────────────────────
 // Estructura base que se usa cuando el usuario aún no cargó sus datos.

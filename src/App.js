@@ -79,6 +79,35 @@ function PanelPerfil({ perfil, onGuardar }) {
     }
   };
 
+  const [passActual, setPassActual]   = useState("");
+  const [passNueva, setPassNueva]     = useState("");
+  const [passConfirm, setPassConfirm] = useState("");
+  const [passError, setPassError]     = useState(null);
+  const [passOk, setPassOk]           = useState(false);
+
+  const handleCambiarPass = () => {
+    setPassError(null);
+    setPassOk(false);
+    const hashActual = btoa(passActual.trim());
+    const custom = localStorage.getItem(PASS_KEY);
+    if (hashActual !== PASS_HASH && !(custom && hashActual === custom)) {
+      setPassError("La contraseña actual es incorrecta.");
+      return;
+    }
+    if (passNueva.trim().length < 4) {
+      setPassError("La nueva contraseña debe tener al menos 4 caracteres.");
+      return;
+    }
+    if (passNueva !== passConfirm) {
+      setPassError("Las contraseñas no coinciden.");
+      return;
+    }
+    localStorage.setItem(PASS_KEY, btoa(passNueva.trim()));
+    setPassActual(""); setPassNueva(""); setPassConfirm("");
+    setPassOk(true);
+    setTimeout(() => setPassOk(false), 3000);
+  };
+
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleLogo = async (e) => {
@@ -227,6 +256,31 @@ function PanelPerfil({ perfil, onGuardar }) {
         {importError && (
           <div style={{ marginTop: 12, fontSize: 12, color: "#e07070", fontFamily: "'DM Mono',monospace" }}>⚠ {importError}</div>
         )}
+      </Card>
+
+      {/* ── Seguridad ─────────────────────────────────────────────────── */}
+      <Card className="rsp-card">
+        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 10 }}>
+          🔒 Seguridad — Contraseña de acceso
+        </div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.6 }}>
+          Cambiá la contraseña que se pide al entrar a CarpiCálc. La contraseña por defecto es <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--text-secondary)" }}>carpicalc2025</span>.
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <input type="password" value={passActual} onChange={e => { setPassActual(e.target.value); setPassError(null); }}
+            placeholder="Contraseña actual" style={inp} />
+          <input type="password" value={passNueva} onChange={e => { setPassNueva(e.target.value); setPassError(null); }}
+            placeholder="Nueva contraseña (mínimo 4 caracteres)" style={inp} />
+          <input type="password" value={passConfirm} onChange={e => { setPassConfirm(e.target.value); setPassError(null); }}
+            placeholder="Confirmar nueva contraseña" style={inp}
+            onKeyDown={e => e.key === "Enter" && handleCambiarPass()} />
+          {passError && <div style={{ fontSize: 11, color: "#e07070", fontFamily: "'DM Mono',monospace" }}>⚠ {passError}</div>}
+          {passOk    && <div style={{ fontSize: 11, color: "#7ecf8a", fontFamily: "'DM Mono',monospace" }}>✓ Contraseña actualizada correctamente</div>}
+          <button onClick={handleCambiarPass}
+            style={{ padding: "10px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-secondary)", transition: "all 0.2s" }}>
+            Actualizar contraseña
+          </button>
+        </div>
       </Card>
     </div>
   );
