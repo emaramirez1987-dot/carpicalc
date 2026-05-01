@@ -1,0 +1,532 @@
+import React, { useState } from 'react';
+import { Card, Badge, SectionTitle } from '../ui/index.jsx';
+import { fmtNum, fmtPeso, resolverDim } from '../../utils.js';
+
+function imprimirCorte(grupos, nombre) {
+  const fecha = new Date().toLocaleDateString("es-AR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+  let seccionesHtml = "";
+  Object.entries(grupos).forEach(([nombreMat, datos]) => {
+    const areaPlacaM2 = (datos.placaLargo * datos.placaAncho) / 1_000_000;
+    const areaConDesp = datos.areaNetaM2 * 1.2;
+    const placasNec = Math.ceil(areaConDesp / areaPlacaM2);
+    seccionesHtml += `<div style="background:#fff8ee;border:1px solid #c8a060;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:16px;"><div style="flex:1"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#9a7040;margin-bottom:4px">Resumen de compra · ${nombreMat}</div><div style="font-size:12px;color:#5a3a10">Área neta: <b>${fmtNum(
+      datos.areaNetaM2
+    )} m²</b> · +20%: <b>${fmtNum(areaConDesp)} m²</b> · Placa: <b>${
+      datos.placaLargo
+    }×${
+      datos.placaAncho
+    }mm</b></div></div><div style="text-align:center;background:#a07030;color:#fff;border-radius:8px;padding:8px 18px;"><div style="font-size:28px;font-weight:900;line-height:1">${placasNec}</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.1em;margin-top:2px">placa${
+      placasNec !== 1 ? "s" : ""
+    }</div></div></div><table style="width:100%;border-collapse:collapse;margin-bottom:24px;"><thead><tr style="background:#e8dcc8"><td colspan="5" style="padding:8px 16px;font-weight:700;font-size:14px;color:#5a3a10;text-transform:uppercase;letter-spacing:0.1em;border-bottom:2px solid #c8a060;">🪵 ${nombreMat} (${
+      datos.piezas.length
+    } cortes)</td></tr><tr style="background:#f5ede0"><th style="font-size:9px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:#9a7040;padding:8px 16px;text-align:left;border-bottom:2px solid #c8a060">Módulo</th><th style="font-size:9px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:#9a7040;padding:8px 16px;text-align:left;border-bottom:2px solid #c8a060">Pieza</th><th style="font-size:9px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:#9a7040;padding:8px 16px;text-align:right;border-bottom:2px solid #c8a060">Cant.</th><th style="font-size:9px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:#9a7040;padding:8px 16px;text-align:center;border-bottom:2px solid #c8a060">Medidas Reales</th><th style="font-size:9px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:#9a7040;padding:8px 16px;text-align:left;border-bottom:2px solid #c8a060">Tapacanto</th></tr></thead><tbody>${datos.piezas
+      .map(
+        (pz) =>
+          `<tr><td style="padding:10px 16px;border-bottom:1px solid #e8dcc8;font-size:12px;color:#1a0e04;"><span style="font-family:monospace;font-weight:700;color:#8a5a1a;margin-right:6px;">${pz.codigo}</span>${pz.modulo}</td><td style="padding:10px 16px;border-bottom:1px solid #e8dcc8;font-size:12px;font-weight:700;color:#1a0e04;">${pz.piezaNombre}</td><td style="padding:10px 16px;border-bottom:1px solid #e8dcc8;text-align:right;font-family:monospace;font-size:15px;font-weight:700;color:#8a5a1a;">${pz.cantidad}</td><td style="padding:10px 16px;border-bottom:1px solid #e8dcc8;text-align:center;font-family:monospace;font-size:14px;font-weight:700;color:#1a6a30;">${pz.d1} × ${pz.d2} mm</td><td style="padding:10px 16px;border-bottom:1px solid #e8dcc8;font-size:10px;color:#6a5040;">${pz.tcNombre} <span style="font-family:monospace;">${pz.tcLados}</span></td></tr>`
+      )
+      .join("")}</tbody></table>`;
+  });
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Lista de Corte — ${
+    nombre || "Trabajo"
+  }</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a0e04;padding:32px 40px;max-width:960px;margin:0 auto}@media print{body{padding:16px 20px}}</style></head><body><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #a07030"><div><div style="font-size:22px;font-weight:900;color:#7a4a10;letter-spacing:-0.5px">CarpiCálc</div><div style="font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-top:4px;color:#888">Lista de Corte para Taller</div></div><div style="text-align:right">${
+    nombre
+      ? `<div style="font-size:15px;font-weight:700;color:#1a0e04">${nombre}</div>`
+      : ""
+  }<div style="font-size:11px;color:#666;margin-top:4px">${fecha}</div></div></div>${seccionesHtml}<script>window.onload=()=>window.print();</script></body></html>`;
+  const win = window.open("", "_blank", "width=900,height=700");
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  } else
+    alert(
+      "El navegador bloqueó la ventana emergente. Habilitá los popups para este sitio e intentá de nuevo."
+    );
+}
+
+function imprimirListaCompras(grupos, nombre) {
+  const fecha = new Date().toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
+  const hayPrecios = Object.values(grupos).some(d => d.precioPlaca > 0);
+  let totalCosto = 0;
+  const filas = Object.entries(grupos).map(([nombreMat, datos]) => {
+    const areaPlacaM2 = (datos.placaLargo * datos.placaAncho) / 1_000_000;
+    const areaConDesp = datos.areaNetaM2 * 1.2;
+    const placasNec = Math.ceil(areaConDesp / areaPlacaM2);
+    const costo = datos.precioPlaca > 0 ? datos.precioPlaca * placasNec : 0;
+    totalCosto += costo;
+    const costoStr = costo > 0 ? `$ ${Math.round(costo).toLocaleString("es-AR")}` : "—";
+    return `<tr>
+      <td style="padding:14px 18px;border-bottom:1px solid #e8dcc8;font-size:14px;font-weight:700;color:#1a0e04">${nombreMat}</td>
+      <td style="padding:14px 18px;border-bottom:1px solid #e8dcc8;font-family:monospace;font-size:12px;color:#6a5040;white-space:nowrap">${datos.placaLargo}x${datos.placaAncho}mm</td>
+      <td style="padding:14px 18px;border-bottom:1px solid #e8dcc8;text-align:center;font-size:26px;font-weight:900;color:#8a5a1a;line-height:1.1">${placasNec}<div style="font-size:9px;font-weight:400;text-transform:uppercase;letter-spacing:0.1em;color:#9a7040;margin-top:2px">placa${placasNec !== 1 ? "s" : ""}</div></td>
+      <td style="padding:14px 18px;border-bottom:1px solid #e8dcc8;font-family:monospace;font-size:12px;color:#6a5040">${fmtNum(datos.areaNetaM2)} m2</td>
+      ${hayPrecios ? `<td style="padding:14px 18px;border-bottom:1px solid #e8dcc8;font-family:monospace;font-size:14px;font-weight:700;color:#2a5a20;text-align:right">${costoStr}</td>` : ""}
+    </tr>`;
+  }).join("");
+  const thCosto = hayPrecios ? `<th style="padding:10px 18px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;color:#9a7040;border-bottom:2px solid #c8a060">Precio est.</th>` : "";
+  const totalRow = hayPrecios && totalCosto > 0
+    ? `<tr style="background:#f0e8d0"><td colspan="4" style="padding:12px 18px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#5a3a10">Total estimado de materiales</td><td style="padding:12px 18px;font-family:monospace;font-size:16px;font-weight:900;color:#2a5a20;text-align:right">$ ${Math.round(totalCosto).toLocaleString("es-AR")}</td></tr>`
+    : "";
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Lista de Compras${nombre ? " — " + nombre : ""}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a0e04;padding:32px 40px;max-width:800px;margin:0 auto}@media print{body{padding:16px 20px}}</style></head><body><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #a07030"><div><div style="font-size:22px;font-weight:900;color:#7a4a10;letter-spacing:-0.5px">CarpiCalc</div><div style="font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-top:4px;color:#888">Lista de Compras · Materiales</div></div><div style="text-align:right">${nombre ? `<div style="font-size:15px;font-weight:700;color:#1a0e04">${nombre}</div>` : ""}<div style="font-size:11px;color:#666;margin-top:4px">${fecha}</div></div></div><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#e8dcc8"><th style="padding:10px 18px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;color:#9a7040;border-bottom:2px solid #c8a060">Material</th><th style="padding:10px 18px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;color:#9a7040;border-bottom:2px solid #c8a060">Medida placa</th><th style="padding:10px 18px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;color:#9a7040;border-bottom:2px solid #c8a060">Cantidad</th><th style="padding:10px 18px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;color:#9a7040;border-bottom:2px solid #c8a060">Area neta</th>${thCosto}</tr></thead><tbody>${filas}${totalRow}</tbody></table><script>window.onload=()=>window.print();</script></body></html>`;
+  const win = window.open("", "_blank", "width=700,height=500");
+  if (win) { win.document.write(html); win.document.close(); }
+  else alert("El navegador bloqueo la ventana emergente. Habilita los popups para este sitio e intenta de nuevo.");
+}
+
+// Estilos de tabla para imprimirCorte
+const thStyle = {
+  padding: "6px 10px", textAlign: "left", fontSize: 10,
+  fontFamily: "'DM Mono',monospace", fontWeight: 700,
+  textTransform: "uppercase", letterSpacing: "0.08em",
+  color: "var(--text-muted)", borderBottom: "1px solid var(--border)"
+};
+const tdStyle = {
+  padding: "5px 10px", fontSize: 12, verticalAlign: "middle",
+  borderBottom: "1px solid var(--separator)"
+};
+
+function ResumenCompra({ nombreMat, placaLargo, placaAncho, areaNetaM2, precioPlaca }) {
+  const areaPlacaM2 = (placaLargo * placaAncho) / 1_000_000;
+  const areaConDesp = areaNetaM2 * 1.2;
+  const placasNec = Math.ceil(areaConDesp / areaPlacaM2);
+  const pct = ((areaNetaM2 / (placasNec * areaPlacaM2)) * 100).toFixed(1);
+  const costoEstimado = precioPlaca > 0 ? placasNec * precioPlaca : null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 16,
+        padding: "14px 20px",
+        marginBottom: 16,
+        background: "rgba(200,128,42,0.06)",
+        border: "1px solid var(--accent-border)",
+        borderRadius: 10,
+        flexWrap: "wrap"
+      }}
+    >
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ fontSize: 28 }}>🛒</div>
+      </div>
+      <div style={{ flex: 1, minWidth: 160 }}>
+        <div
+          style={{
+            fontSize: 11,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            fontWeight: 700,
+            color: "var(--text-muted)",
+            marginBottom: 4
+          }}
+        >
+          Resumen de compra
+        </div>
+        <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+          Área neta:{" "}
+          <span
+            style={{
+              fontFamily: "'DM Mono',monospace",
+              color: "var(--text-primary)"
+            }}
+          >
+            {fmtNum(areaNetaM2)} m²
+          </span>
+          <span style={{ margin: "0 6px", color: "var(--text-muted)" }}>·</span>
+          +20%:{" "}
+          <span
+            style={{
+              fontFamily: "'DM Mono',monospace",
+              color: "var(--text-primary)"
+            }}
+          >
+            {fmtNum(areaConDesp)} m²
+          </span>
+          <span style={{ margin: "0 6px", color: "var(--text-muted)" }}>·</span>
+          Placa:{" "}
+          <span
+            style={{
+              fontFamily: "'DM Mono',monospace",
+              color: "var(--text-primary)"
+            }}
+          >
+            {placaLargo}×{placaAncho}mm
+          </span>
+        </div>
+        <div style={{ fontSize: 11, marginTop: 4, color: "var(--text-muted)" }}>
+          Aprovechamiento estimado: {pct}%
+          {costoEstimado !== null && (
+            <span style={{ marginLeft: 12 }}>
+              · Costo aprox.:{" "}
+              <span style={{ fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-primary)" }}>
+                {fmtPeso(Math.round(costoEstimado))}
+              </span>
+            </span>
+          )}
+        </div>
+      </div>
+      <div
+        style={{
+          flexShrink: 0,
+          textAlign: "center",
+          background: "var(--accent-soft)",
+          border: "1px solid var(--accent-border)",
+          borderRadius: 10,
+          padding: "10px 20px",
+          minWidth: 80
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "'Playfair Display',serif",
+            fontSize: 36,
+            fontWeight: 900,
+            color: "var(--accent)",
+            lineHeight: 1
+          }}
+        >
+          {placasNec}
+        </div>
+        <div
+          style={{
+            fontSize: 10,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            color: "var(--text-muted)",
+            marginTop: 4
+          }}
+        >
+          placa{placasNec !== 1 ? "s" : ""}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TablaGrupoCorte({ nombreMat, piezas }) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 12
+        }}
+      >
+        <h3
+          style={{
+            fontSize: 14,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            fontWeight: 700,
+            color: "var(--accent)",
+            margin: 0
+          }}
+        >
+          🪵 {nombreMat}
+        </h3>
+        <Badge color="#7090b0">{piezas.length} cortes</Badge>
+      </div>
+      {/* rsp-scroll-x: scroll táctil en tablas */}
+      <div
+        className="rsp-scroll-x"
+        style={{
+          borderRadius: 8,
+          overflow: "hidden",
+          border: "1px solid var(--border)"
+        }}
+      >
+        <div className="rsp-table-inner">
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead
+              style={{
+                background: "var(--accent-soft)",
+                borderBottom: "1px solid var(--border)"
+              }}
+            >
+              <tr>
+                <th style={thStyle}>Módulo</th>
+                <th style={thStyle}>Pieza</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Cant.</th>
+                <th style={{ ...thStyle, textAlign: "center" }}>
+                  Medidas reales
+                </th>
+                <th style={thStyle}>Tapacanto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {piezas.map((pz, idx) => (
+                <tr
+                  key={idx}
+                  style={{ transition: "background 0.15s" }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "var(--accent-soft)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "transparent")
+                  }
+                >
+                  <td style={tdStyle}>
+                    <span
+                      style={{
+                        fontFamily: "'DM Mono',monospace",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "var(--accent)",
+                        marginRight: 8
+                      }}
+                    >
+                      {pz.codigo}
+                    </span>
+                    {pz.modulo}
+                  </td>
+                  <td style={{ ...tdStyle, fontWeight: 600 }}>
+                    {pz.piezaNombre}
+                  </td>
+                  <td
+                    style={{
+                      ...tdStyle,
+                      textAlign: "right",
+                      fontFamily: "'DM Mono',monospace",
+                      fontWeight: 700,
+                      fontSize: 16,
+                      color: "var(--accent)"
+                    }}
+                  >
+                    {pz.cantidad}
+                  </td>
+                  <td
+                    style={{
+                      ...tdStyle,
+                      textAlign: "center",
+                      fontFamily: "'DM Mono',monospace",
+                      color: "#c8d098",
+                      fontSize: 14
+                    }}
+                  >
+                    {pz.d1} × {pz.d2} mm
+                  </td>
+                  <td
+                    style={{
+                      ...tdStyle,
+                      fontSize: 11,
+                      color: "var(--text-muted)"
+                    }}
+                  >
+                    {pz.tcNombre}{" "}
+                    <span
+                      style={{
+                        fontFamily: "'DM Mono',monospace",
+                        marginLeft: 4,
+                        color: "var(--text-secondary)"
+                      }}
+                    >
+                      {pz.tcLados}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupuestoVistaPreviaId }) {
+  const [copiadoOk, setCopiadoOk] = useState(false);
+
+  // Si hay un presupuesto seleccionado en Vista Previa, usarlo en lugar del activo
+  const presVP = presupuestoVistaPreviaId ? presupuestos[presupuestoVistaPreviaId] : null;
+  const itemsEfectivos = presVP ? (presVP.items || []) : items;
+  const getModUsadoEfectivo = presVP
+    ? (item) => {
+        const base = modulos[item.codigo];
+        if (!base) return null;
+        const dims = (presVP.dimOverride && presVP.dimOverride[`${item.codigo}-${item.id || 0}`]) || base.dimensiones;
+        return { ...base, dimensiones: dims };
+      }
+    : getModUsado;
+
+  if (itemsEfectivos.length === 0) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <SectionTitle sub="Lista detallada agrupada por material con medidas listas para la escuadradora">
+          Lista de Corte{presVP ? ` — ${presVP.nombre}` : ""}
+        </SectionTitle>
+        <div style={{ textAlign: "center", padding: "60px 0", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>🪚</div>
+          <p style={{ fontSize: 14 }}>No hay piezas para cortar.</p>
+          <p style={{ fontSize: 12, marginTop: 6 }}>
+            Agregá módulos desde{" "}
+            <strong style={{ color: "var(--accent)" }}>📋 Presupuesto</strong>{" "}
+            para generar la lista.
+          </p>
+        </div>
+      </div>
+    );
+
+  }
+  const nombreActivo = presVP ? presVP.nombre : (() => {
+    const entries = Object.entries(presupuestos || {});
+    const codsActuales = itemsEfectivos.map((i) => i.codigo).join(",");
+    const match = entries.find(
+      ([, p]) => p.items.map((i) => i.codigo).join(",") === codsActuales
+    );
+    return match ? match[1].nombre : null;
+  })();
+  const grupos = {};
+  itemsEfectivos.forEach((item) => {
+    const modBase = modulos[item.codigo];
+    if (!modBase) return;
+    const modUsado = getModUsadoEfectivo(item);
+    const matDef =
+      costos.materiales.find((m) => m.tipo === modUsado.material) ||
+      costos.materiales[0];
+    if (!matDef) return;
+    const esp = matDef.espesor || 18;
+    const matKey = `${matDef.nombre} (${esp}mm)`;
+    if (!grupos[matKey])
+      grupos[matKey] = {
+        nombre: matDef.nombre,
+        espesor: esp,
+        placaLargo: matDef.placaLargo ?? 2750,
+        placaAncho: matDef.placaAncho ?? 1830,
+        precioPlaca: matDef.precio || 0,
+        areaNetaM2: 0,
+        piezas: []
+      };
+    modUsado.piezas.forEach((p) => {
+      const d1 = resolverDim(
+        modUsado.dimensiones[p.usaDim],
+        p.offsetEsp,
+        p.offsetMm,
+        p.divisor || 1,
+        esp
+      );
+      const d2 = resolverDim(
+        modUsado.dimensiones[p.usaDim2],
+        p.offsetEsp2,
+        p.offsetMm2,
+        p.divisor2 || 1,
+        esp
+      );
+      const tcDef = costos.tapacanto?.find((t) => t.id === p.tc?.id);
+      const cant = p.cantidad * item.cantidad;
+      grupos[matKey].areaNetaM2 += (d1 * d2 * cant) / 1_000_000;
+      grupos[matKey].piezas.push({
+        modulo: modBase.nombre,
+        codigo: item.codigo,
+        piezaNombre: p.nombre,
+        cantidad: cant,
+        d1: Math.round(d1),
+        d2: Math.round(d2),
+        tcNombre: tcDef ? tcDef.nombre : "Sin tapacanto",
+        tcLados: p.tc?.id
+          ? `[D1:${p.tc.lados1 || 0} | D2:${p.tc.lados2 || 0}]`
+          : "-"
+      });
+    });
+  });
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 16
+        }}
+      >
+        <SectionTitle sub="Medidas reales descontando espesores y offsets, agrupadas para el operario">
+          Lista de Corte
+        </SectionTitle>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 4, flexWrap: "wrap" }}>
+          <button
+            onClick={() => {
+              const lines = [`📦 LISTA DE COMPRAS${nombreActivo ? " — " + nombreActivo : ""}`, ""];
+              let total = 0;
+              Object.entries(grupos).forEach(([nombreMat, datos]) => {
+                const areaPlacaM2 = (datos.placaLargo * datos.placaAncho) / 1_000_000;
+                const placasNec = Math.ceil((datos.areaNetaM2 * 1.2) / areaPlacaM2);
+                const costo = datos.precioPlaca > 0 ? datos.precioPlaca * placasNec : 0;
+                total += costo;
+                const costoStr = costo > 0 ? ` (~${fmtPeso(Math.round(costo))})` : "";
+                lines.push(`• ${placasNec} placa${placasNec !== 1 ? "s" : ""} de ${nombreMat}${costoStr}`);
+              });
+              if (total > 0) { lines.push(""); lines.push(`TOTAL ESTIMADO: ${fmtPeso(Math.round(total))}`); }
+              navigator.clipboard.writeText(lines.join("\n")).then(() => {
+                setCopiadoOk(true);
+                setTimeout(() => setCopiadoOk(false), 2000);
+              });
+            }}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px",
+              borderRadius: 6, fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+              letterSpacing: "0.05em", cursor: "pointer", transition: "all 0.18s",
+              background: copiadoOk ? "rgba(126,207,138,0.15)" : "var(--bg-surface)",
+              border: `1px solid ${copiadoOk ? "#7ecf8a" : "var(--border)"}`,
+              color: copiadoOk ? "#7ecf8a" : "var(--text-secondary)",
+            }}
+          >
+            {copiadoOk ? "✓ Copiado" : "📋 Copiar lista"}
+          </button>
+          <button
+            onClick={() => imprimirListaCompras(grupos, nombreActivo)}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px",
+              borderRadius: 6, fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+              letterSpacing: "0.05em", cursor: "pointer", transition: "all 0.18s",
+              background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-secondary)",
+            }}
+          >
+            🛒 Lista de compras
+          </button>
+          <button
+            onClick={() => imprimirCorte(grupos, nombreActivo)}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 16px",
+              borderRadius: 6, fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+              letterSpacing: "0.05em", cursor: "pointer", transition: "all 0.18s",
+              background: "linear-gradient(135deg,var(--accent),var(--accent-hover))",
+              border: "none", color: "var(--text-inverted)",
+              boxShadow: "0 3px 12px rgba(180,100,20,0.28)",
+            }}
+          >
+            🖨 Lista de corte
+          </button>
+        </div>
+      </div>
+      <div className="no-print">
+        {Object.entries(grupos).map(([nombreMat, datos]) => (
+          <Card
+            key={nombreMat}
+            className="rsp-card"
+            style={{ marginBottom: 20 }}
+          >
+            <ResumenCompra
+              nombreMat={nombreMat}
+              placaLargo={datos.placaLargo}
+              placaAncho={datos.placaAncho}
+              areaNetaM2={datos.areaNetaM2}
+              precioPlaca={datos.precioPlaca}
+            />
+            <TablaGrupoCorte nombreMat={nombreMat} piezas={datos.piezas} />
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 12. TABLERO DE TRABAJOS
+// ══════════════════════════════════════════════════════════════════
+// ── TableroKanban ─────────────────────────────────────────────────
+
+export { ListaCorte };
