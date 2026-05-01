@@ -2584,8 +2584,7 @@ function Presupuesto({
         </div>
 
         {/* ── Contenido de pestaña: Módulos ── */}
-        {pestañaActiva === "modulos" && (
-          <div style={{ padding: "16px 20px" }}>
+        <div style={{ display: pestañaActiva === "modulos" ? "block" : "none", padding: "16px 20px" }}>
             {/* Indicador de modo edición */}
             {editandoModuloIdx !== null && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "7px 12px", background: "var(--accent-soft)", borderRadius: 7, border: "1px solid var(--accent-border)" }}>
@@ -2629,21 +2628,20 @@ function Presupuesto({
               </div>
             )}
             <PanelSelectorModulos modulos={modulos} onSeleccionar={cod => handleCodChange(cod)} />
-          </div>
-        )}
+        </div>
 
         {/* ── Contenido de pestaña: Costos directos ── */}
-        {pestañaActiva === "costos" && (
+        <div style={{ display: pestañaActiva === "costos" ? "block" : "none" }}>
           <SeccionCostosDirectos
             costosDirectos={costosDirectos}
             setCostosDirectos={setCostosDirectos}
             costos={costos}
             sinCard
           />
-        )}
+        </div>
 
         {/* ── Contenido de pestaña: Extras ── */}
-        {pestañaActiva === "extras" && (
+        <div style={{ display: pestañaActiva === "extras" ? "block" : "none" }}>
           <SeccionAdicionales
             adicionales={adicionales}
             setAdicionales={setAdicionales}
@@ -2651,7 +2649,7 @@ function Presupuesto({
             onGuardarFrecuente={onGuardarExtraFrecuente}
             sinCard
           />
-        )}
+        </div>
 
       </div>
       </>)}{/* fin secciones de carga */}
