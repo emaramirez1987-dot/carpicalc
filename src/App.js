@@ -263,6 +263,12 @@ function PanelPerfil({ perfil, onGuardar }) {
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 10 }}>
           🔒 Seguridad — Contraseña de acceso
         </div>
+        <button
+          onClick={() => { localStorage.removeItem("carpicalc:auth"); window.location.reload(); }}
+          style={{ marginBottom: 16, padding: "7px 16px", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px solid rgba(200,60,60,0.30)", color: "#e07070" }}
+        >
+          🚪 Cerrar sesión
+        </button>
         <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.6 }}>
           Cambiá la contraseña que se pide al entrar a CarpiCálc. La contraseña por defecto es <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--text-secondary)" }}>carpicalc2025</span>.
         </div>
