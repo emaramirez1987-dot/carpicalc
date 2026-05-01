@@ -2583,8 +2583,12 @@ function Presupuesto({
           ))}
         </div>
 
-        {/* ── Contenido de pestaña: Módulos ── */}
-        <div style={{ display: pestañaActiva === "modulos" ? "block" : "none", padding: "16px 20px" }}>
+        {/* ── Contenidos de pestañas — grid para mantener altura estable ── */}
+        {/* Todos los paneles apilados en la misma celda; el más alto fija la altura del card */}
+        <div style={{ display: "grid" }}>
+
+        {/* Módulos */}
+        <div style={{ gridArea: "1/1", padding: "16px 20px", visibility: pestañaActiva === "modulos" ? "visible" : "hidden", pointerEvents: pestañaActiva === "modulos" ? "auto" : "none" }}>
             {/* Indicador de modo edición */}
             {editandoModuloIdx !== null && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "7px 12px", background: "var(--accent-soft)", borderRadius: 7, border: "1px solid var(--accent-border)" }}>
@@ -2630,8 +2634,8 @@ function Presupuesto({
             <PanelSelectorModulos modulos={modulos} onSeleccionar={cod => handleCodChange(cod)} />
         </div>
 
-        {/* ── Contenido de pestaña: Costos directos ── */}
-        <div style={{ display: pestañaActiva === "costos" ? "block" : "none" }}>
+        {/* Costos directos */}
+        <div style={{ gridArea: "1/1", visibility: pestañaActiva === "costos" ? "visible" : "hidden", pointerEvents: pestañaActiva === "costos" ? "auto" : "none" }}>
           <SeccionCostosDirectos
             costosDirectos={costosDirectos}
             setCostosDirectos={setCostosDirectos}
@@ -2640,8 +2644,8 @@ function Presupuesto({
           />
         </div>
 
-        {/* ── Contenido de pestaña: Extras ── */}
-        <div style={{ display: pestañaActiva === "extras" ? "block" : "none" }}>
+        {/* Extras */}
+        <div style={{ gridArea: "1/1", visibility: pestañaActiva === "extras" ? "visible" : "hidden", pointerEvents: pestañaActiva === "extras" ? "auto" : "none" }}>
           <SeccionAdicionales
             adicionales={adicionales}
             setAdicionales={setAdicionales}
@@ -2650,6 +2654,8 @@ function Presupuesto({
             sinCard
           />
         </div>
+
+        </div>{/* fin grid */}
 
       </div>
       </>)}{/* fin secciones de carga */}

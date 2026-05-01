@@ -21,7 +21,8 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git config *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "PowerShell(cd \"C:\\\\Users\\\\emara\\\\OneDrive\\\\Escritorio\\\\carpicalc\"; $env:CI=\"true\"; npm run build 2>&1)"
     ]
   }
 }
