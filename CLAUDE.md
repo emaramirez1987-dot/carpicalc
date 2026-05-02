@@ -87,7 +87,7 @@ Detection is deterministic (real total comparison), NOT timestamp-based.
 
 **Persistence:**
 - Only `storage.js` touches localStorage directly
-- `withSave` is fire-and-forget (known limitation — queue planned)
+- `withSave` usa cola serializada (saveQueue + drain) — saves paralelos se procesan en orden
 - `guardarModulos` bumps `costos_version` — required for stale detection
 
 **IDs:**
@@ -155,15 +155,13 @@ carpicalc:auth           → session flag
 
 ## Known Limitations (Planned)
 
-1. **`withSave` concurrency** — no execution queue, parallel saves not guaranteed ordered
-2. **No schema validation** — malformed localStorage data can cause unpredictable behavior
-3. **App.js handlers** — crear/actualizar/eliminar presupuesto todavía viven en App.js; mover a `presupuestoService.js` cuando se extraiga dominio completo
+1. **No schema validation** — malformed localStorage data can cause unpredictable behavior
+2. **App.js handlers** — crear/actualizar/eliminar presupuesto todavía viven en App.js; mover a `presupuestoService.js` cuando se extraiga dominio completo
 
 ## Roadmap
 
 | Priority | Feature | Notes |
 |---|---|---|
-| High | `withSave` queue | ~20 líneas, cero impacto en UI |
 | High | Public budget link | Flujo de aprobación del cliente |
 | Medium | Supabase migration | Auth + PostgreSQL + RLS, región São Paulo |
 | Medium | Lemon Squeezy subscriptions | Bronce $8 / Plata $18 / Oro $35 USD |
