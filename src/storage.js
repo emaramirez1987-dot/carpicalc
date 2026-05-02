@@ -223,6 +223,20 @@ export function exportarBackup() {
   localStorage.setItem("carpicalc:ultimo_backup", Date.now().toString());
 }
 
+// ── Perfil (lectura fuera de React) ──────────────────────────────────────────
+// Necesaria para funciones de exportación (PDF, WhatsApp, etc.) que corren
+// fuera del árbol de componentes y no tienen acceso al estado de React.
+// Vive aquí (no en utils.js) porque es I/O puro de localStorage.
+
+/**
+ * Lee el perfil del taller desde localStorage.
+ * Retorna {} si no existe o hay error de parseo.
+ */
+export function leerPerfil() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:perfil")) || {}; }
+  catch { return {}; }
+}
+
 /**
  * Restaura todos los datos desde un objeto de backup previamente parseado.
  * No toca carpicalc:auth para no cerrar la sesión.

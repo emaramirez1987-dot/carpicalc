@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SectionTitle } from '../ui/index.jsx';
-import { fmtPeso, fmtFecha, calcularModulo, leerPerfil, calcularTotalVisual } from '../../utils.js';
+import { fmtPeso, fmtFecha, calcularModulo, calcularTotalVisual } from '../../utils.js';
+import { leerPerfil } from '../../storage.js';
 import { ESTADOS_TRABAJO } from '../../constants.js';
 import { generarFichaObra } from '../presupuesto/index.jsx';
 

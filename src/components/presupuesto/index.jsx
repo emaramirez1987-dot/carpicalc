@@ -6,7 +6,9 @@ import { fmtPeso, fmtNum, fmtFecha, fmtFechaLarga,
          resolverDim, calcularModulo,
          presupuestoNecesitaActualizacion, presupuestoTieneContenido,
          calcularTotalVisual,
-         recalcularTotalPresupuesto, leerPerfil } from '../../utils.js';
+         recalcularTotalPresupuesto } from '../../utils.js';
+import { leerPerfil } from '../../storage.js';
+import { usePresupuesto } from '../../state/PresupuestoContext.jsx';
 import { TIPO_MAT, ESTADOS_TRABAJO } from '../../constants.js';
 
 function imprimirPresupuesto(
@@ -1596,10 +1598,6 @@ function GestorPresupuestos({
 function Presupuesto({
   modulos,
   costos,
-  items,
-  setItems,
-  dimOverride,
-  setDimOverride,
   getModUsado,
   totalGeneral,
   presupuestos,
@@ -1612,10 +1610,6 @@ function Presupuesto({
   costosVersion = 0,
   presupuestoParaEditar = null,
   onPresupuestoEditarConsumed,
-  adicionales = [],
-  setAdicionales,
-  costosDirectos = [],
-  setCostosDirectos,
   onGuardarExtraFrecuente,
   // Nivel 3: integración con catálogo
   onVerCatalogo,
@@ -1629,18 +1623,27 @@ function Presupuesto({
   borradorRecuperado = false,
   onDismissBorrador
 }) {
+  // Estado del editor activo: viene del contexto en lugar de props.
+  // AppInterna sigue siendo dueña del estado; aquí solo lo consumimos.
+  const {
+    items, setItems,
+    dimOverride, setDimOverride,
+    adicionales, setAdicionales,
+    costosDirectos, setCostosDirectos,
+    presupuestoActivoId, setPresupuestoActivoId,
+  } = usePresupuesto();
+
   // LOGICA - Edición de Presupuestos Existentes
   // Cuando llega un presupuesto desde Vista Previa vía "Editar módulos",
   // lo cargamos en el estado activo y notificamos que fue consumido
   useEffect(() => {
     if (!presupuestoParaEditar) return;
     const { id, p } = presupuestoParaEditar;
-    onCargarPresupuesto(p);
+    onCargarPresupuesto(p, id);
     setClienteActivo(p.cliente || { nombre: "", tel: "", dir: "" });
     setNombreTrabajo(p.nombre || "");
     setPresupuestoActivoId(id);
-    if (typeof setCostosDirectos === "function")
-      setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
+    setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
     onPresupuestoEditarConsumed && onPresupuestoEditarConsumed();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presupuestoParaEditar]);
@@ -1650,7 +1653,6 @@ function Presupuesto({
   const [preDim, setPreDim] = useState(null);
   const [clienteActivo, setClienteActivo] = useState({ nombre: "", tel: "", dir: "" });
   const [nombreTrabajo, setNombreTrabajo] = useState("");
-  const [presupuestoActivoId, setPresupuestoActivoId] = useState(null);
   const [dialogoGuardar, setDialogoGuardar] = useState(false);
   const { ToastContainer } = useUndo();
   const formRef = React.useRef(null);
@@ -1726,12 +1728,11 @@ function Presupuesto({
   };
 
   const handleCargar = (p, id) => {
-    onCargarPresupuesto(p);
+    onCargarPresupuesto(p, id);
     setClienteActivo(p.cliente || { nombre: "", tel: "", dir: "" });
     setNombreTrabajo(p.nombre || "");
     setPresupuestoActivoId(id || null);
     setAlertaPrecios(null);
-    
     verificarPrecios(p, id);
   };
 
@@ -1741,7 +1742,6 @@ function Presupuesto({
     setNombreTrabajo("");
     setPresupuestoActivoId(null);
     setAlertaPrecios(null);
-     // abre panel de cliente
   };
 
   const handleCodChange = (val) => {

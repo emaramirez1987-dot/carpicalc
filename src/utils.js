@@ -166,34 +166,23 @@ export function calcularModulo(modulo, costos) {
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
- * Lee el perfil del taller desde localStorage.
- * Útil fuera de React (ej: en funciones de exportación PDF).
- * Retorna {} si no existe o hay error.
- */
-export function leerPerfil() {
-  try { return JSON.parse(localStorage.getItem("carpicalc:perfil")) || {}; }
-  catch { return {}; }
-}
-
-/**
  * Determina si un presupuesto fue creado con costos desactualizados.
  *
- * Un presupuesto necesita actualización cuando:
- *   - Los costos del taller se modificaron DESPUÉS de la última vez que
- *     se recalculó el presupuesto (botón "↻ Actualizar precio").
+ * Un presupuesto necesita actualización cuando los costos del taller se
+ * modificaron DESPUÉS de la última vez que se recalculó el presupuesto.
  *
- * Usa p.costosVersionAl como marca de tiempo del último recálculo.
- * Si nunca se actualizó, usa el presId (timestamp de creación) como fallback.
+ * Usa p.costosVersionAl como marca del último recálculo.
+ * Si el campo no existe (presupuesto antiguo), usa 0 → siempre pide actualizar,
+ * lo cual es el comportamiento conservador correcto.
  *
- * @param {string} presId         - ID del presupuesto (timestamp de creación)
+ * @param {string} presId         - ID del presupuesto
  * @param {number} costosVersion  - Timestamp del último cambio en costos
  * @param {object} p              - Objeto del presupuesto
  * @returns {boolean}
  */
 export function presupuestoNecesitaActualizacion(presId, costosVersion, p) {
   if (!costosVersion || !presId) return false;
-  const referencia = p?.costosVersionAl ?? parseInt(presId);
-  return referencia < costosVersion;
+  return (p?.costosVersionAl ?? 0) < costosVersion;
 }
 
 /**

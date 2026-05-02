@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   LogoIsotipo, GlobalStyles, Card, SectionTitle, SaveIndicator
 } from "./components/ui/index.jsx";
@@ -10,6 +10,7 @@ import { ListaCorte } from "./components/corte/index.jsx";
 import { TableroKanban } from "./components/trabajos/index.jsx";
 import { PanelCaja } from "./components/caja/index.jsx";
 import { NavProvider, useNav } from "./state/NavContext.jsx";
+import { PresupuestoContext } from "./state/PresupuestoContext.jsx";
 
 import { PASS_HASH, PASS_KEY, PERFIL_VACIO } from "./constants.js";
 import { calcularModulo, comprimirImagen, fmtFecha } from "./utils.js";
@@ -435,12 +436,16 @@ function AppInterna() {
   const [perfil,         setPerfil]         = useState({ ...PERFIL_VACIO });
   const [cargando,       setCargando]       = useState(true);
   const [saveEst,        setSaveEst]        = useState(null);
-  const [items,          setItems]          = useState([]);
-  const [dimOverride,    setDimOverride]    = useState({});
-  const [adicionales,    setAdicionales]    = useState([]);
-  const [costosDirectos, setCostosDirectos] = useState([]);
-  const [costosVersion,  setCostosVersion]  = useState(leerVersionCostos);
+  const [items,              setItems]              = useState([]);
+  const [dimOverride,        setDimOverride]        = useState({});
+  const [adicionales,        setAdicionales]        = useState([]);
+  const [costosDirectos,     setCostosDirectos]     = useState([]);
+  const [costosVersion,      setCostosVersion]      = useState(leerVersionCostos);
   const [borradorRecuperado, setBorradorRecuperado] = useState(false);
+  // ID del presupuesto en edición activa. null = presupuesto nuevo sin guardar.
+  // Se levanta aquí (no en Presupuesto) para que el borrador pueda persistirlo
+  // y restaurarlo correctamente entre sesiones.
+  const [presupuestoActivoId, setPresupuestoActivoId] = useState(null);
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -452,10 +457,11 @@ function AppInterna() {
       try {
         const borrador = localStorage.getItem("carpicalc:borrador");
         if (borrador) {
-          const { items: bItems, dimOverride: bDim } = JSON.parse(borrador);
+          const { items: bItems, dimOverride: bDim, presupuestoActivoId: bPresId } = JSON.parse(borrador);
           if (bItems?.length > 0) {
             setItems(bItems);
             setDimOverride(bDim || {});
+            if (bPresId) setPresupuestoActivoId(bPresId);
             setBorradorRecuperado(true);
           }
         }
@@ -467,12 +473,17 @@ function AppInterna() {
   // ── Autosave de borrador ──────────────────────────────────────────────────
   useEffect(() => {
     if (items.length > 0) {
-      try { localStorage.setItem("carpicalc:borrador", JSON.stringify({ items, dimOverride })); }
+      try {
+        localStorage.setItem("carpicalc:borrador", JSON.stringify({
+          items, dimOverride,
+          ...(presupuestoActivoId ? { presupuestoActivoId } : {}),
+        }));
+      }
       catch {}
     } else {
       localStorage.removeItem("carpicalc:borrador");
     }
-  }, [items, dimOverride]);
+  }, [items, dimOverride, presupuestoActivoId]);
 
   // ── Aviso antes de cerrar con datos sin guardar ───────────────────────────
   useEffect(() => {
@@ -550,7 +561,7 @@ function AppInterna() {
 
   // ── Handlers de dominio de presupuestos ───────────────────────────────────
   const handleGuardarPresupuesto = (nombre, cliente, nota, presupuestoCompleto) => {
-    const { presupuestos: nuevo } = crearPresupuesto({
+    const { id, presupuestos: nuevo } = crearPresupuesto({
       presupuestos, nombre, cliente, nota,
       items, dimOverride, adicionales, costosDirectos,
       total: totalGeneral,
@@ -558,15 +569,17 @@ function AppInterna() {
       presupuestoCompleto,
     });
     setPresupuestos(nuevo);
+    setPresupuestoActivoId(id);   // el nuevo presupuesto ya tiene ID permanente
     withSave(() => guardarPresupuestos(nuevo));
     localStorage.removeItem("carpicalc:borrador");
   };
 
-  const handleCargarPresupuesto = (p) => {
+  const handleCargarPresupuesto = (p, id) => {
     setItems(p.items ? [...p.items] : []);
     setDimOverride(p.dimOverride && typeof p.dimOverride === "object" ? { ...p.dimOverride } : {});
     setAdicionales(Array.isArray(p.adicionales) ? [...p.adicionales] : []);
     setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
+    if (id) setPresupuestoActivoId(id);
     localStorage.removeItem("carpicalc:borrador");
   };
 
@@ -614,6 +627,21 @@ function AppInterna() {
     { id: "config",      label: "Mi taller",    icon: "⚙" },
   ];
 
+  // ── Valor del contexto del editor activo ──────────────────────────────────
+  // Debe ir ANTES del return temprano de carga — regla de hooks.
+  // Estado permanece en AppInterna; el contexto solo lo publica para que
+  // Presupuesto lo consuma sin recibir 10 props extra.
+  // useMemo evita re-renders innecesarios cuando AppInterna actualiza por
+  // razones ajenas al editor (ej: cambio de nav).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const presupuestoCtxValue = useMemo(() => ({
+    items, setItems,
+    dimOverride, setDimOverride,
+    adicionales, setAdicionales,
+    costosDirectos, setCostosDirectos,
+    presupuestoActivoId, setPresupuestoActivoId,
+  }), [items, dimOverride, adicionales, costosDirectos, presupuestoActivoId]);
+
   if (cargando)
     return (
       <>
@@ -641,6 +669,7 @@ function AppInterna() {
     );
 
   return (
+    <PresupuestoContext.Provider value={presupuestoCtxValue}>
     <>
       <GlobalStyles />
       <div style={{ minHeight: "100vh", background: "var(--bg-base)", color: "var(--text-primary)", transition: "background 0.3s" }}>
@@ -652,10 +681,6 @@ function AppInterna() {
               <Presupuesto
                 modulos={modulos}
                 costos={costos}
-                items={items}
-                setItems={setItems}
-                dimOverride={dimOverride}
-                setDimOverride={setDimOverride}
                 getModUsado={getModUsado}
                 totalGeneral={totalGeneral}
                 presupuestos={presupuestos}
@@ -670,10 +695,6 @@ function AppInterna() {
                 onPresupuestoEditarConsumed={() => dispatch({ type: "PRESUPUESTO_PARA_EDITAR_CONSUMIDO" })}
                 borradorRecuperado={borradorRecuperado}
                 onDismissBorrador={() => setBorradorRecuperado(false)}
-                adicionales={adicionales}
-                setAdicionales={setAdicionales}
-                costosDirectos={costosDirectos}
-                setCostosDirectos={setCostosDirectos}
                 onGuardarExtraFrecuente={handleGuardarExtraFrecuente}
                 onVerCatalogo={(codigo, contexto) => dispatch({
                   type: "INICIAR_EDICION_NIVEL3",
@@ -822,6 +843,7 @@ function AppInterna() {
         </main>
       </div>
     </>
+    </PresupuestoContext.Provider>
   );
 }
 

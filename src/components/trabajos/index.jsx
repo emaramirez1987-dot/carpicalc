@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, SectionTitle } from '../ui/index.jsx';
-import { fmtPeso, fmtFecha, resolverDim, calcularModulo, leerPerfil } from '../../utils.js';
+import { fmtPeso, fmtFecha, resolverDim, calcularModulo } from '../../utils.js';
+import { leerPerfil } from '../../storage.js';
 import { CATEGORIAS_DEFAULT, ESTADOS_TRABAJO } from '../../constants.js';
 import { generarFichaObra } from '../presupuesto/index.jsx';
 

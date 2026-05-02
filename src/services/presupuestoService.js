@@ -18,7 +18,7 @@ export function crearPresupuesto({
   costosVersionAl,
   presupuestoCompleto,
 }) {
-  const id = String(Date.now());
+  const id = crypto.randomUUID();
   const entry = presupuestoCompleto || {
     nombre,
     cliente: cliente || { nombre: "", tel: "", dir: "" },
