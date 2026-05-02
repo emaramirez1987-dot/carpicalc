@@ -1651,59 +1651,50 @@ function FormModulo({
 function AccionesModulo({ onEditar, onEliminar, onDuplicar, presupuestosAfectados = [] }) {
   const [confirmar, setConfirmar] = useState(false);
   const tieneAfectados = presupuestosAfectados.length > 0;
-  const s = (type) => ({
-    padding: "5px 12px", borderRadius: 6, fontSize: 11,
-    fontWeight: 700, fontFamily: "'DM Mono',monospace",
-    cursor: "pointer", transition: "all 0.15s", width: "100%",
-    background:
-      type === "edit" ? "var(--accent-soft)" :
-      type === "dup"  ? "rgba(112,144,176,0.12)" : "transparent",
-    border:
-      type === "edit" ? "1px solid var(--accent-border)" :
-      type === "dup"  ? "1px solid rgba(112,144,176,0.30)" :
-                        "1px solid rgba(200,60,60,0.22)",
-    color:
-      type === "edit" ? "var(--accent)" :
-      type === "dup"  ? "#7090b0" : "#e07070"
+  const iconBtn = (color, bg, border) => ({
+    width: 28, height: 28, borderRadius: 6, fontSize: 14, lineHeight: 1,
+    cursor: "pointer", transition: "all 0.15s", display: "flex",
+    alignItems: "center", justifyContent: "center",
+    background: bg, border, color, flexShrink: 0,
   });
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 90 }}>
-      <button onClick={onEditar} style={s("edit")}>✏ editar</button>
-      <button onClick={onDuplicar} style={s("dup")}>⧉ duplicar</button>
-      {confirmar ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {/* Aviso de presupuestos afectados */}
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+      {/* Fila de iconos compactos */}
+      <div style={{ display: "flex", gap: 4 }}>
+        <button onClick={onEditar} title="Editar"
+          style={iconBtn("var(--accent)", "var(--accent-soft)", "1px solid var(--accent-border)")}>✎</button>
+        <button onClick={onDuplicar} title="Duplicar"
+          style={iconBtn("#7090b0", "rgba(112,144,176,0.12)", "1px solid rgba(112,144,176,0.30)")}>⧉</button>
+        <button onClick={() => setConfirmar(v => !v)} title="Eliminar"
+          style={iconBtn("#e07070", confirmar ? "rgba(200,60,60,0.15)" : "transparent", "1px solid rgba(200,60,60,0.30)")}>×</button>
+      </div>
+      {/* Confirmación de borrado — aparece debajo */}
+      {confirmar && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, width: "100%" }}>
           {tieneAfectados && (
-            <div style={{ padding: "7px 8px", borderRadius: 6, background: "rgba(200,100,50,0.12)", border: "1px solid rgba(200,100,50,0.30)", marginBottom: 2 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#d47a50", fontFamily: "'DM Mono',monospace", marginBottom: 4 }}>
-                ⚠ Usado en {presupuestosAfectados.length} presupuesto{presupuestosAfectados.length > 1 ? "s" : ""}:
+            <div style={{ padding: "6px 8px", borderRadius: 6, background: "rgba(200,100,50,0.10)", border: "1px solid rgba(200,100,50,0.28)" }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#d47a50", fontFamily: "'DM Mono',monospace", marginBottom: 3 }}>
+                ⚠ Usado en {presupuestosAfectados.length} presupuesto{presupuestosAfectados.length > 1 ? "s" : ""}
               </div>
               {presupuestosAfectados.slice(0, 3).map((nombre, i) => (
-                <div key={i} style={{ fontSize: 10, color: "var(--text-muted)", paddingLeft: 6, lineHeight: 1.6 }}>
-                  · {nombre || "Sin nombre"}
-                </div>
+                <div key={i} style={{ fontSize: 10, color: "var(--text-muted)", paddingLeft: 6 }}>· {nombre || "Sin nombre"}</div>
               ))}
               {presupuestosAfectados.length > 3 && (
-                <div style={{ fontSize: 10, color: "var(--text-muted)", paddingLeft: 6 }}>
-                  · y {presupuestosAfectados.length - 3} más...
-                </div>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", paddingLeft: 6 }}>· y {presupuestosAfectados.length - 3} más...</div>
               )}
-              <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 4, fontStyle: "italic" }}>
-                Esos ítems quedarán como referencia rota.
-              </div>
             </div>
           )}
-          <button onClick={() => { onEliminar(); setConfirmar(false); }}
-            style={{ ...s("del"), background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", fontWeight: 900 }}>
-            ✓ {tieneAfectados ? "borrar igual" : "confirmar"}
-          </button>
-          <button onClick={() => setConfirmar(false)}
-            style={{ ...s("del"), color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-            cancelar
-          </button>
+          <div style={{ display: "flex", gap: 4 }}>
+            <button onClick={() => { onEliminar(); setConfirmar(false); }}
+              style={{ flex: 1, padding: "5px 0", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070" }}>
+              ✓ {tieneAfectados ? "borrar igual" : "confirmar"}
+            </button>
+            <button onClick={() => setConfirmar(false)}
+              style={{ padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+              ✕
+            </button>
+          </div>
         </div>
-      ) : (
-        <button onClick={() => setConfirmar(true)} style={s("del")}>× borrar</button>
       )}
     </div>
   );
