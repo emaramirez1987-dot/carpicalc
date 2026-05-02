@@ -248,6 +248,24 @@ export function guardarRolesPieza(roles) {
   return _save("carpicalc:roles_pieza", roles);
 }
 
+// ── Borrador de módulo en creación ────────────────────────────────────────────
+// Persiste el estado de FormModulo mientras el usuario navega entre pestañas.
+// Se limpia al guardar o cancelar explícitamente.
+
+/** Lee el borrador de módulo en progreso. Retorna null si no existe. */
+export function cargarBorradorModulo() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:borrador_modulo")) || null; }
+  catch { return null; }
+}
+
+/** Guarda el estado actual de FormModulo como borrador. */
+export const guardarBorradorModulo = (d) => _save("carpicalc:borrador_modulo", d);
+
+/** Elimina el borrador de módulo (al guardar o cancelar). */
+export function limpiarBorradorModulo() {
+  try { localStorage.removeItem("carpicalc:borrador_modulo"); } catch {}
+}
+
 /**
  * Restaura todos los datos desde un objeto de backup previamente parseado.
  * No toca carpicalc:auth para no cerrar la sesión.

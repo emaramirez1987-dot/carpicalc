@@ -3,7 +3,7 @@ import { useUndo } from '../../hooks/useUndo.js';
 import { Btn, Card, Badge, TextInput, Select, SectionTitle } from '../ui/index.jsx';
 import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarFormula } from '../../utils.js';
 import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT, ROLES_PIEZA_DEFAULT } from '../../constants.js';
-import { guardarPresupuestos, cargarRolesPieza, guardarRolesPieza } from '../../storage.js';
+import { guardarPresupuestos, cargarRolesPieza, guardarRolesPieza, cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
 
 const DIMS = ["ancho", "alto", "profundidad"];
 
@@ -551,7 +551,9 @@ function FormModulo({
   onRecalcularAfectados = null,  // (cod) → recalcula precios en presupuestos que usan ese módulo
 }) {
   const esEdicion = !!codigoEditar;
-  const [paso, setPaso] = useState(esEdicion ? 2 : 1);
+  // Borrador persistido: solo para módulos nuevos (no edición de existentes)
+  const _draft = !moduloBase ? cargarBorradorModulo() : null;
+  const [paso, setPaso] = useState(() => esEdicion ? 2 : (_draft?.paso || 1));
   // Modal de decisión: aparece al guardar desde Nivel 3
   // null = cerrado, "pidiendo" = mostrando opciones, "nombre" = ingresando nombre para catálogo
   const [modalDecision, setModalDecision] = useState(null);
@@ -576,7 +578,7 @@ function FormModulo({
           categoria: moduloBase.categoria || "otros",
           variables: moduloBase.variables ? { ...moduloBase.variables } : {}
         }
-      : {
+      : (_draft?.datos || {
           codigo: "",
           nombre: "",
           descripcion: "",
@@ -584,9 +586,9 @@ function FormModulo({
           material: "melamina",
           categoria: "otros",
           variables: {}
-        }
+        })
   );
-  const [piezas, setPiezas] = useState(
+  const [piezas, setPiezas] = useState(() =>
     moduloBase
       ? moduloBase.piezas.map((p) => ({
           ...p,
@@ -594,14 +596,21 @@ function FormModulo({
           divisor2: p.divisor2 || 1,
           tc: p.tc ? { ...p.tc } : { id: 0, lados1: 0, lados2: 0 }
         }))
-      : []
+      : (_draft?.piezas || [])
   );
-  const [herrajes, setHerrajes] = useState(
-    moduloBase ? moduloBase.herrajes.map((h) => ({ ...h })) : []
+  const [herrajes, setHerrajes] = useState(() =>
+    moduloBase ? moduloBase.herrajes.map((h) => ({ ...h })) : (_draft?.herrajes || [])
   );
-  const [moDeObra, setMoDeObra] = useState(
-    moduloBase ? { ...moduloBase.moDeObra } : { tipo: "por_modulo", horas: 0 }
+  const [moDeObra, setMoDeObra] = useState(() =>
+    moduloBase ? { ...moduloBase.moDeObra } : (_draft?.moDeObra || { tipo: "por_modulo", horas: 0 })
   );
+
+  // Persistir borrador automáticamente en cada cambio (solo módulos nuevos)
+  useEffect(() => {
+    if (moduloBase) return;
+    guardarBorradorModulo({ paso, datos, piezas, herrajes, moDeObra });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paso, datos, piezas, herrajes, moDeObra]);
   const [error, setError] = useState("");
   const [fp, setFp] = useState({ ...PIEZA_VACIA });
   const [fpError, setFpError] = useState("");
@@ -708,7 +717,7 @@ function FormModulo({
   // Cancelar: pregunta si hubo cambios, cierra directo si no
   const handleCancelar = () => {
     if (hayCambios()) { setConfirmandoCancelar(true); }
-    else { onCancelar(); }
+    else { limpiarBorradorModulo(); onCancelar(); }
   };
 
   const datosGuardar = () => ({
@@ -722,6 +731,12 @@ function FormModulo({
     herrajes,
     moDeObra
   });
+
+  // Wrapper: limpia el borrador antes de delegar al padre
+  const guardarYLimpiar = (cod, d) => {
+    limpiarBorradorModulo();
+    onGuardar(cod, d);
+  };
 
   const guardar = () => {
     // Desde presupuesto (Nivel 3): modal de decisión existente sin cambios
@@ -737,7 +752,7 @@ function FormModulo({
       return;
     }
     // Nuevo módulo — guardar directo
-    onGuardar(datos.codigo.trim().toUpperCase(), datosGuardar());
+    guardarYLimpiar(datos.codigo.trim().toUpperCase(), datosGuardar());
   };
   const preview =
     piezas.length > 0
@@ -1110,9 +1125,9 @@ function FormModulo({
                   style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "8px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
                   onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
                   onBlur={e => e.target.style.borderColor = "var(--border)"}
-                  onKeyDown={e => e.key === "Enter" && onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true })} />
+                  onKeyDown={e => e.key === "Enter" && guardarYLimpiar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true })} />
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => { onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true }); setModalDecision(null); }}
+                  <button onClick={() => { guardarYLimpiar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true }); setModalDecision(null); }}
                     style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
                     ✓ Confirmar nombre
                   </button>
@@ -1124,7 +1139,7 @@ function FormModulo({
               </>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button onClick={() => { onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), _soloPresupuesto: true }); setModalDecision(null); }}
+                <button onClick={() => { guardarYLimpiar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), _soloPresupuesto: true }); setModalDecision(null); }}
                   style={{ padding: "11px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700, transition: "border-color 0.15s" }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
                   onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
@@ -1486,7 +1501,7 @@ function FormModulo({
                   ✓ Actualizar módulo y recalcular precios
                 </button>
                 <button onClick={() => {
-                  onGuardar(datos.codigo.trim().toUpperCase(), datosGuardar());
+                  guardarYLimpiar(datos.codigo.trim().toUpperCase(), datosGuardar());
                   setDecisionCatalogo(null);
                 }} style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700 }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
@@ -1617,7 +1632,7 @@ function FormModulo({
             Hay cambios sin guardar. Si salís ahora se pierden.
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={onCancelar}
+            <button onClick={() => { limpiarBorradorModulo(); onCancelar(); }}
               style={{ padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070" }}>
               Descartar cambios
             </button>
@@ -1987,7 +2002,12 @@ function CatalogoModulos({
   onGuardarPermanente = null,
   onGuardarPresupuestoAfectado = null, // (id, cambios) recalcula presupuesto afectado
 }) {
-  const [modo, setModo] = useState(null);
+  const [modo, setModo] = useState(() => {
+    // Si hay un borrador de módulo nuevo en progreso, reabrir el formulario automáticamente
+    const draft = cargarBorradorModulo();
+    if (draft) return { tipo: "nuevo" };
+    return null;
+  });
 
   // Deep Link Nivel 3: abrir automáticamente el formulario de edición del módulo
   useEffect(() => {
