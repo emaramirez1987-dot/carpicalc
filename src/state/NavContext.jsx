@@ -12,6 +12,7 @@ const estadoInicial = {
   presupuestoVistaPreviaId: null,          // presupuesto seleccionado en Vista Previa
   presupuestoParaEditar:    null,          // { id, p } — puente para cargar presupuesto en editor
   cajaPresId:               null,          // presupuesto a abrir automáticamente en Caja
+  editorVistaCod:           null,          // código del módulo abierto en EditorVistaSVG
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,6 +114,14 @@ function navReducer(estado, accion) {
     // Caja consumió el autoAbrir — limpiar para que no se re-dispare
     case "CAJA_PRES_ID_CONSUMIDO":
       return { ...estado, cajaPresId: null };
+
+    // Abrir editor visual de frente de un módulo del catálogo
+    case "ABRIR_EDITOR_VISTA":
+      return { ...estado, vista: "editor_vista", editorVistaCod: accion.payload.cod };
+
+    // Cerrar editor visual y volver al catálogo
+    case "EDITOR_VISTA_CERRADO":
+      return { ...estado, vista: "catalogo", editorVistaCod: null };
 
     default:
       if (process.env.NODE_ENV === "development") {

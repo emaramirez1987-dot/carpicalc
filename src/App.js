@@ -3,7 +3,7 @@ import {
   LogoIsotipo, GlobalStyles, Card, SectionTitle, SaveIndicator
 } from "./components/ui/index.jsx";
 import { HojaCostos } from "./components/costos/index.jsx";
-import { CatalogoModulos } from "./components/catalogo/index.jsx";
+import { CatalogoModulos, EditorVistaSVG } from "./components/catalogo/index.jsx";
 import { Presupuesto } from "./components/presupuesto/index.jsx";
 import { VistaPrevia } from "./components/vista-previa/index.jsx";
 import { ListaCorte } from "./components/corte/index.jsx";
@@ -836,6 +836,20 @@ function AppInterna() {
               <PanelPerfil
                 perfil={perfil}
                 onGuardar={(nuevo) => { setPerfil(nuevo); withSave(() => guardarPerfil(nuevo)); }}
+              />
+            )}
+
+            {nav.vista === "editor_vista" && nav.editorVistaCod && modulos?.[nav.editorVistaCod] && (
+              <EditorVistaSVG
+                modulo={modulos[nav.editorVistaCod]}
+                onGuardar={(vistaConfig) => {
+                  const cod = nav.editorVistaCod;
+                  const updated = { ...modulos, [cod]: { ...modulos[cod], vistaConfig } };
+                  setModulos(updated);
+                  withSave(() => guardarModulos(updated));
+                  dispatch({ type: "EDITOR_VISTA_CERRADO" });
+                }}
+                onCerrar={() => dispatch({ type: "EDITOR_VISTA_CERRADO" })}
               />
             )}
 

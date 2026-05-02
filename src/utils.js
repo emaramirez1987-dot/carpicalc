@@ -458,3 +458,147 @@ export function comprimirImagen(file, maxW = 400, maxH = 280, quality = 0.82) {
     reader.readAsDataURL(file);
   });
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// VISTA SVG TÉCNICA
+// Genera un SVG de frente del módulo a partir de sus datos.
+// Función pura — no toca el DOM, no usa React, no tiene side effects.
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Genera un SVG de vista de frente del módulo.
+ *
+ * @param {object} modulo - Módulo con dimensiones, herrajes, variables, vistaConfig
+ * @param {object} opts   - { width, height, theme }
+ * @returns {string} Markup SVG listo para dangerouslySetInnerHTML o PDF inline
+ */
+export function generarVistaSVG(modulo, opts = {}) {
+  const { width = 200, height = 200, theme = "dark" } = opts;
+  const f = (n) => Math.round(n * 10) / 10;
+
+  const dims   = modulo.dimensiones || {};
+  const ancho  = Math.max(1, dims.ancho  || 600);
+  const alto   = Math.max(1, dims.alto   || 700);
+  const prof   = dims.profundidad || 550;
+  const zocalo = parseFloat((modulo.variables || {}).zocalo || 0);
+
+  const vc = modulo.vistaConfig || {};
+
+  // Auto-detect puertas/cajones desde nombres de herrajes
+  const herrajes    = modulo.herrajes || [];
+  const numPuertas  = vc.puertas  != null ? vc.puertas
+    : herrajes.filter(h => /puerta|bisagra/i.test(h.nombre || "")).length;
+  const numCajones  = vc.cajones  != null ? vc.cajones
+    : herrajes.filter(h => /caj[oó]n|corredera/i.test(h.nombre || "")).length;
+  const numEstantes = vc.estantes ?? 0;
+
+  // Colores por tema
+  const strokeColor = theme === "dark" ? "#3a4258" : "#9ca3af";
+  const fillColor   = theme === "dark" ? "#1a2030" : "#f1f5f9";
+  const accentColor = "#C8A02A";
+  const textColor   = theme === "dark" ? "#64748b" : "#94a3b8";
+  const cajonFill   = theme === "dark" ? "rgba(212,175,55,0.07)" : "rgba(212,175,55,0.10)";
+
+  // Padding para etiquetas de dimensiones
+  const padL = 6, padT = 10, padR = 38, padB = 20;
+  const availW = width  - padL - padR;
+  const availH = height - padT - padB;
+
+  const scale = Math.min(availW / ancho, availH / alto);
+  const sw = ancho * scale;
+  const sh = alto  * scale;
+  const ox = padL + (availW - sw) / 2;
+  const oy = padT + (availH - sh) / 2;
+
+  // Grosor visual del panel (no a escala real — solo indicativo)
+  const esp = Math.max(3, Math.min(8, sw * 0.045));
+
+  const els = [];
+
+  // ── Caja exterior ──
+  els.push(`<rect x="${f(ox)}" y="${f(oy)}" width="${f(sw)}" height="${f(sh)}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.5" rx="1"/>`);
+
+  // ── Zócalo ──
+  const zocaloH = zocalo > 0 ? Math.max(6, (zocalo / alto) * sh) : 0;
+  if (zocaloH > 0) {
+    const zy = oy + sh - zocaloH;
+    els.push(`<rect x="${f(ox + 1)}" y="${f(zy)}" width="${f(sw - 2)}" height="${f(zocaloH)}" fill="rgba(0,0,0,0.18)" stroke="${strokeColor}" stroke-width="0.5" stroke-dasharray="3,2"/>`);
+    els.push(`<text x="${f(ox + sw / 2)}" y="${f(zy + zocaloH / 2 + 3.5)}" text-anchor="middle" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="7" fill="${textColor}" opacity="0.7">zócalo</text>`);
+  }
+
+  // ── Interior ──
+  const intL   = ox + esp;
+  const intT   = oy + esp;
+  const intW   = sw - esp * 2;
+  const intBot = oy + sh - esp - zocaloH;
+  const intH   = intBot - intT;
+
+  if (intH > 0 && intW > 0) {
+    const maxCajonH  = Math.min(intH * 0.28, 28);
+    const cajonH     = numCajones > 0 ? maxCajonH : 0;
+    const cajonZoneH = numCajones * cajonH;
+
+    // Cajones (zona inferior)
+    for (let i = 0; i < numCajones; i++) {
+      const cy = intBot - cajonZoneH + i * cajonH;
+      els.push(`<rect x="${f(intL)}" y="${f(cy)}" width="${f(intW)}" height="${f(cajonH)}" fill="${cajonFill}" stroke="${strokeColor}" stroke-width="0.7"/>`);
+      const hW = intW * 0.35;
+      const hX = intL + (intW - hW) / 2;
+      const hY = cy + cajonH / 2;
+      els.push(`<line x1="${f(hX)}" y1="${f(hY)}" x2="${f(hX + hW)}" y2="${f(hY)}" stroke="${accentColor}" stroke-width="1.5" stroke-linecap="round" opacity="0.55"/>`);
+    }
+
+    const puertaT = intT;
+    const puertaH = intH - cajonZoneH;
+
+    if (puertaH > 0) {
+      // Estantes internos (líneas punteadas)
+      if (numEstantes > 0) {
+        const gap = puertaH / (numEstantes + 1);
+        for (let i = 1; i <= numEstantes; i++) {
+          const ey = puertaT + gap * i;
+          els.push(`<line x1="${f(intL)}" y1="${f(ey)}" x2="${f(intL + intW)}" y2="${f(ey)}" stroke="${strokeColor}" stroke-width="0.9" stroke-dasharray="4,2" opacity="0.7"/>`);
+        }
+      }
+
+      if (numPuertas === 0 && numCajones === 0) {
+        // Estantería abierta — entrepaños por defecto si no hay estantes configurados
+        const shelves = numEstantes > 0 ? 0 : 2;
+        const gap = puertaH / (shelves + 1);
+        for (let i = 1; i <= shelves; i++) {
+          const ey = puertaT + gap * i;
+          els.push(`<line x1="${f(intL)}" y1="${f(ey)}" x2="${f(intL + intW)}" y2="${f(ey)}" stroke="${strokeColor}" stroke-width="0.8" opacity="0.45"/>`);
+        }
+      } else if (numPuertas === 1) {
+        const hY = puertaT + puertaH * 0.65;
+        const hX = intL + intW * 0.18;
+        els.push(`<circle cx="${f(hX)}" cy="${f(hY)}" r="2.5" fill="${accentColor}" opacity="0.55"/>`);
+      } else if (numPuertas === 2) {
+        const midX = intL + intW / 2;
+        els.push(`<line x1="${f(midX)}" y1="${f(puertaT)}" x2="${f(midX)}" y2="${f(puertaT + puertaH)}" stroke="${strokeColor}" stroke-width="0.9"/>`);
+        const hY = puertaT + puertaH * 0.65;
+        els.push(`<circle cx="${f(midX - intW * 0.18)}" cy="${f(hY)}" r="2.5" fill="${accentColor}" opacity="0.55"/>`);
+        els.push(`<circle cx="${f(midX + intW * 0.18)}" cy="${f(hY)}" r="2.5" fill="${accentColor}" opacity="0.55"/>`);
+      } else if (numPuertas >= 3) {
+        const pW = intW / numPuertas;
+        for (let i = 1; i < numPuertas; i++) {
+          const lx = intL + pW * i;
+          els.push(`<line x1="${f(lx)}" y1="${f(puertaT)}" x2="${f(lx)}" y2="${f(puertaT + puertaH)}" stroke="${strokeColor}" stroke-width="0.9"/>`);
+        }
+        for (let i = 0; i < numPuertas; i++) {
+          const hX = intL + pW * (i + 0.2);
+          const hY = puertaT + puertaH * 0.65;
+          els.push(`<circle cx="${f(hX)}" cy="${f(hY)}" r="2.5" fill="${accentColor}" opacity="0.55"/>`);
+        }
+      }
+    }
+  }
+
+  // ── Etiquetas de dimensiones ──
+  const fs = f(Math.max(7, Math.min(9, sw / 22)));
+  els.push(`<text x="${f(ox + sw / 2)}" y="${f(oy + sh + 13)}" text-anchor="middle" font-family="DM Mono,monospace" font-size="${fs}" fill="${textColor}">${ancho}</text>`);
+  els.push(`<text x="${f(ox + sw + 6)}" y="${f(oy + sh / 2)}" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="${fs}" fill="${textColor}">${alto}</text>`);
+  els.push(`<text x="${f(ox + sw)}" y="${f(oy - 3)}" text-anchor="end" font-family="DM Mono,monospace" font-size="6.5" fill="${textColor}" opacity="0.55">⊙${prof}</text>`);
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${els.join("")}</svg>`;
+}

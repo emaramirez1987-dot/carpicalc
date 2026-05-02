@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNav } from '../../state/NavContext.jsx';
 import { useUndo } from '../../hooks/useUndo.js';
 import { Btn, Card, Badge, TextInput, Select, SectionTitle } from '../ui/index.jsx';
-import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarFormula } from '../../utils.js';
+import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarFormula, generarVistaSVG } from '../../utils.js';
 import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT, ROLES_PIEZA_DEFAULT } from '../../constants.js';
 import { guardarPresupuestos, cargarRolesPieza, guardarRolesPieza, cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
 
@@ -540,6 +541,58 @@ function StepIndicator({ paso }) {
     </div>
   );
 }
+
+// ── AcordeonPreviewSVG ────────────────────────────────────────────────────────
+// Preview de solo lectura que vive en FormModulo paso 1.
+// Cerrado por defecto — el carpintero lo expande si quiere ver la vista técnica.
+function AcordeonPreviewSVG({ datos, herrajes }) {
+  const [abierto, setAbierto] = useState(false);
+  const moduloPreview = useMemo(() => ({
+    dimensiones: datos.dimensiones,
+    herrajes,
+    variables: datos.variables || {},
+    vistaConfig: null,
+  }), [datos.dimensiones, datos.variables, herrajes]);
+
+  const svg = useMemo(
+    () => abierto ? generarVistaSVG(moduloPreview, { width: 180, height: 180 }) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [abierto, moduloPreview]
+  );
+
+  return (
+    <div style={{ borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden" }}>
+      <button
+        onClick={() => setAbierto(v => !v)}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "9px 14px", background: "var(--bg-subtle)", border: "none",
+          cursor: "pointer", color: "var(--text-muted)", fontSize: 12,
+          fontFamily: "'DM Mono',monospace", fontWeight: 700,
+        }}
+      >
+        <span>▣ Vista técnica de frente</span>
+        <span style={{ fontSize: 10, opacity: 0.6 }}>{abierto ? "▲" : "▼"}</span>
+      </button>
+      {abierto && (
+        <div style={{
+          padding: "14px 16px", background: "var(--bg-surface)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          gap: 20, flexWrap: "wrap",
+        }}>
+          <div dangerouslySetInnerHTML={{ __html: svg }} />
+          <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6 }}>
+            <div>Solo lectura · se actualiza automáticamente</div>
+            <div style={{ marginTop: 4, opacity: 0.7 }}>
+              Para editar la composición visual, usá<br />el botón <strong>▣</strong> en la tarjeta del módulo.
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FormModulo({
   costos,
   onGuardar,
@@ -920,6 +973,9 @@ function FormModulo({
               })}
             </div>
           </div>
+
+          {/* Preview técnico SVG — acordeón cerrado por defecto */}
+          <AcordeonPreviewSVG datos={datos} herrajes={herrajes} />
 
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
             <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
@@ -1648,7 +1704,7 @@ function FormModulo({
 }
 // ══════════════════════════════════════════════════════════════════
 // ── CatalogoModulos ───────────────────────────────────────────────
-function AccionesModulo({ onEditar, onEliminar, onDuplicar, presupuestosAfectados = [] }) {
+function AccionesModulo({ onEditar, onEliminar, onDuplicar, onAbrirVista, presupuestosAfectados = [] }) {
   const [confirmar, setConfirmar] = useState(false);
   const tieneAfectados = presupuestosAfectados.length > 0;
   const iconBtn = (color, bg, border) => ({
@@ -1665,6 +1721,10 @@ function AccionesModulo({ onEditar, onEliminar, onDuplicar, presupuestosAfectado
           style={iconBtn("var(--accent)", "var(--accent-soft)", "1px solid var(--accent-border)")}>✎</button>
         <button onClick={onDuplicar} title="Duplicar"
           style={iconBtn("#7090b0", "rgba(112,144,176,0.12)", "1px solid rgba(112,144,176,0.30)")}>⧉</button>
+        {onAbrirVista && (
+          <button onClick={onAbrirVista} title="Editor visual"
+            style={iconBtn("#8090c0", "rgba(128,144,192,0.12)", "1px solid rgba(128,144,192,0.30)")}>▣</button>
+        )}
         <button onClick={() => setConfirmar(v => !v)} title="Eliminar"
           style={iconBtn("#e07070", confirmar ? "rgba(200,60,60,0.15)" : "transparent", "1px solid rgba(200,60,60,0.30)")}>×</button>
       </div>
@@ -1883,7 +1943,7 @@ function ModalImagen({ imagen, cod, onClose, onBorrar, onCambiar }) {
   );
 }
 
-function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onImagenChange, presupuestosAfectados = [] }) {
+function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbrirVista, onImagenChange, presupuestosAfectados = [] }) {
   return (
     <Card className="rsp-card">
       <ImagenModulo
@@ -1931,14 +1991,14 @@ function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onIm
             </div>
           </div>
           {/* Botones — columna derecha */}
-          <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} presupuestosAfectados={presupuestosAfectados} />
+          <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} presupuestosAfectados={presupuestosAfectados} />
         </div>
       </div>
     </Card>
   );
 }
 
-function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onImagenChange, presupuestosAfectados = [] }) {
+function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbrirVista, onImagenChange, presupuestosAfectados = [] }) {
   return (
     <div
       className="rsp-lista-item"
@@ -1968,7 +2028,7 @@ function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onImag
         <span style={{ color: "#9ab080" }}>{fmtNum(c.m2Neto)} m²</span>
         <span style={{ color: "#7ecf8a", fontWeight: 700 }}>{fmtPeso(c.total)}</span>
       </div>
-      <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} presupuestosAfectados={presupuestosAfectados} />
+      <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} presupuestosAfectados={presupuestosAfectados} />
     </div>
   );
 }
@@ -1993,6 +2053,7 @@ function CatalogoModulos({
   onGuardarPermanente = null,
   onGuardarPresupuestoAfectado = null, // (id, cambios) recalcula presupuesto afectado
 }) {
+  const { dispatch } = useNav();
   const [modo, setModo] = useState(() => {
     // Si hay un borrador de módulo nuevo en progreso, reabrir el formulario automáticamente
     const draft = cargarBorradorModulo();
@@ -2401,6 +2462,7 @@ function CatalogoModulos({
                         onEditar={() => abrirModo({ tipo: "editar", codigo: cod, modulo: mod })}
                         onEliminar={() => eliminar(cod)}
                         onDuplicar={() => abrirModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
+                        onAbrirVista={() => dispatch({ type: "ABRIR_EDITOR_VISTA", payload: { cod } })}
                         onImagenChange={handleImagenChange}
                         presupuestosAfectados={presupuestosQueUsan(cod)} />;
                     })}
@@ -2414,6 +2476,7 @@ function CatalogoModulos({
                         onEditar={() => abrirModo({ tipo: "editar", codigo: cod, modulo: mod })}
                         onEliminar={() => eliminar(cod)}
                         onDuplicar={() => abrirModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
+                        onAbrirVista={() => dispatch({ type: "ABRIR_EDITOR_VISTA", payload: { cod } })}
                         onImagenChange={handleImagenChange}
                         presupuestosAfectados={presupuestosQueUsan(cod)} />;
                     })}
@@ -2564,8 +2627,112 @@ function PanelSelectorModulos({ modulos, onSeleccionar }) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// 9. PRESUPUESTO
+// 9. EDITOR VISUAL SVG
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * Vista independiente para configurar la composición visual de un módulo.
+ * Accesible desde AccionesModulo → botón ▣.
+ * Guarda vistaConfig (puertas, cajones, estantes) en el módulo sin tocar piezas.
+ */
+function EditorVistaSVG({ modulo, onGuardar, onCerrar }) {
+  const vc = modulo.vistaConfig || {};
+  // "" = auto-detectar desde herrajes; número = override manual
+  const [puertas,  setPuertas]  = useState(vc.puertas  != null ? String(vc.puertas)  : "");
+  const [cajones,  setCajones]  = useState(vc.cajones  != null ? String(vc.cajones)  : "");
+  const [estantes, setEstantes] = useState(String(vc.estantes ?? 0));
+
+  const moduloPreview = useMemo(() => ({
+    ...modulo,
+    vistaConfig: {
+      puertas:  puertas  === "" ? null : parseInt(puertas),
+      cajones:  cajones  === "" ? null : parseInt(cajones),
+      estantes: parseInt(estantes) || 0,
+    },
+  }), [modulo, puertas, cajones, estantes]);
+
+  const svgStr = useMemo(
+    () => generarVistaSVG(moduloPreview, { width: 320, height: 320 }),
+    [moduloPreview]
+  );
+
+  const chipStyle = (activo) => ({
+    padding: "4px 11px", borderRadius: 6, cursor: "pointer", fontSize: 11,
+    fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.12s",
+    background: activo ? "var(--accent-soft)" : "transparent",
+    border: `1px solid ${activo ? "var(--accent-border)" : "var(--border)"}`,
+    color: activo ? "var(--accent)" : "var(--text-muted)",
+  });
+
+  const Chips = ({ label, valor, setValor, opciones }) => (
+    <div>
+      <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>
+        {label}
+        {valor === "" && <span style={{ fontSize: 10, color: "var(--accent)", opacity: 0.7, marginLeft: 6 }}>(auto)</span>}
+      </div>
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+        {opciones.map(v => (
+          <button key={v} onClick={() => setValor(v === "auto" ? "" : v)} style={chipStyle(v === "auto" ? valor === "" : valor === v)}>
+            {v}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const guardar = () => {
+    onGuardar({
+      puertas:  puertas  === "" ? null : parseInt(puertas),
+      cajones:  cajones  === "" ? null : parseInt(cajones),
+      estantes: parseInt(estantes) || 0,
+    });
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 720, margin: "0 auto" }}>
+      <div>
+        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 900, color: "var(--accent)", marginBottom: 2 }}>
+          ▣ Vista técnica
+        </div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{modulo.nombre} · {modulo.dimensiones?.ancho} × {modulo.dimensiones?.profundidad} × {modulo.dimensiones?.alto} mm</div>
+      </div>
+
+      <Card className="rsp-card">
+        <div style={{ display: "flex", gap: 28, flexWrap: "wrap", alignItems: "flex-start" }}>
+          {/* Preview SVG */}
+          <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-subtle)", borderRadius: 10, padding: 12, border: "1px solid var(--border)" }}
+            dangerouslySetInnerHTML={{ __html: svgStr }} />
+
+          {/* Controles */}
+          <div style={{ flex: 1, minWidth: 200, display: "flex", flexDirection: "column", gap: 16 }}>
+            <Chips label="Puertas" valor={puertas} setValor={setPuertas}
+              opciones={["auto", "0", "1", "2", "3", "4"]} />
+            <Chips label="Cajones" valor={cajones} setValor={setCajones}
+              opciones={["auto", "0", "1", "2", "3", "4"]} />
+            <Chips label="Estantes internos" valor={estantes} setValor={setEstantes}
+              opciones={["0", "1", "2", "3", "4", "5"]} />
+
+            {(modulo.herrajes || []).length > 0 && (
+              <div style={{ fontSize: 11, color: "var(--text-muted)", padding: "8px 10px", borderRadius: 8, background: "var(--bg-subtle)", border: "1px solid var(--border)", lineHeight: 1.6 }}>
+                <strong>Herrajes detectados:</strong><br />
+                {modulo.herrajes.map(h => h.nombre).join(", ")}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 14, display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <Btn variant="ghost" onClick={onCerrar}>Cancelar</Btn>
+          <Btn onClick={guardar}>💾 Guardar vista</Btn>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 10. PRESUPUESTO
 // ══════════════════════════════════════════════════════════════════
 // ── GestorPresupuestos ────────────────────────────────────────────
 
-export { CatalogoModulos, PanelSelectorModulos };
+export { CatalogoModulos, PanelSelectorModulos, EditorVistaSVG };

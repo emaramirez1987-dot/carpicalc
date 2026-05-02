@@ -22,7 +22,8 @@
       "Bash(git commit *)",
       "Bash(git config *)",
       "Bash(git push *)",
-      "PowerShell(cd \"C:\\\\Users\\\\emara\\\\OneDrive\\\\Escritorio\\\\carpicalc\"; $env:CI=\"true\"; npm run build 2>&1)"
+      "PowerShell(cd \"C:\\\\Users\\\\emara\\\\OneDrive\\\\Escritorio\\\\carpicalc\"; $env:CI=\"true\"; npm run build 2>&1)",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" \"C:\\\\Program Files\\\\nodejs\\\\node_modules\\\\npm\\\\bin\\\\npm-cli.js\" run build)"
     ]
   }
 }
