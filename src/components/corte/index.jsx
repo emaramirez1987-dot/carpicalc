@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { Card, Badge, SectionTitle } from '../ui/index.jsx';
 import { fmtNum, fmtPeso, resolverDim } from '../../utils.js';
+import { OptimizerButton } from './OptimizerButton.jsx';
+import { ResumenOptimizado } from './ResumenOptimizado.jsx';
+import { VisualizadorPlaca } from './VisualizadorPlaca.jsx';
+import { BancoSobrantes } from './BancoSobrantes.jsx';
 
 function imprimirCorte(grupos, nombre) {
   const fecha = new Date().toLocaleDateString("es-AR", {
@@ -340,6 +344,7 @@ function TablaGrupoCorte({ nombreMat, piezas }) {
 
 function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupuestoVistaPreviaId }) {
   const [copiadoOk, setCopiadoOk] = useState(false);
+  const [layoutOptimizado, setLayoutOptimizado] = useState(null);
 
   // Si hay un presupuesto seleccionado en Vista Previa, usarlo en lugar del activo
   const presVP = presupuestoVistaPreviaId ? presupuestos[presupuestoVistaPreviaId] : null;
@@ -500,9 +505,25 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
           >
             🖨 Lista de corte
           </button>
+          <OptimizerButton
+            piezas={Object.values(grupos).flatMap(g => g.piezas.map(p => ({
+              id: `${p.codigo}-${p.piezaNombre}`,
+              d1: p.d1,
+              d2: p.d2,
+              cantidad: p.cantidad,
+              modId: p.modulo.toLowerCase().replace(/\s+/g, ''),
+              nombre: p.piezaNombre,
+              rotable: true,
+              vetaDir: "horizontal"
+            })))}
+            plateDims={{ largo: 2750, ancho: 1830 }}
+            onResult={setLayoutOptimizado}
+            onError={(e) => console.error('Optimizer error:', e)}
+          />
         </div>
       </div>
       <div className="no-print">
+        {/* Resumen estimado original */}
         {Object.entries(grupos).map(([nombreMat, datos]) => (
           <Card
             key={nombreMat}
@@ -516,6 +537,41 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
               areaNetaM2={datos.areaNetaM2}
               precioPlaca={datos.precioPlaca}
             />
+          </Card>
+        ))}
+
+        {/* Visualización del optimizador si existe */}
+        {layoutOptimizado && (
+          <div style={{ marginBottom: 24 }}>
+            <ResumenOptimizado
+              estimado={{ placasNecesarias: Math.ceil(Object.values(grupos).reduce((s, d) => s + d.areaNetaM2 * 1.2, 0) / (2.75 * 1.83)), rendimiento: 78 }}
+              optimizado={layoutOptimizado.metricas}
+              precioPlaca={Object.values(grupos)[0]?.precioPlaca || 0}
+            />
+
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, marginTop: 20 }}>
+              Diagramas de Placas Optimizadas
+            </h3>
+            {layoutOptimizado.layouts.map((layout, idx) => (
+              <div key={idx} style={{ marginBottom: 20 }}>
+                <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', marginBottom: 8 }}>
+                  PLACA {idx + 1} — {layout.piezas.length} pieza{layout.piezas.length !== 1 ? 's' : ''} colocadas
+                </h4>
+                <VisualizadorPlaca layout={layout} plateDims={{ largo: layout.plateLargo, ancho: layout.plateAncho }} />
+              </div>
+            ))}
+
+            <BancoSobrantes sobrantes={layoutOptimizado.sobrantes} />
+          </div>
+        )}
+
+        {/* Tabla de corte original (siempre visible) */}
+        {Object.entries(grupos).map(([nombreMat, datos]) => (
+          <Card
+            key={nombreMat}
+            className="rsp-card"
+            style={{ marginBottom: 20 }}
+          >
             <TablaGrupoCorte nombreMat={nombreMat} piezas={datos.piezas} />
           </Card>
         ))}
