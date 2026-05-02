@@ -1004,77 +1004,38 @@ function FormModulo({
           </div>
         </div>
 
-        <div className="rsp-paso2" style={{ display: "flex", gap: 20 }}>
-          <div
-            style={{
-              flex: "0 0 340px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 12
-            }}
-          >
-            <FormPieza
-              fp={fp} setFp={setFp}
-              onAgregar={agregarPieza}
-              onCancelar={cancelarEdicion}
-              editando={editandoPiezaIdx !== null}
-              error={fpError}
-              dims={datos.dimensiones}
-              espesor={espesor}
-              tapacanto={costos.tapacanto}
-              nombresSugeridos={NOMBRES_SUGERIDOS}
-              variables={datos.variables}
-            />
+        {/* ── Fila 2: FormPieza ancho completo ── */}
+        <FormPieza
+          fp={fp} setFp={setFp}
+          onAgregar={agregarPieza}
+          onCancelar={cancelarEdicion}
+          editando={editandoPiezaIdx !== null}
+          error={fpError}
+          dims={datos.dimensiones}
+          espesor={espesor}
+          tapacanto={costos.tapacanto}
+          nombresSugeridos={NOMBRES_SUGERIDOS}
+          variables={datos.variables}
+        />
+
+        {/* ── Fila 3: Lista de piezas ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h4 style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, color: "var(--text-secondary)", margin: 0 }}>
+              Piezas <span style={{ color: "var(--accent)" }}>({piezas.length})</span>
+            </h4>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+              Espesor: <span style={{ color: "var(--accent)" }}>{espesor}mm</span>
+            </span>
           </div>
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              gap: 14
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}
-            >
-              <h4
-                style={{
-                  fontSize: 12,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  fontWeight: 700,
-                  color: "var(--text-secondary)"
-                }}
-              >
-                Piezas{" "}
-                <span style={{ color: "var(--accent)" }}>
-                  ({piezas.length})
-                </span>
-              </h4>
-              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                Espesor:{" "}
-                <span style={{ color: "var(--accent)" }}>{espesor}mm</span>
-              </span>
+
+          {piezas.length === 0 ? (
+            <div style={{ padding: "24px 0", textAlign: "center", fontSize: 13, borderRadius: 8, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
+              Sin piezas todavía.
             </div>
-            {piezas.length === 0 ? (
-              <div
-                style={{
-                  padding: "24px 0",
-                  textAlign: "center",
-                  fontSize: 13,
-                  borderRadius: 8,
-                  border: "1px dashed var(--border)",
-                  color: "var(--text-muted)"
-                }}
-              >
-                Sin piezas todavía.
-              </div>
-            ) : (
-              piezas.map((p, i) => (
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 8 }}>
+              {piezas.map((p, i) => (
                 <FilaPieza
                   key={i}
                   pieza={p}
@@ -1095,136 +1056,97 @@ function FormModulo({
                   onMoveDown={(i) => moverPieza(i, 1)}
                   onChangeCantidad={(cant) => setPiezas(prev => prev.map((px, j) => j === i ? { ...px, cantidad: cant } : px))}
                 />
-              ))
-            )}
-            {preview && (
-              <Card style={{ borderColor: "rgba(126,207,138,0.15)" }}>
-                <div
-                  className="rsp-grid-1"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr 1fr 1fr",
-                    gap: 10
-                  }}
-                >
-                  {[
-                    ["m² neto", `${fmtNum(preview.m2Neto)} m²`],
-                    ["m² c/desp.", `${fmtNum(preview.m2Total)} m²`],
-                    [
-                      `Desp.(${preview.pctDesp}%)`,
-                      `${fmtNum(preview.m2Total - preview.m2Neto)} m²`,
-                    ],
-                    ["Tapacanto", `${fmtNum(preview.metrosTapacanto, 2)} m`],
-                  ].map(([k, v]) => (
-                    <div
-                      key={k}
-                      style={{
-                        textAlign: "center",
-                        background: "rgba(0,0,0,0.2)",
-                        borderRadius: 8,
-                        padding: "8px 4px"
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 10,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                          color: "#5a7040"
-                        }}
-                      >
-                        {k}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 14,
-                          fontFamily: "'DM Mono',monospace",
-                          fontWeight: 700,
-                          marginTop: 2,
-                          color: "#7ecf8a"
-                        }}
-                      >
-                        {v}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <Btn variant="ghost" onClick={() => { setPaso(1); setError(""); }}>← Volver</Btn>
-              <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
-              {esEdicion && !modalDecision && !decisionCatalogo && (
-                <Btn variant="ghost" onClick={guardar} style={{ borderColor: "var(--accent-border)", color: "var(--accent)" }}>
-                  💾 Guardar y cerrar
-                </Btn>
-              )}
-              {!modalDecision && !decisionCatalogo && (
-                <Btn onClick={siguiente} disabled={piezas.length === 0}>
-                  Siguiente → Herrajes
-                </Btn>
-              )}
+              ))}
             </div>
+          )}
 
-            {/* Acordeón de decisión inline — reemplaza al modal superpuesto */}
-            {modalDecision && (
-              <div className="anim-fadeup" style={{ marginTop: 14, background: "var(--bg-subtle)", border: "1px solid var(--accent-border)", borderRadius: 12, padding: 16 }}>
-                <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent)", marginBottom: 12 }}>
-                  ¿Dónde guardás esta variante?
-                </div>
-
-                {modalDecision === "nombre" ? (
-                  <>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>Nombre en el catálogo:</div>
-                    <input autoFocus value={nombreCatalogo} onChange={e => setNombreCatalogo(e.target.value)}
-                      placeholder="Nombre del nuevo módulo..."
-                      style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "8px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
-                      onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                      onBlur={e => e.target.style.borderColor = "var(--border)"}
-                      onKeyDown={e => e.key === "Enter" && onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true })} />
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => {
-                        onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true });
-                        setModalDecision(null);
-                      }} style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
-                        ✓ Confirmar nombre
-                      </button>
-                      <button onClick={() => setModalDecision("pidiendo")}
-                        style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
-                        ← Volver
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <button onClick={() => { onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), _soloPresupuesto: true }); setModalDecision(null); }}
-                      style={{ padding: "11px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700, transition: "border-color 0.15s" }}
-                      onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
-                      onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
-                      📋 Solo en este presupuesto
-                      <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>
-                        El catálogo no cambia. Se elimina con el presupuesto.
-                      </div>
-                    </button>
-                    <button onClick={() => { setNombreCatalogo(datos.nombre || ""); setModalDecision("nombre"); }}
-                      style={{ padding: "11px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700, transition: "border-color 0.15s" }}
-                      onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
-                      onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
-                      📚 Guardar en catálogo
-                      <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>
-                        Disponible para futuros presupuestos.
-                      </div>
-                    </button>
-                    <button onClick={() => setModalDecision(null)}
-                      style={{ padding: "7px 0", borderRadius: 8, cursor: "pointer", fontSize: 11, background: "transparent", border: "none", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
-                      ✕ Cancelar
-                    </button>
+          {/* Preview métricas */}
+          {preview && (
+            <Card style={{ borderColor: "rgba(126,207,138,0.15)" }}>
+              <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+                {[
+                  ["m² neto", `${fmtNum(preview.m2Neto)} m²`],
+                  ["m² c/desp.", `${fmtNum(preview.m2Total)} m²`],
+                  [`Desp.(${preview.pctDesp}%)`, `${fmtNum(preview.m2Total - preview.m2Neto)} m²`],
+                  ["Tapacanto", `${fmtNum(preview.metrosTapacanto, 2)} m`],
+                ].map(([k, v]) => (
+                  <div key={k} style={{ textAlign: "center", background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: "8px 4px" }}>
+                    <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5a7040" }}>{k}</div>
+                    <div style={{ fontSize: 14, fontFamily: "'DM Mono',monospace", fontWeight: 700, marginTop: 2, color: "#7ecf8a" }}>{v}</div>
                   </div>
-                )}
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {/* ── Fila 4: Botones de navegación ── */}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <Btn variant="ghost" onClick={() => { setPaso(1); setError(""); }}>← Volver</Btn>
+          <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
+          {esEdicion && !modalDecision && !decisionCatalogo && (
+            <Btn variant="ghost" onClick={guardar} style={{ borderColor: "var(--accent-border)", color: "var(--accent)" }}>
+              💾 Guardar y cerrar
+            </Btn>
+          )}
+          {!modalDecision && !decisionCatalogo && (
+            <Btn onClick={siguiente} disabled={piezas.length === 0}>
+              Siguiente → Herrajes
+            </Btn>
+          )}
+        </div>
+
+        {/* Acordeón de decisión inline */}
+        {modalDecision && (
+          <div className="anim-fadeup" style={{ background: "var(--bg-subtle)", border: "1px solid var(--accent-border)", borderRadius: 12, padding: 16 }}>
+            <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent)", marginBottom: 12 }}>
+              ¿Dónde guardás esta variante?
+            </div>
+            {modalDecision === "nombre" ? (
+              <>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>Nombre en el catálogo:</div>
+                <input autoFocus value={nombreCatalogo} onChange={e => setNombreCatalogo(e.target.value)}
+                  placeholder="Nombre del nuevo módulo..."
+                  style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "8px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+                  onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                  onBlur={e => e.target.style.borderColor = "var(--border)"}
+                  onKeyDown={e => e.key === "Enter" && onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true })} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => { onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true }); setModalDecision(null); }}
+                    style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
+                    ✓ Confirmar nombre
+                  </button>
+                  <button onClick={() => setModalDecision("pidiendo")}
+                    style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                    ← Volver
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button onClick={() => { onGuardar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), _soloPresupuesto: true }); setModalDecision(null); }}
+                  style={{ padding: "11px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700, transition: "border-color 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
+                  📋 Solo en este presupuesto
+                  <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>El catálogo no cambia. Se elimina con el presupuesto.</div>
+                </button>
+                <button onClick={() => { setNombreCatalogo(datos.nombre || ""); setModalDecision("nombre"); }}
+                  style={{ padding: "11px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700, transition: "border-color 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
+                  📚 Guardar en catálogo
+                  <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>Disponible para futuros presupuestos.</div>
+                </button>
+                <button onClick={() => setModalDecision(null)}
+                  style={{ padding: "7px 0", borderRadius: 8, cursor: "pointer", fontSize: 11, background: "transparent", border: "none", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                  ✕ Cancelar
+                </button>
               </div>
             )}
           </div>
-        </div>
+        )}
+
         </div>
       )}
 
