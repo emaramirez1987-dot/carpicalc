@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNav } from '../../state/NavContext.jsx';
 import { useUndo } from '../../hooks/useUndo.js';
+import { useTema } from '../../hooks/useTema.js';
 import { Btn, Card, Badge, TextInput, Select, SectionTitle } from '../ui/index.jsx';
-import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarFormula, generarVistaSVG } from '../../utils.js';
+import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarFormula } from '../../utils.js';
+import VistaModuloSVG from '../vista-svg/index.js';
 import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT, ROLES_PIEZA_DEFAULT } from '../../constants.js';
 import { guardarPresupuestos, cargarRolesPieza, guardarRolesPieza, cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
 
@@ -547,18 +549,13 @@ function StepIndicator({ paso }) {
 // Cerrado por defecto — el carpintero lo expande si quiere ver la vista técnica.
 function AcordeonPreviewSVG({ datos, herrajes }) {
   const [abierto, setAbierto] = useState(false);
+  const { tema } = useTema();
   const moduloPreview = useMemo(() => ({
     dimensiones: datos.dimensiones,
     herrajes,
     variables: datos.variables || {},
     vistaConfig: null,
   }), [datos.dimensiones, datos.variables, herrajes]);
-
-  const svg = useMemo(
-    () => abierto ? generarVistaSVG(moduloPreview, { width: 180, height: 180 }) : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [abierto, moduloPreview]
-  );
 
   return (
     <div style={{ borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden" }}>
@@ -580,7 +577,12 @@ function AcordeonPreviewSVG({ datos, herrajes }) {
           display: "flex", alignItems: "center", justifyContent: "center",
           gap: 20, flexWrap: "wrap",
         }}>
-          <div dangerouslySetInnerHTML={{ __html: svg }} />
+          <VistaModuloSVG
+            modulo={moduloPreview}
+            theme={tema}
+            width={180}
+            height={180}
+          />
           <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6 }}>
             <div>Solo lectura · se actualiza automáticamente</div>
             <div style={{ marginTop: 4, opacity: 0.7 }}>
@@ -2656,11 +2658,13 @@ const ZONA_LABELS = { main: "Principal", sup: "Superior", mid: "Medio", inf: "In
  * Guarda vistaConfig con estructura por bloques en el módulo.
  */
 function EditorVistaSVG({ modulo, onGuardar, onCerrar }) {
+  const { tema } = useTema();
   const vc = modulo.vistaConfig || {};
 
   const [zocalo,      setZocalo]      = useState(String(vc.zocalo ?? 0));
   const [layoutId,    setLayoutId]    = useState(vc.layoutId    || "simple");
   const [zonasConfig, setZonasConfig] = useState(vc.zonas || {});
+  const [temaSVG,     setTemaSVG]     = useState(tema); // tema local solo para el SVG
 
   const preset = LAYOUT_PRESETS.find(p => p.id === layoutId) || LAYOUT_PRESETS[0];
 
@@ -2692,11 +2696,6 @@ function EditorVistaSVG({ modulo, onGuardar, onCerrar }) {
     zonas:      zonasConfig,
   }), [zocalo, layoutId, preset, zonasConfig]);
 
-  const svgStr = useMemo(
-    () => generarVistaSVG({ ...modulo, vistaConfig: vistaPreview }, { width: 300, height: 300 }),
-    [modulo, vistaPreview]
-  );
-
   const chipSt = (activo) => ({
     padding: "5px 12px", borderRadius: 6, cursor: "pointer", fontSize: 11,
     fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.12s",
@@ -2726,8 +2725,42 @@ function EditorVistaSVG({ modulo, onGuardar, onCerrar }) {
 
         {/* ── Panel izquierdo: preview SVG ── */}
         <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
-          <div style={{ background: "var(--bg-subtle)", borderRadius: 10, padding: 12, border: "1px solid var(--border)" }}
-            dangerouslySetInnerHTML={{ __html: svgStr }} />
+          {/* Toggle tema local SVG */}
+          <div style={{ width: "100%", display: "flex", justifyContent: "center", gap: 8 }}>
+            <button
+              onClick={() => setTemaSVG("dark")}
+              style={{
+                flex: 1, padding: "6px 10px", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                borderRadius: 6, border: temaSVG === "dark" ? "2px solid var(--accent)" : "1px solid var(--border)",
+                background: temaSVG === "dark" ? "var(--bg-subtle)" : "transparent",
+                color: temaSVG === "dark" ? "var(--accent)" : "var(--text-muted)",
+                cursor: "pointer", transition: "all 0.2s",
+              }}
+            >
+              🌙 Oscuro
+            </button>
+            <button
+              onClick={() => setTemaSVG("light")}
+              style={{
+                flex: 1, padding: "6px 10px", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                borderRadius: 6, border: temaSVG === "light" ? "2px solid var(--accent)" : "1px solid var(--border)",
+                background: temaSVG === "light" ? "var(--bg-subtle)" : "transparent",
+                color: temaSVG === "light" ? "var(--accent)" : "var(--text-muted)",
+                cursor: "pointer", transition: "all 0.2s",
+              }}
+            >
+              ☀ Claro
+            </button>
+          </div>
+          <div style={{ background: "var(--bg-subtle)", borderRadius: 10, padding: 12, border: "1px solid var(--border)" }}>
+            <VistaModuloSVG
+              modulo={modulo}
+              vistaConfig={vistaPreview}
+              theme={temaSVG}
+              width={300}
+              height={300}
+            />
+          </div>
           {/* Zócalo */}
           <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>Zócalo</span>

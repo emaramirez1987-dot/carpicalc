@@ -6,7 +6,8 @@ import { fmtPeso, fmtNum, fmtFecha, fmtFechaLarga,
          resolverDim, calcularModulo,
          presupuestoNecesitaActualizacion, presupuestoTieneContenido,
          calcularTotalVisual,
-         recalcularTotalPresupuesto } from '../../utils.js';
+         recalcularTotalPresupuesto,
+         generarVistaSVG } from '../../utils.js';
 import { leerPerfil } from '../../storage.js';
 import { usePresupuesto } from '../../state/PresupuestoContext.jsx';
 import { TIPO_MAT, ESTADOS_TRABAJO } from '../../constants.js';
@@ -134,6 +135,13 @@ function imprimirPresupuesto(
         </div>
       </div>`
     : `<div><div style="font-size:22px;font-weight:900;color:${p.acento}">CarpiCálc</div><div style="font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-top:4px;color:${p.textoAcento}">Presupuesto de carpintería</div></div>`;
+  // Mapear tema PDF a tema SVG
+  const temaSVGMap = {
+    dorado: "dark", gris: "light", carbon: "dark",
+    bosque: "dark", marino: "dark", bordo: "dark"
+  };
+  const temaSVG = temaSVGMap[tema] || "dark";
+
   const filas = items
     .map((item) => {
       const modBase = modulos[item.codigo];
@@ -146,7 +154,12 @@ function imprimirPresupuesto(
         over.ancho !== modBase.dimensiones.ancho ||
         over.profundidad !== modBase.dimensiones.profundidad ||
         over.alto !== modBase.dimensiones.alto;
+
+      // Generar SVG 80×80 inline
+      const svgStr = generarVistaSVG({ ...modUsado, vistaConfig: modUsado.vistaConfig }, { width: 80, height: 80, theme: temaSVG });
+
       return `<tr>
+        <td style="padding:8px 6px;width:80px;height:80px;text-align:center;vertical-align:middle;border-bottom:1px solid ${p.separador}">${svgStr}</td>
         <td class="cod" style="color:${p.acento}">${item.codigo}</td>
         <td>
           <div class="mod-nombre" style="color:${p.textoPrincipal}">${modBase.nombre}</div>
@@ -484,13 +497,16 @@ ${p.cliente && (p.cliente.nombre || p.cliente.tel || p.cliente.dir) ? `
       const modBase = modulos[item.codigo];
       if (!modBase) return '';
       const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
-      return `<div style="padding:8px 0;border-bottom:1px solid #e8d8c0;display:flex;justify-content:space-between;align-items:center">
-        <div>
+      const modUsado = { ...modBase, dimensiones: dims };
+      const svgStr = generarVistaSVG({ ...modUsado, vistaConfig: modUsado.vistaConfig }, { width: 80, height: 80, theme: 'dark' });
+      return `<div style="padding:8px 0;border-bottom:1px solid #e8d8c0;display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div style="width:80px;height:80px;flex-shrink:0;border:1px solid #e8d8c0;border-radius:4px;padding:4px;background:#f9f6f0;display:flex;align-items:center;justify-content:center">${svgStr}</div>
+        <div style="flex:1">
           <span style="font-family:monospace;font-size:10px;color:#9a7040;font-weight:700">${item.codigo}</span>
           <span style="font-size:13px;font-weight:700;color:#1a0e04;margin-left:8px">${modBase.nombre}</span>
           <div style="font-size:11px;color:#7a6040;font-family:monospace;margin-top:2px">${dims.ancho}×${dims.profundidad}×${dims.alto} mm</div>
         </div>
-        <span style="font-family:monospace;font-size:16px;font-weight:900;color:#7a4a10">×${item.cantidad}</span>
+        <span style="font-family:monospace;font-size:16px;font-weight:900;color:#7a4a10;flex-shrink:0">×${item.cantidad}</span>
       </div>`;
     }).join('')}
   </div>
