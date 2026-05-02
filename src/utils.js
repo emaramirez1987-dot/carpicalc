@@ -56,18 +56,23 @@ export const fmtFechaLarga = (ts) =>
 
 /**
  * Evalúa una fórmula matemática con variables del módulo.
- * Variables disponibles: ancho, alto, profundidad, esp
+ * Variables base: ancho, alto, profundidad, esp
+ * Variables personalizadas: cualquier clave extra en `vars` (ej: luz, zocalo)
  * Operaciones: + - * / y paréntesis
  * Seguro: sustituye variables por números antes de evaluar.
+ * Las variables de mayor longitud se sustituyen primero para evitar
+ * coincidencias parciales (ej: "profundidad" antes de "prof").
+ * @param {string} expr - Expresión matemática
+ * @param {object} vars - Variables disponibles: { ancho, alto, profundidad, esp, ...custom }
  * @returns {number|null} resultado ≥ 0, o null si hay error
  */
-export function evaluarFormula(expr, { ancho = 0, alto = 0, profundidad = 0, esp = 0 } = {}) {
+export function evaluarFormula(expr, vars = {}) {
   if (!expr || typeof expr !== 'string') return null;
-  const tokenized = expr.trim()
-    .replace(/\bprofundidad\b/g, String(profundidad))
-    .replace(/\bancho\b/g, String(ancho))
-    .replace(/\balto\b/g, String(alto))
-    .replace(/\besp\b/g, String(esp));
+  let tokenized = expr.trim();
+  const sortedVars = Object.entries(vars).sort((a, b) => b[0].length - a[0].length);
+  for (const [name, val] of sortedVars) {
+    tokenized = tokenized.replace(new RegExp(`\\b${name}\\b`, 'g'), String(val ?? 0));
+  }
   if (!/^[\d\s+\-*/().]+$/.test(tokenized)) return null;
   try {
     // eslint-disable-next-line no-new-func
@@ -118,6 +123,8 @@ export function calcularModulo(modulo, costos) {
 
   const dimMap = { ancho: ancho || 0, profundidad: profundidad || 0, alto: alto || 0 };
   const esp = matDef.espesor || 18;
+  // Variables del módulo: base (ancho/alto/profundidad/esp) + personalizadas (luz, zocalo, etc.)
+  const modVars = { ...dimMap, esp, ...(modulo.variables || {}) };
 
   let m2Neto = 0, metrosTapacanto = 0, costoTapacanto = 0;
   const desglosePiezas = [];
@@ -128,12 +135,12 @@ export function calcularModulo(modulo, costos) {
     const d1 = p.especial
       ? (parseInt(p.dimLibre1) || 0)
       : p.formula1 != null
-        ? (evaluarFormula(p.formula1, { ...dimMap, esp }) ?? 0)
+        ? (evaluarFormula(p.formula1, modVars) ?? 0)
         : resolverDim(dimMap[p.usaDim],  p.offsetEsp,  p.offsetMm,  p.divisor  || 1, esp);
     const d2 = p.especial
       ? (parseInt(p.dimLibre2) || 0)
       : p.formula2 != null
-        ? (evaluarFormula(p.formula2, { ...dimMap, esp }) ?? 0)
+        ? (evaluarFormula(p.formula2, modVars) ?? 0)
         : resolverDim(dimMap[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, esp);
 
     const area = (d1 * d2 * p.cantidad) / 1_000_000; // mm² → m²

@@ -70,18 +70,18 @@ function DimRowLibre({ titulo, valKey, fp, setFp }) {
   );
 }
 
-function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMoveDown, onChangeCantidad, dims, espesor, tapacanto, isFirst, isLast }) {
+function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMoveDown, onChangeCantidad, dims, espesor, tapacanto, isFirst, isLast, modVars }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const filaDims = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor };
+  const allVars = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor, ...(modVars || {}) };
   const d1 = pieza.especial
     ? (parseInt(pieza.dimLibre1) || 0)
     : pieza.formula1 != null
-      ? (evaluarFormula(pieza.formula1, filaDims) ?? 0)
+      ? (evaluarFormula(pieza.formula1, allVars) ?? 0)
       : resolverDim(dims[pieza.usaDim], pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1, espesor);
   const d2 = pieza.especial
     ? (parseInt(pieza.dimLibre2) || 0)
     : pieza.formula2 != null
-      ? (evaluarFormula(pieza.formula2, filaDims) ?? 0)
+      ? (evaluarFormula(pieza.formula2, allVars) ?? 0)
       : resolverDim(dims[pieza.usaDim2], pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1, espesor);
   const area = (d1 * d2 * pieza.cantidad) / 1_000_000;
   const tcDef = tapacanto?.find((t) => t.id === pieza.tc?.id);
@@ -182,7 +182,7 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
 
 // Estado inicial vacío de una pieza nueva en el formulario
 
-function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, espesor, tapacanto, nombresSugeridos }) {
+function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, espesor, tapacanto, nombresSugeridos, variables }) {
   const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
   const [rolesTaller, setRolesTaller] = useState(() => cargarRolesPieza());
   const todosRoles = [...ROLES_PIEZA_DEFAULT, ...rolesTaller];
@@ -190,19 +190,21 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
   const [dialogoRol, setDialogoRol] = useState(false);
   const [nombreRolNuevo, setNombreRolNuevo] = useState("");
 
+  const allVars = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor, ...(variables || {}) };
+
   const d1 = fp.especial
     ? (parseInt(fp.dimLibre1) || 0)
     : fp.formula1
-      ? (evaluarFormula(fp.formula1, { ancho: dims.ancho, alto: dims.alto, profundidad: dims.profundidad, esp: espesor }) ?? 0)
+      ? (evaluarFormula(fp.formula1, allVars) ?? 0)
       : resolverDim(dims[fp.usaDim], parseInt(fp.offsetEsp) || 0, parseInt(fp.offsetMm) || 0, parseInt(fp.divisor) || 1, espesor);
   const d2 = fp.especial
     ? (parseInt(fp.dimLibre2) || 0)
     : fp.formula2
-      ? (evaluarFormula(fp.formula2, { ancho: dims.ancho, alto: dims.alto, profundidad: dims.profundidad, esp: espesor }) ?? 0)
+      ? (evaluarFormula(fp.formula2, allVars) ?? 0)
       : resolverDim(dims[fp.usaDim2], parseInt(fp.offsetEsp2) || 0, parseInt(fp.offsetMm2) || 0, parseInt(fp.divisor2) || 1, espesor);
 
-  const f1Valida = fp.especial || !fp.formula1 || evaluarFormula(fp.formula1, { ancho: dims.ancho, alto: dims.alto, profundidad: dims.profundidad, esp: espesor }) !== null;
-  const f2Valida = fp.especial || !fp.formula2 || evaluarFormula(fp.formula2, { ancho: dims.ancho, alto: dims.alto, profundidad: dims.profundidad, esp: espesor }) !== null;
+  const f1Valida = fp.especial || !fp.formula1 || evaluarFormula(fp.formula1, allVars) !== null;
+  const f2Valida = fp.especial || !fp.formula2 || evaluarFormula(fp.formula2, allVars) !== null;
 
   const aplicarRol = (rol) => {
     setFp(p => ({
@@ -348,7 +350,10 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
                   </div>
                   <div style={{ fontSize: 10, marginTop: 5, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
                     Variables: <span style={{ color: "var(--accent)", opacity: 0.8 }}>ancho</span> · <span style={{ color: "var(--accent)", opacity: 0.8 }}>alto</span> · <span style={{ color: "var(--accent)", opacity: 0.8 }}>profundidad</span> · <span style={{ color: "var(--accent)", opacity: 0.8 }}>esp</span>
-                    {dims && <span style={{ marginLeft: 10, color: "var(--text-muted)" }}>({dims.ancho}·{dims.alto}·{dims.profundidad}·{espesor})</span>}
+                    {Object.keys(variables || {}).map(v => (
+                      <span key={v}> · <span style={{ color: "var(--accent)", fontWeight: 700 }}>{v}</span></span>
+                    ))}
+                    {dims && <span style={{ marginLeft: 10, color: "var(--text-muted)" }}>({dims.ancho}·{dims.alto}·{dims.profundidad}·{espesor}{Object.entries(variables || {}).map(([k, v]) => `·${k}=${v}`).join('')})</span>}
                   </div>
                 </div>
               ))}
@@ -557,6 +562,9 @@ function FormModulo({
   const [decisionCatalogo, setDecisionCatalogo] = useState(null);
   // "actualizando" | "nuevo" | null
   const [nombreNuevoCatalogo, setNombreNuevoCatalogo] = useState("");
+  // Variables personalizadas: gestión del formulario de agregar
+  const [agregandoVar, setAgregandoVar] = useState(false);
+  const [nuevaVarNombre, setNuevaVarNombre] = useState("");
   const [datos, setDatos] = useState(() =>
     moduloBase
       ? {
@@ -565,7 +573,8 @@ function FormModulo({
           descripcion: moduloBase.descripcion || "",
           dimensiones: { ...moduloBase.dimensiones },
           material: moduloBase.material,
-          categoria: moduloBase.categoria || "otros"
+          categoria: moduloBase.categoria || "otros",
+          variables: moduloBase.variables ? { ...moduloBase.variables } : {}
         }
       : {
           codigo: "",
@@ -573,7 +582,8 @@ function FormModulo({
           descripcion: "",
           dimensiones: { ancho: 600, profundidad: 550, alto: 700 },
           material: "melamina",
-          categoria: "otros"
+          categoria: "otros",
+          variables: {}
         }
   );
   const [piezas, setPiezas] = useState(
@@ -685,6 +695,7 @@ function FormModulo({
         datos.material !== moduloBase.material ||
         datos.categoria !== (moduloBase.categoria || "otros")) return true;
     if (JSON.stringify(datos.dimensiones) !== JSON.stringify(moduloBase.dimensiones)) return true;
+    if (JSON.stringify(datos.variables || {}) !== JSON.stringify(moduloBase.variables || {})) return true;
     const piezasBase = (moduloBase.piezas || []).map(p => ({
       ...p, divisor: p.divisor || 1, divisor2: p.divisor2 || 1,
       tc: p.tc ? { ...p.tc } : { id: 0, lados1: 0, lados2: 0 }
@@ -706,6 +717,7 @@ function FormModulo({
     dimensiones: datos.dimensiones,
     material:    datos.material,
     categoria:   datos.categoria || "otros",
+    variables:   datos.variables || {},
     piezas,
     herrajes,
     moDeObra
@@ -894,6 +906,87 @@ function FormModulo({
             </div>
           </div>
 
+          {/* Variables personalizadas del módulo */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
+              Variables personalizadas
+              <span style={{ fontWeight: 400, textTransform: "none", fontSize: 10, marginLeft: 8 }}>
+                — disponibles en las fórmulas de piezas
+              </span>
+            </div>
+            {Object.entries(datos.variables || {}).length === 0 && !agregandoVar && (
+              <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 8 }}>
+                Sin variables. Agregá una para usarla en fórmulas (ej: <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>luz</span>, <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>zocalo</span>).
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+              {Object.entries(datos.variables || {}).map(([nombre, valor]) => (
+                <div key={nombre} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.18)", borderRadius: 8, padding: "7px 12px" }}>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--accent)", minWidth: 90 }}>{nombre}</span>
+                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>=</span>
+                  <input
+                    type="number"
+                    value={valor}
+                    onChange={e => setDatos(d => ({ ...d, variables: { ...d.variables, [nombre]: parseFloat(e.target.value) || 0 } }))}
+                    style={{ width: 90, fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "4px 8px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", outline: "none", textAlign: "right" }}
+                  />
+                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>mm</span>
+                  <div style={{ flex: 1 }} />
+                  <button
+                    onClick={() => setDatos(d => { const { [nombre]: _removed, ...rest } = d.variables; return { ...d, variables: rest }; })}
+                    style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 18, lineHeight: 1, opacity: 0.6, transition: "opacity 0.15s", padding: "0 4px" }}
+                    onMouseEnter={e => e.target.style.opacity = 1}
+                    onMouseLeave={e => e.target.style.opacity = 0.6}>×</button>
+                </div>
+              ))}
+            </div>
+            {!agregandoVar ? (
+              <button onClick={() => { setAgregandoVar(true); setNuevaVarNombre(""); }}
+                style={{ padding: "5px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)", transition: "all 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent-border)"; e.currentTarget.style.color = "var(--accent)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
+                + Agregar variable
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <input
+                  autoFocus
+                  value={nuevaVarNombre}
+                  onChange={e => setNuevaVarNombre(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const n = nuevaVarNombre.trim();
+                      if (n && !(n in (datos.variables || {}))) {
+                        setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [n]: 0 } }));
+                        setNuevaVarNombre("");
+                        setAgregandoVar(false);
+                      }
+                    }
+                    if (e.key === 'Escape') { setAgregandoVar(false); setNuevaVarNombre(""); }
+                  }}
+                  placeholder="nombre (ej: luz)"
+                  style={{ flex: 1, minWidth: 140, fontFamily: "'DM Mono',monospace", fontSize: 13, padding: "6px 10px", background: "var(--bg-base)", border: "1px solid var(--accent-border)", borderRadius: 6, color: "var(--text-primary)", outline: "none" }}
+                />
+                <button
+                  onClick={() => {
+                    const n = nuevaVarNombre.trim();
+                    if (n && !(n in (datos.variables || {}))) {
+                      setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [n]: 0 } }));
+                      setNuevaVarNombre("");
+                      setAgregandoVar(false);
+                    }
+                  }}
+                  style={{ padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
+                  Agregar
+                </button>
+                <button onClick={() => { setAgregandoVar(false); setNuevaVarNombre(""); }}
+                  style={{ padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
+
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
             <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
             {esEdicion && (
@@ -927,6 +1020,7 @@ function FormModulo({
               espesor={espesor}
               tapacanto={costos.tapacanto}
               nombresSugeridos={NOMBRES_SUGERIDOS}
+              variables={datos.variables}
             />
           </div>
           <div
@@ -987,6 +1081,7 @@ function FormModulo({
                   tapacanto={costos.tapacanto}
                   isFirst={i === 0}
                   isLast={i === piezas.length - 1}
+                  modVars={datos.variables}
                   onDelete={(i) => {
                     setPiezas(prev => prev.filter((_, j) => j !== i));
                     if (editandoPiezaIdx === i) cancelarEdicion();
