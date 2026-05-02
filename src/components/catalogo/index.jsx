@@ -906,49 +906,67 @@ function FormModulo({
             </div>
           </div>
 
-          {/* Variables personalizadas del módulo */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
-              Variables personalizadas
-              <span style={{ fontWeight: 400, textTransform: "none", fontSize: 10, marginLeft: 8 }}>
-                — disponibles en las fórmulas de piezas
-              </span>
-            </div>
-            {Object.entries(datos.variables || {}).length === 0 && !agregandoVar && (
-              <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 8 }}>
-                Sin variables. Agregá una para usarla en fórmulas (ej: <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>luz</span>, <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>zocalo</span>).
-              </div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
+            {esEdicion && (
+              <Btn variant="ghost" onClick={guardar} style={{ borderColor: "var(--accent-border)", color: "var(--accent)" }}>
+                💾 Guardar y cerrar
+              </Btn>
             )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
-              {Object.entries(datos.variables || {}).map(([nombre, valor]) => (
-                <div key={nombre} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.18)", borderRadius: 8, padding: "7px 12px" }}>
-                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--accent)", minWidth: 90 }}>{nombre}</span>
-                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>=</span>
-                  <input
-                    type="number"
-                    value={valor}
-                    onChange={e => setDatos(d => ({ ...d, variables: { ...d.variables, [nombre]: parseFloat(e.target.value) || 0 } }))}
-                    style={{ width: 90, fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "4px 8px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", outline: "none", textAlign: "right" }}
-                  />
-                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>mm</span>
-                  <div style={{ flex: 1 }} />
-                  <button
-                    onClick={() => setDatos(d => { const { [nombre]: _removed, ...rest } = d.variables; return { ...d, variables: rest }; })}
-                    style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 18, lineHeight: 1, opacity: 0.6, transition: "opacity 0.15s", padding: "0 4px" }}
-                    onMouseEnter={e => e.target.style.opacity = 1}
-                    onMouseLeave={e => e.target.style.opacity = 0.6}>×</button>
-                </div>
-              ))}
-            </div>
-            {!agregandoVar ? (
+            <Btn onClick={siguiente}>Siguiente → Piezas</Btn>
+          </div>
+        </div>
+      )}
+
+      {paso === 2 && (
+        // rsp-paso2: apila verticalmente en móvil
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+        {/* Variables personalizadas — ancho completo, encima de las columnas */}
+        <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>
+              Variables del módulo
+            </span>
+            <span style={{ fontSize: 10, color: "var(--text-muted)" }}>— usables en cualquier fórmula de pieza</span>
+            <div style={{ flex: 1 }} />
+            {!agregandoVar && (
               <button onClick={() => { setAgregandoVar(true); setNuevaVarNombre(""); }}
-                style={{ padding: "5px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)", transition: "all 0.15s" }}
+                style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)", transition: "all 0.15s" }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent-border)"; e.currentTarget.style.color = "var(--accent)"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
                 + Agregar variable
               </button>
-            ) : (
-              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            )}
+          </div>
+
+          {Object.entries(datos.variables || {}).length === 0 && !agregandoVar && (
+            <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
+              Sin variables. Agregá una para usarla en fórmulas (ej: <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>luz</span>, <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>zocalo</span>).
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {Object.entries(datos.variables || {}).map(([nombre, valor]) => (
+              <div key={nombre} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.22)", borderRadius: 8, padding: "5px 10px" }}>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>{nombre} =</span>
+                <input
+                  type="number"
+                  value={valor}
+                  onChange={e => setDatos(d => ({ ...d, variables: { ...d.variables, [nombre]: parseFloat(e.target.value) || 0 } }))}
+                  style={{ width: 72, fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "3px 6px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", outline: "none", textAlign: "right" }}
+                />
+                <span style={{ fontSize: 10, color: "var(--text-muted)" }}>mm</span>
+                <button
+                  onClick={() => setDatos(d => { const { [nombre]: _r, ...rest } = d.variables; return { ...d, variables: rest }; })}
+                  style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 16, lineHeight: 1, opacity: 0.5, padding: "0 2px" }}
+                  onMouseEnter={e => e.target.style.opacity = 1}
+                  onMouseLeave={e => e.target.style.opacity = 0.5}>×</button>
+              </div>
+            ))}
+
+            {agregandoVar && (
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <input
                   autoFocus
                   value={nuevaVarNombre}
@@ -965,7 +983,7 @@ function FormModulo({
                     if (e.key === 'Escape') { setAgregandoVar(false); setNuevaVarNombre(""); }
                   }}
                   placeholder="nombre (ej: luz)"
-                  style={{ flex: 1, minWidth: 140, fontFamily: "'DM Mono',monospace", fontSize: 13, padding: "6px 10px", background: "var(--bg-base)", border: "1px solid var(--accent-border)", borderRadius: 6, color: "var(--text-primary)", outline: "none" }}
+                  style={{ width: 130, fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "5px 8px", background: "var(--bg-base)", border: "1px solid var(--accent-border)", borderRadius: 6, color: "var(--text-primary)", outline: "none" }}
                 />
                 <button
                   onClick={() => {
@@ -976,31 +994,16 @@ function FormModulo({
                       setAgregandoVar(false);
                     }
                   }}
-                  style={{ padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
+                  style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
                   Agregar
                 </button>
                 <button onClick={() => { setAgregandoVar(false); setNuevaVarNombre(""); }}
-                  style={{ padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                  ✕
-                </button>
+                  style={{ padding: "5px 8px", borderRadius: 6, fontSize: 11, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
               </div>
             )}
           </div>
-
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
-            <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
-            {esEdicion && (
-              <Btn variant="ghost" onClick={guardar} style={{ borderColor: "var(--accent-border)", color: "var(--accent)" }}>
-                💾 Guardar y cerrar
-              </Btn>
-            )}
-            <Btn onClick={siguiente}>Siguiente → Piezas</Btn>
-          </div>
         </div>
-      )}
 
-      {paso === 2 && (
-        // rsp-paso2: apila verticalmente en móvil
         <div className="rsp-paso2" style={{ display: "flex", gap: 20 }}>
           <div
             style={{
@@ -1221,6 +1224,7 @@ function FormModulo({
               </div>
             )}
           </div>
+        </div>
         </div>
       )}
 
