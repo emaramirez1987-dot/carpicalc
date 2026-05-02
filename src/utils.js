@@ -467,7 +467,26 @@ export function comprimirImagen(file, maxW = 400, maxH = 280, quality = 0.82) {
 //   { zocalo, layoutId, layoutDir, zonasDef: [{id, fr}], zonas: {id: {tipo, estantes?, cantidad?}} }
 //
 // Si vistaConfig está vacío → fallback estantería abierta.
+//
+// DEUDA TÉCNICA v3: data-zona-id y data-estante-index están presentes en SVG para
+// permitir event listeners futuros (drag/resize). No hay listeners implementados en v2.
+// Migrar a canvas o SVG ref + listeners si se necesita interactividad.
 // ════════════════════════════════════════════════════════════════════════════
+
+const TEMA_PALETAS = {
+  dark: {
+    stroke: "#3a4258",
+    fill: "#1a2030",
+    accent: "#D4AF37",
+    text: "#64748b",
+  },
+  light: {
+    stroke: "#1F2937",
+    fill: "#FFFFFF",
+    accent: "#B8962A",
+    text: "#374151",
+  },
+};
 
 // ── helpers privados ──────────────────────────────────────────────────────
 const _f = (n) => Math.round(n * 10) / 10;
@@ -476,20 +495,23 @@ function _drawEstantes(els, x, y, w, h, count, stroke) {
   const gap = h / (count + 1);
   for (let i = 1; i <= count; i++) {
     const ey = _f(y + gap * i);
-    els.push(`<line x1="${_f(x)}" y1="${ey}" x2="${_f(x + w)}" y2="${ey}" stroke="${stroke}" stroke-width="0.9" stroke-dasharray="4,2" opacity="0.65"/>`);
+    els.push(`<line x1="${_f(x)}" y1="${ey}" x2="${_f(x + w)}" y2="${ey}" stroke="${stroke}" stroke-width="0.9" stroke-dasharray="4,2" opacity="0.65" data-estante-index="${i}"/>`);
   }
 }
 
-function _drawZona(els, tipo, zc, bounds, accent, stroke) {
+function _drawZona(els, tipo, zc, bounds, paleta, stroke, zonaId) {
   const { x, y, w, h } = bounds;
   if (h < 2 || w < 2) return;
+
+  const accent = paleta.accent;
 
   if (tipo === "cajones") {
     const count = Math.max(1, Math.min(8, zc.cantidad || 3));
     const ch = h / count;
     for (let i = 0; i < count; i++) {
       const cy = _f(y + i * ch);
-      els.push(`<rect x="${_f(x)}" y="${cy}" width="${_f(w)}" height="${_f(ch)}" fill="rgba(212,175,55,0.07)" stroke="${stroke}" stroke-width="0.7"/>`);
+      const accentAlpha = paleta.theme === "dark" ? "rgba(212,175,55,0.07)" : "rgba(184,150,42,0.08)";
+      els.push(`<rect x="${_f(x)}" y="${cy}" width="${_f(w)}" height="${_f(ch)}" fill="${accentAlpha}" stroke="${stroke}" stroke-width="0.7" data-zona-id="${zonaId}" data-drawer="${i}"/>`);
       const hW = w * 0.38, hX = _f(x + (w - hW) / 2), hY = _f(y + i * ch + ch / 2);
       els.push(`<line x1="${hX}" y1="${hY}" x2="${_f(x + (w - hW) / 2 + hW)}" y2="${hY}" stroke="${accent}" stroke-width="1.5" stroke-linecap="round" opacity="0.55"/>`);
     }
@@ -502,18 +524,18 @@ function _drawZona(els, tipo, zc, bounds, accent, stroke) {
 
   if (tipo === "puerta_1") {
     const hX = _f(x + w * 0.18), hY = _f(y + h * 0.62);
-    els.push(`<circle cx="${hX}" cy="${hY}" r="2.5" fill="${accent}" opacity="0.55"/>`);
+    els.push(`<circle cx="${hX}" cy="${hY}" r="2.5" fill="${accent}" opacity="0.55" data-zona-id="${zonaId}"/>`);
   } else if (tipo === "puerta_2") {
     const midX = _f(x + w / 2);
-    els.push(`<line x1="${midX}" y1="${_f(y)}" x2="${midX}" y2="${_f(y + h)}" stroke="${stroke}" stroke-width="0.9"/>`);
+    els.push(`<line x1="${midX}" y1="${_f(y)}" x2="${midX}" y2="${_f(y + h)}" stroke="${stroke}" stroke-width="0.9" data-zona-id="${zonaId}"/>`);
     const hY = _f(y + h * 0.62);
-    els.push(`<circle cx="${_f(x + w * 0.3)}" cy="${hY}" r="2.5" fill="${accent}" opacity="0.55"/>`);
-    els.push(`<circle cx="${_f(x + w * 0.7)}" cy="${hY}" r="2.5" fill="${accent}" opacity="0.55"/>`);
+    els.push(`<circle cx="${_f(x + w * 0.3)}" cy="${hY}" r="2.5" fill="${accent}" opacity="0.55" data-zona-id="${zonaId}"/>`);
+    els.push(`<circle cx="${_f(x + w * 0.7)}" cy="${hY}" r="2.5" fill="${accent}" opacity="0.55" data-zona-id="${zonaId}"/>`);
   } else {
     // abierto — si no hay estantes configurados, un entrepaño sutil por defecto
     if (estantes === 0) {
       const ey = _f(y + h / 2);
-      els.push(`<line x1="${_f(x)}" y1="${ey}" x2="${_f(x + w)}" y2="${ey}" stroke="${stroke}" stroke-width="0.7" opacity="0.35"/>`);
+      els.push(`<line x1="${_f(x)}" y1="${ey}" x2="${_f(x + w)}" y2="${ey}" stroke="${stroke}" stroke-width="0.7" opacity="0.35" data-zona-id="${zonaId}"/>`);
     }
   }
 }
@@ -538,10 +560,11 @@ export function generarVistaSVG(modulo, opts = {}) {
   const zocaloMm = vc.zocalo != null ? vc.zocalo
     : parseFloat((modulo.variables || {}).zocalo || 0);
 
-  const stroke  = theme === "dark" ? "#3a4258" : "#9ca3af";
-  const fill    = theme === "dark" ? "#1a2030" : "#f1f5f9";
-  const accent  = "#C8A02A";
-  const txtCol  = theme === "dark" ? "#64748b" : "#94a3b8";
+  const paleta = TEMA_PALETAS[theme] || TEMA_PALETAS.dark;
+  paleta.theme = theme; // para acceso en _drawZona
+  const stroke  = paleta.stroke;
+  const fill    = paleta.fill;
+  const txtCol  = paleta.text;
 
   const padL = 6, padT = 10, padR = 38, padB = 20;
   const availW = width  - padL - padR;
@@ -585,16 +608,16 @@ export function generarVistaSVG(modulo, opts = {}) {
           : { x: intL, y: intT + intH * cumFr, w: intW, h: intH * fr };
         cumFr += fr;
 
-        _drawZona(els, zc.tipo || "abierto", zc, bounds, accent, stroke);
+        _drawZona(els, zc.tipo || "abierto", zc, bounds, paleta, stroke, id);
 
         // Divisor entre zonas (excepto la última)
         if (idx < zonasDef.length - 1) {
           if (layoutDir === "h") {
             const lx = _f(intL + intW * cumFr);
-            els.push(`<line x1="${lx}" y1="${_f(intT)}" x2="${lx}" y2="${_f(intT + intH)}" stroke="${stroke}" stroke-width="1" opacity="0.6"/>`);
+            els.push(`<line x1="${lx}" y1="${_f(intT)}" x2="${lx}" y2="${_f(intT + intH)}" stroke="${stroke}" stroke-width="1" opacity="0.6" data-divisor="true"/>`);
           } else {
             const ly = _f(intT + intH * cumFr);
-            els.push(`<line x1="${_f(intL)}" y1="${ly}" x2="${_f(intL + intW)}" y2="${ly}" stroke="${stroke}" stroke-width="1" opacity="0.6"/>`);
+            els.push(`<line x1="${_f(intL)}" y1="${ly}" x2="${_f(intL + intW)}" y2="${ly}" stroke="${stroke}" stroke-width="1" opacity="0.6" data-divisor="true"/>`);
           }
         }
       });

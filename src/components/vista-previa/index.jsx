@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SectionTitle, ToggleSwitch, Badge } from '../ui/index.jsx';
+import VistaModuloSVG from '../vista-svg/index.js';
+import { useTema } from '../../hooks/useTema.js';
 import { fmtPeso, fmtNum, fmtFecha,
          calcularModulo, calcularTotalVisual, recalcularTotalPresupuesto,
          getPrecioRefActual, presupuestoNecesitaActualizacion,
@@ -38,6 +40,8 @@ function BtnOjo({ keyId, itemsOcultos, onToggleOculto, titleVisible, titleOculto
 // estructura visual del editor de Presupuesto + toggle de visibilidad.
 // Eye en módulos/adicionales/costos directos → afecta PDF/impresión.
 function ListaItemsVP({ items, modulos, costos, dimOverride, costosDirectos = [], adicionales = [], itemsOcultos, onToggleOculto, mostrarPrecioUnitario }) {
+  const { tema } = useTema();
+  const [expandidoItem, setExpandidoItem] = useState(null); // id del item expandido
   const validos = (items || []).filter(item => modulos[item.codigo]);
   const hayCDs  = costosDirectos.length > 0;
   const hayAds  = adicionales.length > 0;
@@ -69,6 +73,7 @@ function ListaItemsVP({ items, modulos, costos, dimOverride, costosDirectos = []
             const dimDif = base && (over.ancho !== base.dimensiones.ancho || over.profundidad !== base.dimensiones.profundidad || over.alto !== base.dimensiones.alto);
             const esTemp  = !!base?.temporal;
             const esOculto = itemsOcultos.includes(keyId);
+            const expandido = expandidoItem === keyId;
 
             return (
               <div key={keyId} style={{
@@ -77,18 +82,40 @@ function ListaItemsVP({ items, modulos, costos, dimOverride, costosDirectos = []
                 background: esOculto ? "rgba(200,60,60,0.04)" : "var(--bg-surface)",
                 overflow: "hidden", opacity: esOculto ? 0.6 : 1, transition: "all 0.18s",
               }}>
+                {/* Fila principal con thumbnail */}
                 <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>
-                    {item.codigo.startsWith("TEMP_") ? "VAR" : item.codigo}
-                  </span>
+                  {/* Thumbnail SVG clickeable */}
+                  <div
+                    onClick={() => setExpandidoItem(expandido ? null : keyId)}
+                    style={{
+                      width: 120, height: 120, flexShrink: 0, cursor: "pointer",
+                      border: "1px solid var(--border)", borderRadius: 6, padding: 4,
+                      background: "var(--bg-subtle)", transition: "all 0.2s",
+                      opacity: esOculto ? 0.3 : 1, filter: esOculto ? "grayscale(100%)" : "none",
+                    }}
+                    title="Clic para expandir"
+                  >
+                    <VistaModuloSVG
+                      modulo={modUsado}
+                      vistaConfig={modUsado.vistaConfig}
+                      theme={tema}
+                      width={120}
+                      height={120}
+                    />
+                  </div>
+
+                  {/* Info del item */}
                   <div style={{ flex: 2, minWidth: 120 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>
+                      {item.codigo.startsWith("TEMP_") ? "VAR" : item.codigo}
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{modUsado.nombre}</span>
                       {esTemp && (
                         <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.30)", color: "#c8a02a", borderRadius: 3, padding: "1px 5px" }}>✦ var</span>
                       )}
                     </div>
-                    <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: dimDif ? "var(--accent)" : "var(--text-muted)", marginTop: 2 }}>
+                    <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: dimDif ? "var(--accent)" : "var(--text-muted)", marginTop: 4 }}>
                       {over.ancho}×{over.profundidad}×{over.alto} mm
                     </div>
                   </div>
@@ -110,6 +137,56 @@ function ListaItemsVP({ items, modulos, costos, dimOverride, costosDirectos = []
                     titleVisible="Visible en PDF — clic para ocultar"
                     titleOculto="Oculto de PDF — clic para mostrar" />
                 </div>
+
+                {/* Panel expandible */}
+                {expandido && (
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "300px 1fr", gap: 20,
+                    padding: 20, background: "rgba(0,0,0,0.1)", borderTop: "1px solid var(--border)",
+                  }}>
+                    <div>
+                      <VistaModuloSVG
+                        modulo={modUsado}
+                        vistaConfig={modUsado.vistaConfig}
+                        theme={tema}
+                        width={300}
+                        height={300}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 12 }}>
+                      <h4 style={{ margin: 0, color: "var(--text-primary)" }}>{modUsado.nombre}</h4>
+                      <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                        {modUsado.descripcion}
+                      </p>
+                      <dl style={{ margin: 0, fontSize: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div>
+                          <dt style={{ fontWeight: 700, color: "var(--text-muted)" }}>Material:</dt>
+                          <dd style={{ margin: 0, color: "var(--text-primary)" }}>{TIPO_MAT[modUsado.material]}</dd>
+                        </div>
+                        <div>
+                          <dt style={{ fontWeight: 700, color: "var(--text-muted)" }}>Acabado:</dt>
+                          <dd style={{ margin: 0, color: "var(--text-primary)" }}>{modUsado.acabado || "—"}</dd>
+                        </div>
+                        {modUsado.herrajes && modUsado.herrajes.length > 0 && (
+                          <div>
+                            <dt style={{ fontWeight: 700, color: "var(--text-muted)" }}>Herrajes:</dt>
+                            <dd style={{ margin: 0, color: "var(--text-primary)" }}>{modUsado.herrajes.join(", ")}</dd>
+                          </div>
+                        )}
+                      </dl>
+                      <button
+                        onClick={() => setExpandidoItem(null)}
+                        style={{
+                          alignSelf: "flex-start", marginTop: 8, padding: "6px 12px", fontSize: 11,
+                          borderRadius: 6, border: "1px solid var(--border)", background: "transparent",
+                          color: "var(--text-muted)", cursor: "pointer", fontWeight: 700,
+                        }}
+                      >
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
