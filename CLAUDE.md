@@ -7,19 +7,22 @@ React SPA · Vercel · localStorage · `react-scripts build` (CI=true, warnings 
 
 ```
 src/
-├── App.js                  # Root: domain state + handlers + layout
-├── state/NavContext.jsx    # Navigation state (useReducer, 12 semantic actions)
+├── App.js                      # Root: domain state + persistence handlers + layout
+├── state/
+│   ├── NavContext.jsx           # Navigation state only (useReducer, 12 semantic actions)
+│   └── PresupuestoContext.jsx   # Active editor state (items, dims, adicionales, etc.)
 ├── services/
-│   └── moduloService.js   # Pure domain logic: TEMP lifecycle, migration, cleanup
+│   ├── moduloService.js         # Pure domain logic: TEMP lifecycle, migration, cleanup
+│   └── presupuestoService.js    # Pure domain mutations: crear, eliminar, cambiarEstado
 ├── components/
-│   ├── ui/                # Visual primitives only (Btn, Card, Badge, etc.)
-│   ├── costos/            # Price table, waste, overhead
-│   ├── catalogo/          # Parametric modules, FormModulo, PanelSelector
-│   ├── presupuesto/       # Active editor, GestorPresupuestos, BarraTotal
-│   ├── vista-previa/      # PDF, WhatsApp, client approval
-│   ├── corte/             # Cut list by material
-│   ├── trabajos/          # Kanban + list tracking
-│   └── caja/              # Payments, profitability, validity
+│   ├── ui/                      # Visual primitives only (Btn, Card, Badge, etc.)
+│   ├── costos/                  # Price table, waste, overhead
+│   ├── catalogo/                # Parametric modules, FormModulo, PanelSelector
+│   ├── presupuesto/             # Active editor, GestorPresupuestos, BarraTotal
+│   ├── vista-previa/            # PDF, WhatsApp, client approval
+│   ├── corte/                   # Cut list by material
+│   ├── trabajos/                # Kanban + list tracking
+│   └── caja/                    # Payments, profitability, validity
 ├── utils.js               # Pure calculation functions (no state, no effects)
 ├── storage.js             # localStorage I/O only — single door to persistence
 ├── constants.js           # Domain data: states, materials, defaults
@@ -32,9 +35,10 @@ src/
 |---|---|---|
 | `App.js` | Domain state, persistence handlers | Business logic, nav state |
 | `NavContext` | Navigation transitions only | Mutate domain data |
+| `PresupuestoContext` | Active editor state (items, dims, adicionales) | Persist directly, business logic |
 | `services/` | Pure domain mutations | Call setState, dispatch |
-| `utils.js` | Pure calculations | State, effects, UI |
-| `storage.js` | localStorage I/O | Business logic |
+| `utils.js` | Pure calculations | State, effects, UI, localStorage |
+| `storage.js` | localStorage I/O + leerPerfil() | Business logic |
 | `components/[domain]/` | Visual + local interaction | Direct persistence |
 | `components/ui/` | Visual primitives | Any logic or context |
 
@@ -87,9 +91,10 @@ Detection is deterministic (real total comparison), NOT timestamp-based.
 - `guardarModulos` bumps `costos_version` — required for stale detection
 
 **IDs:**
-- Presupuesto IDs: `String(Date.now())` — known limitation, migration needed for Supabase
+- Presupuesto IDs: `crypto.randomUUID()` — globally unique, Supabase-compatible
 - TEMP codes: `TEMP_${Date.now()}` — always cleaned up on save or delete
 - Permanent module codes: `MC${String(Date.now()).slice(-6)}`
+- **Never use `Date.now()` as a persistent entity ID** — it's a timestamp, not an identifier
 
 **CSS / Design:**
 - Design tokens defined in `GlobalStyles` in `components/ui/index.jsx`
@@ -151,33 +156,100 @@ carpicalc:auth           → session flag
 ## Known Limitations (Planned)
 
 1. **`withSave` concurrency** — no execution queue, parallel saves not guaranteed ordered
-2. **`presupuestoService.js` missing** — mutation logic still in App.js handlers
-3. **Prop drilling** — AppInterna passes 25+ props to Presupuesto; domain contexts not yet extracted
-4. **No schema validation** — malformed localStorage data can cause unpredictable behavior
-5. **String(Date.now()) IDs** — incompatible with relational DBs; migration needed before Supabase
+2. **No schema validation** — malformed localStorage data can cause unpredictable behavior
+3. **App.js handlers** — crear/actualizar/eliminar presupuesto todavía viven en App.js; mover a `presupuestoService.js` cuando se extraiga dominio completo
 
 ## Roadmap
 
 | Priority | Feature | Notes |
 |---|---|---|
-| High | `withSave` queue | Infra, ~20 lines, zero UI impact |
-| High | `presupuestoService.js` | Completes service layer pattern |
-| High | Public budget link | Client approval flow |
-| Medium | Supabase migration | Auth + PostgreSQL + RLS, region São Paulo |
+| High | `withSave` queue | ~20 líneas, cero impacto en UI |
+| High | Public budget link | Flujo de aprobación del cliente |
+| Medium | Supabase migration | Auth + PostgreSQL + RLS, región São Paulo |
 | Medium | Lemon Squeezy subscriptions | Bronce $8 / Plata $18 / Oro $35 USD |
 | Low | Monthly summary, m² calculator, purchase list export | |
 
+## Architecture Principles — Non-negotiable
+
+Estas reglas existen porque aprendimos lo que pasa cuando no se siguen.
+Aplican a CUALQUIER código nuevo, sin excepción.
+
+### Single Responsibility
+Cada archivo/función tiene UNA razón para cambiar.
+- Si un componente maneja UI Y lógica de negocio → extraer la lógica a un service
+- Si una función lee datos Y los transforma → separarla en dos
+- Si App.js crece por algo que no es "orquestar estado de dominio" → está mal ubicado
+
+### Dónde va el código nuevo — Protocolo de 4 preguntas
+
+Antes de escribir cualquier función o estado, respondé estas preguntas en orden:
+
+```
+1. ¿Es lógica de navegación?          → NavContext
+2. ¿Es estado del editor activo?      → PresupuestoContext (via AppInterna)
+3. ¿Es mutación de datos de dominio?  → services/ (función pura)
+4. ¿Es cálculo puro sin side effects? → utils.js
+5. ¿Es I/O de localStorage?           → storage.js
+6. Si ninguna → estado local del componente que lo necesita
+```
+
+Si no podés responder la pregunta, el código tiene responsabilidades mezcladas.
+Separalo antes de escribirlo.
+
+### IDs de entidades persistentes
+- **Siempre `crypto.randomUUID()`** para cualquier entidad que vaya a localStorage o base de datos
+- Nunca `Date.now()` como ID — es un timestamp, no un identificador único global
+- Nunca usar el ID para inferir fecha de creación — guardá `creadoEn: Date.now()` por separado si necesitás ese dato
+
+### Supuestos explícitos
+Cuando tomés una decisión técnica que depende de un supuesto ("esto nunca va a una BD"),
+documentalo como comentario en el código o en Known Limitations.
+Un supuesto no documentado es deuda técnica invisible.
+
+```js
+// SUPUESTO: esta app es single-user, local.
+// Si se agrega multi-usuario, este campo necesita ser UUID global.
+const id = crypto.randomUUID(); // ← ya corregido
+```
+
+### Límite de props por componente
+- Más de **8 props** en un componente → analizar si necesita un Context o se puede dividir
+- Más de **5 setters** pasados como props → mover el estado al contexto correspondiente
+- Props que empiezan con `set` pasadas 2+ niveles abajo → Context obligatorio
+
+### Anti-patrones prohibidos
+- **God Component**: ningún componente tiene más de una responsabilidad de dominio
+- **localStorage directo en componentes**: siempre a través de `storage.js`
+- **Lógica de negocio en JSX**: extraer a función nombrada antes de renderizar
+- **Estado de navegación en App.js**: siempre NavContext
+- **Comentarios que explican QUÉ hace el código**: el código bien nombrado ya lo dice; comentar solo el POR QUÉ no obvio
+
+---
+
 ## Before Every Delivery — Checklist
 
+**Calidad de código:**
 ```
 □ Zero unused imports
 □ Zero unused variables/setters/states
 □ Zero orphaned props (declared in signature but never used)
 □ Zero references to deleted functions/setters
 □ JSX brace balance verified
+□ Static analysis passes with 0 errors, 0 warnings
+```
+
+**Arquitectura (protocolo de capas):**
+```
 □ No direct localStorage calls outside storage.js
 □ No navigation state added to App.js (use NavContext)
+□ No editor state passed as props 2+ levels deep (use PresupuestoContext)
 □ No domain logic added to components (extract to services/)
+□ No new persistent entity uses Date.now() as ID (use crypto.randomUUID())
+□ New code answers the "4 preguntas" del protocolo de capas
+```
+
+**CSS / Design:**
+```
 □ CSS vars used in component exist in GlobalStyles (both themes)
-□ Static analysis script passes with 0 errors, 0 warnings
+□ No hardcoded colors — use CSS variables
 ```
