@@ -2630,102 +2630,188 @@ function PanelSelectorModulos({ modulos, onSeleccionar }) {
 // 9. EDITOR VISUAL SVG
 // ══════════════════════════════════════════════════════════════════
 
+// ── Presets de layout ─────────────────────────────────────────────
+// dir "v" = zonas apiladas verticalmente, dir "h" = lado a lado
+const LAYOUT_PRESETS = [
+  { id: "simple",       label: "Simple",     dir: "v", icon: "▭",  zonasDef: [{ id: "main", fr: 1 }] },
+  { id: "sup_inf",      label: "Sup / Inf",  dir: "v", icon: "⊟",  zonasDef: [{ id: "sup", fr: 0.60 }, { id: "inf", fr: 0.40 }] },
+  { id: "tres_franjas", label: "3 franjas",  dir: "v", icon: "≡",  zonasDef: [{ id: "sup", fr: 0.34 }, { id: "mid", fr: 0.33 }, { id: "inf", fr: 0.33 }] },
+  { id: "izq_der",      label: "Izq / Der",  dir: "h", icon: "▌▐", zonasDef: [{ id: "izq", fr: 0.50 }, { id: "der", fr: 0.50 }] },
+  { id: "cajonera",     label: "Cajonera",   dir: "v", icon: "⊞",  zonasDef: [{ id: "main", fr: 1 }], defaultTipo: "cajones" },
+];
+
+// ── Tipos de zona ─────────────────────────────────────────────────
+const ZONA_TIPOS = [
+  { id: "abierto",  label: "Abierto",   icon: "⊡" },
+  { id: "puerta_1", label: "1 Puerta",  icon: "□"  },
+  { id: "puerta_2", label: "2 Puertas", icon: "⊟"  },
+  { id: "cajones",  label: "Cajones",   icon: "≡"  },
+];
+
+const ZONA_LABELS = { main: "Principal", sup: "Superior", mid: "Medio", inf: "Inferior", izq: "Izquierda", der: "Derecha" };
+
 /**
  * Vista independiente para configurar la composición visual de un módulo.
  * Accesible desde AccionesModulo → botón ▣.
- * Guarda vistaConfig (puertas, cajones, estantes) en el módulo sin tocar piezas.
+ * Guarda vistaConfig con estructura por bloques en el módulo.
  */
 function EditorVistaSVG({ modulo, onGuardar, onCerrar }) {
   const vc = modulo.vistaConfig || {};
-  // "" = auto-detectar desde herrajes; número = override manual
-  const [puertas,  setPuertas]  = useState(vc.puertas  != null ? String(vc.puertas)  : "");
-  const [cajones,  setCajones]  = useState(vc.cajones  != null ? String(vc.cajones)  : "");
-  const [estantes, setEstantes] = useState(String(vc.estantes ?? 0));
 
-  const moduloPreview = useMemo(() => ({
-    ...modulo,
-    vistaConfig: {
-      puertas:  puertas  === "" ? null : parseInt(puertas),
-      cajones:  cajones  === "" ? null : parseInt(cajones),
-      estantes: parseInt(estantes) || 0,
-    },
-  }), [modulo, puertas, cajones, estantes]);
+  const [zocalo,      setZocalo]      = useState(String(vc.zocalo ?? 0));
+  const [layoutId,    setLayoutId]    = useState(vc.layoutId    || "simple");
+  const [zonasConfig, setZonasConfig] = useState(vc.zonas || {});
 
-  const svgStr = useMemo(
-    () => generarVistaSVG(moduloPreview, { width: 320, height: 320 }),
-    [moduloPreview]
-  );
+  const preset = LAYOUT_PRESETS.find(p => p.id === layoutId) || LAYOUT_PRESETS[0];
 
-  const chipStyle = (activo) => ({
-    padding: "4px 11px", borderRadius: 6, cursor: "pointer", fontSize: 11,
-    fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.12s",
-    background: activo ? "var(--accent-soft)" : "transparent",
-    border: `1px solid ${activo ? "var(--accent-border)" : "var(--border)"}`,
-    color: activo ? "var(--accent)" : "var(--text-muted)",
-  });
-
-  const Chips = ({ label, valor, setValor, opciones }) => (
-    <div>
-      <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>
-        {label}
-        {valor === "" && <span style={{ fontSize: 10, color: "var(--accent)", opacity: 0.7, marginLeft: 6 }}>(auto)</span>}
-      </div>
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-        {opciones.map(v => (
-          <button key={v} onClick={() => setValor(v === "auto" ? "" : v)} style={chipStyle(v === "auto" ? valor === "" : valor === v)}>
-            {v}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
-  const guardar = () => {
-    onGuardar({
-      puertas:  puertas  === "" ? null : parseInt(puertas),
-      cajones:  cajones  === "" ? null : parseInt(cajones),
-      estantes: parseInt(estantes) || 0,
+  // Cuando cambia el layout: conservar config de zonas con el mismo id, resetear las nuevas
+  const cambiarLayout = (nuevoId) => {
+    const nuevo = LAYOUT_PRESETS.find(p => p.id === nuevoId) || LAYOUT_PRESETS[0];
+    setLayoutId(nuevoId);
+    setZonasConfig(prev => {
+      const next = {};
+      nuevo.zonasDef.forEach(({ id }) => {
+        next[id] = prev[id] || (nuevo.defaultTipo ? { tipo: nuevo.defaultTipo, cantidad: 3 } : { tipo: "abierto" });
+      });
+      return next;
     });
   };
 
+  const setZonaTipo = (zonaId, tipo) =>
+    setZonasConfig(prev => ({ ...prev, [zonaId]: { ...(prev[zonaId] || {}), tipo } }));
+
+  const setZonaExtra = (zonaId, campo, valor) =>
+    setZonasConfig(prev => ({ ...prev, [zonaId]: { ...(prev[zonaId] || {}), [campo]: valor } }));
+
+  // Preview reactivo
+  const vistaPreview = useMemo(() => ({
+    zocalo:     parseInt(zocalo) || 0,
+    layoutId,
+    layoutDir:  preset.dir,
+    zonasDef:   preset.zonasDef,
+    zonas:      zonasConfig,
+  }), [zocalo, layoutId, preset, zonasConfig]);
+
+  const svgStr = useMemo(
+    () => generarVistaSVG({ ...modulo, vistaConfig: vistaPreview }, { width: 300, height: 300 }),
+    [modulo, vistaPreview]
+  );
+
+  const chipSt = (activo) => ({
+    padding: "5px 12px", borderRadius: 6, cursor: "pointer", fontSize: 11,
+    fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.12s",
+    background: activo ? "var(--accent-soft)"    : "transparent",
+    border:     `1px solid ${activo ? "var(--accent-border)" : "var(--border)"}`,
+    color:      activo ? "var(--accent)"          : "var(--text-muted)",
+  });
+
+  const numChipSt = (activo) => ({
+    ...chipSt(activo), padding: "3px 9px", fontSize: 10,
+  });
+
+  const guardar = () => onGuardar(vistaPreview);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 720, margin: "0 auto" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 800, margin: "0 auto" }}>
       <div>
         <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 900, color: "var(--accent)", marginBottom: 2 }}>
           ▣ Vista técnica
         </div>
-        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{modulo.nombre} · {modulo.dimensiones?.ancho} × {modulo.dimensiones?.profundidad} × {modulo.dimensiones?.alto} mm</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          {modulo.nombre} · {modulo.dimensiones?.ancho} × {modulo.dimensiones?.profundidad} × {modulo.dimensiones?.alto} mm
+        </div>
       </div>
 
-      <Card className="rsp-card">
-        <div style={{ display: "flex", gap: 28, flexWrap: "wrap", alignItems: "flex-start" }}>
-          {/* Preview SVG */}
-          <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-subtle)", borderRadius: 10, padding: 12, border: "1px solid var(--border)" }}
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "flex-start" }}>
+
+        {/* ── Panel izquierdo: preview SVG ── */}
+        <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+          <div style={{ background: "var(--bg-subtle)", borderRadius: 10, padding: 12, border: "1px solid var(--border)" }}
             dangerouslySetInnerHTML={{ __html: svgStr }} />
-
-          {/* Controles */}
-          <div style={{ flex: 1, minWidth: 200, display: "flex", flexDirection: "column", gap: 16 }}>
-            <Chips label="Puertas" valor={puertas} setValor={setPuertas}
-              opciones={["auto", "0", "1", "2", "3", "4"]} />
-            <Chips label="Cajones" valor={cajones} setValor={setCajones}
-              opciones={["auto", "0", "1", "2", "3", "4"]} />
-            <Chips label="Estantes internos" valor={estantes} setValor={setEstantes}
-              opciones={["0", "1", "2", "3", "4", "5"]} />
-
-            {(modulo.herrajes || []).length > 0 && (
-              <div style={{ fontSize: 11, color: "var(--text-muted)", padding: "8px 10px", borderRadius: 8, background: "var(--bg-subtle)", border: "1px solid var(--border)", lineHeight: 1.6 }}>
-                <strong>Herrajes detectados:</strong><br />
-                {modulo.herrajes.map(h => h.nombre).join(", ")}
-              </div>
-            )}
+          {/* Zócalo */}
+          <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>Zócalo</span>
+            <input
+              type="number" min="0" max="200" value={zocalo}
+              onChange={e => setZocalo(e.target.value)}
+              style={{
+                flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "4px 8px",
+                background: "var(--bg-base)", border: "1px solid var(--border)",
+                borderRadius: 6, color: "var(--text-primary)", outline: "none", textAlign: "right",
+              }}
+            />
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>mm</span>
           </div>
         </div>
 
-        <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 14, display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <Btn variant="ghost" onClick={onCerrar}>Cancelar</Btn>
-          <Btn onClick={guardar}>💾 Guardar vista</Btn>
+        {/* ── Panel derecho: controles ── */}
+        <div style={{ flex: 1, minWidth: 240, display: "flex", flexDirection: "column", gap: 18 }}>
+
+          {/* Layout presets */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
+              Distribución
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {LAYOUT_PRESETS.map(p => (
+                <button key={p.id} onClick={() => cambiarLayout(p.id)} style={chipSt(layoutId === p.id)}>
+                  <span style={{ marginRight: 5 }}>{p.icon}</span>{p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Zonas */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>
+              Zonas
+            </div>
+            {preset.zonasDef.map(({ id }) => {
+              const zc   = zonasConfig[id] || {};
+              const tipo = zc.tipo || (preset.defaultTipo || "abierto");
+              return (
+                <div key={id} style={{ padding: "10px 12px", borderRadius: 8, background: "var(--bg-subtle)", border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", marginBottom: 8, fontFamily: "'DM Mono',monospace" }}>
+                    {ZONA_LABELS[id] || id}
+                  </div>
+                  {/* Tipo */}
+                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: tipo !== "abierto" ? 8 : 0 }}>
+                    {ZONA_TIPOS.map(t => (
+                      <button key={t.id} onClick={() => setZonaTipo(id, t.id)} style={chipSt(tipo === t.id)}>
+                        {t.icon} {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Opciones según tipo */}
+                  {tipo === "cajones" && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Cantidad</span>
+                      {[1,2,3,4,5,6].map(n => (
+                        <button key={n} onClick={() => setZonaExtra(id, "cantidad", n)}
+                          style={numChipSt((zc.cantidad || 3) === n)}>{n}</button>
+                      ))}
+                    </div>
+                  )}
+                  {(tipo === "abierto" || tipo === "puerta_1" || tipo === "puerta_2") && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Estantes</span>
+                      {[0,1,2,3,4].map(n => (
+                        <button key={n} onClick={() => setZonaExtra(id, "estantes", n)}
+                          style={numChipSt((zc.estantes || 0) === n)}>{n}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </Card>
+      </div>
+
+      <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14, display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <Btn variant="ghost" onClick={onCerrar}>Cancelar</Btn>
+        <Btn onClick={guardar}>💾 Guardar vista</Btn>
+      </div>
     </div>
   );
 }
