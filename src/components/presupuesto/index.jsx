@@ -155,23 +155,27 @@ function imprimirPresupuesto(
         over.profundidad !== modBase.dimensiones.profundidad ||
         over.alto !== modBase.dimensiones.alto;
 
-      // Generar SVG 80×80 inline
-      const svgStr = generarVistaSVG({ ...modUsado, vistaConfig: modUsado.vistaConfig }, { width: 80, height: 80, theme: temaSVG });
+      // Generar SVG 150×150 inline
+      const svgStr = generarVistaSVG({ ...modUsado, vistaConfig: modUsado.vistaConfig }, { width: 150, height: 150, theme: temaSVG });
+
+      // Descripción compacta horizontal
+      const desc = [];
+      desc.push(modBase.nombre);
+      if (modBase.descripcion) desc.push(modBase.descripcion);
+      desc.push(`${over.ancho}×${over.profundidad}×${over.alto} mm${dimDif ? " ★" : ""}`);
+      desc.push(TIPO_MAT[modUsado.material]);
+      const descCompacta = desc.join(" · ");
 
       return `<tr>
-        <td style="padding:8px 6px;width:80px;height:80px;text-align:center;vertical-align:middle;border-bottom:1px solid ${p.separador}">${svgStr}</td>
-        <td class="cod" style="color:${p.acento}">${item.codigo}</td>
-        <td>
-          <div class="mod-nombre" style="color:${p.textoPrincipal}">${modBase.nombre}</div>
-          ${modBase.descripcion ? `<div class="mod-desc" style="color:${p.textoSec}">${modBase.descripcion}</div>` : ""}
-          ${item.nota?.trim() ? `<div class="mod-nota" style="color:${p.acento}">📝 ${item.nota}</div>` : ""}
-          <div class="mod-dim" style="color:${dimDif ? p.acento : p.textoAcento}">
-            ${over.ancho}×${over.profundidad}×${over.alto} mm${dimDif ? " ★ personalizado" : ""} · ${TIPO_MAT[modUsado.material]}
-          </div>
+        <td style="padding:12px 8px;width:150px;height:150px;text-align:center;vertical-align:middle;border-bottom:1px solid ${p.separador}">${svgStr}</td>
+        <td style="padding:12px 14px;vertical-align:middle;border-bottom:1px solid ${p.separador}">
+          <div style="font-size:13px;font-weight:700;color:${p.textoPrincipal};margin-bottom:3px">${modBase.nombre}</div>
+          <div style="font-size:11px;color:${p.textoSec};line-height:1.5">${descCompacta}</div>
+          ${item.nota?.trim() ? `<div style="font-size:10px;color:${p.acento};margin-top:4px;font-style:italic">📝 ${item.nota}</div>` : ""}
         </td>
-        <td class="num" style="font-weight:700;color:${p.acento}">${item.cantidad}</td>
-        ${mostrarPrecioUnitario ? `<td class="num precio-u" style="color:${p.textoSec}">${fmtPeso(calc.total)}</td>` : ""}
-        <td class="num subtotal" style="color:${p.totalColor}">${fmtPeso(calc.total * item.cantidad)}</td>
+        <td class="num" style="padding:12px 14px;font-weight:700;color:${p.acento};border-bottom:1px solid ${p.separador};vertical-align:middle">${item.cantidad}</td>
+        ${mostrarPrecioUnitario ? `<td class="num precio-u" style="padding:12px 14px;color:${p.textoSec};border-bottom:1px solid ${p.separador};vertical-align:middle">${fmtPeso(calc.total)}</td>` : ""}
+        <td class="num subtotal" style="padding:12px 14px;color:${p.totalColor};border-bottom:1px solid ${p.separador};vertical-align:middle">${fmtPeso(calc.total * item.cantidad)}</td>
       </tr>`;
     })
     .join("");
@@ -242,20 +246,15 @@ function imprimirPresupuesto(
     .tabla-items th.txt { text-align: left; }
     .tabla-items td { padding: 11px 14px; border-bottom: 1px solid ${p.separador}; vertical-align: top; }
     .tabla-items tbody tr:nth-child(even) td { background: ${p.fondoFila}; }
-    .cod  { font-family: monospace; font-size: 10px; font-weight: 700; white-space: nowrap; }
     .num  { text-align: right; font-family: monospace; }
     .subtotal { font-size: 14px; font-weight: 700; }
     .precio-u  { font-size: 12px; }
-    .mod-nombre { font-size: 13px; font-weight: 700; }
-    .mod-desc   { font-size: 11px; font-style: italic; margin-top: 3px; }
-    .mod-dim    { font-size: 10px; font-family: monospace; margin-top: 4px; }
-    .mod-nota   { font-size: 11px; font-style: italic; margin-top: 4px; }
   </style>
 </head>
 <body>
 
   <!-- ZONA 1: HEADER -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid ${p.acento};margin-bottom:16px;gap:24px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid ${p.acento};margin-bottom:4px;gap:24px">
     <div style="flex:1">${encabezadoTaller}</div>
     <div style="text-align:right;min-width:200px">
       <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.2em;color:${p.textoAcento};margin-bottom:4px">Presupuesto</div>
@@ -270,7 +269,7 @@ function imprimirPresupuesto(
     </div>
   </div>
 
-  ${nombre ? `<div style="text-align:center;font-family:'Georgia',serif;font-size:18px;font-style:italic;font-weight:700;color:${p.acento};padding:10px 0 20px 0;letter-spacing:0.02em">${nombre}</div>` : ""}
+  ${nombre ? `<div style="font-size:16px;font-weight:700;color:${p.textoPrincipal};padding:12px 0 24px 0;letter-spacing:0.01em">${nombre}</div>` : ""}
 
   ${textoApertura ? `<div style="margin-bottom:20px;padding:12px 16px;background:${p.fondoCliente};border-left:3px solid ${p.acentoSuave};border-radius:0 6px 6px 0;font-size:13px;color:${p.textoSec};line-height:1.7">${textoApertura.replace(/\n/g, "<br>")}</div>` : ""}
 
@@ -278,7 +277,7 @@ function imprimirPresupuesto(
   <table class="tabla-items">
     <thead>
       <tr>
-        <th class="txt" style="width:70px">Código</th>
+        <th class="txt" style="width:150px;text-align:center">Visualización</th>
         <th class="txt">Módulo / Descripción</th>
         <th class="num" style="width:52px">Cant.</th>
         ${mostrarPrecioUnitario ? `<th class="num" style="width:110px">P. unit.</th>` : ""}
@@ -289,48 +288,40 @@ function imprimirPresupuesto(
   </table>
 
   <!-- ZONA 3: PIE -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:32px;margin-top:0;padding:20px 0 0 0;border-top:2px solid ${p.acento}">
+  <div style="display:grid;grid-template-columns:1fr auto;gap:40px;margin-top:0;padding:28px 0 0 0;border-top:2px solid ${p.acento}">
 
-    <div style="flex:1;max-width:55%">
+    <div>
       ${condiciones ? `
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:${p.textoAcento};margin-bottom:8px">Condiciones y observaciones</div>
-      <div style="font-size:11px;color:${p.textoSec};line-height:1.7;background:${p.fondoFila};border:1px solid ${p.separador};border-radius:6px;padding:10px 14px">${condiciones.replace(/\n/g, "<br>")}</div>
-      ` : `<div style="font-size:11px;color:${p.textoAcento};font-style:italic;opacity:0.6">Sin condiciones especificadas.</div>`}
-      <div style="margin-top:12px;font-size:10px;color:${p.textoAcento};opacity:0.7">
+      <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.2em;font-weight:700;color:${p.textoAcento};margin-bottom:8px;opacity:0.8">Condiciones y observaciones</div>
+      <div style="font-size:11px;color:${p.textoSec};line-height:1.6;background:${p.fondoFila};border:1px solid ${p.separador};border-radius:6px;padding:10px 12px">${condiciones.replace(/\n/g, "<br>")}</div>
+      ` : `<div style="font-size:11px;color:${p.textoAcento};font-style:italic;opacity:0.5">Sin condiciones especificadas.</div>`}
+      <div style="margin-top:10px;font-size:9px;color:${p.textoAcento};opacity:0.6;letter-spacing:0.05em">
         ${totalUnid} unidad${totalUnid !== 1 ? "es" : ""} · ${items.length} módulo${items.length !== 1 ? "s" : ""}
       </div>
     </div>
 
-    <div style="min-width:220px;text-align:right">
-      <table style="width:100%;border-collapse:collapse;font-family:'Segoe UI',Arial,sans-serif">
-        <tr>
-          <td style="font-size:11px;color:${p.textoAcento};padding:4px 0;text-align:left">Subtotal</td>
-          <td style="font-size:13px;font-weight:700;color:${tv.hayDescuento ? p.textoAcento : p.textoPrincipal};text-align:right;padding:4px 0;${tv.hayDescuento ? "text-decoration:line-through;opacity:0.55;letter-spacing:0.02em" : ""}">
-            ${fmtPeso(tv.totalOriginal)}
-          </td>
-        </tr>
-        ${tv.hayDescuento ? `
-        <tr>
-          <td style="font-size:11px;color:${p.descuentoColor};padding:4px 0;text-align:left">🏷 Descuento</td>
-          <td style="font-size:13px;font-weight:700;color:${p.descuentoColor};text-align:right;padding:4px 0">− ${fmtPeso(tv.descuentoVal)}</td>
-        </tr>` : ""}
-        ${tv.hayGanancia ? `
-        <tr>
-          <td style="font-size:11px;color:${p.textoAcento};padding:4px 0;text-align:left">Recargo</td>
-          <td style="font-size:13px;font-weight:700;color:${p.textoSec};text-align:right;padding:4px 0">+ ${fmtPeso(tv.gananciaVal)}</td>
-        </tr>` : ""}
-        ${tv.hayDescuento || tv.hayGanancia ? `
-        <tr><td colspan="2" style="padding:6px 0 0 0;border-top:1px solid ${p.acentoSuave}"></td></tr>` : ""}
-        <tr>
-          <td style="font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:${p.textoAcento};padding-top:6px;text-align:left">Total del trabajo</td>
-          <td style="padding-top:6px;text-align:right">
-            <span style="font-family:'Georgia',serif;font-size:28px;font-weight:900;color:${p.totalColor};letter-spacing:-0.5px">${fmtPeso(tv.totalFinal)}</span>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2" style="font-size:9px;color:${p.textoAcento};padding-top:4px;text-align:right;opacity:0.7">IVA no incluido</td>
-        </tr>
-      </table>
+    <div style="min-width:260px;background:${p.fondoCliente};border:1px solid ${p.bordeCliente};border-radius:8px;padding:18px 20px;text-align:right">
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.16em;color:${p.textoAcento};opacity:0.8;margin-bottom:4px">Subtotal</div>
+        <div style="font-size:14px;font-weight:700;color:${tv.hayDescuento ? p.textoAcento : p.textoPrincipal};${tv.hayDescuento ? "text-decoration:line-through;opacity:0.6" : ""}">
+          ${fmtPeso(tv.totalOriginal)}
+        </div>
+      </div>
+      ${tv.hayDescuento ? `
+      <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid ${p.acentoSuave}">
+        <div style="font-size:10px;color:${p.descuentoColor};margin-bottom:3px">🏷 Descuento</div>
+        <div style="font-size:13px;font-weight:700;color:${p.descuentoColor}">− ${fmtPeso(tv.descuentoVal)}</div>
+      </div>` : ""}
+      ${tv.hayGanancia ? `
+      <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid ${p.acentoSuave}">
+        <div style="font-size:10px;color:${p.textoAcento};opacity:0.8;margin-bottom:3px">Recargo</div>
+        <div style="font-size:13px;font-weight:700;color:${p.textoSec}">+ ${fmtPeso(tv.gananciaVal)}</div>
+      </div>` : ""}
+      <div style="padding-top:6px">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.18em;color:${p.textoAcento};opacity:0.8;margin-bottom:6px">Total del trabajo</div>
+        <div style="font-family:'Georgia',serif;font-size:32px;font-weight:900;color:${p.totalColor};letter-spacing:-0.8px;line-height:1">${fmtPeso(tv.totalFinal)}</div>
+        <div style="font-size:9px;color:${p.textoAcento};opacity:0.6;margin-top:6px">IVA no incluido</div>
+      </div>
     </div>
   </div>
 
