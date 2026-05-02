@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useUndo } from '../../hooks/useUndo.js';
 import { Btn, Card, Badge, TextInput, Select, SectionTitle } from '../ui/index.jsx';
-import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen } from '../../utils.js';
-import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT } from '../../constants.js';
-import { guardarPresupuestos } from '../../storage.js';
+import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarFormula } from '../../utils.js';
+import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT, ROLES_PIEZA_DEFAULT } from '../../constants.js';
+import { guardarPresupuestos, cargarRolesPieza, guardarRolesPieza } from '../../storage.js';
 
 const DIMS = ["ancho", "alto", "profundidad"];
 
 // Estado inicial vacío de una pieza nueva en el formulario
 const PIEZA_VACIA = {
   nombre: "", cantidad: 1,
-  usaDim: "ancho", usaDim2: "alto",
+  formula1: "alto", formula2: "profundidad",
+  usaDim: "alto", usaDim2: "profundidad",
   offsetEsp: 0, offsetMm: 0, divisor: 1,
   offsetEsp2: 0, offsetMm2: 0, divisor2: 1,
-  tc: { id: 1, lados1: 0, lados2: 0 },
+  tc: { id: 1, lados1: 1, lados2: 0 },
   especial: false, dimLibre1: "", dimLibre2: ""
 };
 
@@ -71,12 +72,17 @@ function DimRowLibre({ titulo, valKey, fp, setFp }) {
 
 function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMoveDown, onChangeCantidad, dims, espesor, tapacanto, isFirst, isLast }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const filaDims = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor };
   const d1 = pieza.especial
     ? (parseInt(pieza.dimLibre1) || 0)
-    : resolverDim(dims[pieza.usaDim], pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1, espesor);
+    : pieza.formula1 != null
+      ? (evaluarFormula(pieza.formula1, filaDims) ?? 0)
+      : resolverDim(dims[pieza.usaDim], pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1, espesor);
   const d2 = pieza.especial
     ? (parseInt(pieza.dimLibre2) || 0)
-    : resolverDim(dims[pieza.usaDim2], pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1, espesor);
+    : pieza.formula2 != null
+      ? (evaluarFormula(pieza.formula2, filaDims) ?? 0)
+      : resolverDim(dims[pieza.usaDim2], pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1, espesor);
   const area = (d1 * d2 * pieza.cantidad) / 1_000_000;
   const tcDef = tapacanto?.find((t) => t.id === pieza.tc?.id);
   const mTc = pieza.tc?.id
@@ -106,7 +112,9 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
           <div style={{ fontSize: 11, marginTop: 2, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {pieza.especial
               ? `libre: ${pieza.dimLibre1 || 0} × ${pieza.dimLibre2 || 0} mm`
-              : `${pieza.usaDim} ${offsetLabel(pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1)} × ${pieza.usaDim2} ${offsetLabel(pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1)}`}
+              : pieza.formula1 != null
+                ? `${pieza.formula1} × ${pieza.formula2}`
+                : `${pieza.usaDim} ${offsetLabel(pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1)} × ${pieza.usaDim2} ${offsetLabel(pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1)}`}
           </div>
         </div>
 
@@ -175,111 +183,250 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
 // Estado inicial vacío de una pieza nueva en el formulario
 
 function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, espesor, tapacanto, nombresSugeridos }) {
-  const esEspecial = !!fp.especial;
-  const d1 = esEspecial
-    ? (parseInt(fp.dimLibre1) || 0)
-    : resolverDim(dims[fp.usaDim], parseInt(fp.offsetEsp) || 0, parseInt(fp.offsetMm) || 0, parseInt(fp.divisor) || 1, espesor);
-  const d2 = esEspecial
-    ? (parseInt(fp.dimLibre2) || 0)
-    : resolverDim(dims[fp.usaDim2], parseInt(fp.offsetEsp2) || 0, parseInt(fp.offsetMm2) || 0, parseInt(fp.divisor2) || 1, espesor);
-
   const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
+  const [rolesTaller, setRolesTaller] = useState(() => cargarRolesPieza());
+  const todosRoles = [...ROLES_PIEZA_DEFAULT, ...rolesTaller];
+  const [avanzado, setAvanzado] = useState(false);
+  const [dialogoRol, setDialogoRol] = useState(false);
+  const [nombreRolNuevo, setNombreRolNuevo] = useState("");
+
+  const d1 = fp.especial
+    ? (parseInt(fp.dimLibre1) || 0)
+    : fp.formula1
+      ? (evaluarFormula(fp.formula1, { ancho: dims.ancho, alto: dims.alto, profundidad: dims.profundidad, esp: espesor }) ?? 0)
+      : resolverDim(dims[fp.usaDim], parseInt(fp.offsetEsp) || 0, parseInt(fp.offsetMm) || 0, parseInt(fp.divisor) || 1, espesor);
+  const d2 = fp.especial
+    ? (parseInt(fp.dimLibre2) || 0)
+    : fp.formula2
+      ? (evaluarFormula(fp.formula2, { ancho: dims.ancho, alto: dims.alto, profundidad: dims.profundidad, esp: espesor }) ?? 0)
+      : resolverDim(dims[fp.usaDim2], parseInt(fp.offsetEsp2) || 0, parseInt(fp.offsetMm2) || 0, parseInt(fp.divisor2) || 1, espesor);
+
+  const f1Valida = fp.especial || !fp.formula1 || evaluarFormula(fp.formula1, { ancho: dims.ancho, alto: dims.alto, profundidad: dims.profundidad, esp: espesor }) !== null;
+  const f2Valida = fp.especial || !fp.formula2 || evaluarFormula(fp.formula2, { ancho: dims.ancho, alto: dims.alto, profundidad: dims.profundidad, esp: espesor }) !== null;
+
+  const aplicarRol = (rol) => {
+    setFp(p => ({
+      ...p,
+      formula1: rol.formula1,
+      formula2: rol.formula2,
+      tc: { ...p.tc, lados1: rol.tc?.lados1 ?? p.tc.lados1, lados2: rol.tc?.lados2 ?? p.tc.lados2 },
+    }));
+  };
+
+  const handleGuardarRol = () => {
+    if (!nombreRolNuevo.trim()) return;
+    const nuevo = {
+      id: crypto.randomUUID(),
+      nombre: nombreRolNuevo.trim(),
+      sistema: false,
+      formula1: fp.formula1,
+      formula2: fp.formula2,
+      tc: { lados1: fp.tc.lados1, lados2: fp.tc.lados2 },
+    };
+    const nuevos = [...rolesTaller, nuevo];
+    setRolesTaller(nuevos);
+    guardarRolesPieza(nuevos);
+    setDialogoRol(false);
+    setNombreRolNuevo("");
+  };
 
   return (
     <Card id="form-pieza" className="rsp-card" highlight style={{ border: editando ? "1.5px solid var(--accent)" : undefined }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <h4 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: editando ? "var(--accent)" : "var(--text-muted)" }}>
-          {editando ? "✎ Editando pieza" : "➕ Agregar pieza"}
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h4 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: editando ? "var(--accent)" : "var(--text-muted)", margin: 0 }}>
+          {editando ? "✎ Editando pieza" : "➕ Nueva pieza"}
         </h4>
         <div style={{ display: "flex", gap: 6 }}>
           {editando && (
-            <button onClick={onCancelar}
-              style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+            <button onClick={onCancelar} style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
               ✕ Cancelar
             </button>
           )}
           <button
-            onClick={() => setFp(p => ({ ...p, especial: !p.especial, dimLibre1: p.dimLibre1 || 0, dimLibre2: p.dimLibre2 || 0 }))}
-            title="Pieza especial: medidas libres sin fórmula"
-            style={{
-              display: "flex", alignItems: "center", gap: 5, padding: "3px 10px",
-              borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer",
-              fontFamily: "'DM Mono',monospace", transition: "all 0.15s",
-              background: esEspecial ? "rgba(212,175,55,0.18)" : "transparent",
-              border: `1px solid ${esEspecial ? "var(--accent-border)" : "var(--border)"}`,
-              color: esEspecial ? "var(--accent)" : "var(--text-muted)"
-            }}>
-            ✦ {esEspecial ? "Especial activa" : "Pieza especial"}
+            onClick={() => setFp(p => ({ ...p, especial: !p.especial }))}
+            style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", transition: "all 0.15s", background: fp.especial ? "rgba(212,175,55,0.18)" : "transparent", border: `1px solid ${fp.especial ? "var(--accent-border)" : "var(--border)"}`, color: fp.especial ? "var(--accent)" : "var(--text-muted)" }}>
+            ✦ {fp.especial ? "Medida libre" : "Libre"}
           </button>
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {/* Nombre con sugeridos */}
-        <div style={{ position: "relative" }}>
-          <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
-            <div>
-              <TextInput label="Nombre" placeholder="Lateral, Base, Puerta..." value={fp.nombre}
-                onChange={(v) => setFp((p) => ({ ...p, nombre: v }))}
-                onFocus={() => setMostrarSugeridos(true)}
-                onBlur={() => setTimeout(() => setMostrarSugeridos(false), 150)}
-                small />
-              {mostrarSugeridos && (nombresSugeridos || []).length > 0 && (
-                <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 50, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 4, boxShadow: "0 4px 16px rgba(0,0,0,0.3)", display: "flex", flexWrap: "wrap", gap: 4, marginTop: 2, minWidth: 220 }}>
-                  {(nombresSugeridos || []).map(n => (
-                    <button key={n} onMouseDown={() => { setFp(p => ({ ...p, nombre: n })); setMostrarSugeridos(false); }}
-                      style={{ padding: "3px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-secondary)", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            {/* Cantidad con +/- */}
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>Cantidad</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <button onClick={() => setFp(p => ({ ...p, cantidad: Math.max(1, (parseInt(p.cantidad) || 1) - 1) }))}
-                  style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                <input type="number" value={fp.cantidad} min="1"
-                  onChange={e => setFp(p => ({ ...p, cantidad: e.target.value }))}
-                  style={{ width: 42, textAlign: "center", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "5px 4px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--accent)", outline: "none" }} />
-                <button onClick={() => setFp(p => ({ ...p, cantidad: (parseInt(p.cantidad) || 1) + 1 }))}
-                  style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+        {/* Nombre + Cantidad */}
+        <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
+          <div style={{ position: "relative" }}>
+            <TextInput label="Nombre" placeholder="Lateral, Base, Puerta..." value={fp.nombre}
+              onChange={(v) => setFp((p) => ({ ...p, nombre: v }))}
+              onFocus={() => setMostrarSugeridos(true)}
+              onBlur={() => setTimeout(() => setMostrarSugeridos(false), 150)}
+              small />
+            {mostrarSugeridos && (nombresSugeridos || []).length > 0 && (
+              <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 50, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 4, boxShadow: "0 4px 16px rgba(0,0,0,0.3)", display: "flex", flexWrap: "wrap", gap: 4, marginTop: 2, minWidth: 220 }}>
+                {(nombresSugeridos || []).map(n => (
+                  <button key={n} onMouseDown={() => { setFp(p => ({ ...p, nombre: n })); setMostrarSugeridos(false); }}
+                    style={{ padding: "3px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-secondary)", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                    {n}
+                  </button>
+                ))}
               </div>
+            )}
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>Cantidad</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button onClick={() => setFp(p => ({ ...p, cantidad: Math.max(1, (parseInt(p.cantidad) || 1) - 1) }))}
+                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+              <input type="number" value={fp.cantidad} min="1"
+                onChange={e => setFp(p => ({ ...p, cantidad: e.target.value }))}
+                style={{ width: 42, textAlign: "center", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "5px 4px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--accent)", outline: "none" }} />
+              <button onClick={() => setFp(p => ({ ...p, cantidad: (parseInt(p.cantidad) || 1) + 1 }))}
+                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
             </div>
           </div>
         </div>
 
-        {/* Preview en tiempo real */}
-        {(d1 > 0 || d2 > 0) && (
-          <div style={{ padding: "6px 12px", background: "rgba(126,207,138,0.08)", border: "1px solid rgba(126,207,138,0.20)", borderRadius: 7, display: "flex", gap: 16, alignItems: "center" }}>
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "#9ab080" }}>
-              Medida real: <strong style={{ color: "#7ecf8a" }}>{Math.round(d1)} × {Math.round(d2)} mm</strong>
-            </span>
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)" }}>
-              Área: <strong>{fmtNum((d1 * d2 * (parseInt(fp.cantidad) || 1)) / 1_000_000)} m²</strong>
-            </span>
-          </div>
+        {!fp.especial && (
+          <>
+            {/* Selector de roles */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 7 }}>Rol de pieza</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                {todosRoles.map(rol => {
+                  const isActive = fp.formula1 === rol.formula1 && fp.formula2 === rol.formula2;
+                  return (
+                    <button key={rol.id} onClick={() => aplicarRol(rol)}
+                      style={{
+                        padding: "4px 11px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                        fontFamily: "'DM Mono',monospace", cursor: "pointer",
+                        transition: "all 0.15s",
+                        background: isActive ? "rgba(212,175,55,0.18)" : "transparent",
+                        border: `1px solid ${isActive ? "var(--accent-border)" : "var(--border)"}`,
+                        color: isActive ? "var(--accent)" : "var(--text-muted)",
+                      }}>
+                      {rol.nombre}
+                      {!rol.sistema && (
+                        <span onClick={(e) => { e.stopPropagation(); const nuevos = rolesTaller.filter(r => r.id !== rol.id); setRolesTaller(nuevos); guardarRolesPieza(nuevos); }}
+                          style={{ marginLeft: 5, opacity: 0.5, cursor: "pointer" }}>×</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Fórmulas D1 y D2 */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[
+                { label: "D1 — Altura", key: "formula1", valida: f1Valida, resultado: d1 },
+                { label: "D2 — Ancho",  key: "formula2", valida: f2Valida, resultado: d2 },
+              ].map(({ label, key, valida, resultado }) => (
+                <div key={key} style={{ background: "rgba(0,0,0,0.18)", borderRadius: 8, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 6 }}>{label}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <input
+                      value={fp[key] || ""}
+                      onChange={e => setFp(p => ({ ...p, [key]: e.target.value }))}
+                      placeholder="ej: alto - 2 * esp"
+                      style={{
+                        flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 600,
+                        padding: "7px 11px", background: "var(--bg-base)", color: "var(--text-primary)",
+                        border: `1px solid ${!valida ? "rgba(224,112,112,0.6)" : "var(--border)"}`,
+                        borderRadius: 7, outline: "none", letterSpacing: "0.02em",
+                      }}
+                    />
+                    <div style={{ textAlign: "right", minWidth: 70 }}>
+                      {valida ? (
+                        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 18, fontWeight: 900, color: "#7ecf8a", letterSpacing: "-0.02em" }}>
+                          {Math.round(resultado)}
+                          <span style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginLeft: 3 }}>mm</span>
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 10, color: "#e07070", fontFamily: "'DM Mono',monospace" }}>⚠ inválida</span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 10, marginTop: 5, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                    Variables: <span style={{ color: "var(--accent)", opacity: 0.8 }}>ancho</span> · <span style={{ color: "var(--accent)", opacity: 0.8 }}>alto</span> · <span style={{ color: "var(--accent)", opacity: 0.8 }}>profundidad</span> · <span style={{ color: "var(--accent)", opacity: 0.8 }}>esp</span>
+                    {dims && <span style={{ marginLeft: 10, color: "var(--text-muted)" }}>({dims.ancho}·{dims.alto}·{dims.profundidad}·{espesor})</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Preview resultado prominente */}
+            {(d1 > 0 || d2 > 0) && (
+              <div style={{ padding: "10px 14px", background: "rgba(126,207,138,0.07)", border: "1px solid rgba(126,207,138,0.18)", borderRadius: 8, display: "flex", gap: 20, alignItems: "center" }}>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: "#9ab080" }}>
+                  Medida real: <strong style={{ color: "#7ecf8a", fontSize: 15 }}>{Math.round(d1)} × {Math.round(d2)} mm</strong>
+                </span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)" }}>
+                  Área: <strong>{fmtNum((d1 * d2 * (parseInt(fp.cantidad) || 1)) / 1_000_000)} m²</strong>
+                </span>
+              </div>
+            )}
+
+            {/* Toggle configuración avanzada */}
+            <button onClick={() => setAvanzado(v => !v)}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em" }}>
+              <span style={{ transition: "transform 0.2s", display: "inline-block", transform: avanzado ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
+              ⚙ Configuración avanzada
+            </button>
+
+            {avanzado && (
+              <div style={{ background: "rgba(0,0,0,0.12)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                <DimRow titulo="Dim 1 (altura)" dimKey="usaDim" espKey="offsetEsp" mmKey="offsetMm" divKey="divisor"
+                  resultado={resolverDim(dims[fp.usaDim], parseInt(fp.offsetEsp) || 0, parseInt(fp.offsetMm) || 0, parseInt(fp.divisor) || 1, espesor)} fp={fp} setFp={setFp} espesor={espesor} />
+                <DimRow titulo="Dim 2 (ancho)" dimKey="usaDim2" espKey="offsetEsp2" mmKey="offsetMm2" divKey="divisor2"
+                  resultado={resolverDim(dims[fp.usaDim2], parseInt(fp.offsetEsp2) || 0, parseInt(fp.offsetMm2) || 0, parseInt(fp.divisor2) || 1, espesor)} fp={fp} setFp={setFp} espesor={espesor} />
+                <div style={{ fontSize: 10, color: "var(--text-muted)", padding: "4px 0" }}>
+                  Los campos avanzados se usan como fallback si no hay fórmula arriba.
+                </div>
+                {/* Guardar como rol */}
+                {!dialogoRol ? (
+                  <button onClick={() => { setDialogoRol(true); setNombreRolNuevo(""); }}
+                    style={{ alignSelf: "flex-start", padding: "5px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "rgba(212,175,55,0.10)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+                    💾 Guardar fórmulas como rol
+                  </button>
+                ) : (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    <input autoFocus value={nombreRolNuevo} onChange={e => setNombreRolNuevo(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleGuardarRol(); if (e.key === 'Escape') setDialogoRol(false); }}
+                      placeholder="Nombre del rol..."
+                      style={{ flex: 1, minWidth: 140, fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "5px 10px", background: "var(--bg-base)", border: "1px solid var(--accent-border)", borderRadius: 6, color: "var(--text-primary)", outline: "none" }} />
+                    <button onClick={handleGuardarRol}
+                      style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
+                      Guardar
+                    </button>
+                    <button onClick={() => setDialogoRol(false)}
+                      style={{ padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
 
-        {esEspecial ? (
+        {fp.especial && (
           <>
             <div style={{ fontSize: 11, padding: "6px 10px", background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.20)", borderRadius: 6, color: "var(--accent)" }}>
               ✦ Medidas libres — no dependen de las dimensiones del módulo
             </div>
             <DimRowLibre titulo="Dim 1 (altura)" valKey="dimLibre1" fp={fp} setFp={setFp} />
             <DimRowLibre titulo="Dim 2 (ancho)" valKey="dimLibre2" fp={fp} setFp={setFp} />
-          </>
-        ) : (
-          <>
-            <DimRow titulo="Dim 1 (altura)" dimKey="usaDim" espKey="offsetEsp" mmKey="offsetMm" divKey="divisor"
-              resultado={d1} fp={fp} setFp={setFp} espesor={espesor} />
-            <DimRow titulo="Dim 2 (ancho)" dimKey="usaDim2" espKey="offsetEsp2" mmKey="offsetMm2" divKey="divisor2"
-              resultado={d2} fp={fp} setFp={setFp} espesor={espesor} />
+            {(parseInt(fp.dimLibre1) || 0) > 0 && (parseInt(fp.dimLibre2) || 0) > 0 && (
+              <div style={{ padding: "8px 12px", background: "rgba(126,207,138,0.07)", border: "1px solid rgba(126,207,138,0.18)", borderRadius: 8 }}>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: "#9ab080" }}>
+                  Medida: <strong style={{ color: "#7ecf8a" }}>{parseInt(fp.dimLibre1) || 0} × {parseInt(fp.dimLibre2) || 0} mm</strong>
+                </span>
+              </div>
+            )}
           </>
         )}
 
+        {/* Tapacanto */}
         <div style={{ background: "rgba(0,0,0,0.18)", borderRadius: 8, padding: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
             🎗 Tapacanto
@@ -290,9 +437,9 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
               options={[{ value: 0, label: "Sin tapacanto" }, ...(tapacanto || []).map((t) => ({ value: t.id, label: t.nombre }))]} />
           </div>
           <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <TextInput label={`Lados D1 (${esEspecial ? "libre" : fp.usaDim})`} type="number" value={fp.tc.lados1} small
+            <TextInput label={`Lados D1 (${fp.especial ? "libre" : "altura"})`} type="number" value={fp.tc.lados1} small
               onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, lados1: parseInt(v) || 0 } }))} />
-            <TextInput label={`Lados D2 (${esEspecial ? "libre" : fp.usaDim2})`} type="number" value={fp.tc.lados2} small
+            <TextInput label={`Lados D2 (${fp.especial ? "libre" : "ancho"})`} type="number" value={fp.tc.lados2} small
               onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, lados2: parseInt(v) || 0 } }))} />
           </div>
           {fp.tc.id > 0 && (

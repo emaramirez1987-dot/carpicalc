@@ -128,6 +128,19 @@ export const costoIniciales = {
   },
 };
 
+// ── Roles predefinidos de piezas ──────────────────────────────────────────
+// Presets que auto-completan las fórmulas de dimensión.
+// sistema:true → no se pueden eliminar, solo aparecen como base.
+// El carpintero puede crear roles propios (sistema:false) desde el formulario.
+export const ROLES_PIEZA_DEFAULT = [
+  { id: "lateral",            nombre: "Lateral",             sistema: true, formula1: "alto",            formula2: "profundidad",      tc: { lados1: 1, lados2: 0 } },
+  { id: "horizontal_interna", nombre: "Horizontal interna",  sistema: true, formula1: "ancho - 2 * esp", formula2: "profundidad",      tc: { lados1: 0, lados2: 1 } },
+  { id: "puerta_simple",      nombre: "Puerta simple",       sistema: true, formula1: "alto",            formula2: "ancho",            tc: { lados1: 2, lados2: 2 } },
+  { id: "puerta_doble",       nombre: "Puerta doble",        sistema: true, formula1: "alto",            formula2: "ancho / 2",        tc: { lados1: 2, lados2: 2 } },
+  { id: "fondo",              nombre: "Fondo",               sistema: true, formula1: "ancho - 2 * esp", formula2: "alto - 2 * esp",   tc: { lados1: 0, lados2: 0 } },
+  { id: "estante",            nombre: "Estante",             sistema: true, formula1: "ancho - 2 * esp", formula2: "profundidad - 20", tc: { lados1: 1, lados2: 0 } },
+];
+
 // ── Módulos iniciales ─────────────────────────────────────────────────────
 //
 // Cada módulo define:

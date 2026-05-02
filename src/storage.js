@@ -237,6 +237,17 @@ export function leerPerfil() {
   catch { return {}; }
 }
 
+/** Carga los roles de pieza personalizados del taller */
+export function cargarRolesPieza() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:roles_pieza")) || []; }
+  catch { return []; }
+}
+
+/** Guarda los roles de pieza personalizados del taller */
+export function guardarRolesPieza(roles) {
+  return _save("carpicalc:roles_pieza", roles);
+}
+
 /**
  * Restaura todos los datos desde un objeto de backup previamente parseado.
  * No toca carpicalc:auth para no cerrar la sesión.

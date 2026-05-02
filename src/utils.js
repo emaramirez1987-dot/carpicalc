@@ -55,6 +55,28 @@ export const fmtFechaLarga = (ts) =>
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
+ * Evalúa una fórmula matemática con variables del módulo.
+ * Variables disponibles: ancho, alto, profundidad, esp
+ * Operaciones: + - * / y paréntesis
+ * Seguro: sustituye variables por números antes de evaluar.
+ * @returns {number|null} resultado ≥ 0, o null si hay error
+ */
+export function evaluarFormula(expr, { ancho = 0, alto = 0, profundidad = 0, esp = 0 } = {}) {
+  if (!expr || typeof expr !== 'string') return null;
+  const tokenized = expr.trim()
+    .replace(/\bprofundidad\b/g, String(profundidad))
+    .replace(/\bancho\b/g, String(ancho))
+    .replace(/\balto\b/g, String(alto))
+    .replace(/\besp\b/g, String(esp));
+  if (!/^[\d\s+\-*/().]+$/.test(tokenized)) return null;
+  try {
+    // eslint-disable-next-line no-new-func
+    const r = new Function(`return (${tokenized})`)();
+    return typeof r === 'number' && isFinite(r) ? Math.max(0, r) : null;
+  } catch { return null; }
+}
+
+/**
  * Calcula la dimensión final de una pieza a partir de la dimensión base del módulo.
  *
  * Fórmula: (base + offsetEsp × espesor + offsetMm) / divisor
@@ -102,12 +124,17 @@ export function calcularModulo(modulo, costos) {
 
   for (const p of modulo.piezas) {
     // Pieza especial: usa dimensiones libres en lugar de las parametrizadas
+    // Si formula1/formula2 están definidas, se usan en lugar de los campos clásicos
     const d1 = p.especial
       ? (parseInt(p.dimLibre1) || 0)
-      : resolverDim(dimMap[p.usaDim],  p.offsetEsp,  p.offsetMm,  p.divisor  || 1, esp);
+      : p.formula1 != null
+        ? (evaluarFormula(p.formula1, { ...dimMap, esp }) ?? 0)
+        : resolverDim(dimMap[p.usaDim],  p.offsetEsp,  p.offsetMm,  p.divisor  || 1, esp);
     const d2 = p.especial
       ? (parseInt(p.dimLibre2) || 0)
-      : resolverDim(dimMap[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, esp);
+      : p.formula2 != null
+        ? (evaluarFormula(p.formula2, { ...dimMap, esp }) ?? 0)
+        : resolverDim(dimMap[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, esp);
 
     const area = (d1 * d2 * p.cantidad) / 1_000_000; // mm² → m²
     m2Neto += area;
