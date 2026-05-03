@@ -2062,18 +2062,18 @@ function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbri
             <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{cod}</span>
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mod.nombre}</span>
           </div>
-          {mod.descripcion && (
-            <p style={{ fontSize: 11, marginTop: 2, color: "var(--text-muted)", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mod.descripcion}</p>
-          )}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)" }}>
-            {mod.dimensiones.ancho}×{mod.dimensiones.profundidad}×{mod.dimensiones.alto}mm
-          </span>
-          <div style={{ display: "flex", gap: 4 }}>
-            <Badge>{TIPO_MAT[mod.material]}</Badge>
-            <Badge color="#705090">{c.espesor}mm</Badge>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2, overflow: "hidden" }}>
+            {mod.descripcion && (
+              <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 1 }}>{mod.descripcion}</span>
+            )}
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)", flexShrink: 0, whiteSpace: "nowrap" }}>
+              {mod.dimensiones.ancho}×{mod.dimensiones.profundidad}×{mod.dimensiones.alto}mm
+            </span>
           </div>
+        </div>
+        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+          <Badge>{TIPO_MAT[mod.material]}</Badge>
+          <Badge color="#705090">{c.espesor}mm</Badge>
         </div>
         <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a", flexShrink: 0 }}>
           {fmtPeso(c.total)}
