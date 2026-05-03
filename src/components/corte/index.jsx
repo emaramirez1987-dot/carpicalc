@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Badge, SectionTitle } from '../ui/index.jsx';
-import { fmtNum, fmtPeso, resolverDim } from '../../utils.js';
+import { fmtNum, fmtPeso, resolverDim, recalcularTotalPresupuesto } from '../../utils.js';
 import { OptimizerButton } from './OptimizerButton.jsx';
 import { ResumenOptimizado } from './ResumenOptimizado.jsx';
 import { VisualizadorPlaca } from './VisualizadorPlaca.jsx';
@@ -342,9 +342,10 @@ function TablaGrupoCorte({ nombreMat, piezas }) {
   );
 }
 
-function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupuestoVistaPreviaId }) {
+function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupuestoVistaPreviaId, onActualizarPresupuesto }) {
   const [copiadoOk, setCopiadoOk] = useState(false);
   const [layoutOptimizado, setLayoutOptimizado] = useState(null);
+  const [bannerDesc, setBannerDesc] = useState(false); // descartado por el usuario
 
   // Si hay un presupuesto seleccionado en Vista Previa, usarlo en lugar del activo
   const presVP = presupuestoVistaPreviaId ? presupuestos[presupuestoVistaPreviaId] : null;
@@ -516,8 +517,11 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
               rotable: true,
               vetaDir: "horizontal"
             })))}
-            plateDims={{ largo: 2750, ancho: 1830 }}
-            onResult={setLayoutOptimizado}
+            plateDims={{
+              largo: Object.values(grupos)[0]?.placaLargo ?? 2750,
+              ancho: Object.values(grupos)[0]?.placaAncho ?? 1830,
+            }}
+            onResult={(r) => { setLayoutOptimizado(r); setBannerDesc(false); }}
             onError={(e) => console.error('Optimizer error:', e)}
           />
         </div>
@@ -541,29 +545,121 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
         ))}
 
         {/* Visualización del optimizador si existe */}
-        {layoutOptimizado && (
+        {layoutOptimizado && (() => {
+          const g0 = Object.values(grupos)[0];
+          const areaPlacaM2 = g0 ? (g0.placaLargo * g0.placaAncho) / 1_000_000 : 2.75 * 1.83;
+          const areaTotal = Object.values(grupos).reduce((s, d) => s + d.areaNetaM2, 0);
+          const placasEst = Math.ceil((areaTotal * 1.2) / areaPlacaM2);
+          const rendEst = placasEst > 0 ? Math.round((areaTotal / (placasEst * areaPlacaM2)) * 100) : 0;
+          const plateDimsViz = { largo: g0?.placaLargo ?? 2750, ancho: g0?.placaAncho ?? 1830 };
+          return (
           <div style={{ marginBottom: 24 }}>
             <ResumenOptimizado
-              estimado={{ placasNecesarias: Math.ceil(Object.values(grupos).reduce((s, d) => s + d.areaNetaM2 * 1.2, 0) / (2.75 * 1.83)), rendimiento: 78 }}
+              estimado={{ placasNecesarias: placasEst, rendimiento: rendEst }}
               optimizado={layoutOptimizado.metricas}
-              precioPlaca={Object.values(grupos)[0]?.precioPlaca || 0}
+              precioPlaca={g0?.precioPlaca || 0}
             />
+
+            {/* ── Banner desperdicio real vs configurado ── */}
+            {(() => {
+              const real = Math.round(layoutOptimizado.metricas.desperdicioTotal);
+              const conf = costos.desperdicioPct || 20;
+              if (Math.abs(real - conf) < 2) return null;
+
+              const presIdActivo = presupuestoVistaPreviaId ||
+                Object.entries(presupuestos || {}).find(([, p]) =>
+                  p.items?.map(i => i.codigo).join(',') === itemsEfectivos.map(i => i.codigo).join(',')
+                )?.[0] || null;
+              const presActivo = presIdActivo ? presupuestos[presIdActivo] : null;
+              if (!presActivo) return null;
+
+              const yaAplicado = presActivo.desperdicioOverride != null;
+              const ahorra = real < conf;
+              const totalConReal = recalcularTotalPresupuesto(presActivo, modulos, { ...costos, desperdicioPct: real });
+              const delta = totalConReal != null ? Math.round(totalConReal - (presActivo.total || 0)) : null;
+
+              if (yaAplicado) return (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
+                  background: 'rgba(126,207,138,0.08)', border: '1px solid rgba(126,207,138,0.25)',
+                  borderRadius: 8, marginBottom: 16, flexWrap: 'wrap',
+                }}>
+                  <span style={{ fontSize: 13 }}>✓</span>
+                  <span style={{ fontSize: 12, color: '#7ecf8a', fontWeight: 700, flex: 1 }}>
+                    Desperdicio real ({presActivo.desperdicioOverride}%) aplicado · El total se actualizará la próxima vez que recalculés el presupuesto.
+                  </span>
+                  {onActualizarPresupuesto && (
+                    <button
+                      onClick={() => onActualizarPresupuesto(presIdActivo, { desperdicioOverride: null })}
+                      style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: '4px 10px', borderRadius: 5, cursor: 'pointer', background: 'none', border: '1px solid rgba(126,207,138,0.4)', color: '#7ecf8a' }}
+                    >Revertir</button>
+                  )}
+                </div>
+              );
+
+              if (bannerDesc) return null;
+
+              return (
+                <div style={{
+                  padding: '12px 16px', borderRadius: 8, marginBottom: 16,
+                  background: ahorra ? 'rgba(126,207,138,0.06)' : 'rgba(200,160,42,0.08)',
+                  border: `1px solid ${ahorra ? 'rgba(126,207,138,0.25)' : 'rgba(200,160,42,0.3)'}`,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13 }}>{ahorra ? '📉' : '⚠'}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: ahorra ? '#7ecf8a' : '#c8a02a', flex: 1 }}>
+                      Desperdicio real: {real}% · Configurado: {conf}%
+                      {delta != null && (
+                        <span style={{ fontFamily: "'DM Mono',monospace", marginLeft: 8, fontWeight: 900 }}>
+                          ({ahorra ? '−' : '+'}{fmtPeso(Math.abs(delta))} {ahorra ? 'menos' : 'más'} en material)
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => setBannerDesc(true)}
+                      style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: '5px 12px', borderRadius: 5, cursor: 'pointer', background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+                    >Mantener actual</button>
+                    {onActualizarPresupuesto && (
+                      <button
+                        onClick={() => { onActualizarPresupuesto(presIdActivo, { desperdicioOverride: real }); setBannerDesc(false); }}
+                        style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: '5px 12px', borderRadius: 5, cursor: 'pointer', background: ahorra ? 'rgba(126,207,138,0.15)' : 'rgba(200,160,42,0.15)', border: `1px solid ${ahorra ? 'rgba(126,207,138,0.4)' : 'rgba(200,160,42,0.4)'}`, color: ahorra ? '#7ecf8a' : '#c8a02a' }}
+                      >Aplicar al presupuesto</button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, marginTop: 20 }}>
               Diagramas de Placas Optimizadas
             </h3>
             {layoutOptimizado.layouts.map((layout, idx) => (
               <div key={idx} style={{ marginBottom: 20 }}>
-                <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', marginBottom: 8 }}>
-                  PLACA {idx + 1} — {layout.piezas.length} pieza{layout.piezas.length !== 1 ? 's' : ''} colocadas
+                <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', marginBottom: 8, fontFamily: "'DM Mono',monospace" }}>
+                  PLACA {idx + 1} — {layout.piezas.length} pieza{layout.piezas.length !== 1 ? 's' : ''} · {(100 - layout.desperdicio).toFixed(1)}% aprovechado
                 </h4>
-                <VisualizadorPlaca layout={layout} plateDims={{ largo: layout.plateLargo, ancho: layout.plateAncho }} />
+                <VisualizadorPlaca layout={layout} plateDims={plateDimsViz} />
               </div>
             ))}
 
             <BancoSobrantes sobrantes={layoutOptimizado.sobrantes} />
+
+            <button
+              onClick={() => window.print()}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 16px",
+                borderRadius: 6, fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                letterSpacing: "0.05em", cursor: "pointer", transition: "all 0.18s",
+                background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-secondary)",
+              }}
+            >
+              🖨 Imprimir diagrama
+            </button>
           </div>
-        )}
+          );
+        })()}
 
         {/* Tabla de corte original (siempre visible) */}
         {Object.entries(grupos).map(([nombreMat, datos]) => (

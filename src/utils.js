@@ -358,10 +358,16 @@ export function recalcularTotalPresupuesto(p, modulos, costos) {
   if (!p?.items || !modulos || !costos) return null;
 
   // ── Módulos ──────────────────────────────────────────────────────────────
+  // Si el usuario aplicó el desperdicio real del optimizador, usarlo en lugar del configurado.
+  // calcularModulo() no se toca — recibe un objeto costos modificado localmente.
+  const costosEfectivos = p.desperdicioOverride != null
+    ? { ...costos, desperdicioPct: p.desperdicioOverride }
+    : costos;
+
   const totalModulos = p.items.reduce((acc, item) => {
     const mod = resolverModuloDesdePresupuesto(p, item, modulos);
     if (!mod) return acc;
-    const calc = calcularModulo(mod, costos);
+    const calc = calcularModulo(mod, costosEfectivos);
     if (!calc) return acc;
     return acc + calc.total * item.cantidad;
   }, 0);
