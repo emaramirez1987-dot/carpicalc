@@ -207,6 +207,22 @@ export const guardarCostos = async (costos) => {
   }
 };
 
+// ── Suscripción ───────────────────────────────────────────────────────────
+export async function cargarSuscripcion() {
+  try {
+    const wsId = await getWorkspaceId();
+    if (!wsId) return null;
+    const { data } = await supabase
+      .from("subscriptions")
+      .select("estado, trial_ends_at, current_period_end, plan_id, mp_preapproval_id")
+      .eq("workspace_id", wsId)
+      .single();
+    return data || null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Versión de costos (UI local, stale detection) ─────────────────────────
 export const leerVersionCostos = () => {
   try { return parseInt(localStorage.getItem("carpicalc:costos_version") || "0"); }
