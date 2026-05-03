@@ -1,5 +1,19 @@
 # CarpiCalc — Project Instructions
 
+## ⚠ WORKTREE ACTIVO — Leer esto primero
+
+El dev server siempre corre desde el worktree, NO desde el repo principal.
+
+**Antes de cualquier Read o Edit, verificar la ruta:**
+- ✅ CORRECTO: `carpicalc/.claude/worktrees/ecstatic-dubinsky-8ba8e5/src/...`
+- ❌ INCORRECTO: `carpicalc/src/...`
+
+Si editás el repo principal (`carpicalc/src/`), el dev server no ve los cambios.
+**Regla:** Abrir archivos desde el worktree, editar en el worktree, commitear en el worktree.
+Al terminar: merge worktree → main → push.
+
+---
+
 ## Stack
 React SPA · Vercel · localStorage · `react-scripts build` (CI=true, warnings = errors)
 

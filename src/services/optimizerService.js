@@ -1,219 +1,223 @@
 /**
- * optimizerService.js — Algoritmo Guillotine para optimización de placas
- * Función pura, sin side effects, sin React, sin localStorage.
- * Recibe datos procesados, retorna layouts + sobrantes.
+ * optimizerService.js — Guillotine 2D bin-packing mejorado
+ *
+ * Mejoras sobre v1:
+ * - Ordena piezas por área DESC antes de empaquetar (mejor compactación)
+ * - Multi-placa open list: antes de abrir una placa nueva, prueba TODAS las
+ *   piezas restantes (pequeñas incluidas) en los espacios libres existentes
+ * - Best-fit space: elige el espacio más pequeño que contiene la pieza
+ * - Split BSSF (Best Short Side Fit): el eje corto recibe el espacio grande,
+ *   generando rectángulos más usables
  */
 
 export const OPTIMIZER_CONFIG = {
-  KERF: 4,             // mm perdido por cada corte
-  DESPUNTE: 15,        // mm de seguridad en bordes
-  MIN_SOBRANTE: 300,   // mm mínimo para considerar reutilizable
+  KERF: 4,           // mm perdido por corte (hoja de sierra)
+  DESPUNTE: 15,      // mm de seguridad en cada borde
+  MIN_SOBRANTE: 300, // mm mínimo lado para considerar un sobrante reutilizable
 };
 
-/**
- * Calcula layouts óptimos de piezas en placas usando algoritmo Guillotine.
- * @param {object[]} piezas - [{d1, d2, cantidad, rotable, vetaDir, modId, nombre, id}]
- * @param {object} plateDims - {largo, ancho, material, espesor, color?, precio?}
- * @param {object} config - Config override (kerf, despunte, etc)
- * @returns {{layouts: [...], sobrantes: [...], metricas: {...}}}
- */
+// ── API pública ────────────────────────────────────────────────────────────
+
 export function layoutPiezas(piezas, plateDims, config = OPTIMIZER_CONFIG) {
   if (!piezas || piezas.length === 0) {
     return { layouts: [], sobrantes: [], metricas: { placasNecesarias: 0, rendimiento: 0 } };
   }
 
-  // Expandir piezas por cantidad
-  const piezasExpandidas = [];
-  piezas.forEach((p) => {
+  const { KERF, DESPUNTE, MIN_SOBRANTE } = config;
+
+  // 1. Expandir por cantidad y ordenar de mayor a menor área
+  const expandidas = [];
+  piezas.forEach(p => {
     for (let i = 0; i < p.cantidad; i++) {
-      piezasExpandidas.push({
-        ...p,
-        cantidad: 1,
-        id: `${p.id}_${i}`,
-      });
+      expandidas.push({ ...p, cantidad: 1, id: `${p.id}_${i}` });
     }
   });
+  expandidas.sort((a, b) => (b.d1 * b.d2) - (a.d1 * a.d2));
 
-  const layouts = [];
-  const sobrantes = [];
-  let piezasColocadas = 0;
+  const placas = [];           // { piezas: [...], espaciosLibres: [...] }
+  const noColocadas = [...expandidas];
+  const sinColocar = [];       // piezas que no entran en ninguna placa
 
-  // Intentar llenar placas hasta que todas las piezas estén colocadas
-  while (piezasColocadas < piezasExpandidas.length) {
-    const piezasRestantes = piezasExpandidas.slice(piezasColocadas);
-    const layout = guillotineLayout(
-      piezasRestantes,
-      plateDims.largo,
-      plateDims.ancho,
-      config.KERF,
-      config.DESPUNTE
-    );
+  while (noColocadas.length > 0) {
+    // Intentar colocar TODAS las piezas restantes en placas ya abiertas
+    // (iterar hasta que ninguna progrese)
+    let hayProgreso = true;
+    while (hayProgreso) {
+      hayProgreso = false;
+      // Iterar de atrás hacia adelante para poder splice() sin correr índices
+      for (let i = noColocadas.length - 1; i >= 0; i--) {
+        for (const placa of placas) {
+          if (colocarEnPlaca(noColocadas[i], placa, KERF)) {
+            noColocadas.splice(i, 1);
+            hayProgreso = true;
+            break;
+          }
+        }
+      }
+    }
 
-    layouts.push(layout);
-    piezasColocadas += layout.piezas.length;
+    if (noColocadas.length === 0) break;
 
-    // Extraer sobrantes
-    const sobrantesPlaca = extraerSobrantes(layout, plateDims.largo, plateDims.ancho, config.MIN_SOBRANTE);
-    sobrantes.push(...sobrantesPlaca);
+    // Ninguna pieza restante entró en placas abiertas → abrir nueva placa
+    const nuevaPlaca = crearPlaca(plateDims, DESPUNTE);
+    placas.push(nuevaPlaca);
 
-    // Safety: evitar loop infinito si no se coloca ninguna pieza
-    if (layout.piezas.length === 0) break;
+    // Colocar la pieza más grande que entre en la nueva placa
+    let iniciada = false;
+    for (let i = 0; i < noColocadas.length; i++) {
+      if (colocarEnPlaca(noColocadas[i], nuevaPlaca, KERF)) {
+        noColocadas.splice(i, 1);
+        iniciada = true;
+        break;
+      }
+    }
+
+    if (!iniciada) {
+      // Ninguna pieza entra siquiera en una placa vacía (son más grandes que la placa)
+      sinColocar.push(...noColocadas);
+      break;
+    }
   }
 
-  const metricas = calcularMetricas(layouts, piezasExpandidas, plateDims, sobrantes);
+  // Convertir placas internas al formato de salida esperado por los componentes
+  const layouts = placas.map(placa => ({
+    piezas: placa.piezas,
+    espacioLibre: placa.espaciosLibres,
+    desperdicio: calcularDesperdicio(placa.piezas, plateDims.largo, plateDims.ancho),
+    plateLargo: plateDims.largo,
+    plateAncho: plateDims.ancho,
+  }));
+
+  const sobrantes = [];
+  layouts.forEach((layout, idxPlaca) => {
+    extraerSobrantes(layout, MIN_SOBRANTE).forEach(s => {
+      sobrantes.push({ ...s, id: `sobr_p${idxPlaca}_${s.id}` });
+    });
+  });
+
+  const metricas = calcularMetricas(layouts, expandidas, plateDims, sobrantes, sinColocar);
 
   return { layouts, sobrantes, metricas };
 }
 
-/**
- * Algoritmo Guillotine: coloca piezas recursivamente cortando el espacio.
- * @returns {{piezas: [...], espacioLibre: [{x, y, w, h}], desperdicio: number}}
- */
-function guillotineLayout(piezas, plateLargo, plateAncho, kerf, despunte) {
-  const piezasColocadas = [];
-  const espacioLibre = [{ x: despunte, y: despunte, w: plateLargo - despunte * 2, h: plateAncho - despunte * 2 }];
+// ── Internos ───────────────────────────────────────────────────────────────
 
-  for (const pieza of piezas) {
-    let colocada = false;
-
-    for (let i = 0; i < espacioLibre.length; i++) {
-      const espacio = espacioLibre[i];
-
-      // Intentar colocar en orientación normal
-      if (cabe(pieza, espacio, kerf)) {
-        colocarPieza(pieza, espacio, espacioLibre, kerf);
-        piezasColocadas.push({
-          id: pieza.id,
-          modId: pieza.modId,
-          nombre: pieza.nombre,
-          x: espacio.x,
-          y: espacio.y,
-          w: pieza.d1,
-          h: pieza.d2,
-          rotada: false,
-        });
-        colocada = true;
-        break;
-      }
-
-      // Si es rotable, intentar rotada
-      if (pieza.rotable && cabe({ ...pieza, d1: pieza.d2, d2: pieza.d1 }, espacio, kerf)) {
-        colocarPieza({ ...pieza, d1: pieza.d2, d2: pieza.d1 }, espacio, espacioLibre, kerf);
-        piezasColocadas.push({
-          id: pieza.id,
-          modId: pieza.modId,
-          nombre: pieza.nombre,
-          x: espacio.x,
-          y: espacio.y,
-          w: pieza.d2,
-          h: pieza.d1,
-          rotada: true,
-        });
-        colocada = true;
-        break;
-      }
-    }
-
-    if (!colocada) break; // No cabe en esta placa, pasar a siguiente
-  }
-
-  const desperdicio = calcularDesperdicio(piezasColocadas, plateLargo, plateAncho);
-
+function crearPlaca(plateDims, despunte) {
   return {
-    piezas: piezasColocadas,
-    espacioLibre,
-    desperdicio,
-    plateLargo,
-    plateAncho,
+    piezas: [],
+    espaciosLibres: [{
+      x: despunte,
+      y: despunte,
+      w: plateDims.largo - 2 * despunte,
+      h: plateDims.ancho - 2 * despunte,
+    }],
   };
 }
 
 /**
- * Verifica si una pieza cabe en un espacio disponible.
+ * Intenta colocar una pieza en la placa usando best-fit (espacio más pequeño
+ * que la contiene). Si encuentra ubicación, actualiza piezas y espaciosLibres.
+ * Retorna true si se colocó.
  */
-function cabe(pieza, espacio, kerf) {
-  const ancho = pieza.d1 + kerf;
-  const alto = pieza.d2 + kerf;
-  return espacio.w >= ancho && espacio.h >= alto;
+function colocarEnPlaca(pieza, placa, kerf) {
+  let mejorIdx = -1;
+  let mejorArea = Infinity;
+  let usarRotacion = false;
+
+  for (let i = 0; i < placa.espaciosLibres.length; i++) {
+    const esp = placa.espaciosLibres[i];
+
+    // Orientación normal
+    if (esp.w >= pieza.d1 + kerf && esp.h >= pieza.d2 + kerf) {
+      const area = esp.w * esp.h;
+      if (area < mejorArea) { mejorArea = area; mejorIdx = i; usarRotacion = false; }
+    }
+    // Orientación rotada (si la pieza lo permite y tiene dimensiones distintas)
+    if (pieza.rotable && pieza.d1 !== pieza.d2 &&
+        esp.w >= pieza.d2 + kerf && esp.h >= pieza.d1 + kerf) {
+      const area = esp.w * esp.h;
+      if (area < mejorArea) { mejorArea = area; mejorIdx = i; usarRotacion = true; }
+    }
+  }
+
+  if (mejorIdx === -1) return false;
+
+  const esp = placa.espaciosLibres[mejorIdx];
+  const w = usarRotacion ? pieza.d2 : pieza.d1;
+  const h = usarRotacion ? pieza.d1 : pieza.d2;
+
+  placa.piezas.push({
+    id: pieza.id,
+    modId: pieza.modId,
+    nombre: pieza.nombre,
+    x: esp.x,
+    y: esp.y,
+    w,
+    h,
+    rotada: usarRotacion,
+  });
+
+  placa.espaciosLibres.splice(mejorIdx, 1);
+  guillotineSplit(esp, w + kerf, h + kerf, placa.espaciosLibres);
+
+  return true;
 }
 
 /**
- * Coloca pieza dividiendo el espacio (guillotina vertical u horizontal).
+ * Split BSSF: el eje con MENOS sobrante recibe el rectángulo más pequeño;
+ * el eje con MÁS sobrante recibe el ancho/alto completo del espacio padre.
+ * Esto genera rectángulos más grandes y aprovechables.
  */
-function colocarPieza(pieza, espacio, espacioLibre, kerf) {
-  const idxEspacio = espacioLibre.indexOf(espacio);
-  if (idxEspacio === -1) return;
+function guillotineSplit(esp, aw, ah, espaciosLibres) {
+  const derechaW = esp.w - aw;
+  const abajoH   = esp.h - ah;
 
-  const ancho = pieza.d1 + kerf;
-  const alto = pieza.d2 + kerf;
-
-  // Remover espacio usado
-  espacioLibre.splice(idxEspacio, 1);
-
-  // Guillotina vertical: corte a la derecha
-  if (espacio.w > ancho) {
-    espacioLibre.push({
-      x: espacio.x + ancho,
-      y: espacio.y,
-      w: espacio.w - ancho,
-      h: espacio.h,
-    });
-  }
-
-  // Guillotina horizontal: corte abajo
-  if (espacio.h > alto) {
-    espacioLibre.push({
-      x: espacio.x,
-      y: espacio.y + alto,
-      w: ancho,
-      h: espacio.h - alto,
-    });
+  if (derechaW < abajoH) {
+    // Espacio abajo es el más grande → darle el ancho completo (corte horizontal)
+    if (abajoH   > 0) espaciosLibres.push({ x: esp.x,      y: esp.y + ah, w: esp.w,   h: abajoH });
+    if (derechaW > 0) espaciosLibres.push({ x: esp.x + aw, y: esp.y,      w: derechaW, h: ah });
+  } else {
+    // Espacio derecho es el más grande → darle la altura completa (corte vertical)
+    if (derechaW > 0) espaciosLibres.push({ x: esp.x + aw, y: esp.y,      w: derechaW, h: esp.h });
+    if (abajoH   > 0) espaciosLibres.push({ x: esp.x,      y: esp.y + ah, w: aw,       h: abajoH });
   }
 }
 
-/**
- * Calcula % de desperdicio de una placa.
- */
 function calcularDesperdicio(piezas, plateLargo, plateAncho) {
-  const areaPlaca = plateLargo * plateAncho;
-  const areaPiezas = piezas.reduce((sum, p) => sum + p.w * p.h, 0);
-  return ((areaPlaca - areaPiezas) / areaPlaca) * 100;
+  const areaPiezas = piezas.reduce((s, p) => s + p.w * p.h, 0);
+  return ((plateLargo * plateAncho - areaPiezas) / (plateLargo * plateAncho)) * 100;
 }
 
-/**
- * Extrae espacios libres como sobrantes reutilizables.
- */
-function extraerSobrantes(layout, plateLargo, plateAncho, minSize) {
+function extraerSobrantes(layout, minSize) {
   return layout.espacioLibre
-    .filter((esp) => esp.w >= minSize && esp.h >= minSize)
+    .filter(esp => esp.w >= minSize && esp.h >= minSize)
     .map((esp, idx) => ({
       id: `sobr_${idx}`,
-      x: esp.x,
-      y: esp.y,
-      w: esp.w,
-      h: esp.h,
+      x: esp.x, y: esp.y, w: esp.w, h: esp.h,
       area: (esp.w * esp.h) / 1_000_000,
       reutilizable: true,
     }));
 }
 
-/**
- * Calcula métricas finales de optimización.
- */
-function calcularMetricas(layouts, piezasTotal, plateDims, sobrantes) {
+function calcularMetricas(layouts, piezasTotal, plateDims, sobrantes, sinColocar = []) {
   const placasNecesarias = layouts.length;
-  const areaPlacaM2 = (plateDims.largo * plateDims.ancho) / 1_000_000;
-  const areaUsada = layouts.reduce((sum, l) => sum + l.piezas.reduce((s, p) => s + p.w * p.h, 0), 0) / 1_000_000;
-  const rendimiento = (areaUsada / (placasNecesarias * areaPlacaM2)) * 100;
-  const desperdicioTotal = 100 - rendimiento;
-  const desperdicioReutilizable = (sobrantes.reduce((sum, s) => sum + s.area, 0) / (placasNecesarias * areaPlacaM2)) * 100;
+  const areaPlacaM2      = (plateDims.largo * plateDims.ancho) / 1_000_000;
+  const areaUsada        = layouts.reduce(
+    (s, l) => s + l.piezas.reduce((ss, p) => ss + p.w * p.h, 0), 0
+  ) / 1_000_000;
+  const rendimiento          = placasNecesarias > 0
+    ? (areaUsada / (placasNecesarias * areaPlacaM2)) * 100 : 0;
+  const desperdicioTotal     = 100 - rendimiento;
+  const desperdicioReutiliz  = (sobrantes.reduce((s, x) => s + x.area, 0)
+    / (placasNecesarias * areaPlacaM2)) * 100;
 
   return {
     placasNecesarias,
-    rendimiento: parseFloat(rendimiento.toFixed(1)),
-    desperdicioTotal: parseFloat(desperdicioTotal.toFixed(1)),
-    desperdicioReutilizable: parseFloat(desperdicioReutilizable.toFixed(1)),
-    areaUsada: parseFloat(areaUsada.toFixed(2)),
-    areaDisponible: parseFloat((placasNecesarias * areaPlacaM2).toFixed(2)),
+    rendimiento:              parseFloat(rendimiento.toFixed(1)),
+    desperdicioTotal:         parseFloat(desperdicioTotal.toFixed(1)),
+    desperdicioReutilizable:  parseFloat(desperdicioReutiliz.toFixed(1)),
+    areaUsada:                parseFloat(areaUsada.toFixed(2)),
+    areaDisponible:           parseFloat((placasNecesarias * areaPlacaM2).toFixed(2)),
+    sinColocar:               sinColocar.map(p => ({ nombre: p.nombre, d1: p.d1, d2: p.d2 })),
   };
 }

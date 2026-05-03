@@ -17,6 +17,9 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
   const [editandoVigencia, setEditandoVigencia] = useState(false);
   const [descuento, setDescuento] = useState(p.descuento ?? "");
   const [gananciaExtra, setGananciaExtra] = useState(p.gananciaExtra ?? "");
+  const [abiertoCobros, setAbiertoCobros] = useState(false);
+  const [abiertoRentabilidad, setAbiertoRentabilidad] = useState(false);
+  const [abiertoVigencia, setAbiertoVigencia] = useState(false);
 
   // Costo automático: recalcular con los costos actuales del sistema
   const costoAutomatico = (() => {
@@ -160,12 +163,13 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
         <span style={{ color: "var(--text-muted)", fontSize: 12, flexShrink: 0 }}>{abierto ? "▲" : "▼"}</span>
       </div>
 
-      {/* Panel expandido */}
+      {/* Panel expandido — 3 filas accordion */}
       {abierto && (
-        <div style={{ padding: "0 18px 18px", borderTop: "1px solid var(--separator)", paddingTop: 16 }}>
-          {/* Botón Ficha de Obra — solo en producción */}
+        <div style={{ borderTop: "1px solid var(--separator)" }}>
+
+          {/* Ficha de Obra — solo producción */}
           {(p.estado === "produccion") && modulos && costos && (
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--separator)" }}>
               <button onClick={() => generarFichaObra(id, p, modulos, costos, leerPerfil())}
                 style={{
                   width: "100%", padding: "10px 16px", borderRadius: 8, cursor: "pointer",
@@ -180,78 +184,113 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
               </button>
             </div>
           )}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }} className="rsp-grid-1">
 
-            {/* 1. Cobros */}
-            <div>
-              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 10, fontWeight: 700 }}>
-                💳 Cobros recibidos
-              </div>
-              {cobros.length === 0 ? (
-                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>Sin cobros registrados</div>
-              ) : (
-                <div style={{ marginBottom: 10 }}>
-                  {cobros.map((c, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: "1px solid var(--separator)" }}>
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>{c.concepto}</span>
-                          {c.metodo && (
-                            <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                              {c.metodo}
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>{fmtFecha(c.fecha)}</div>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(c.monto)}</span>
-                        <button onClick={() => eliminarCobro(i)}
-                          style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: 0 }}>×</button>
-                      </div>
-                    </div>
-                  ))}
-                  <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", marginTop: 4 }}>
-                    <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>SALDO PENDIENTE</span>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: saldoPendiente > 0 ? "#e07070" : "#7ecf8a" }}>
-                      {fmtPeso(Math.max(0, saldoPendiente))}
-                    </span>
-                  </div>
+          {/* ── Accordion 1: Cobros ── */}
+          <div>
+            <div
+              onClick={() => setAbiertoCobros(v => !v)}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 18px", cursor: "pointer", userSelect: "none" }}
+              onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >
+              <span style={{ fontSize: 13 }}>💳</span>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", flex: 1 }}>
+                Cobros recibidos
+              </span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, marginRight: 10 }}>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: totalCobrado > 0 ? "#7ecf8a" : "var(--text-muted)" }}>
+                  {totalCobrado > 0 ? fmtPeso(totalCobrado) : "Sin cobros"}
+                  <span style={{ fontWeight: 400, color: "var(--text-muted)", marginLeft: 6 }}>
+                    {cobros.length > 0 ? `${cobros.length} cobro${cobros.length !== 1 ? "s" : ""}` : "Registrá un pago"}
+                  </span>
+                </span>
+                <div style={{ width: 72, height: 3, background: "var(--bg-subtle)", borderRadius: 999 }}>
+                  <div style={{ height: "100%", width: `${pctCobrado}%`, background: pctCobrado >= 100 ? "#7ecf8a" : "var(--accent)", borderRadius: 999, transition: "width 0.4s" }} />
                 </div>
-              )}
-              {/* Nuevo cobro */}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <select value={conceptoCobro} onChange={e => setConceptoCobro(e.target.value)}
-                  style={{ ...inputSm, flex: "0 0 auto" }}>
-                  {["Seña","Anticipo materiales","Cuota","Saldo final","Otro"].map(c => <option key={c}>{c}</option>)}
-                </select>
-                <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)}
-                  style={{ ...inputSm, flex: "0 0 auto" }}>
-                  {["Efectivo","Transferencia","Cheque","Tarjeta","Otro"].map(m => <option key={m}>{m}</option>)}
-                </select>
-                <input type="number" value={montoCobro} onChange={e => setMontoCobro(e.target.value)}
-                  placeholder="Monto $" onKeyDown={e => e.key === "Enter" && agregarCobro()}
-                  style={{ ...inputSm, flex: 1, minWidth: 80 }} />
-                <button onClick={agregarCobro}
-                  style={{ padding: "5px 12px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 6, cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
-                  + Cobro
-                </button>
+              </div>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", display: "inline-block", transition: "transform 0.2s", transform: abiertoCobros ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+            </div>
+            <div style={{ overflow: "hidden", maxHeight: abiertoCobros ? "900px" : "0", transition: "max-height 0.3s ease" }}>
+              <div style={{ padding: "0 18px 16px" }}>
+                {cobros.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>Sin cobros registrados</div>
+                ) : (
+                  <div style={{ marginBottom: 10 }}>
+                    {cobros.map((c, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: "1px solid var(--separator)" }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>{c.concepto}</span>
+                            {c.metodo && (
+                              <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                {c.metodo}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>{fmtFecha(c.fecha)}</div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(c.monto)}</span>
+                          <button onClick={() => eliminarCobro(i)}
+                            style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: 0 }}>×</button>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", marginTop: 4 }}>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>SALDO PENDIENTE</span>
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: saldoPendiente > 0 ? "#e07070" : "#7ecf8a" }}>
+                        {fmtPeso(Math.max(0, saldoPendiente))}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <select value={conceptoCobro} onChange={e => setConceptoCobro(e.target.value)}
+                    style={{ ...inputSm, flex: "0 0 auto" }}>
+                    {["Seña","Anticipo materiales","Cuota","Saldo final","Otro"].map(c => <option key={c}>{c}</option>)}
+                  </select>
+                  <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)}
+                    style={{ ...inputSm, flex: "0 0 auto" }}>
+                    {["Efectivo","Transferencia","Cheque","Tarjeta","Otro"].map(m => <option key={m}>{m}</option>)}
+                  </select>
+                  <input type="number" value={montoCobro} onChange={e => setMontoCobro(e.target.value)}
+                    placeholder="Monto $" onKeyDown={e => e.key === "Enter" && agregarCobro()}
+                    style={{ ...inputSm, flex: 1, minWidth: 80 }} />
+                  <button onClick={agregarCobro}
+                    style={{ padding: "5px 12px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 6, cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
+                    + Cobro
+                  </button>
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* 2. Rentabilidad */}
-            <div>
-              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 10, fontWeight: 700 }}>
-                📈 Rentabilidad
-              </div>
-              <div style={{ marginBottom: 12 }}>
+          <div style={{ height: 1, background: "var(--separator)" }} />
 
-                {/* LÓGICA - Precios Tachados y PDF */}
+          {/* ── Accordion 2: Rentabilidad ── */}
+          <div>
+            <div
+              onClick={() => setAbiertoRentabilidad(v => !v)}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 18px", cursor: "pointer", userSelect: "none" }}
+              onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >
+              <span style={{ fontSize: 13 }}>📈</span>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", flex: 1 }}>
+                Rentabilidad
+              </span>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, marginRight: 10,
+                color: !totalValido ? "#e07070" : margen === null ? "var(--text-muted)" : margen >= 30 ? "#7ecf8a" : margen >= 15 ? "#c8a02a" : "#e07070" }}>
+                {!totalValido ? "⚠ Revisar costos" : margen === null ? "Sin costo real" : `${margen}% · ${fmtPeso(totalAjustado - costoEfectivo)} gan.`}
+              </span>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", display: "inline-block", transition: "transform 0.2s", transform: abiertoRentabilidad ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+            </div>
+            <div style={{ overflow: "hidden", maxHeight: abiertoRentabilidad ? "900px" : "0", transition: "max-height 0.3s ease" }}>
+              <div style={{ padding: "0 18px 16px" }}>
                 {(() => {
                   const tv = calcularTotalVisual(p.total, p.descuento, p.gananciaExtra);
                   return (
                     <>
-                      {/* Precio base — con tachado elegante si hay descuento */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: tv.hayDescuento ? 4 : 10 }}>
                         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                           {tv.hayDescuento ? "Precio original" : "Precio base"}
@@ -266,31 +305,22 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                           {fmtPeso(tv.totalOriginal)}
                         </span>
                       </div>
-                      {/* Total con descuento — solo si hay descuento */}
                       {tv.hayDescuento && (
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: "#e07070" }}>🏷 Con descuento</span>
-                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "#7ecf8a" }}>
-                            {fmtPeso(tv.totalFinal)}
-                          </span>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(tv.totalFinal)}</span>
                         </div>
                       )}
-                      {/* Total con ganancia — solo si hay ganancia (sin mostrar el original) */}
                       {tv.hayGanancia && !tv.hayDescuento && (
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: "#7ecf8a" }}>💵 Total final</span>
-                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "#7ecf8a" }}>
-                            {fmtPeso(tv.totalFinal)}
-                          </span>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(tv.totalFinal)}</span>
                         </div>
                       )}
                     </>
                   );
                 })()}
-
-                {/* UI - Acción de Confirmación: campos de ajuste con botón ✔ */}
                 <div style={{ borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", marginBottom: 12 }}>
-                  {/* Fila Descuento */}
                   <div style={{
                     display: "flex", alignItems: "center", gap: 8, padding: "9px 12px",
                     background: descuentoVal > 0 ? "rgba(224,112,112,0.08)" : "var(--bg-subtle)",
@@ -303,16 +333,10 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                       type="number" min="0" value={descuento} placeholder="0"
                       onChange={e => setDescuento(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") { onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 }); e.target.blur(); } }}
-                      style={{
-                        fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700,
-                        padding: "4px 8px", width: 100, textAlign: "right",
-                        background: "var(--bg-base)", border: "1px solid var(--border)",
-                        borderRadius: 6, color: "#e07070", outline: "none",
-                      }}
+                      style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "4px 8px", width: 100, textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "#e07070", outline: "none" }}
                       onFocus={e => e.target.style.borderColor = "#e07070"}
                       onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
-                    {/* UI - Acción de Confirmación */}
                     <button
                       title="Confirmar descuento"
                       onClick={() => onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 })}
@@ -320,13 +344,9 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                         width: 26, height: 26, borderRadius: 6, cursor: "pointer", flexShrink: 0,
                         background: parseFloat(descuento) !== descuentoVal ? "rgba(224,112,112,0.2)" : "var(--bg-base)",
                         border: `1px solid ${parseFloat(descuento) !== descuentoVal ? "#e07070" : "var(--border)"}`,
-                        color: "#e07070", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
-                        transition: "all 0.15s",
-                      }}>
-                      ✓
-                    </button>
+                        color: "#e07070", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s",
+                      }}>✓</button>
                   </div>
-                  {/* Fila Ganancia Extra */}
                   <div style={{
                     display: "flex", alignItems: "center", gap: 8, padding: "9px 12px",
                     background: gananciaExtraVal > 0 ? "rgba(126,207,138,0.08)" : "var(--bg-subtle)",
@@ -338,16 +358,10 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                       type="number" min="0" value={gananciaExtra} placeholder="0"
                       onChange={e => setGananciaExtra(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") { onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 }); e.target.blur(); } }}
-                      style={{
-                        fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700,
-                        padding: "4px 8px", width: 100, textAlign: "right",
-                        background: "var(--bg-base)", border: "1px solid var(--border)",
-                        borderRadius: 6, color: "#7ecf8a", outline: "none",
-                      }}
+                      style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "4px 8px", width: 100, textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "#7ecf8a", outline: "none" }}
                       onFocus={e => e.target.style.borderColor = "#7ecf8a"}
                       onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
-                    {/* UI - Acción de Confirmación */}
                     <button
                       title="Confirmar ganancia extra"
                       onClick={() => onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 })}
@@ -355,15 +369,10 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                         width: 26, height: 26, borderRadius: 6, cursor: "pointer", flexShrink: 0,
                         background: parseFloat(gananciaExtra) !== gananciaExtraVal ? "rgba(126,207,138,0.2)" : "var(--bg-base)",
                         border: `1px solid ${parseFloat(gananciaExtra) !== gananciaExtraVal ? "#7ecf8a" : "var(--border)"}`,
-                        color: "#7ecf8a", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
-                        transition: "all 0.15s",
-                      }}>
-                      ✓
-                    </button>
+                        color: "#7ecf8a", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s",
+                      }}>✓</button>
                   </div>
                 </div>
-
-                {/* Costo calculado automáticamente */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     Costo calculado
@@ -373,8 +382,6 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                     {fmtPeso(costoAutomatico)}
                   </span>
                 </div>
-
-                {/* Costo real manual — prioridad sobre el automático */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     Costo real (manual)
@@ -395,8 +402,6 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                     </button>
                   )}
                 </div>
-
-                {/* Resultado: ganancia neta y semáforo */}
                 {margen !== null && totalValido && (
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--separator)" }}>
@@ -406,11 +411,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                       </span>
                     </div>
                     <div style={{ height: 8, background: "var(--bg-subtle)", borderRadius: 999, overflow: "hidden", marginTop: 8 }}>
-                      <div style={{
-                        height: "100%", borderRadius: 999, transition: "width 0.4s",
-                        width: `${Math.max(0, Math.min(100, margen))}%`,
-                        background: margen >= 30 ? "#7ecf8a" : margen >= 15 ? "#c8a02a" : "#e07070",
-                      }} />
+                      <div style={{ height: "100%", borderRadius: 999, transition: "width 0.4s", width: `${Math.max(0, Math.min(100, margen))}%`, background: margen >= 30 ? "#7ecf8a" : margen >= 15 ? "#c8a02a" : "#e07070" }} />
                     </div>
                     <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, fontFamily: "'DM Mono',monospace" }}>
                       {margen >= 30 ? "✅ Margen saludable" : margen >= 15 ? "⚠ Margen ajustado" : "🔴 Margen bajo — revisar costos"}
@@ -429,13 +430,36 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                 )}
               </div>
             </div>
+          </div>
 
-            {/* 3. Vigencia */}
-            <div>
-              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 10, fontWeight: 700 }}>
-                📅 Vigencia del presupuesto
-              </div>
-              <div style={{ marginBottom: 8 }}>
+          <div style={{ height: 1, background: "var(--separator)" }} />
+
+          {/* ── Accordion 3: Vigencia ── */}
+          <div>
+            <div
+              onClick={() => setAbiertoVigencia(v => !v)}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 18px", cursor: "pointer", userSelect: "none" }}
+              onMouseEnter={e => e.currentTarget.style.background = "var(--bg-subtle)"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >
+              <span style={{ fontSize: 13 }}>📅</span>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", flex: 1 }}>
+                Vigencia
+              </span>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, marginRight: 10,
+                color: !estadoVigencia ? "var(--text-muted)" : vencido ? "#e07070" : porVencer ? "#c8a02a" : "#7ecf8a" }}>
+                {!estadoVigencia
+                  ? `${p.diasVigencia || 15} días`
+                  : vencido
+                  ? `⚠ Vencido hace ${Math.abs(diasRestantes)}d`
+                  : porVencer
+                  ? `⏳ Vence en ${diasRestantes}d`
+                  : `✅ Vigente ${diasRestantes}d`}
+              </span>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", display: "inline-block", transition: "transform 0.2s", transform: abiertoVigencia ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+            </div>
+            <div style={{ overflow: "hidden", maxHeight: abiertoVigencia ? "500px" : "0", transition: "max-height 0.3s ease" }}>
+              <div style={{ padding: "0 18px 16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Válido por</span>
                   {editandoVigencia ? (
@@ -486,6 +510,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
               </div>
             </div>
           </div>
+
         </div>
       )}
     </div>

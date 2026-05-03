@@ -767,6 +767,7 @@ function AppInterna() {
                 getModUsado={getModUsado}
                 presupuestos={presupuestos}
                 presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
+                onActualizarPresupuesto={handleActualizarPresupuesto}
               />
             )}
 
