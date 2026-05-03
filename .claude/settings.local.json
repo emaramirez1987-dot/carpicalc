@@ -23,7 +23,14 @@
       "Bash(git config *)",
       "Bash(git push *)",
       "PowerShell(cd \"C:\\\\Users\\\\emara\\\\OneDrive\\\\Escritorio\\\\carpicalc\"; $env:CI=\"true\"; npm run build 2>&1)",
-      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" \"C:\\\\Program Files\\\\nodejs\\\\node_modules\\\\npm\\\\bin\\\\npm-cli.js\" run build)"
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" \"C:\\\\Program Files\\\\nodejs\\\\node_modules\\\\npm\\\\bin\\\\npm-cli.js\" run build)",
+      "Bash(git ls-remote *)",
+      "Bash(grep -n \"crearPresupuesto\\\\|{ id, p }\" /c/Users/emara/OneDrive/Escritorio/carpicalc/src/services/presupuestoService.js)",
+      "Bash(cp /c/Users/emara/OneDrive/Escritorio/carpicalc/src/components/corte/OptimizerButton.jsx /c/Users/emara/OneDrive/Escritorio/carpicalc/.claude/worktrees/ecstatic-dubinsky-8ba8e5/src/components/corte/OptimizerButton.jsx)",
+      "Bash(cp /c/Users/emara/OneDrive/Escritorio/carpicalc/src/components/corte/ResumenOptimizado.jsx /c/Users/emara/OneDrive/Escritorio/carpicalc/.claude/worktrees/ecstatic-dubinsky-8ba8e5/src/components/corte/ResumenOptimizado.jsx)",
+      "Bash(cp /c/Users/emara/OneDrive/Escritorio/carpicalc/src/components/corte/VisualizadorPlaca.jsx /c/Users/emara/OneDrive/Escritorio/carpicalc/.claude/worktrees/ecstatic-dubinsky-8ba8e5/src/components/corte/VisualizadorPlaca.jsx)",
+      "Bash(cp /c/Users/emara/OneDrive/Escritorio/carpicalc/src/components/corte/BancoSobrantes.jsx /c/Users/emara/OneDrive/Escritorio/carpicalc/.claude/worktrees/ecstatic-dubinsky-8ba8e5/src/components/corte/BancoSobrantes.jsx)",
+      "Bash(git merge --no-ff claude/ecstatic-dubinsky-8ba8e5 -m ' *)"
     ]
   }
 }

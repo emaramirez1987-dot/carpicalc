@@ -853,11 +853,13 @@ function HojaCostos({ costos, setCostos, onSave }) {
                 </div>
               ) : (
                 <div
+                  className="rsp-lista-item"
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
                     flexWrap: "wrap",
+                    padding: "10px 0"
                   }}
                 >
                   <span
@@ -884,7 +886,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
                   >
                     {fmtPeso(mat.precioM2)}/m²
                   </span>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 6 }}>
                     <HcBtnE onClick={() => ini("mat", mat)} />
                     <HcBtnD
                       onClick={() =>
@@ -1058,7 +1060,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div className="rsp-lista-item" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0" }}>
                   <span
                     style={{
                       flex: 2,
@@ -1079,7 +1081,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
                   >
                     {fmtPeso(tc.precio)}/m
                   </span>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 6 }}>
                     <HcBtnE onClick={() => ini("tc", tc)} />
                     <HcBtnD
                       onClick={() =>
@@ -1210,7 +1212,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div className="rsp-lista-item" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0" }}>
                   <span
                     style={{
                       flex: 2,
@@ -1234,7 +1236,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
                   >
                     {fmtPeso(mo.precio)}
                   </span>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 6 }}>
                     <HcBtnE onClick={() => ini("mo", mo)} />
                     <HcBtnD
                       onClick={() =>
@@ -1371,7 +1373,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div className="rsp-lista-item" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0" }}>
                   <span
                     style={{
                       flex: 2,
@@ -1393,7 +1395,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
                   >
                     {fmtPeso(h.precio)}
                   </span>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 6 }}>
                     <HcBtnE onClick={() => ini("h", h)} />
                     <HcBtnD
                       onClick={() =>

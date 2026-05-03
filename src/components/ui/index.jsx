@@ -308,6 +308,12 @@ const GlobalStyles = () => (
       .rsp-table-inner { min-width: 520px; }
       .rsp-item-actions { flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; }
 
+      /* Botones de acciones: 100% ancho en móvil */
+      .rsp-action-buttons { flex-direction: column !important; gap: 10px !important; }
+      .rsp-action-buttons button { width: 100% !important; padding: 12px !important; }
+      .rsp-action-buttons .rsp-btn-pair { width: 100% !important; gap: 6px !important; }
+      .rsp-action-buttons .rsp-btn-pair > button { flex: 1 !important; }
+
       /* Kanban: scroll horizontal en desktop */
       .kanban-board {
         display: flex;
