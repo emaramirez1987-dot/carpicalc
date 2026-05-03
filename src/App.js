@@ -12,7 +12,8 @@ import { PanelCaja } from "./components/caja/index.jsx";
 import { NavProvider, useNav } from "./state/NavContext.jsx";
 import { PresupuestoContext } from "./state/PresupuestoContext.jsx";
 
-import { PASS_HASH, PASS_KEY, PERFIL_VACIO } from "./constants.js";
+import { PERFIL_VACIO } from "./constants.js";
+import { supabase } from "./lib/supabase.js";
 import { calcularModulo, comprimirImagen, fmtFecha } from "./utils.js";
 import {
   cargarDatos,
@@ -80,31 +81,25 @@ function PanelPerfil({ perfil, onGuardar }) {
     }
   };
 
-  const [passActual, setPassActual]   = useState("");
   const [passNueva, setPassNueva]     = useState("");
   const [passConfirm, setPassConfirm] = useState("");
   const [passError, setPassError]     = useState(null);
   const [passOk, setPassOk]           = useState(false);
 
-  const handleCambiarPass = () => {
+  const handleCambiarPass = async () => {
     setPassError(null);
     setPassOk(false);
-    const hashActual = btoa(passActual.trim());
-    const custom = localStorage.getItem(PASS_KEY);
-    if (hashActual !== PASS_HASH && !(custom && hashActual === custom)) {
-      setPassError("La contraseña actual es incorrecta.");
-      return;
-    }
-    if (passNueva.trim().length < 4) {
-      setPassError("La nueva contraseña debe tener al menos 4 caracteres.");
+    if (passNueva.trim().length < 6) {
+      setPassError("La nueva contraseña debe tener al menos 6 caracteres.");
       return;
     }
     if (passNueva !== passConfirm) {
       setPassError("Las contraseñas no coinciden.");
       return;
     }
-    localStorage.setItem(PASS_KEY, btoa(passNueva.trim()));
-    setPassActual(""); setPassNueva(""); setPassConfirm("");
+    const { error } = await supabase.auth.updateUser({ password: passNueva.trim() });
+    if (error) { setPassError(error.message); return; }
+    setPassNueva(""); setPassConfirm("");
     setPassOk(true);
     setTimeout(() => setPassOk(false), 3000);
   };
@@ -265,17 +260,15 @@ function PanelPerfil({ perfil, onGuardar }) {
           🔒 Seguridad — Contraseña de acceso
         </div>
         <button
-          onClick={() => { localStorage.removeItem("carpicalc:auth"); window.location.reload(); }}
+          onClick={() => supabase.auth.signOut()}
           style={{ marginBottom: 16, padding: "7px 16px", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px solid rgba(200,60,60,0.30)", color: "#e07070" }}
         >
           🚪 Cerrar sesión
         </button>
         <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.6 }}>
-          Cambiá la contraseña que se pide al entrar a CarpiCálc. La contraseña por defecto es <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--text-secondary)" }}>carpicalc2025</span>.
+          Cambiá la contraseña de tu cuenta.
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <input type="password" value={passActual} onChange={e => { setPassActual(e.target.value); setPassError(null); }}
-            placeholder="Contraseña actual" style={inp} />
           <input type="password" value={passNueva} onChange={e => { setPassNueva(e.target.value); setPassError(null); }}
             placeholder="Nueva contraseña (mínimo 4 caracteres)" style={inp} />
           <input type="password" value={passConfirm} onChange={e => { setPassConfirm(e.target.value); setPassError(null); }}
@@ -379,43 +372,142 @@ function Header({ tabs, saveEst, tema, toggleTema }) {
 }
 
 // ─── LoginScreen ──────────────────────────────────────────────────────────────
-function LoginScreen({ onAccess }) {
-  const [input, setInput] = useState("");
-  const [error, setError] = useState(false);
-  const [shake, setShake] = useState(false);
+const inpStyle = (err) => ({
+  padding: "10px 14px", borderRadius: 8,
+  border: `1px solid ${err ? "rgba(200,60,60,0.60)" : "var(--border)"}`,
+  background: "var(--bg-base)", color: "var(--text-primary)",
+  fontSize: 14, outline: "none", fontFamily: "'Bricolage Grotesque',sans-serif", width: "100%", boxSizing: "border-box",
+});
+const btnPrimary = {
+  padding: "10px 0", borderRadius: 8,
+  background: "linear-gradient(135deg,var(--accent),var(--accent-hover))",
+  border: "none", color: "var(--text-inverted)", fontSize: 13, fontWeight: 700,
+  fontFamily: "'DM Mono',monospace", cursor: "pointer", letterSpacing: "0.08em",
+  textTransform: "uppercase", width: "100%",
+};
+const msgError = { fontSize: 11, color: "#e07070", textAlign: "center", fontFamily: "'DM Mono',monospace" };
 
-  const check = () => {
-    const hash = btoa(input.trim());
-    const stored = localStorage.getItem(PASS_KEY);
-    if (hash === PASS_HASH || (stored && hash === stored)) {
-      onAccess();
-    } else {
-      setError(true);
-      setShake(true);
-      setTimeout(() => setShake(false), 500);
-    }
+function LoginScreen() {
+  const [tab,    setTab]    = useState("login");   // "login" | "register" | "reset"
+  const [email,  setEmail]  = useState("");
+  const [pass,   setPass]   = useState("");
+  const [taller, setTaller] = useState("");
+  const [error,  setError]  = useState("");
+  const [msg,    setMsg]    = useState("");
+  const [shake,  setShake]  = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const triggerShake = () => { setShake(true); setTimeout(() => setShake(false), 500); };
+  const resetMsg = () => { setError(""); setMsg(""); };
+
+  const handleLogin = async () => {
+    resetMsg(); setLoading(true);
+    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pass });
+    setLoading(false);
+    if (err) { setError(err.message === "Invalid login credentials" ? "Email o contraseña incorrectos" : err.message); triggerShake(); }
+    // on success, onAuthStateChange in App() sets autenticado → true automatically
   };
+
+  const handleRegister = async () => {
+    resetMsg();
+    if (!taller.trim()) { setError("Ingresá el nombre de tu taller"); triggerShake(); return; }
+    setLoading(true);
+    const { error: err } = await supabase.auth.signUp({
+      email: email.trim(), password: pass,
+      options: { data: { nombre_taller: taller.trim() } },
+    });
+    setLoading(false);
+    if (err) { setError(err.message); triggerShake(); }
+    else setMsg("¡Registrado! Revisá tu correo para confirmar la cuenta.");
+  };
+
+  const handleReset = async () => {
+    resetMsg(); setLoading(true);
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim());
+    setLoading(false);
+    if (err) { setError(err.message); triggerShake(); }
+    else setMsg("Revisá tu correo para restablecer la contraseña.");
+  };
+
+  const tabBtn = (id, label) => (
+    <button onClick={() => { setTab(id); resetMsg(); }}
+      style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+        background: tab === id ? "var(--accent)" : "transparent",
+        color: tab === id ? "var(--text-inverted)" : "var(--text-muted)" }}>
+      {label}
+    </button>
+  );
 
   return (
     <>
       <GlobalStyles />
-      <div style={{ minHeight: "100vh", background: "var(--bg-base)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100vh", background: "var(--bg-base)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}>
         <div className={shake ? "anim-shake" : ""} style={{ width: "100%", maxWidth: 340, padding: 32, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
           <LogoIsotipo size={56} />
           <div style={{ textAlign: "center" }}>
             <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 26, fontWeight: 900, color: "var(--accent)" }}>CarpiCálc</div>
             <div style={{ fontSize: 10, letterSpacing: "0.20em", textTransform: "uppercase", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginTop: 2 }}>Diseño & Costos</div>
           </div>
+
+          {/* Tabs */}
+          {tab !== "reset" && (
+            <div style={{ width: "100%", display: "flex", gap: 4, background: "var(--bg-base)", borderRadius: 8, padding: 4 }}>
+              {tabBtn("login", "Ingresar")}
+              {tabBtn("register", "Registrarse")}
+            </div>
+          )}
+
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
-            <input type="password" value={input} onChange={e => { setInput(e.target.value); setError(false); }}
-              onKeyDown={e => e.key === "Enter" && check()}
-              placeholder="Contraseña de acceso"
-              style={{ padding: "10px 14px", borderRadius: 8, border: `1px solid ${error ? "rgba(200,60,60,0.60)" : "var(--border)"}`, background: "var(--bg-base)", color: "var(--text-primary)", fontSize: 14, outline: "none", fontFamily: "'Bricolage Grotesque',sans-serif" }} />
-            {error && <div style={{ fontSize: 11, color: "#e07070", textAlign: "center", fontFamily: "'DM Mono',monospace" }}>Contraseña incorrecta</div>}
-            <button onClick={check}
-              style={{ padding: "10px 0", borderRadius: 8, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", fontSize: 13, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              Ingresar
-            </button>
+            {/* Email (todos los tabs) */}
+            <input type="email" value={email} onChange={e => { setEmail(e.target.value); resetMsg(); }}
+              onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : tab === "register" ? handleRegister() : handleReset())}
+              placeholder="Correo electrónico" style={inpStyle(!!error)} />
+
+            {/* Nombre taller (solo register) */}
+            {tab === "register" && (
+              <input type="text" value={taller} onChange={e => { setTaller(e.target.value); resetMsg(); }}
+                placeholder="Nombre de tu taller"
+                style={inpStyle(!!error)} />
+            )}
+
+            {/* Password (login + register) */}
+            {tab !== "reset" && (
+              <input type="password" value={pass} onChange={e => { setPass(e.target.value); resetMsg(); }}
+                onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : handleRegister())}
+                placeholder="Contraseña" style={inpStyle(!!error)} />
+            )}
+
+            {error && <div style={msgError}>{error}</div>}
+            {msg   && <div style={{ ...msgError, color: "var(--accent)" }}>{msg}</div>}
+
+            {tab === "login" && (
+              <button onClick={handleLogin} disabled={loading} style={btnPrimary}>
+                {loading ? "..." : "Ingresar"}
+              </button>
+            )}
+            {tab === "register" && (
+              <button onClick={handleRegister} disabled={loading} style={btnPrimary}>
+                {loading ? "..." : "Crear cuenta"}
+              </button>
+            )}
+            {tab === "reset" && (
+              <>
+                <button onClick={handleReset} disabled={loading} style={btnPrimary}>
+                  {loading ? "..." : "Enviar enlace"}
+                </button>
+                <button onClick={() => { setTab("login"); resetMsg(); }}
+                  style={{ ...btnPrimary, background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                  Volver
+                </button>
+              </>
+            )}
+
+            {tab === "login" && (
+              <button onClick={() => { setTab("reset"); resetMsg(); }}
+                style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace", textDecoration: "underline", textAlign: "center" }}>
+                Olvidé mi contraseña
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -864,14 +956,30 @@ function AppInterna() {
 
 // ─── App (raíz) ───────────────────────────────────────────────────────────────
 export default function App() {
-  const [autenticado, setAutenticado] = useState(
-    () => !!localStorage.getItem("carpicalc:auth")
-  );
-  const handleAccess = () => {
-    localStorage.setItem("carpicalc:auth", "1");
-    setAutenticado(true);
-  };
-  if (!autenticado) return <LoginScreen onAccess={handleAccess} />;
+  // null = cargando sesión, false = no autenticado, true = autenticado
+  const [autenticado, setAutenticado] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAutenticado(!!session);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAutenticado(!!session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (autenticado === null) {
+    return (
+      <>
+        <GlobalStyles />
+        <div style={{ minHeight: "100vh", background: "var(--bg-base)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <LogoIsotipo size={48} />
+        </div>
+      </>
+    );
+  }
+  if (!autenticado) return <LoginScreen />;
   return (
     <NavProvider>
       <AppInterna />
