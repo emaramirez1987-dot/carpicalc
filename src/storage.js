@@ -2,42 +2,23 @@
 // storage.js — CarpiCálc
 // ════════════════════════════════════════════════════════════════════════════
 //
-// Capa de abstracción sobre localStorage.
-// Centraliza TODAS las operaciones de lectura y escritura de datos.
-//
-// ¿Cuándo tocar este archivo?
-//   • Para cambiar la clave de una colección en localStorage
-//   • Para migrar el formato de datos (agregar campo con valor por defecto)
-//   • Para agregar una nueva colección persistida
-//   • Para cambiar el límite de snapshots del historial de precios
-//
-// CLAVES DE localStorage usadas por la app:
-//   carpicalc:modulos       → catálogo de módulos del carpintero
-//   carpicalc:costos        → tabla de precios de materiales, herrajes, etc.
-//   carpicalc:presupuestos  → trabajos guardados
-//   carpicalc:perfil        → datos del taller (nombre, logo, etc.)
-//   carpicalc:historial     → snapshots de precios (máx 20)
-//   carpicalc:costos_version→ timestamp del último cambio en costos
-//   carpicalc:borrador      → autosave del presupuesto activo
-//   carpicalc:auth          → sesión de login (existe = autenticado)
-//   carpicalc:tema          → "dark" | "light"
-//   carpicalc:ultimo_backup → timestamp del último backup exportado
+// Capa de persistencia. Lee y escribe en Supabase (fuente de verdad).
+// localStorage se usa solo para datos efímeros/locales:
+//   carpicalc:costos_version  → timestamp UI para detección de stale
+//   carpicalc:perfil_cache    → copia sync del perfil para leerPerfil() (PDFs)
+//   carpicalc:borrador        → autosave del presupuesto activo
+//   carpicalc:borrador_modulo → estado de FormModulo entre pestañas
+//   carpicalc:roles_pieza     → roles personalizados del taller
+//   carpicalc:tema            → "dark" | "light"
+//   carpicalc:ultimo_backup   → timestamp del último backup exportado
 //
 // IMPORTANTE: Este archivo NO importa React.
 // ════════════════════════════════════════════════════════════════════════════
 
 import { modulosIniciales, costoIniciales, PERFIL_VACIO } from "./constants.js";
+import { supabase } from "./lib/supabase.js";
 
-// ── Escritura genérica ────────────────────────────────────────────────────
-
-/**
- * Guarda cualquier dato serializable en localStorage.
- * Captura errores silenciosamente (ej: storage lleno en iOS Safari).
- *
- * @param {string} key   - Clave de localStorage
- * @param {any}    data  - Dato a guardar (se serializa con JSON.stringify)
- * @returns {Promise<boolean>} true si se guardó, false si hubo error
- */
+// ── Escritura localStorage (datos locales/efímeros) ───────────────────────
 export const _save = async (key, data) => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
@@ -47,115 +28,192 @@ export const _save = async (key, data) => {
   }
 };
 
-// ── Carga inicial de toda la aplicación ───────────────────────────────────
+// ── Workspace ID (cacheado por usuario) ───────────────────────────────────
+let _cachedWs = { userId: null, wsId: null };
 
-/**
- * Carga todos los datos persistidos al iniciar la app.
- * Si alguna clave no existe (primera vez), usa los valores iniciales.
- *
- * @returns {{ modulos, costos, presupuestos, perfil }}
- */
+async function getWorkspaceId() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    if (_cachedWs.userId === user.id) return _cachedWs.wsId;
+    const { data } = await supabase.from("workspaces").select("id").single();
+    _cachedWs = { userId: user.id, wsId: data?.id ?? null };
+    return _cachedWs.wsId;
+  } catch {
+    return null;
+  }
+}
+
+// ── Carga inicial de toda la aplicación ───────────────────────────────────
 export async function cargarDatos() {
   try {
-    const rm  = localStorage.getItem("carpicalc:modulos");
-    const rc  = localStorage.getItem("carpicalc:costos");
-    const rp  = localStorage.getItem("carpicalc:presupuestos");
-    const rpf = localStorage.getItem("carpicalc:perfil");
+    const wsId = await getWorkspaceId();
+    if (!wsId) {
+      return {
+        modulos: modulosIniciales,
+        costos: costoIniciales,
+        presupuestos: {},
+        perfil: { ...PERFIL_VACIO },
+      };
+    }
 
-    const presupuestos = rp ? JSON.parse(rp) : {};
-    let   modulos      = rm ? JSON.parse(rm)  : modulosIniciales;
+    const [
+      { data: modulosRows },
+      { data: costosRow },
+      { data: presupuestosRows },
+      { data: perfilRow },
+    ] = await Promise.all([
+      supabase.from("modulos").select("codigo, datos").eq("workspace_id", wsId),
+      supabase.from("costos").select("datos").eq("workspace_id", wsId).maybeSingle(),
+      supabase.from("presupuestos").select("id, datos").eq("workspace_id", wsId),
+      supabase.from("perfil_taller").select("datos").eq("workspace_id", wsId).maybeSingle(),
+    ]);
 
-    // ── Limpieza de módulos temporales huérfanos ──────────────────────────
-    // Ocurre ANTES de retornar los datos para que el estado de React
-    // nunca vea referencias inconsistentes.
-    //
-    // Un TEMP es huérfano cuando su presupuestoId ya no existe en presupuestos
-    // (el presupuesto fue eliminado en una sesión anterior sin limpiar correctamente).
+    // Reconstruir { [codigo]: datos }
+    const modulos = (modulosRows || []).reduce((acc, row) => {
+      acc[row.codigo] = row.datos;
+      return acc;
+    }, {});
+
+    // Reconstruir { [id]: datos }
+    const presupuestos = (presupuestosRows || []).reduce((acc, row) => {
+      acc[row.id] = row.datos;
+      return acc;
+    }, {});
+
+    // Limpiar módulos temporales huérfanos
     const presIds = new Set(Object.keys(presupuestos));
     const modulosLimpios = Object.fromEntries(
       Object.entries(modulos).filter(([, m]) => {
-        if (!m.temporal) return true;               // permanente → conservar
-        if (!m.presupuestoId) return false;         // temporal sin dueño → huérfano
-        return presIds.has(m.presupuestoId);        // solo si el presupuesto existe
+        if (!m.temporal) return true;
+        if (!m.presupuestoId) return false;
+        return presIds.has(m.presupuestoId);
       })
     );
-    const huboCambios = Object.keys(modulosLimpios).length < Object.keys(modulos).length;
-    if (huboCambios) {
-      // Persistir limpieza inmediatamente para que la próxima carga también esté limpia
-      localStorage.setItem("carpicalc:modulos", JSON.stringify(modulosLimpios));
-      modulos = modulosLimpios;
-    }
+
+    const perfil = perfilRow?.datos
+      ? { ...PERFIL_VACIO, ...perfilRow.datos }
+      : { ...PERFIL_VACIO };
+
+    // Cache del perfil para leerPerfil() síncrono (PDFs)
+    try { localStorage.setItem("carpicalc:perfil_cache", JSON.stringify(perfil)); } catch {}
 
     return {
-      modulos,
-      costos:       rc  ? JSON.parse(rc)  : costoIniciales,
+      modulos: Object.keys(modulosLimpios).length > 0 ? modulosLimpios : modulosIniciales,
+      costos: costosRow?.datos ?? costoIniciales,
       presupuestos,
-      perfil:       rpf ? { ...PERFIL_VACIO, ...JSON.parse(rpf) } : { ...PERFIL_VACIO },
+      perfil,
     };
-  } catch {
+  } catch (e) {
+    console.error("cargarDatos:", e);
     return {
-      modulos:      modulosIniciales,
-      costos:       costoIniciales,
+      modulos: modulosIniciales,
+      costos: costoIniciales,
       presupuestos: {},
-      perfil:       { ...PERFIL_VACIO },
+      perfil: { ...PERFIL_VACIO },
     };
   }
 }
 
-// ── Guardar colecciones específicas ───────────────────────────────────────
-//
-// Cada función es un alias de _save con la clave correspondiente.
-// Se exportan por separado para que los componentes sean explícitos
-// sobre qué están guardando (mejor legibilidad, más fácil de buscar).
-
-/** Guarda el catálogo de módulos del carpintero */
-// Incluye temporales (temporal:true) — el catálogo los filtra en render, no aquí.
-// Huérfanos se limpian en cargarDatos() al iniciar la app.
-// Al guardar módulos también actualizamos costos_version para que presupuestos
-// que usen esos módulos puedan detectar que necesitan recalcularse.
-export const guardarModulos = (d, ts) => {
-  // ts puede venir desde afuera para sincronizar con setCostosVersion en React
+// ── Guardar módulos ───────────────────────────────────────────────────────
+export const guardarModulos = async (modulosObj, ts) => {
   _save("carpicalc:costos_version", (ts || Date.now()).toString());
-  return _save("carpicalc:modulos", d);
+  try {
+    const wsId = await getWorkspaceId();
+    if (!wsId) return false;
+
+    const entries = Object.entries(modulosObj);
+
+    // Delete all + insert all (app single-user: gap es imperceptible)
+    const { error: delErr } = await supabase.from("modulos").delete().eq("workspace_id", wsId);
+    if (delErr) { console.error("guardarModulos delete:", delErr); return false; }
+
+    if (entries.length > 0) {
+      const { error } = await supabase.from("modulos").insert(
+        entries.map(([codigo, datos]) => ({ workspace_id: wsId, codigo, datos }))
+      );
+      if (error) { console.error("guardarModulos insert:", error); return false; }
+    }
+    return true;
+  } catch (e) {
+    console.error("guardarModulos:", e);
+    return false;
+  }
 };
 
-/** Guarda los trabajos/presupuestos guardados */
-export const guardarPresupuestos = (d) => _save("carpicalc:presupuestos", d);
+// ── Guardar presupuestos ──────────────────────────────────────────────────
+export const guardarPresupuestos = async (presupuestosObj) => {
+  try {
+    const wsId = await getWorkspaceId();
+    if (!wsId) return false;
 
-/** Guarda el perfil del taller (nombre, logo, etc.) */
-export const guardarPerfil       = (d) => _save("carpicalc:perfil", d);
+    const entries = Object.entries(presupuestosObj);
 
-/**
- * Guarda la tabla de costos Y actualiza el timestamp de versión.
- *
- * El timestamp (carpicalc:costos_version) permite detectar presupuestos
- * que fueron creados ANTES de la última modificación de costos.
- * Esos presupuestos muestran el botón "↻ Actualizar precio".
- */
-export const guardarCostos = (d) => {
+    const { error: delErr } = await supabase.from("presupuestos").delete().eq("workspace_id", wsId);
+    if (delErr) { console.error("guardarPresupuestos delete:", delErr); return false; }
+
+    if (entries.length > 0) {
+      const { error } = await supabase.from("presupuestos").insert(
+        entries.map(([id, datos]) => ({
+          id,
+          workspace_id: wsId,
+          datos,
+          estado: datos.estado || "nuevo",
+        }))
+      );
+      if (error) { console.error("guardarPresupuestos insert:", error); return false; }
+    }
+    return true;
+  } catch (e) {
+    console.error("guardarPresupuestos:", e);
+    return false;
+  }
+};
+
+// ── Guardar perfil del taller ─────────────────────────────────────────────
+export const guardarPerfil = async (perfil) => {
+  // Cache local para leerPerfil() síncrono
+  try { localStorage.setItem("carpicalc:perfil_cache", JSON.stringify(perfil)); } catch {}
+  try {
+    const wsId = await getWorkspaceId();
+    if (!wsId) return false;
+    const { error } = await supabase.from("perfil_taller").upsert(
+      { workspace_id: wsId, datos: perfil },
+      { onConflict: "workspace_id" }
+    );
+    if (error) { console.error("guardarPerfil:", error); return false; }
+    return true;
+  } catch (e) {
+    console.error("guardarPerfil:", e);
+    return false;
+  }
+};
+
+// ── Guardar costos ────────────────────────────────────────────────────────
+export const guardarCostos = async (costos) => {
   _save("carpicalc:costos_version", Date.now().toString());
-  return _save("carpicalc:costos", d);
+  try {
+    const wsId = await getWorkspaceId();
+    if (!wsId) return false;
+    const { error } = await supabase.from("costos").upsert(
+      { workspace_id: wsId, datos: costos, updated_at: new Date().toISOString() },
+      { onConflict: "workspace_id" }
+    );
+    if (error) { console.error("guardarCostos:", error); return false; }
+    return true;
+  } catch (e) {
+    console.error("guardarCostos:", e);
+    return false;
+  }
 };
 
-/**
- * Lee el timestamp de la última modificación de costos.
- * Retorna 0 si nunca se modificaron.
- */
+// ── Versión de costos (UI local, stale detection) ─────────────────────────
 export const leerVersionCostos = () => {
   try { return parseInt(localStorage.getItem("carpicalc:costos_version") || "0"); }
   catch { return 0; }
 };
 
-// ── Historial de precios ──────────────────────────────────────────────────
-//
-// Cada vez que el carpintero modifica su tabla de costos, se guarda
-// un snapshot con los precios de ese momento.
-// Máximo 20 snapshots para no exceder el espacio de localStorage.
-
-/**
- * Carga el historial de snapshots de precios.
- * @returns {Promise<Array>} Array de snapshots ordenados del más reciente al más antiguo
- */
+// ── Historial de precios (local por ahora) ────────────────────────────────
 export async function cargarHistorialPrecios() {
   try {
     const r = localStorage.getItem("carpicalc:historial");
@@ -163,13 +221,6 @@ export async function cargarHistorialPrecios() {
   } catch { return []; }
 }
 
-/**
- * Agrega un nuevo snapshot al historial de precios.
- * Guarda id + nombre + precio de TODAS las categorías con valores monetarios,
- * para poder restaurar correctamente cualquiera de ellas.
- *
- * @param {object} costos - Estado actual de costos
- */
 export async function guardarSnapshotPrecios(costos) {
   try {
     const hist = await cargarHistorialPrecios();
@@ -184,28 +235,18 @@ export async function guardarSnapshotPrecios(costos) {
         items: (costos.gastosFijos?.items || []).map(i => ({ id: i.id, nombre: i.nombre, monto: i.monto })),
       },
     };
-    // Mantiene solo los últimos 20 snapshots
     const nuevo = [snap, ...hist].slice(0, 20);
     localStorage.setItem("carpicalc:historial", JSON.stringify(nuevo));
   } catch {}
 }
 
-// ── Backup completo ───────────────────────────────────────────────────────────
-
+// ── Backup completo ───────────────────────────────────────────────────────
 const BACKUP_CLAVES = [
-  "carpicalc:modulos",
-  "carpicalc:costos",
-  "carpicalc:presupuestos",
-  "carpicalc:perfil",
   "carpicalc:historial",
   "carpicalc:costos_version",
   "carpicalc:borrador",
 ];
 
-/**
- * Exporta todos los datos de la app a un archivo JSON descargable.
- * Actualiza el timestamp de último backup.
- */
 export function exportarBackup() {
   const datos = {};
   BACKUP_CLAVES.forEach(k => {
@@ -223,57 +264,6 @@ export function exportarBackup() {
   localStorage.setItem("carpicalc:ultimo_backup", Date.now().toString());
 }
 
-// ── Perfil (lectura fuera de React) ──────────────────────────────────────────
-// Necesaria para funciones de exportación (PDF, WhatsApp, etc.) que corren
-// fuera del árbol de componentes y no tienen acceso al estado de React.
-// Vive aquí (no en utils.js) porque es I/O puro de localStorage.
-
-/**
- * Lee el perfil del taller desde localStorage.
- * Retorna {} si no existe o hay error de parseo.
- */
-export function leerPerfil() {
-  try { return JSON.parse(localStorage.getItem("carpicalc:perfil")) || {}; }
-  catch { return {}; }
-}
-
-/** Carga los roles de pieza personalizados del taller */
-export function cargarRolesPieza() {
-  try { return JSON.parse(localStorage.getItem("carpicalc:roles_pieza")) || []; }
-  catch { return []; }
-}
-
-/** Guarda los roles de pieza personalizados del taller */
-export function guardarRolesPieza(roles) {
-  return _save("carpicalc:roles_pieza", roles);
-}
-
-// ── Borrador de módulo en creación ────────────────────────────────────────────
-// Persiste el estado de FormModulo mientras el usuario navega entre pestañas.
-// Se limpia al guardar o cancelar explícitamente.
-
-/** Lee el borrador de módulo en progreso. Retorna null si no existe. */
-export function cargarBorradorModulo() {
-  try { return JSON.parse(localStorage.getItem("carpicalc:borrador_modulo")) || null; }
-  catch { return null; }
-}
-
-/** Guarda el estado actual de FormModulo como borrador. */
-export const guardarBorradorModulo = (d) => _save("carpicalc:borrador_modulo", d);
-
-/** Elimina el borrador de módulo (al guardar o cancelar). */
-export function limpiarBorradorModulo() {
-  try { localStorage.removeItem("carpicalc:borrador_modulo"); } catch {}
-}
-
-/**
- * Restaura todos los datos desde un objeto de backup previamente parseado.
- * No toca carpicalc:auth para no cerrar la sesión.
- * El llamador debe recargar la página después de llamar a esta función.
- *
- * @param {{ version: number, datos: object }} backup - Objeto parseado del archivo JSON
- * @throws {Error} Si el formato es inválido
- */
 export function importarBackup(backup) {
   if (!backup?.datos || typeof backup.datos !== "object") {
     throw new Error("Archivo de backup inválido o corrupto");
@@ -283,4 +273,32 @@ export function importarBackup(backup) {
       localStorage.setItem(k, v);
     }
   });
+}
+
+// ── Perfil (lectura síncrona para PDFs fuera del árbol React) ────────────
+export function leerPerfil() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:perfil_cache")) || {}; }
+  catch { return {}; }
+}
+
+// ── Roles de pieza ────────────────────────────────────────────────────────
+export function cargarRolesPieza() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:roles_pieza")) || []; }
+  catch { return []; }
+}
+
+export function guardarRolesPieza(roles) {
+  return _save("carpicalc:roles_pieza", roles);
+}
+
+// ── Borrador de módulo en creación ────────────────────────────────────────
+export function cargarBorradorModulo() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:borrador_modulo")) || null; }
+  catch { return null; }
+}
+
+export const guardarBorradorModulo = (d) => _save("carpicalc:borrador_modulo", d);
+
+export function limpiarBorradorModulo() {
+  try { localStorage.removeItem("carpicalc:borrador_modulo"); } catch {}
 }
