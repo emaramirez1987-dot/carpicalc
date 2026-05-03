@@ -453,7 +453,7 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
         <SectionTitle sub="Medidas reales descontando espesores y offsets, agrupadas para el operario">
           Lista de Corte
         </SectionTitle>
-        <div className="rsp-action-buttons" style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 4, flexWrap: "wrap" }}>
+        <div className="rsp-action-buttons" style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
           <button
             onClick={() => {
               const lines = [`📦 LISTA DE COMPRAS${nombreActivo ? " — " + nombreActivo : ""}`, ""];
