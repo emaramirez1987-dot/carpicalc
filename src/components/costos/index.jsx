@@ -27,7 +27,7 @@ function HcBtnE({ onClick }) {
         color: "var(--accent)",
       }}
     >
-      ✏ editar
+      ✏
     </button>
   );
 }
@@ -42,7 +42,7 @@ function HcBtnD({ onClick }) {
         color: "#e07070",
       }}
     >
-      × borrar
+      ×
     </button>
   );
 }

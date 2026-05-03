@@ -261,6 +261,10 @@ const GlobalStyles = () => (
     }
     .print-only{display:none;}
 
+    /* Catálogo: defaults desktop (mobile oculto por defecto) */
+    .rsp-mod-mobile { display: none; }
+    .rsp-mod-desktop { display: flex; }
+
     /* ── Responsive mobile ─────────────────────────────────────── */
     @media (max-width: 768px) {
       .rsp-main { padding: 14px 10px !important; }
@@ -307,6 +311,10 @@ const GlobalStyles = () => (
       .rsp-stack { flex-direction: column !important; align-items: flex-start !important; }
       .rsp-table-inner { min-width: 520px; }
       .rsp-item-actions { flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; }
+
+      /* Catálogo: mostrar mobile, ocultar desktop */
+      .rsp-mod-mobile { display: block !important; }
+      .rsp-mod-desktop { display: none !important; }
 
       /* Botones de acciones: 100% ancho en móvil, compactos y sin desbordamiento */
       .rsp-action-buttons {
