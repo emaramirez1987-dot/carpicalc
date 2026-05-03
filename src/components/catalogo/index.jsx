@@ -2000,37 +2000,142 @@ function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAb
   );
 }
 
+// ── Botones de acción para vista móvil (4 en fila, ícono puro) ────
+function AccionesMobileMod({ onEditar, onEliminar, onDuplicar, onAbrirVista, presupuestosAfectados = [] }) {
+  const [confirmar, setConfirmar] = useState(false);
+  const tieneAfectados = presupuestosAfectados.length > 0;
+  const btnM = (onClick, icon, color, bg) => (
+    <button onClick={onClick}
+      style={{
+        flex: 1, padding: "11px 0", fontSize: 17, cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: bg, border: "none", borderRight: "1px solid var(--border)",
+        color, transition: "background 0.15s",
+      }}>
+      {icon}
+    </button>
+  );
+  return (
+    <div>
+      {confirmar && tieneAfectados && (
+        <div style={{ padding: "6px 12px", background: "rgba(200,100,50,0.10)", borderTop: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#d47a50", fontFamily: "'DM Mono',monospace" }}>
+            ⚠ Usado en {presupuestosAfectados.length} presupuesto{presupuestosAfectados.length > 1 ? "s" : ""}
+          </div>
+        </div>
+      )}
+      <div style={{ display: "flex", borderTop: "1px solid var(--border)" }}>
+        {btnM(onEditar,   "✎", "var(--accent)", "var(--accent-soft)")}
+        {btnM(onDuplicar, "⧉", "#7090b0",       "rgba(112,144,176,0.08)")}
+        {onAbrirVista && btnM(onAbrirVista, "▣", "#8090c0", "rgba(128,144,192,0.08)")}
+        <button
+          onClick={() => { if (confirmar) { onEliminar(); setConfirmar(false); } else setConfirmar(true); }}
+          style={{
+            flex: 1, padding: "11px 0", fontSize: confirmar ? 14 : 17, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: confirmar ? "rgba(200,60,60,0.15)" : "transparent",
+            border: "none", color: "#e07070", transition: "all 0.15s",
+          }}>
+          {confirmar ? "✓" : "×"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbrirVista, onImagenChange, presupuestosAfectados = [] }) {
+  const [expandido, setExpandido] = useState(false);
   return (
     <div
-      className="rsp-lista-item"
-      style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 16px", borderRadius: 10, background: "var(--bg-surface)", border: "1px solid var(--border)", transition: "border-color 0.15s" }}
+      style={{ borderRadius: 10, background: "var(--bg-surface)", border: "1px solid var(--border)", transition: "border-color 0.15s", overflow: "hidden" }}
       onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
       onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
     >
-      <ImagenModulo imagen={mod.imagen} cod={cod} compact
-        onSubir={(b64) => onImagenChange(cod, b64)}
-        onBorrar={() => onImagenChange(cod, null)}
-      />
-      <div style={{ flex: 2, minWidth: 0 }}>
-        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", marginRight: 8 }}>{cod}</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{mod.nombre}</span>
-        {mod.descripcion && (
-          <p style={{ fontSize: 11, marginTop: 2, color: "var(--text-muted)", fontStyle: "italic" }}>{mod.descripcion}</p>
-        )}
+      {/* ── DESKTOP: fila horizontal ── */}
+      <div className="rsp-mod-desktop" style={{ alignItems: "center", gap: 14, padding: "10px 16px" }}>
+        <ImagenModulo imagen={mod.imagen} cod={cod} compact
+          onSubir={(b64) => onImagenChange(cod, b64)}
+          onBorrar={() => onImagenChange(cod, null)}
+        />
+        <div style={{ flex: 2, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{cod}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mod.nombre}</span>
+          </div>
+          {mod.descripcion && (
+            <p style={{ fontSize: 11, marginTop: 2, color: "var(--text-muted)", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mod.descripcion}</p>
+          )}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)" }}>
+            {mod.dimensiones.ancho}×{mod.dimensiones.profundidad}×{mod.dimensiones.alto}mm
+          </span>
+          <div style={{ display: "flex", gap: 4 }}>
+            <Badge>{TIPO_MAT[mod.material]}</Badge>
+            <Badge color="#705090">{c.espesor}mm</Badge>
+          </div>
+        </div>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a", flexShrink: 0 }}>
+          {fmtPeso(c.total)}
+        </span>
+        <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} presupuestosAfectados={presupuestosAfectados} />
       </div>
-      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
-        {mod.dimensiones.ancho}×{mod.dimensiones.profundidad}×{mod.dimensiones.alto} mm
-      </span>
-      <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-        <Badge>{TIPO_MAT[mod.material]}</Badge>
-        <Badge color="#705090">{c.espesor}mm</Badge>
+
+      {/* ── MÓVIL: vertical con imagen como toggle ── */}
+      <div className="rsp-mod-mobile">
+        {/* Imagen — ancho completo, clic = desplegar */}
+        <div
+          onClick={() => setExpandido(v => !v)}
+          style={{
+            width: "100%", height: expandido ? 160 : 54, overflow: "hidden",
+            background: "var(--bg-subtle)", cursor: "pointer", position: "relative",
+            borderBottom: "1px solid var(--border)",
+            transition: "height 0.25s cubic-bezier(0.22,1,0.36,1)"
+          }}
+        >
+          {mod.imagen
+            ? <img src={mod.imagen} alt={cod} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            : (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", gap: 8 }}>
+                <span style={{ fontSize: expandido ? 22 : 15, opacity: 0.28 }}>📷</span>
+                {!expandido && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: "var(--text-muted)", fontWeight: 700 }}>{cod} · {mod.nombre}</span>}
+              </div>
+            )
+          }
+          <div style={{
+            position: "absolute", right: 8, bottom: 5, fontSize: 9,
+            fontFamily: "'DM Mono',monospace", fontWeight: 700,
+            color: "rgba(255,255,255,0.7)", background: "rgba(0,0,0,0.38)",
+            borderRadius: 4, padding: "2px 6px"
+          }}>
+            {expandido ? "▲" : "▼"}
+          </div>
+        </div>
+
+        {/* Info */}
+        <div style={{ padding: "10px 14px 8px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>{cod}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{mod.nombre}</span>
+          </div>
+          {mod.descripcion && (
+            <p style={{ fontSize: 11, marginTop: 2, color: "var(--text-muted)", fontStyle: "italic" }}>{mod.descripcion}</p>
+          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+            <Badge>{TIPO_MAT[mod.material]}</Badge>
+            <Badge color="#705090">{c.espesor}mm</Badge>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)" }}>
+              {mod.dimensiones.ancho}×{mod.dimensiones.profundidad}×{mod.dimensiones.alto}mm
+            </span>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", marginLeft: "auto" }}>
+              {fmtPeso(c.total)}
+            </span>
+          </div>
+        </div>
+
+        {/* Botones móvil */}
+        <AccionesMobileMod onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} presupuestosAfectados={presupuestosAfectados} />
       </div>
-      <div className="rsp-lista-precio" style={{ display: "flex", gap: 16, flexShrink: 0, fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
-        <span style={{ color: "#9ab080" }}>{fmtNum(c.m2Neto)} m²</span>
-        <span style={{ color: "#7ecf8a", fontWeight: 700 }}>{fmtPeso(c.total)}</span>
-      </div>
-      <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} presupuestosAfectados={presupuestosAfectados} />
     </div>
   );
 }
