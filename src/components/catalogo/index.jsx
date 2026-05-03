@@ -2073,7 +2073,7 @@ function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbri
         </div>
         <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
           <Badge>{TIPO_MAT[mod.material]}</Badge>
-          <Badge color="#705090">{c.espesor}mm</Badge>
+          <Badge>{c.espesor}mm</Badge>
         </div>
         <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a", flexShrink: 0 }}>
           {fmtPeso(c.total)}
@@ -2123,7 +2123,7 @@ function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbri
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
             <Badge>{TIPO_MAT[mod.material]}</Badge>
-            <Badge color="#705090">{c.espesor}mm</Badge>
+            <Badge>{c.espesor}mm</Badge>
             <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)" }}>
               {mod.dimensiones.ancho}×{mod.dimensiones.profundidad}×{mod.dimensiones.alto}mm
             </span>
