@@ -308,11 +308,37 @@ const GlobalStyles = () => (
       .rsp-table-inner { min-width: 520px; }
       .rsp-item-actions { flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; }
 
-      /* Botones de acciones: 100% ancho en móvil */
-      .rsp-action-buttons { flex-direction: column !important; gap: 10px !important; }
-      .rsp-action-buttons button { width: 100% !important; padding: 12px !important; }
-      .rsp-action-buttons .rsp-btn-pair { width: 100% !important; gap: 6px !important; }
-      .rsp-action-buttons .rsp-btn-pair > button { flex: 1 !important; }
+      /* Botones de acciones: 100% ancho en móvil, compactos y sin desbordamiento */
+      .rsp-action-buttons {
+        flex-direction: column !important;
+        gap: 8px !important;
+        width: 100% !important;
+      }
+      .rsp-action-buttons button,
+      .rsp-action-buttons [class*="Btn"] {
+        display: flex !important;
+        width: 100% !important;
+        padding: 10px 12px !important;
+        font-size: 11px !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+      }
+      .rsp-action-buttons .rsp-btn-pair {
+        width: 100% !important;
+        gap: 6px !important;
+        flex-direction: row !important;
+      }
+      .rsp-action-buttons .rsp-btn-pair > button {
+        flex: 1 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
 
       /* Kanban: scroll horizontal en desktop */
       .kanban-board {
