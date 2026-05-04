@@ -854,51 +854,22 @@ function HojaCostos({ costos, setCostos, onSave }) {
               ) : (
                 <div
                   className="rsp-lista-item"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    flexWrap: "wrap",
-                    padding: "10px 0"
-                  }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", flexWrap: "nowrap" }}
                 >
-                  <span
-                    style={{
-                      flex: 2,
-                      minWidth: 120,
-                      fontSize: 13,
-                      color: "var(--text-primary)",
-                    }}
-                  >
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {mat.nombre}
                   </span>
-                  <Badge>{TIPO_MAT[mat.tipo]}</Badge>
-                  <Badge color="#705090">{mat.espesor}mm</Badge>
-                  <Badge color="#507060">
-                    {mat.placaLargo ?? 2750}×{mat.placaAncho ?? 1830}
-                  </Badge>
-                  <span
-                    style={{
-                      fontFamily: "'DM Mono',monospace",
-                      fontSize: 13,
-                      color: "#7ecf8a",
-                    }}
-                  >
+                  <span style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <Badge color="#705090">{mat.espesor}mm</Badge>
+                    <Badge color="#507060">{mat.placaLargo ?? 2750}×{mat.placaAncho ?? 1830}</Badge>
+                  </span>
+                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <HcBtnE onClick={() => ini("mat", mat)} />
+                    <HcBtnD onClick={() => save({ ...costos, materiales: costos.materiales.filter((m) => m.id !== mat.id) })} />
+                  </div>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#7ecf8a", flexShrink: 0, textAlign: "right" }}>
                     {fmtPeso(mat.precioM2)}/m²
                   </span>
-                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 6 }}>
-                    <HcBtnE onClick={() => ini("mat", mat)} />
-                    <HcBtnD
-                      onClick={() =>
-                        save({
-                          ...costos,
-                          materiales: costos.materiales.filter(
-                            (m) => m.id !== mat.id
-                          ),
-                        })
-                      }
-                    />
-                  </div>
                 </div>
               )}
             </FilaVista>
@@ -1060,40 +1031,17 @@ function HojaCostos({ costos, setCostos, onSave }) {
                   </div>
                 </div>
               ) : (
-                <div className="rsp-lista-item" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0" }}>
-                  <span
-                    style={{
-                      flex: 2,
-                      fontSize: 13,
-                      color: "var(--text-primary)",
-                    }}
-                  >
+                <div className="rsp-lista-item" style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", flexWrap: "nowrap" }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {tc.nombre}
                   </span>
-                  <span
-                    style={{
-                      flex: 1,
-                      textAlign: "right",
-                      fontFamily: "'DM Mono',monospace",
-                      fontSize: 13,
-                      color: "#7ecf8a",
-                    }}
-                  >
+                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <HcBtnE onClick={() => ini("tc", tc)} />
+                    <HcBtnD onClick={() => save({ ...costos, tapacanto: costos.tapacanto.filter((t) => t.id !== tc.id) })} />
+                  </div>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#7ecf8a", flexShrink: 0 }}>
                     {fmtPeso(tc.precio)}/m
                   </span>
-                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 6 }}>
-                    <HcBtnE onClick={() => ini("tc", tc)} />
-                    <HcBtnD
-                      onClick={() =>
-                        save({
-                          ...costos,
-                          tapacanto: costos.tapacanto.filter(
-                            (t) => t.id !== tc.id
-                          ),
-                        })
-                      }
-                    />
-                  </div>
                 </div>
               )}
             </FilaVista>
@@ -1212,43 +1160,18 @@ function HojaCostos({ costos, setCostos, onSave }) {
                   </div>
                 </div>
               ) : (
-                <div className="rsp-lista-item" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0" }}>
-                  <span
-                    style={{
-                      flex: 2,
-                      fontSize: 13,
-                      color: "var(--text-primary)",
-                    }}
-                  >
+                <div className="rsp-lista-item" style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", flexWrap: "nowrap" }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {mo.nombre}
                   </span>
-                  <Badge color="#7090c0">
-                    {mo.tipo === "por_modulo" ? "por módulo" : "por hora"}
-                  </Badge>
-                  <span
-                    style={{
-                      flex: 1,
-                      textAlign: "right",
-                      fontFamily: "'DM Mono',monospace",
-                      fontSize: 13,
-                      color: "#7ecf8a",
-                    }}
-                  >
+                  <Badge color="#7090c0">{mo.tipo === "por_modulo" ? "por módulo" : "por hora"}</Badge>
+                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <HcBtnE onClick={() => ini("mo", mo)} />
+                    <HcBtnD onClick={() => save({ ...costos, manoDeObra: costos.manoDeObra.filter((m) => m.id !== mo.id) })} />
+                  </div>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#7ecf8a", flexShrink: 0 }}>
                     {fmtPeso(mo.precio)}
                   </span>
-                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 6 }}>
-                    <HcBtnE onClick={() => ini("mo", mo)} />
-                    <HcBtnD
-                      onClick={() =>
-                        save({
-                          ...costos,
-                          manoDeObra: costos.manoDeObra.filter(
-                            (m) => m.id !== mo.id
-                          ),
-                        })
-                      }
-                    />
-                  </div>
                 </div>
               )}
             </FilaVista>
@@ -1373,41 +1296,18 @@ function HojaCostos({ costos, setCostos, onSave }) {
                   </div>
                 </div>
               ) : (
-                <div className="rsp-lista-item" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0" }}>
-                  <span
-                    style={{
-                      flex: 2,
-                      fontSize: 13,
-                      color: "var(--text-primary)",
-                    }}
-                  >
+                <div className="rsp-lista-item" style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", flexWrap: "nowrap" }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {h.nombre}
                   </span>
                   <Badge color="#907060">/{h.unidad}</Badge>
-                  <span
-                    style={{
-                      flex: 1,
-                      textAlign: "right",
-                      fontFamily: "'DM Mono',monospace",
-                      fontSize: 13,
-                      color: "#7ecf8a",
-                    }}
-                  >
+                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <HcBtnE onClick={() => ini("h", h)} />
+                    <HcBtnD onClick={() => save({ ...costos, herrajes: costos.herrajes.filter((x) => x.id !== h.id) })} />
+                  </div>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#7ecf8a", flexShrink: 0 }}>
                     {fmtPeso(h.precio)}
                   </span>
-                  <div className="rsp-btn-pair" style={{ display: "flex", gap: 6 }}>
-                    <HcBtnE onClick={() => ini("h", h)} />
-                    <HcBtnD
-                      onClick={() =>
-                        save({
-                          ...costos,
-                          herrajes: costos.herrajes.filter(
-                            (x) => x.id !== h.id
-                          ),
-                        })
-                      }
-                    />
-                  </div>
                 </div>
               )}
             </FilaVista>
