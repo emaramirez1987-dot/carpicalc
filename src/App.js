@@ -200,6 +200,7 @@ function PanelPerfil({ perfil, onGuardar, suscripcion }) {
   const [passConfirm, setPassConfirm] = useState("");
   const [passError, setPassError]     = useState(null);
   const [passOk, setPassOk]           = useState(false);
+  const [showPass, setShowPass]       = useState(false);
 
   const handleCambiarPass = async () => {
     setPassError(null);
@@ -387,11 +388,23 @@ function PanelPerfil({ perfil, onGuardar, suscripcion }) {
           Cambiá la contraseña de tu cuenta.
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <input type="password" value={passNueva} onChange={e => { setPassNueva(e.target.value); setPassError(null); }}
-            placeholder="Nueva contraseña (mínimo 4 caracteres)" style={inp} />
-          <input type="password" value={passConfirm} onChange={e => { setPassConfirm(e.target.value); setPassError(null); }}
-            placeholder="Confirmar nueva contraseña" style={inp}
-            onKeyDown={e => e.key === "Enter" && handleCambiarPass()} />
+          <div style={{ position: "relative" }}>
+            <input type={showPass ? "text" : "password"} value={passNueva} onChange={e => { setPassNueva(e.target.value); setPassError(null); }}
+              placeholder="Nueva contraseña (mínimo 4 caracteres)" style={{ ...inp, paddingRight: 36 }} />
+            <button onClick={() => setShowPass(s => !s)} tabIndex={-1}
+              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 16, padding: 0 }}>
+              {showPass ? "🙈" : "👁"}
+            </button>
+          </div>
+          <div style={{ position: "relative" }}>
+            <input type={showPass ? "text" : "password"} value={passConfirm} onChange={e => { setPassConfirm(e.target.value); setPassError(null); }}
+              placeholder="Confirmar nueva contraseña" style={{ ...inp, paddingRight: 36 }}
+              onKeyDown={e => e.key === "Enter" && handleCambiarPass()} />
+            <button onClick={() => setShowPass(s => !s)} tabIndex={-1}
+              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 16, padding: 0 }}>
+              {showPass ? "🙈" : "👁"}
+            </button>
+          </div>
           {passError && <div style={{ fontSize: 11, color: "#e07070", fontFamily: "'DM Mono',monospace" }}>⚠ {passError}</div>}
           {passOk    && <div style={{ fontSize: 11, color: "#7ecf8a", fontFamily: "'DM Mono',monospace" }}>✓ Contraseña actualizada correctamente</div>}
           <button onClick={handleCambiarPass}
