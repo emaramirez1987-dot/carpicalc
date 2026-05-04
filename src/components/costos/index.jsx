@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Card, Badge, TextInput, Select, SectionTitle } from '../ui/index.jsx';
+import { Btn, Card, TextInput, Select, SectionTitle } from '../ui/index.jsx';
 import { fmtPeso, fmtNum, applyFactor, restoreFrom } from '../../utils.js';
 import { cargarHistorialPrecios, guardarSnapshotPrecios } from '../../storage.js';
 
