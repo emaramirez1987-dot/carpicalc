@@ -275,13 +275,7 @@ const GlobalStyles = () => (
         -webkit-overflow-scrolling: touch;
       }
       .rsp-lista-item {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 10px !important;
-      }
-      .rsp-lista-precio {
-        width: 100% !important;
-        justify-content: space-between !important;
+        gap: 6px !important;
       }
       .rsp-header-inner {
         flex-wrap: wrap !important;
