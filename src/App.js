@@ -232,6 +232,7 @@ function PanelPerfil({ perfil, onGuardar, suscripcion }) {
 
   const handleGuardar = () => {
     onGuardar({ ...form });
+    localStorage.setItem("carpicalc:onboarding_done", "1");
     setGuardado(true);
     setTimeout(() => setGuardado(false), 2000);
   };
@@ -729,8 +730,9 @@ function AppInterna() {
       setCostos(costos);
       setPresupuestos(presupuestos || {});
       if (perfil) setPerfil(perfil);
-      // Usuario nuevo: perfil vacío → ir a Mi Taller
-      if (!perfil?.nombre) {
+      // Primera vez: perfil vacío y nunca completó onboarding → ir a Mi Taller
+      const onboardingDone = localStorage.getItem("carpicalc:onboarding_done");
+      if (!perfil?.nombre && !onboardingDone) {
         dispatch({ type: "CAMBIAR_VISTA", payload: { vista: "config" } });
       }
       try {
