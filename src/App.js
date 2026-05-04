@@ -536,7 +536,7 @@ function LoginScreen() {
     });
     setLoading(false);
     if (err) { setError(err.message); triggerShake(); }
-    else setMsg("¡Registrado! Revisá tu correo para confirmar la cuenta.");
+    else setMsg("¡Registrado! Tu correo de confirmación se enviará a la brevedad.");
   };
 
   const handleReset = async () => {
