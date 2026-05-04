@@ -660,7 +660,22 @@ function AppInterna() {
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   useEffect(() => {
-    cargarSuscripcion().then(setSuscripcion);
+    // Verificar si el usuario volvió de MercadoPago con preapproval_id
+    const params = new URLSearchParams(window.location.search);
+    const preapprovalId = params.get("preapproval_id");
+    if (preapprovalId) {
+      window.history.replaceState({}, "", window.location.pathname);
+      supabase.from("workspaces").select("id").single().then(({ data: ws }) => {
+        if (!ws) return;
+        fetch("/api/check-subscription", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ preapprovalId, workspaceId: ws.id }),
+        }).finally(() => cargarSuscripcion().then(setSuscripcion));
+      });
+    } else {
+      cargarSuscripcion().then(setSuscripcion);
+    }
     cargarDatos().then(({ modulos, costos, presupuestos, perfil }) => {
       setModulos(modulos);
       setCostos(costos);
