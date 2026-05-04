@@ -561,8 +561,9 @@ function LoginScreen() {
   const [taller, setTaller] = useState("");
   const [error,  setError]  = useState("");
   const [msg,    setMsg]    = useState("");
-  const [shake,  setShake]  = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [shake,    setShake]    = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
   const triggerShake = () => { setShake(true); setTimeout(() => setShake(false), 500); };
   const resetMsg = () => { setError(""); setMsg(""); };
@@ -639,9 +640,17 @@ function LoginScreen() {
 
             {/* Password (login + register) */}
             {tab !== "reset" && (
-              <input type="password" value={pass} onChange={e => { setPass(e.target.value); resetMsg(); }}
-                onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : handleRegister())}
-                placeholder="Contraseña" style={inpStyle(!!error)} />
+              <div style={{ position: "relative" }}>
+                <input type={showPass ? "text" : "password"} value={pass}
+                  onChange={e => { setPass(e.target.value); resetMsg(); }}
+                  onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : handleRegister())}
+                  placeholder={tab === "register" ? "Creá tu contraseña" : "Contraseña"}
+                  style={{ ...inpStyle(!!error), paddingRight: 40 }} />
+                <button type="button" onClick={() => setShowPass(v => !v)}
+                  style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, lineHeight: 1, padding: 0 }}>
+                  {showPass ? "🙈" : "👁"}
+                </button>
+              </div>
             )}
 
             {error && <div style={msgError}>{error}</div>}
