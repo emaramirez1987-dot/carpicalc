@@ -525,7 +525,8 @@ function ResumenMensual({ entries }) {
   const porMes = {};
   entries.forEach(([id, p]) => {
     // Presupuesto creado en ese mes
-    const mesCreado = new Date(parseInt(id)).toISOString().slice(0, 7);
+    const tsCreado = p.creadoEn || Date.now();
+    const mesCreado = new Date(tsCreado).toISOString().slice(0, 7);
     if (!porMes[mesCreado]) porMes[mesCreado] = { presupuestado: 0, cobrado: 0, trabajos: 0 };
     porMes[mesCreado].presupuestado += p.total || 0;
     porMes[mesCreado].trabajos += 1;
