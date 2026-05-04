@@ -243,8 +243,43 @@ function PanelPerfil({ perfil, onGuardar, suscripcion }) {
     width: "100%", transition: "border-color 0.15s"
   };
 
+  const esNuevo = !perfil?.nombre;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+      {esNuevo && (
+        <div style={{
+          borderRadius: 16,
+          background: "linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.04) 100%)",
+          border: "1px solid rgba(212,175,55,0.30)",
+          padding: "28px 28px 24px",
+          display: "flex", flexDirection: "column", gap: 12,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 28 }}>🪵</div>
+            <div>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 900, color: "var(--accent)", lineHeight: 1.1 }}>
+                ¡Bienvenido a CarpiCálc!
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3, fontFamily: "'DM Mono',monospace", letterSpacing: "0.06em" }}>
+                Tu taller de carpintería, ahora profesionalizado
+              </div>
+            </div>
+          </div>
+          <div style={{ width: "100%", height: 1, background: "rgba(212,175,55,0.15)" }} />
+          <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.7 }}>
+            Para empezar, completá los datos de tu taller a continuación. Aparecerán en todos tus presupuestos, PDF y documentos generados.
+          </div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }} />
+            <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+              Podés actualizar estos datos en cualquier momento
+            </span>
+          </div>
+        </div>
+      )}
+
       <SectionTitle sub="Esta información aparece en todos los documentos generados">
         ⚙ Mi Taller
       </SectionTitle>
@@ -694,6 +729,10 @@ function AppInterna() {
       setCostos(costos);
       setPresupuestos(presupuestos || {});
       if (perfil) setPerfil(perfil);
+      // Usuario nuevo: perfil vacío → ir a Mi Taller
+      if (!perfil?.nombre) {
+        dispatch({ type: "CAMBIAR_VISTA", payload: { vista: "config" } });
+      }
       try {
         const borrador = localStorage.getItem("carpicalc:borrador");
         if (borrador) {
@@ -708,7 +747,7 @@ function AppInterna() {
       } catch {}
       setCargando(false);
     });
-  }, []);
+  }, [dispatch]);
 
   // ── Autosave de borrador ──────────────────────────────────────────────────
   useEffect(() => {
