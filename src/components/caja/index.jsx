@@ -54,7 +54,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
     : null;
 
   // Vencimiento: solo relevante si está enviado
-  const diasTranscurridos = Math.floor((Date.now() - parseInt(id)) / 86400000);
+  const diasTranscurridos = Math.floor((Date.now() - (p.creadoEn || Date.now())) / 86400000);
   const diasRestantes = (p.diasVigencia || 15) - diasTranscurridos;
   const vencido = diasRestantes < 0;
   const porVencer = diasRestantes >= 0 && diasRestantes <= 3;
