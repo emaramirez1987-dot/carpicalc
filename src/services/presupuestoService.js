@@ -30,6 +30,7 @@ export function crearPresupuesto({
     costosDirectos: [...costosDirectos],
     total,
     costosVersionAl,
+    creadoEn: Date.now(),
   };
   return { id, presupuestos: { ...presupuestos, [id]: entry } };
 }
