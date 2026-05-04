@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Btn, Card, Badge, TextInput, Select, SectionTitle } from '../ui/index.jsx';
 import { fmtPeso, fmtNum, applyFactor, restoreFrom } from '../../utils.js';
-import { TIPO_MAT } from '../../constants.js';
 import { cargarHistorialPrecios, guardarSnapshotPrecios } from '../../storage.js';
 
 // Constantes de estilo compartidas entre los componentes Hc*
