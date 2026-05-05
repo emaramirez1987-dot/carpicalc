@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ToggleSwitch } from '../ui/index.jsx';
 import VistaModuloSVG from '../vista-svg/index.js';
 import { useTema } from '../../hooks/useTema.js';
@@ -187,8 +187,16 @@ function VistaPrevia({
   const [itemsOcultos, setItemsOcultos]         = useState([]);
   const [zoom, setZoom]                         = useState(100);
   const [extraPages, setExtraPages]             = useState([]);
-  const agregarHoja  = (tipo) => setExtraPages(p => [...p, { id: crypto.randomUUID(), tipo }]);
-  const eliminarHoja = (id)   => setExtraPages(p => p.filter(h => h.id !== id));
+  const [paginaActiva, setPaginaActiva]         = useState('main');
+  const agregarHoja = (tipo) => {
+    const id = crypto.randomUUID();
+    setExtraPages(p => [...p, { id, tipo }]);
+    setPaginaActiva(id);
+  };
+  const eliminarHoja = (id) => {
+    setExtraPages(p => p.filter(h => h.id !== id));
+    setPaginaActiva(prev => prev === id ? 'main' : prev);
+  };
   const [temaPDF, setTemaPDF]                   = useState(() => {
     try { return localStorage.getItem("carpicalc:temaPDF") || "dorado"; } catch { return "dorado"; }
   });
@@ -520,10 +528,28 @@ function VistaPrevia({
           </div>
         </div>
       ) : (
-        <div style={{ display: "flex", minHeight: "calc(100vh - 200px)" }}>
+        <div style={{ display: "flex", height: "calc(100vh - 130px)" }}>
 
           {/* ── DOCUMENT CANVAS ───────────────────────────────────── */}
-          <div style={{ flex: 1, background: "var(--bg-base)", overflowY: "auto", display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "44px 32px 72px" }}>
+          <div style={{ flex: 1, background: "var(--bg-base)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
+            {/* ── Tab bar ──────────────────────────────────────────── */}
+            {presSel && (
+              <div style={{ flexShrink: 0, display: "flex", alignItems: "flex-end", gap: 2, padding: "10px 20px 0", background: "var(--bg-surface)", borderBottom: "1px solid var(--border)" }}>
+                <div onClick={() => setPaginaActiva('main')} style={{ padding: "6px 14px", borderRadius: "6px 6px 0 0", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: -1, transition: "all 0.15s", background: paginaActiva === 'main' ? "var(--bg-base)" : "transparent", border: `1px solid ${paginaActiva === 'main' ? "var(--border)" : "transparent"}`, borderBottom: `1px solid ${paginaActiva === 'main' ? "var(--bg-base)" : "transparent"}`, color: paginaActiva === 'main' ? "var(--text-primary)" : "var(--text-muted)", opacity: paginaActiva === 'main' ? 1 : 0.65 }}>
+                  Pág. 1
+                </div>
+                {extraPages.map((page, i) => (
+                  <div key={page.id} onClick={() => setPaginaActiva(page.id)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 8px 6px 14px", borderRadius: "6px 6px 0 0", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: -1, transition: "all 0.15s", background: paginaActiva === page.id ? "var(--bg-base)" : "transparent", border: `1px solid ${paginaActiva === page.id ? "var(--border)" : "transparent"}`, borderBottom: `1px solid ${paginaActiva === page.id ? "var(--bg-base)" : "transparent"}`, color: paginaActiva === page.id ? "var(--text-primary)" : "var(--text-muted)", opacity: paginaActiva === page.id ? 1 : 0.65 }}>
+                    <span>{page.tipo === 'plano' ? '📐 Plano' : `Pág. ${i + 2}`}</span>
+                    <button onClick={e => { e.stopPropagation(); eliminarHoja(page.id); }} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted)", padding: 0, lineHeight: 1, opacity: 0.6 }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── Paper scroll area ────────────────────────────────── */}
+            <div style={{ flex: 1, overflowY: "auto", display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "32px 32px 72px" }}>
             {!presSel ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 300, color: "var(--text-muted)", gap: 12, opacity: 0.6 }}>
                 <span style={{ fontSize: 32 }}>📋</span>
@@ -540,22 +566,14 @@ function VistaPrevia({
               const adsVisibles = (presSel.adicionales || []).filter(x => !itemsOcultos.includes(`ad-${x.id}`));
               const totalUnidades = (presSel.items || []).reduce((s, i) => s + i.cantidad, 0);
 
-              return (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, width: "100%" }}>
-                <div style={{ width: paperW, background: P.bg, color: P.text, borderRadius: 16, boxShadow: "0 4px 40px rgba(0,0,0,0.14), 0 1px 8px rgba(0,0,0,0.07)", padding: "52px 56px", fontFamily: "'Bricolage Grotesque', sans-serif" }}>
-
-                  {/* Header */}
+              const paperStyle = { width: paperW, background: P.bg, color: P.text, borderRadius: 16, boxShadow: "0 4px 40px rgba(0,0,0,0.14), 0 1px 8px rgba(0,0,0,0.07)", padding: "52px 56px", fontFamily: "'Bricolage Grotesque', sans-serif" };
+              const cabecera = (
+                <>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, gap: 12 }}>
                     <div>
-                      {perfil?.logo && (
-                        <img src={perfil.logo} alt="logo" style={{ height: 40, marginBottom: 6, display: "block" }} />
-                      )}
-                      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 900, color: P.accent, lineHeight: 1 }}>
-                        {perfil?.nombre || "CarpiCálc"}
-                      </div>
-                      {perfil?.slogan && (
-                        <div style={{ fontSize: 9, color: P.muted, letterSpacing: "0.18em", textTransform: "uppercase", marginTop: 3 }}>{perfil.slogan}</div>
-                      )}
+                      {perfil?.logo && <img src={perfil.logo} alt="logo" style={{ height: 40, marginBottom: 6, display: "block" }} />}
+                      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 900, color: P.accent, lineHeight: 1 }}>{perfil?.nombre || "CarpiCálc"}</div>
+                      {perfil?.slogan && <div style={{ fontSize: 9, color: P.muted, letterSpacing: "0.18em", textTransform: "uppercase", marginTop: 3 }}>{perfil.slogan}</div>}
                       <div style={{ marginTop: 10, fontSize: 10, color: P.muted, lineHeight: 1.8 }}>
                         {perfil?.email && <div>✉ {perfil.email}</div>}
                         {perfil?.tel && <div>✆ {perfil.tel}</div>}
@@ -564,26 +582,12 @@ function VistaPrevia({
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
                       <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: P.muted }}>PRESUPUESTO</div>
-                      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 900, color: P.text, marginTop: 2, letterSpacing: "-0.01em" }}>
-                        {presSel.nombre}
-                      </div>
-                      {presSel.creadoEn && (
-                        <div style={{ marginTop: 8, fontSize: 10, color: P.muted }}>Fecha: {fmtFecha(presSel.creadoEn)}</div>
-                      )}
+                      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 900, color: P.text, marginTop: 2, letterSpacing: "-0.01em" }}>{presSel.nombre}</div>
+                      {presSel.creadoEn && <div style={{ marginTop: 8, fontSize: 10, color: P.muted }}>Fecha: {fmtFecha(presSel.creadoEn)}</div>}
                     </div>
                   </div>
-
-                  {/* Separator */}
                   <div style={{ height: 1.5, background: `linear-gradient(90deg, transparent, ${P.sep}, transparent)`, margin: "0 0 14px" }} />
-
-                  {/* Texto apertura */}
-                  {textoApertura && (
-                    <div style={{ fontSize: 11, color: P.muted, fontStyle: "italic", marginBottom: 20, lineHeight: 1.8, paddingBottom: 16, borderBottom: `1px solid ${P.border}` }}>
-                      {textoApertura}
-                    </div>
-                  )}
-
-                  {/* Client + Project */}
+                  {textoApertura && <div style={{ fontSize: 11, color: P.muted, fontStyle: "italic", marginBottom: 20, lineHeight: 1.8, paddingBottom: 16, borderBottom: `1px solid ${P.border}` }}>{textoApertura}</div>}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 24 }}>
                     <div style={{ border: `1px solid ${P.border}`, borderRadius: 5, padding: "9px 11px" }}>
                       <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: P.accent, marginBottom: 5 }}>Cliente</div>
@@ -596,6 +600,31 @@ function VistaPrevia({
                       <div style={{ fontSize: 12, fontWeight: 700 }}>{presSel.nota || "—"}</div>
                     </div>
                   </div>
+                </>
+              );
+
+              // ── Páginas extra ────────────────────────────────────
+              if (paginaActiva !== 'main') {
+                const activePage = extraPages.find(p => p.id === paginaActiva);
+                if (!activePage) return null;
+                if (activePage.tipo === 'plano') {
+                  const planoData = leerPlano();
+                  return (
+                    <div style={paperStyle}>
+                      {cabecera}
+                      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: P.accent, marginBottom: 12, paddingBottom: 6, borderBottom: `1.5px solid ${P.accent}` }}>
+                        Plano 2D
+                      </div>
+                      <SVGPlano bloques={planoData?.bloques || []} altoCielorraso={planoData?.altoCielorraso || 2400} onSelect={() => {}} modulos={modulos} temaClaro={true} />
+                    </div>
+                  );
+                }
+                return <div style={paperStyle}>{cabecera}</div>;
+              }
+
+              return (
+                <div style={paperStyle}>
+                  {cabecera}
 
                   {/* Items section header */}
                   <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: P.accent, marginBottom: 6, paddingBottom: 6, borderBottom: `1.5px solid ${P.accent}` }}>
@@ -700,33 +729,9 @@ function VistaPrevia({
                   </div>
 
                 </div>
-
-                {extraPages.map((page) => {
-                  if (page.tipo === 'plano') {
-                    const planoData = leerPlano();
-                    return (
-                      <div key={page.id} style={{ width: paperW, background: P.bg, color: P.text, borderRadius: 16, boxShadow: "0 4px 40px rgba(0,0,0,0.14), 0 1px 8px rgba(0,0,0,0.07)", padding: "32px 40px", fontFamily: "'Bricolage Grotesque', sans-serif" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, paddingBottom: 12, borderBottom: `1px solid ${P.border}` }}>
-                          <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: P.accent }}>Plano 2D — {presSel.nombre}</div>
-                          <button onClick={() => eliminarHoja(page.id)} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: P.muted, opacity: 0.5, padding: "2px 6px", borderRadius: 4 }}>✕</button>
-                        </div>
-                        <SVGPlano bloques={planoData?.bloques || []} altoCielorraso={planoData?.altoCielorraso || 2400} onSelect={() => {}} modulos={modulos} />
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={page.id} style={{ width: paperW, background: P.bg, color: P.text, borderRadius: 16, boxShadow: "0 4px 40px rgba(0,0,0,0.14), 0 1px 8px rgba(0,0,0,0.07)", padding: "52px 56px", fontFamily: "'Bricolage Grotesque', sans-serif" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 14, borderBottom: `1px solid ${P.border}` }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: P.accent }}>{presSel.nombre} — continuación</div>
-                        <button onClick={() => eliminarHoja(page.id)} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: P.muted, opacity: 0.5, padding: "2px 6px", borderRadius: 4 }}>✕</button>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                </div>
               );
             })()}
+            </div>
           </div>
 
           {/* ── RIGHT SIDEBAR ─────────────────────────────────────── */}

@@ -46,6 +46,7 @@ export function PlanoDos({ modulos }) {
   const [bloques, setBloques]         = useState(() => saved?.bloques || []);
   const [altoCielorraso, setAlto]     = useState(() => saved?.altoCielorraso || 2400);
   const [selectedIdx, setSelectedIdx] = useState(null);
+  const [temaClaro, setTemaClaro]     = useState(false);
   const svgRef = useRef(null);
 
   const persistir = (nuevosBloques, nuevoAlto) => {
@@ -146,6 +147,12 @@ export function PlanoDos({ modulos }) {
           </div>
         )}
 
+        <button
+          onClick={() => setTemaClaro(t => !t)}
+          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.15s", background: temaClaro ? "rgba(253,250,245,0.12)" : "var(--bg-surface)", border: `1px solid ${temaClaro ? "rgba(253,250,245,0.30)" : "var(--border)"}`, color: temaClaro ? "#e8e0d0" : "var(--text-secondary)" }}>
+          {temaClaro ? "☀ Claro" : "🌙 Oscuro"}
+        </button>
+
         {bloques.length > 0 && (
           <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginLeft: "auto" }}>
             {bloques.length} módulo{bloques.length !== 1 ? "s" : ""} · {totalMM} mm
@@ -156,7 +163,7 @@ export function PlanoDos({ modulos }) {
       {/* ── Vista SVG ────────────────────────────────────────────────── */}
       <Card
         className="rsp-card"
-        style={{ padding: 0, overflow: "hidden", background: "#0d1117", border: "1px solid rgba(255,255,255,0.06)" }}>
+        style={{ padding: 0, overflow: "hidden", background: temaClaro ? "#FAFAF7" : "#0d1117", border: "1px solid rgba(255,255,255,0.06)", transition: "background 0.2s" }}>
         <SVGPlano
           bloques={bloques}
           altoCielorraso={altoCielorraso}
@@ -164,6 +171,7 @@ export function PlanoDos({ modulos }) {
           onSelect={setSelectedIdx}
           selectedIdx={selectedIdx}
           modulos={modulos}
+          temaClaro={temaClaro}
         />
       </Card>
 
