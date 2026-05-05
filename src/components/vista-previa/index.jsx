@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ToggleSwitch } from '../ui/index.jsx';
 import VistaModuloSVG from '../vista-svg/index.js';
 import { useTema } from '../../hooks/useTema.js';
@@ -8,7 +8,8 @@ import { fmtPeso, fmtNum, fmtFecha,
          generarTextoWhatsApp } from '../../utils.js';
 import { ESTADOS_TRABAJO, TIPO_MAT } from '../../constants.js';
 import { imprimirPresupuesto } from '../presupuesto/index.jsx';
-import { guardarPlano } from '../../storage.js';
+import { guardarPlano, leerPlano } from '../../storage.js';
+import SVGPlano from '../plano/SVGPlano.jsx';
 
 // ── Paper document colors (always light — mimics printed sheet) ─────────
 const P = {
@@ -185,6 +186,9 @@ function VistaPrevia({
   const [mostrarPrecioUnitario, setMostrarPrecioUnitario] = useState(true);
   const [itemsOcultos, setItemsOcultos]         = useState([]);
   const [zoom, setZoom]                         = useState(100);
+  const [extraPages, setExtraPages]             = useState([]);
+  const agregarHoja  = (tipo) => setExtraPages(p => [...p, { id: crypto.randomUUID(), tipo }]);
+  const eliminarHoja = (id)   => setExtraPages(p => p.filter(h => h.id !== id));
   const [temaPDF, setTemaPDF]                   = useState(() => {
     try { return localStorage.getItem("carpicalc:temaPDF") || "dorado"; } catch { return "dorado"; }
   });
@@ -411,6 +415,15 @@ function VistaPrevia({
           <button onClick={() => setZoom(100)} style={{ ...btnBase, padding: "4px 8px", fontSize: 10 }}>⊡</button>
         </div>
 
+        {/* + Hoja / + Plano */}
+        {presSel && (
+          <>
+            <div style={{ width: 1, height: 18, background: "var(--border)", flexShrink: 0 }} />
+            <button onClick={() => agregarHoja('continua')} style={{ ...btnBase, padding: "5px 10px", fontSize: 10 }}>+ Hoja</button>
+            <button onClick={() => agregarHoja('plano')} style={{ ...btnBase, padding: "5px 10px", fontSize: 10 }}>📐 Plano</button>
+          </>
+        )}
+
         {/* Clear */}
         {presSelId && (
           <button onClick={limpiarVista} style={{ ...btnBase, border: "1px solid rgba(200,60,60,0.25)", color: "#e07070", padding: "6px 10px" }}>
@@ -528,6 +541,7 @@ function VistaPrevia({
               const totalUnidades = (presSel.items || []).reduce((s, i) => s + i.cantidad, 0);
 
               return (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, width: "100%" }}>
                 <div style={{ width: paperW, background: P.bg, color: P.text, borderRadius: 16, boxShadow: "0 4px 40px rgba(0,0,0,0.14), 0 1px 8px rgba(0,0,0,0.07)", padding: "52px 56px", fontFamily: "'Bricolage Grotesque', sans-serif" }}>
 
                   {/* Header */}
@@ -571,17 +585,16 @@ function VistaPrevia({
                   )}
 
                   {/* Client + Project */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 28 }}>
-                    <div style={{ border: `1px solid ${P.border}`, borderRadius: 5, padding: "12px 14px" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: P.accent, marginBottom: 7 }}>Cliente</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{presSel.cliente?.nombre || "—"}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 24 }}>
+                    <div style={{ border: `1px solid ${P.border}`, borderRadius: 5, padding: "9px 11px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: P.accent, marginBottom: 5 }}>Cliente</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>{presSel.cliente?.nombre || "—"}</div>
                       {presSel.cliente?.tel && <div style={{ fontSize: 10, color: P.muted }}>Tel: {presSel.cliente.tel}</div>}
                       {presSel.cliente?.dir && <div style={{ fontSize: 10, color: P.muted }}>Dir: {presSel.cliente.dir}</div>}
                     </div>
-                    <div style={{ border: `1px solid ${P.border}`, borderRadius: 5, padding: "12px 14px" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: P.accent, marginBottom: 7 }}>Proyecto</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{presSel.nombre}</div>
-                      {presSel.nota && <div style={{ fontSize: 10, color: P.muted }}>{presSel.nota}</div>}
+                    <div style={{ border: `1px solid ${P.border}`, borderRadius: 5, padding: "9px 11px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: P.accent, marginBottom: 5 }}>Proyecto</div>
+                      <div style={{ fontSize: 12, fontWeight: 700 }}>{presSel.nota || "—"}</div>
                     </div>
                   </div>
 
@@ -686,6 +699,31 @@ function VistaPrevia({
                   <div style={{ marginTop: 40, paddingTop: 14, borderTop: `1px solid ${P.sep}60`, textAlign: "center", fontSize: 9, color: P.muted, fontStyle: "italic", letterSpacing: "0.04em" }}>
                     Gracias por confiar en {perfil?.nombre || "CarpiCálc"}.
                   </div>
+
+                </div>
+
+                {extraPages.map((page) => {
+                  if (page.tipo === 'plano') {
+                    const planoData = leerPlano();
+                    return (
+                      <div key={page.id} style={{ width: paperW, background: P.bg, color: P.text, borderRadius: 16, boxShadow: "0 4px 40px rgba(0,0,0,0.14), 0 1px 8px rgba(0,0,0,0.07)", padding: "32px 40px", fontFamily: "'Bricolage Grotesque', sans-serif" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, paddingBottom: 12, borderBottom: `1px solid ${P.border}` }}>
+                          <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: P.accent }}>Plano 2D — {presSel.nombre}</div>
+                          <button onClick={() => eliminarHoja(page.id)} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: P.muted, opacity: 0.5, padding: "2px 6px", borderRadius: 4 }}>✕</button>
+                        </div>
+                        <SVGPlano bloques={planoData?.bloques || []} altoCielorraso={planoData?.altoCielorraso || 2400} onSelect={() => {}} modulos={modulos} />
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={page.id} style={{ width: paperW, background: P.bg, color: P.text, borderRadius: 16, boxShadow: "0 4px 40px rgba(0,0,0,0.14), 0 1px 8px rgba(0,0,0,0.07)", padding: "52px 56px", fontFamily: "'Bricolage Grotesque', sans-serif" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 14, borderBottom: `1px solid ${P.border}` }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: P.accent }}>{presSel.nombre} — continuación</div>
+                        <button onClick={() => eliminarHoja(page.id)} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: P.muted, opacity: 0.5, padding: "2px 6px", borderRadius: 4 }}>✕</button>
+                      </div>
+                    </div>
+                  );
+                })}
 
                 </div>
               );
