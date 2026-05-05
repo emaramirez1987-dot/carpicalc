@@ -2108,6 +2108,7 @@ function Presupuesto({
                       theme="dark"
                       width={48}
                       height={48}
+                      plano={true}
                     />
                   </div>
 
