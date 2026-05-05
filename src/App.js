@@ -258,6 +258,7 @@ function AppInterna() {
     const over  = dimOverride[keyId] || {};
     return {
       ...base,
+      material: over.material ?? base.material,
       dimensiones: {
         ancho:       over.ancho       ?? base.dimensiones.ancho,
         profundidad: over.profundidad ?? base.dimensiones.profundidad,
