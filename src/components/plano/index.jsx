@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import { Card, SectionTitle } from "../ui/index.jsx";
 import { leerPlano, guardarPlano } from "../../storage.js";
 import SVGPlano from "./SVGPlano.jsx";
@@ -10,7 +10,6 @@ const TIPO_META = {
   torre: { label: "Torre", color: "#7ecf8a" },
 };
 
-// ── Estilos reutilizables ─────────────────────────────────────────────────
 function btnStyle({ primary = false, disabled = false } = {}) {
   return {
     display: "inline-flex", alignItems: "center", gap: 6,
@@ -40,105 +39,125 @@ function arrowBtn(disabled) {
   };
 }
 
-// ── Componente principal ──────────────────────────────────────────────────
+// Deriva secuencias de IDs a partir del tipoVisual de cada bloque
+function derivarSecuencias(bloques) {
+  return {
+    idsBajos: bloques.filter(b => b.tipoVisual === "bajo" || b.tipoVisual === "torre").map(b => b.id),
+    idsAltos: bloques.filter(b => b.tipoVisual === "aereo").map(b => b.id),
+  };
+}
+
 export function PlanoDos({ modulos }) {
   const saved = leerPlano();
-  const [bloques, setBloques]         = useState(() => saved?.bloques || []);
+  const bloquesInit = saved?.bloques || [];
+  const { idsBajos: defB, idsAltos: defA } = derivarSecuencias(bloquesInit);
+
+  const [bloques, setBloques]         = useState(bloquesInit);
+  const [idsBajos, setIdsBajos]       = useState(() => saved?.idsBajos ?? defB);
+  const [idsAltos, setIdsAltos]       = useState(() => saved?.idsAltos ?? defA);
   const [altoCielorraso, setAlto]     = useState(() => saved?.altoCielorraso || 2400);
   const [offsetBajos, setOffsetBajos] = useState(() => saved?.offsetBajos ?? 0);
   const [offsetAltos, setOffsetAltos] = useState(() => saved?.offsetAltos ?? 0);
   const [colgadoAereos, setColgado]   = useState(() => saved?.colgadoAereos ?? 200);
-  const [selectedIdx, setSelectedIdx] = useState(null);
+  const [selectedId, setSelectedId]   = useState(null);
   const [temaClaro, setTemaClaro]     = useState(false);
   const svgRef = useRef(null);
 
-  const persistir = (nuevosBloques, nuevoAlto, offB = offsetBajos, offA = offsetAltos, colgado = colgadoAereos) => {
-    guardarPlano({ bloques: nuevosBloques, altoCielorraso: nuevoAlto, offsetBajos: offB, offsetAltos: offA, colgadoAereos: colgado });
+  // Persist always using latest state values; pass overrides explicitly
+  const guardarTodo = ({ nb = bloques, niB = idsBajos, niA = idsAltos, alto = altoCielorraso, offB = offsetBajos, offA = offsetAltos, colgado = colgadoAereos } = {}) => {
+    guardarPlano({ bloques: nb, idsBajos: niB, idsAltos: niA, altoCielorraso: alto, offsetBajos: offB, offsetAltos: offA, colgadoAereos: colgado });
   };
 
-  const prevMismoTipo = (idx) => {
-    const tipo = bloques[idx]?.tipoVisual;
-    for (let i = idx - 1; i >= 0; i--) {
-      if (bloques[i]?.tipoVisual === tipo) return i;
-    }
-    return -1;
+  // Resolved arrays for SVG rendering
+  const bloquePorId = useMemo(() => {
+    const m = {};
+    bloques.forEach(b => { m[b.id] = b; });
+    return m;
+  }, [bloques]);
+
+  const resolvedBajos = useMemo(
+    () => idsBajos.map(id => bloquePorId[id]).filter(Boolean),
+    [idsBajos, bloquePorId]
+  );
+  const resolvedAltos = useMemo(
+    () => idsAltos.map(id => bloquePorId[id]).filter(Boolean),
+    [idsAltos, bloquePorId]
+  );
+
+  // ── Movimiento dentro de cada zona ──────────────────────────────────────
+  const moverBajo = (idx, dir) => {
+    const target = idx + dir;
+    if (target < 0 || target >= idsBajos.length) return;
+    const newIds = [...idsBajos];
+    [newIds[idx], newIds[target]] = [newIds[target], newIds[idx]];
+    setIdsBajos(newIds);
+    guardarTodo({ niB: newIds });
   };
 
-  const nextMismoTipo = (idx) => {
-    const tipo = bloques[idx]?.tipoVisual;
-    for (let i = idx + 1; i < bloques.length; i++) {
-      if (bloques[i]?.tipoVisual === tipo) return i;
-    }
-    return -1;
+  const moverAlto = (idx, dir) => {
+    const target = idx + dir;
+    if (target < 0 || target >= idsAltos.length) return;
+    const newIds = [...idsAltos];
+    [newIds[idx], newIds[target]] = [newIds[target], newIds[idx]];
+    setIdsAltos(newIds);
+    guardarTodo({ niA: newIds });
   };
 
-  const moverIzquierda = (idx) => {
-    const prevIdx = prevMismoTipo(idx);
-    if (prevIdx === -1) return;
-    setBloques((prev) => {
-      const a = [...prev];
-      [a[prevIdx], a[idx]] = [a[idx], a[prevIdx]];
-      persistir(a, altoCielorraso);
-      return a;
-    });
-    setSelectedIdx(prevIdx);
+  // ── Eliminar bloque ──────────────────────────────────────────────────────
+  const eliminarBloque = (id) => {
+    const nb  = bloques.filter(b => b.id !== id);
+    const niB = idsBajos.filter(i => i !== id);
+    const niA = idsAltos.filter(i => i !== id);
+    setBloques(nb);
+    setIdsBajos(niB);
+    setIdsAltos(niA);
+    if (selectedId === id) setSelectedId(null);
+    guardarTodo({ nb, niB, niA });
   };
 
-  const moverDerecha = (idx) => {
-    const nextIdx = nextMismoTipo(idx);
-    if (nextIdx === -1) return;
-    setBloques((prev) => {
-      const a = [...prev];
-      [a[idx], a[nextIdx]] = [a[nextIdx], a[idx]];
-      persistir(a, altoCielorraso);
-      return a;
-    });
-    setSelectedIdx(nextIdx);
+  // ── Cambiar tipo visual ──────────────────────────────────────────────────
+  const cambiarTipo = (id, nuevoTipo) => {
+    const nb  = bloques.map(b => b.id === id ? { ...b, tipoVisual: nuevoTipo || undefined } : b);
+    let niB   = idsBajos.filter(i => i !== id);
+    let niA   = idsAltos.filter(i => i !== id);
+    if (nuevoTipo === "bajo" || nuevoTipo === "torre") niB = [...niB, id];
+    else if (nuevoTipo === "aereo")                    niA = [...niA, id];
+    setBloques(nb);
+    setIdsBajos(niB);
+    setIdsAltos(niA);
+    guardarTodo({ nb, niB, niA });
   };
 
-  const eliminarBloque = (idx) => {
-    setBloques((prev) => {
-      const a = prev.filter((_, i) => i !== idx);
-      persistir(a, altoCielorraso);
-      return a;
-    });
-    setSelectedIdx(null);
-  };
-
-  const cambiarTipo = (idx, tipo) => {
-    setBloques((prev) => {
-      const a = prev.map((b, i) => i === idx ? { ...b, tipoVisual: tipo || undefined } : b);
-      persistir(a, altoCielorraso);
-      return a;
-    });
-  };
-
+  // ── Configuración ────────────────────────────────────────────────────────
   const handleAlto = (v) => {
     const val = Math.max(1800, parseInt(v) || 2400);
     setAlto(val);
-    persistir(bloques, val);
+    guardarTodo({ alto: val });
   };
 
   const handleOffsetBajos = (v) => {
     const val = Math.max(-2000, Math.min(2000, parseInt(v) || 0));
     setOffsetBajos(val);
-    persistir(bloques, altoCielorraso, val, offsetAltos, colgadoAereos);
+    guardarTodo({ offB: val });
   };
 
   const handleOffsetAltos = (v) => {
     const val = Math.max(-2000, Math.min(2000, parseInt(v) || 0));
     setOffsetAltos(val);
-    persistir(bloques, altoCielorraso, offsetBajos, val, colgadoAereos);
+    guardarTodo({ offA: val });
   };
 
   const handleColgado = (v) => {
     const val = Math.max(0, Math.min(1200, parseInt(v) || 200));
     setColgado(val);
-    persistir(bloques, altoCielorraso, offsetBajos, offsetAltos, val);
+    guardarTodo({ colgado: val });
   };
 
-  const sinTipo = bloques.filter((b) => !b.tipoVisual).length;
-  const totalMM = bloques.reduce((s, b) => s + b.ancho, 0);
+  const sinTipo  = bloques.filter(b => !b.tipoVisual).length;
+  const totalMM  = Math.max(
+    resolvedBajos.reduce((s, b) => s + b.ancho, 0),
+    resolvedAltos.reduce((s, b) => s + b.ancho, 0),
+  );
   const nombreExport = "plano-2d";
 
   return (
@@ -146,44 +165,32 @@ export function PlanoDos({ modulos }) {
 
       {/* ── Encabezado ───────────────────────────────────────────────── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-        <SectionTitle sub="Vista frontal · estado visual independiente del presupuesto">
+        <SectionTitle sub="Vista frontal · dos zonas independientes (bajos / altos)">
           Plano 2D
         </SectionTitle>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-          <button
-            onClick={() => exportarSVG(svgRef.current, nombreExport)}
-            disabled={!bloques.length}
-            style={btnStyle({ disabled: !bloques.length })}>
-            ↗ SVG
-          </button>
-          <button
-            onClick={() => exportarPNG(svgRef.current, nombreExport)}
-            disabled={!bloques.length}
-            style={btnStyle({ disabled: !bloques.length })}>
-            ↗ PNG
-          </button>
+          <button onClick={() => exportarSVG(svgRef.current, nombreExport)} disabled={!bloques.length} style={btnStyle({ disabled: !bloques.length })}>↗ SVG</button>
+          <button onClick={() => exportarPNG(svgRef.current, nombreExport)} disabled={!bloques.length} style={btnStyle({ disabled: !bloques.length })}>↗ PNG</button>
         </div>
       </div>
 
       {/* ── Barra de configuración ────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
 
-        {/* Piso-techo */}
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
           PISO–TECHO
           <input type="number" value={altoCielorraso} min={1800} max={4000} step={50}
-            onChange={(e) => handleAlto(e.target.value)}
+            onChange={e => handleAlto(e.target.value)}
             style={{ width: 68, padding: "4px 6px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 12, textAlign: "right" }} />
           <span style={{ fontSize: 10 }}>mm</span>
         </label>
 
         <div style={{ width: 1, height: 18, background: "var(--border)" }} />
 
-        {/* Colgado aereos */}
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
           AEREOS DESDE TECHO
           <input type="number" value={colgadoAereos} min={0} max={1200} step={50}
-            onChange={(e) => handleColgado(e.target.value)}
+            onChange={e => handleColgado(e.target.value)}
             style={{ width: 56, padding: "4px 6px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 12, textAlign: "right" }} />
           <span style={{ fontSize: 10 }}>mm</span>
         </label>
@@ -198,9 +205,7 @@ export function PlanoDos({ modulos }) {
             {offsetBajos > 0 ? `+${offsetBajos}` : offsetBajos} mm
           </span>
           <button onClick={() => handleOffsetBajos(offsetBajos + 50)} style={arrowBtn(false)}>→</button>
-          {offsetBajos !== 0 && (
-            <button onClick={() => handleOffsetBajos(0)} style={{ ...arrowBtn(false), fontSize: 9, padding: "3px 6px", color: "var(--text-muted)" }}>0</button>
-          )}
+          {offsetBajos !== 0 && <button onClick={() => handleOffsetBajos(0)} style={{ ...arrowBtn(false), fontSize: 9, padding: "3px 6px" }}>0</button>}
         </div>
 
         {/* Offset altos */}
@@ -211,15 +216,12 @@ export function PlanoDos({ modulos }) {
             {offsetAltos > 0 ? `+${offsetAltos}` : offsetAltos} mm
           </span>
           <button onClick={() => handleOffsetAltos(offsetAltos + 50)} style={arrowBtn(false)}>→</button>
-          {offsetAltos !== 0 && (
-            <button onClick={() => handleOffsetAltos(0)} style={{ ...arrowBtn(false), fontSize: 9, padding: "3px 6px", color: "var(--text-muted)" }}>0</button>
-          )}
+          {offsetAltos !== 0 && <button onClick={() => handleOffsetAltos(0)} style={{ ...arrowBtn(false), fontSize: 9, padding: "3px 6px" }}>0</button>}
         </div>
 
         <div style={{ width: 1, height: 18, background: "var(--border)" }} />
 
-        <button
-          onClick={() => setTemaClaro(t => !t)}
+        <button onClick={() => setTemaClaro(t => !t)}
           style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.15s", background: temaClaro ? "rgba(253,250,245,0.12)" : "var(--bg-surface)", border: `1px solid ${temaClaro ? "rgba(253,250,245,0.30)" : "var(--border)"}`, color: temaClaro ? "#e8e0d0" : "var(--text-secondary)" }}>
           {temaClaro ? "☀ Claro" : "🌙 Oscuro"}
         </button>
@@ -238,15 +240,14 @@ export function PlanoDos({ modulos }) {
       </div>
 
       {/* ── Vista SVG ────────────────────────────────────────────────── */}
-      <Card
-        className="rsp-card"
-        style={{ padding: 0, overflow: "hidden", background: temaClaro ? "#FAFAF7" : "#0d1117", border: "1px solid rgba(255,255,255,0.06)", transition: "background 0.2s" }}>
+      <Card className="rsp-card" style={{ padding: 0, overflow: "hidden", background: temaClaro ? "#FAFAF7" : "#0d1117", border: "1px solid rgba(255,255,255,0.06)", transition: "background 0.2s" }}>
         <SVGPlano
-          bloques={bloques}
+          bloquesAltos={resolvedAltos}
+          bloquesBajos={resolvedBajos}
           altoCielorraso={altoCielorraso}
           svgRef={svgRef}
-          onSelect={setSelectedIdx}
-          selectedIdx={selectedIdx}
+          onSelect={setSelectedId}
+          selectedId={selectedId}
           modulos={modulos}
           temaClaro={temaClaro}
           offsetBajos={offsetBajos}
@@ -267,108 +268,111 @@ export function PlanoDos({ modulos }) {
         </div>
       )}
 
-      {/* ── Tira de composición ──────────────────────────────────────── */}
+      {/* ── Composición: dos zonas independientes ────────────────────── */}
       {bloques.length > 0 && (
         <Card className="rsp-card">
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 14 }}>
             Composición
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            {bloques.map((b, idx) => {
-              const meta = TIPO_META[b.tipoVisual];
-              const sel  = selectedIdx === idx;
-              return (
-                <div
-                  key={b.id}
-                  onClick={() => setSelectedIdx(idx)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "7px 10px", borderRadius: 7, cursor: "pointer",
-                    background: sel ? "rgba(212,175,55,0.07)" : "var(--bg-subtle)",
-                    border: `1px solid ${sel ? "rgba(212,175,55,0.30)" : "var(--border)"}`,
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {/* Número */}
-                  <span style={{
-                    fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                    minWidth: 18, textAlign: "center",
-                    color: sel ? "var(--accent)" : "var(--text-muted)",
-                  }}>
-                    {idx + 1}
-                  </span>
 
-                  {/* Selector tipo */}
-                  <select
-                    value={b.tipoVisual || ""}
-                    onChange={(e) => { e.stopPropagation(); cambiarTipo(idx, e.target.value); }}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                      padding: "3px 6px", borderRadius: 4, cursor: "pointer",
-                      background: meta ? `${meta.color}18` : "rgba(90,95,120,0.14)",
-                      border: `1px solid ${meta ? meta.color + "55" : "rgba(90,95,120,0.35)"}`,
-                      color: meta ? meta.color : "var(--text-muted)",
-                      outline: "none",
-                    }}
-                  >
-                    <option value="">—</option>
-                    <option value="bajo">Bajo</option>
-                    <option value="aereo">Aéreo</option>
-                    <option value="torre">Torre</option>
-                  </select>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-                  {/* Nombre y dimensiones */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: 12, fontWeight: 600, color: "var(--text-primary)",
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>
-                      {b.nombre}
-                    </div>
-                    <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
-                      {b.ancho} × {b.alto} mm
-                    </div>
-                  </div>
+            {/* Zona alta */}
+            <ZonaComposicion
+              label="▲ Zona alta (aéreos)"
+              bloques={resolvedAltos}
+              ids={idsAltos}
+              allBloques={bloques}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onMover={moverAlto}
+              onEliminar={eliminarBloque}
+              onCambiarTipo={cambiarTipo}
+              labelColor={TIPO_META.aereo.color}
+            />
 
-                  {/* Controles */}
-                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                    {(() => {
-                      const disL = prevMismoTipo(idx) === -1;
-                      const disR = nextMismoTipo(idx) === -1;
-                      return (<>
-                        <button onClick={(e) => { e.stopPropagation(); moverIzquierda(idx); }} disabled={disL} style={arrowBtn(disL)}>←</button>
-                        <button onClick={(e) => { e.stopPropagation(); moverDerecha(idx); }}  disabled={disR} style={arrowBtn(disR)}>→</button>
-                      </>);
-                    })()}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); eliminarBloque(idx); }}
-                      style={{ ...arrowBtn(false), color: "#c05050", borderColor: "rgba(200,60,60,0.28)" }}>
-                      ×
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {/* Zona baja */}
+            <ZonaComposicion
+              label="▼ Zona baja (bajos + torres)"
+              bloques={resolvedBajos}
+              ids={idsBajos}
+              allBloques={bloques}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onMover={moverBajo}
+              onEliminar={eliminarBloque}
+              onCambiarTipo={cambiarTipo}
+              labelColor={TIPO_META.bajo.color}
+            />
+
           </div>
         </Card>
       )}
 
       {/* ── Estado vacío ─────────────────────────────────────────────── */}
       {bloques.length === 0 && (
-        <div style={{
-          textAlign: "center", padding: "56px 0",
-          border: "1px dashed var(--border)", borderRadius: 12,
-          color: "var(--text-muted)",
-        }}>
+        <div style={{ textAlign: "center", padding: "56px 0", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text-muted)" }}>
           <div style={{ fontSize: 34, marginBottom: 14 }}>📐</div>
           <p style={{ fontSize: 14, marginBottom: 8 }}>Sin módulos en el plano</p>
-          <p style={{ fontSize: 12 }}>
-            Seleccioná un presupuesto en la pestaña Vista Previa para cargar los módulos.
-          </p>
+          <p style={{ fontSize: 12 }}>Seleccioná un presupuesto en la pestaña Vista Previa para cargar los módulos.</p>
         </div>
       )}
 
+    </div>
+  );
+}
+
+// ── Sub-componente de zona ────────────────────────────────────────────────
+function ZonaComposicion({ label, bloques, selectedId, onSelect, onMover, onEliminar, onCambiarTipo, labelColor }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: labelColor, marginBottom: 7, letterSpacing: "0.08em" }}>
+        {label}
+      </div>
+
+      {bloques.length === 0 ? (
+        <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", padding: "6px 10px" }}>
+          Sin módulos en esta zona
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {bloques.map((b, idx) => {
+            const meta = TIPO_META[b.tipoVisual];
+            const sel  = selectedId === b.id;
+            return (
+              <div key={b.id} onClick={() => onSelect(b.id)}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 7, cursor: "pointer", background: sel ? "rgba(212,175,55,0.07)" : "var(--bg-subtle)", border: `1px solid ${sel ? "rgba(212,175,55,0.30)" : "var(--border)"}`, transition: "all 0.15s" }}>
+
+                <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, minWidth: 18, textAlign: "center", color: sel ? "var(--accent)" : "var(--text-muted)" }}>
+                  {idx + 1}
+                </span>
+
+                {/* Selector tipo */}
+                <select value={b.tipoVisual || ""} onChange={e => { e.stopPropagation(); onCambiarTipo(b.id, e.target.value); }} onClick={e => e.stopPropagation()}
+                  style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: "3px 6px", borderRadius: 4, cursor: "pointer", background: meta ? `${meta.color}18` : "rgba(90,95,120,0.14)", border: `1px solid ${meta ? meta.color + "55" : "rgba(90,95,120,0.35)"}`, color: meta ? meta.color : "var(--text-muted)", outline: "none" }}>
+                  <option value="">—</option>
+                  <option value="bajo">Bajo</option>
+                  <option value="aereo">Aéreo</option>
+                  <option value="torre">Torre</option>
+                </select>
+
+                {/* Nombre y dimensiones */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.nombre}</div>
+                  <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>{b.ancho} × {b.alto} mm</div>
+                </div>
+
+                {/* Controles de orden + eliminar */}
+                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  <button onClick={e => { e.stopPropagation(); onMover(idx, -1); }} disabled={idx === 0} style={arrowBtn(idx === 0)}>←</button>
+                  <button onClick={e => { e.stopPropagation(); onMover(idx, +1); }} disabled={idx === bloques.length - 1} style={arrowBtn(idx === bloques.length - 1)}>→</button>
+                  <button onClick={e => { e.stopPropagation(); onEliminar(b.id); }} style={{ ...arrowBtn(false), color: "#c05050", borderColor: "rgba(200,60,60,0.28)" }}>×</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
