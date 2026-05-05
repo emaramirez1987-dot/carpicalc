@@ -41,7 +41,7 @@ function arrowBtn(disabled) {
 }
 
 // ── Componente principal ──────────────────────────────────────────────────
-export function PlanoDos({ items, modulos }) {
+export function PlanoDos({ modulos }) {
   const saved = leerPlano();
   const [bloques, setBloques]         = useState(() => saved?.bloques || []);
   const [altoCielorraso, setAlto]     = useState(() => saved?.altoCielorraso || 2400);
@@ -50,26 +50,6 @@ export function PlanoDos({ items, modulos }) {
 
   const persistir = (nuevosBloques, nuevoAlto) => {
     guardarPlano({ bloques: nuevosBloques, altoCielorraso: nuevoAlto });
-  };
-
-  const handleImportar = () => {
-    if (!items.length) return;
-    const nuevos = items.flatMap((item) => {
-      const mod = modulos[item.codigo];
-      if (!mod) return [];
-      return Array.from({ length: item.cantidad }, () => ({
-        id:          crypto.randomUUID(),
-        codigo:      item.codigo,
-        nombre:      mod.nombre,
-        tipoVisual:  mod.tipoVisual || null,
-        ancho:       mod.dimensiones.ancho,
-        alto:        mod.dimensiones.alto,
-        profundidad: mod.dimensiones.profundidad,
-      }));
-    });
-    setBloques(nuevos);
-    setSelectedIdx(null);
-    persistir(nuevos, altoCielorraso);
   };
 
   const moverIzquierda = (idx) => {
@@ -122,12 +102,6 @@ export function PlanoDos({ items, modulos }) {
           Plano 2D
         </SectionTitle>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-          <button
-            onClick={handleImportar}
-            disabled={!items.length}
-            style={btnStyle({ primary: true, disabled: !items.length })}>
-            ↓ Importar presupuesto
-          </button>
           <button
             onClick={() => exportarSVG(svgRef.current, nombreExport)}
             disabled={!bloques.length}
@@ -297,9 +271,7 @@ export function PlanoDos({ items, modulos }) {
           <div style={{ fontSize: 34, marginBottom: 14 }}>📐</div>
           <p style={{ fontSize: 14, marginBottom: 8 }}>Sin módulos en el plano</p>
           <p style={{ fontSize: 12 }}>
-            {items.length > 0
-              ? <>Usá <strong style={{ color: "var(--accent)" }}>↓ Importar presupuesto</strong> para comenzar.</>
-              : "Cargá módulos en la pestaña Presupuesto primero."}
+            Seleccioná un presupuesto en la pestaña Vista Previa para cargar los módulos.
           </p>
         </div>
       )}

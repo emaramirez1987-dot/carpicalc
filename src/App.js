@@ -288,6 +288,7 @@ function AppInterna() {
     setPresupuestoActivoId(id);   // el nuevo presupuesto ya tiene ID permanente
     withSave(() => guardarPresupuestos(nuevo));
     localStorage.removeItem("carpicalc:borrador");
+    guardarPlano({ bloques: [], altoCielorraso: 2400 });
   };
 
   const handleCargarPresupuesto = (p, id) => {
@@ -504,7 +505,7 @@ function AppInterna() {
             )}
 
             {nav.vista === "plano" && (
-              <PlanoDos items={items} modulos={modulos} />
+              <PlanoDos modulos={modulos} />
             )}
 
             {nav.vista === "trabajos" && (
