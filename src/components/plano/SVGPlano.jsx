@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { calcularLayout } from "./planoUtils.js";
 import Cotas from "./Cotas.jsx";
+import { generarVistaSVG } from "../../utils.js";
 
 const TIPO_COLORS = {
   bajo:  { fill: "rgba(100,132,200,0.18)",  stroke: "rgba(112,148,210,0.60)" },
@@ -13,7 +14,7 @@ const SVG_W = 820;
 const SVG_H = 360;
 const PAD   = { top: 36, right: 24, bottom: 68, left: 34 };
 
-export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSelect, selectedIdx }) {
+export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSelect, selectedIdx, modulos }) {
   const plotW = SVG_W - PAD.left - PAD.right;
   const plotH = SVG_H - PAD.top  - PAD.bottom;
 
@@ -21,6 +22,22 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
 
   const absFloor   = PAD.top + plotH;
   const absCeiling = PAD.top;
+
+  // Pre-computar data URLs de vistaConfig por bloque (solo si el módulo la tiene configurada)
+  const vistaDataUrls = useMemo(() => {
+    if (!modulos) return {};
+    const result = {};
+    bloques.forEach((b) => {
+      const mod = modulos[b.codigo];
+      if (!mod?.vistaConfig) return;
+      try {
+        const h   = Math.max(40, Math.round(200 * b.alto / Math.max(1, b.ancho)));
+        const str = generarVistaSVG(mod, { width: 200, height: h, theme: "dark" });
+        result[b.id] = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(str)}`;
+      } catch {}
+    });
+    return result;
+  }, [bloques, modulos]);
 
   return (
     <svg
@@ -70,6 +87,8 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
         const label  = b.nombre.length > maxCh ? b.nombre.slice(0, maxCh - 1) + "…" : b.nombre;
         const fSize  = Math.min(8.5, Math.max(5, pos.widthPx / 10));
 
+        const dataUrl = vistaDataUrls[b.id];
+
         return (
           <g key={b.id} onClick={() => onSelect?.(idx)} style={{ cursor: "pointer" }}>
             {/* Glow de selección */}
@@ -84,11 +103,50 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
               />
             )}
 
-            {/* Rectángulo del módulo */}
+            {dataUrl ? (
+              /* Vista técnica configurada en catálogo */
+              <image
+                href={dataUrl}
+                x={rectX} y={rectY}
+                width={pos.widthPx} height={pos.heightPx}
+                preserveAspectRatio="none"
+              />
+            ) : (
+              /* Fallback: rectángulo coloreado por tipo */
+              <>
+                <rect
+                  x={rectX} y={rectY}
+                  width={pos.widthPx} height={pos.heightPx}
+                  fill={colors.fill}
+                  rx="2"
+                />
+                {pos.widthPx > 28 && pos.heightPx > 20 && (
+                  <text
+                    x={midX} y={midY}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fill={sel ? "#D4AF37" : (b.tipoVisual ? "#788090" : "#4a5060")}
+                    fontSize={fSize}
+                    fontFamily="'DM Mono',monospace">
+                    {label}
+                  </text>
+                )}
+                {!b.tipoVisual && pos.widthPx > 24 && pos.heightPx > 18 && (
+                  <text
+                    x={midX} y={rectY + pos.heightPx - 5}
+                    textAnchor="middle"
+                    fill="#c05050" fontSize="6"
+                    fontFamily="'DM Mono',monospace" opacity="0.7">
+                    sin tipo
+                  </text>
+                )}
+              </>
+            )}
+
+            {/* Borde siempre visible (encima de la imagen o del fallback) */}
             <rect
               x={rectX} y={rectY}
               width={pos.widthPx} height={pos.heightPx}
-              fill={colors.fill}
+              fill="none"
               stroke={sel ? "#D4AF37" : colors.stroke}
               strokeWidth={sel ? 1.5 : 0.8}
               rx="2"
@@ -96,34 +154,11 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
 
             {/* Número de orden */}
             <text
-              x={rectX + 5} y={rectY + 11}
-              fill={sel ? "#D4AF37" : "#2a3550"}
+              x={rectX + 4} y={rectY + 10}
+              fill={sel ? "#D4AF37" : "rgba(212,175,55,0.35)"}
               fontSize="7" fontFamily="'DM Mono',monospace" fontWeight="700">
               {idx + 1}
             </text>
-
-            {/* Nombre */}
-            {pos.widthPx > 28 && pos.heightPx > 20 && (
-              <text
-                x={midX} y={midY}
-                textAnchor="middle" dominantBaseline="middle"
-                fill={sel ? "#D4AF37" : (b.tipoVisual ? "#788090" : "#4a5060")}
-                fontSize={fSize}
-                fontFamily="'DM Mono',monospace">
-                {label}
-              </text>
-            )}
-
-            {/* Indicador sin tipo */}
-            {!b.tipoVisual && pos.widthPx > 24 && pos.heightPx > 18 && (
-              <text
-                x={midX} y={rectY + pos.heightPx - 5}
-                textAnchor="middle"
-                fill="#c05050" fontSize="6"
-                fontFamily="'DM Mono',monospace" opacity="0.7">
-                sin tipo
-              </text>
-            )}
           </g>
         );
       })}

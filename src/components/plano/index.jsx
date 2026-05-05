@@ -189,6 +189,7 @@ export function PlanoDos({ items, modulos }) {
           svgRef={svgRef}
           onSelect={setSelectedIdx}
           selectedIdx={selectedIdx}
+          modulos={modulos}
         />
       </Card>
 
