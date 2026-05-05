@@ -30,6 +30,7 @@ import {
   cambiarEstado,
   actualizarPresupuesto,
   migrarTempEnPresupuestos,
+  migrarDimOverridePresupuestos,
 } from "./services/presupuestoService.js";
 
 // ─── Header ──────────────────────────────────────────────────────────────────
@@ -161,9 +162,11 @@ function AppInterna() {
       cargarSuscripcion().then(setSuscripcion);
     }
     cargarDatos().then(({ modulos, costos, presupuestos, perfil }) => {
+      const { presupuestos: migrados, cambiaron } = migrarDimOverridePresupuestos(presupuestos || {});
       setModulos(modulos);
       setCostos(costos);
-      setPresupuestos(presupuestos || {});
+      setPresupuestos(migrados);
+      if (cambiaron) guardarPresupuestos(migrados);
       if (perfil) setPerfil(perfil);
       // Primera vez: perfil vacío y nunca completó onboarding → ir a Mi Taller
       const onboardingDone = localStorage.getItem("carpicalc:onboarding_done");

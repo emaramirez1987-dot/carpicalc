@@ -88,6 +88,52 @@ export function actualizarPresupuesto({ presupuestos, id, cambios }) {
 }
 
 /**
+ * Migración global Format B → Format A para dimOverride en todos los presupuestos.
+ * Format B (legado): clave `${codigo}-${id||0}`
+ * Format A (actual): clave `id || codigo`
+ * También asigna UUID a items legacy sin id.
+ * Devuelve { presupuestos, cambiaron } para evitar saves innecesarios.
+ */
+export function migrarDimOverridePresupuestos(presupuestos) {
+  let cambiaron = false;
+  const resultado = {};
+  for (const [pid, p] of Object.entries(presupuestos)) {
+    const itemsOriginales = p.items || [];
+    let itemsCambiaron = false;
+    const items = itemsOriginales.map(it => {
+      if (it.id) return it;
+      itemsCambiaron = true;
+      return { ...it, id: crypto.randomUUID() };
+    });
+
+    const dimOriginal = p.dimOverride && typeof p.dimOverride === "object" ? p.dimOverride : {};
+    const dimNuevo = {};
+    let dimCambio = false;
+    items.forEach(item => {
+      const keyA = item.id || item.codigo;
+      const keyB = `${item.codigo}-${item.id || 0}`;
+      if (dimOriginal[keyA] !== undefined) {
+        dimNuevo[keyA] = dimOriginal[keyA];
+      } else if (dimOriginal[keyB] !== undefined) {
+        dimNuevo[keyA] = dimOriginal[keyB];
+        dimCambio = true;
+      }
+    });
+    const keysOriginales = Object.keys(dimOriginal);
+    const keysNuevas = Object.keys(dimNuevo);
+    if (keysOriginales.length !== keysNuevas.length) dimCambio = true;
+
+    if (itemsCambiaron || dimCambio) {
+      cambiaron = true;
+      resultado[pid] = { ...p, items, dimOverride: dimNuevo };
+    } else {
+      resultado[pid] = p;
+    }
+  }
+  return { presupuestos: resultado, cambiaron };
+}
+
+/**
  * Migrate a TEMP module code to a permanent code across all presupuestos
  * that reference it in their items list.
  */

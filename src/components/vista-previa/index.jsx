@@ -225,14 +225,15 @@ function VistaPrevia({
       const bloques = (p.items || []).flatMap(item => {
         const mod = modulos[item.codigo];
         if (!mod) return [];
+        const over = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || {};
         return Array.from({ length: item.cantidad }, () => ({
           id: crypto.randomUUID(),
           codigo: item.codigo,
           nombre: mod.nombre,
           tipoVisual: mod.tipoVisual || null,
-          ancho: mod.dimensiones.ancho,
-          alto: mod.dimensiones.alto,
-          profundidad: mod.dimensiones.profundidad,
+          ancho: over.ancho || mod.dimensiones.ancho,
+          alto: over.alto || mod.dimensiones.alto,
+          profundidad: over.profundidad || mod.dimensiones.profundidad,
         }));
       });
       guardarPlano({ bloques, altoCielorraso: 2400 });
@@ -266,7 +267,7 @@ function VistaPrevia({
     if (!presSel) return;
     const getModUsadoLocal = (item) => {
       const base = modulos[item.codigo];
-      const dims = (presSel.dimOverride?.[`${item.codigo}-${item.id||0}`]) || base?.dimensiones;
+      const dims = (presSel.dimOverride?.[item.id || item.codigo]) || base?.dimensiones;
       return { ...base, dimensiones: dims };
     };
     const txt = generarTextoWhatsApp(itemsVisibles, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, presSel.cliente);
@@ -277,7 +278,7 @@ function VistaPrevia({
     if (!presSel) return;
     const getModUsadoLocal = (item) => {
       const base = modulos[item.codigo];
-      const dims = (presSel.dimOverride?.[`${item.codigo}-${item.id||0}`]) || base?.dimensiones;
+      const dims = (presSel.dimOverride?.[item.id || item.codigo]) || base?.dimensiones;
       return { ...base, dimensiones: dims };
     };
     const adicionalesVisibles   = (presSel.adicionales   || []).filter(x => !itemsOcultos.includes(`ad-${x.id}`));
@@ -612,7 +613,7 @@ function VistaPrevia({
                   {/* Module rows */}
                   {itemsVisiblesPaper.map((item, rowIdx) => {
                     const base = modulos[item.codigo];
-                    const dims = presSel.dimOverride?.[`${item.codigo}-${item.id||0}`] || base?.dimensiones;
+                    const dims = presSel.dimOverride?.[item.id || item.codigo] || base?.dimensiones;
                     const modUsado = { ...base, dimensiones: dims };
                     const calc = calcularModulo(modUsado, costos);
                     if (!calc) return null;
@@ -662,7 +663,7 @@ function VistaPrevia({
                     </div>
                     {mostrarPrecioUnitario && itemsVisiblesPaper.map(item => {
                       const base = modulos[item.codigo];
-                      const dims = presSel.dimOverride?.[`${item.codigo}-${item.id||0}`] || base?.dimensiones;
+                      const dims = presSel.dimOverride?.[item.id || item.codigo] || base?.dimensiones;
                       const calc = calcularModulo({ ...base, dimensiones: dims }, costos);
                       if (!calc || item.cantidad <= 1) return null;
                       return (
