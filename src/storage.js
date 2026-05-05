@@ -307,6 +307,16 @@ export function guardarRolesPieza(roles) {
   return _save("carpicalc:roles_pieza", roles);
 }
 
+// ── Plano 2D (estado visual local) ───────────────────────────────────────
+export function leerPlano() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:plano2d")) || null; }
+  catch { return null; }
+}
+
+export function guardarPlano(data) {
+  return _save("carpicalc:plano2d", data);
+}
+
 // ── Borrador de módulo en creación ────────────────────────────────────────
 export function cargarBorradorModulo() {
   try { return JSON.parse(localStorage.getItem("carpicalc:borrador_modulo")) || null; }

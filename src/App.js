@@ -13,6 +13,7 @@ import { NavProvider, useNav } from "./state/NavContext.jsx";
 import { PresupuestoContext } from "./state/PresupuestoContext.jsx";
 import { LoginScreen } from "./components/auth/LoginScreen.jsx";
 import { PanelPerfil } from "./components/perfil/PanelPerfil.jsx";
+import { PlanoDos } from "./components/plano/index.jsx";
 
 import { PERFIL_VACIO } from "./constants.js";
 import { supabase } from "./lib/supabase.js";
@@ -335,6 +336,7 @@ function AppInterna() {
     { id: "presupuesto", label: "Presupuesto", icon: "📋" },
     { id: "preview",     label: "Vista previa", icon: "📄" },
     { id: "corte",       label: "Corte",        icon: "🪚" },
+    { id: "plano",       label: "Plano 2D",     icon: "📐" },
     { id: "trabajos",    label: "Trabajos",     icon: "📊" },
     { id: "caja",        label: "Caja",         icon: "💵" },
     { id: "catalogo",    label: "Catálogo",     icon: "🗂" },
@@ -484,6 +486,10 @@ function AppInterna() {
                 presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
                 onActualizarPresupuesto={handleActualizarPresupuesto}
               />
+            )}
+
+            {nav.vista === "plano" && (
+              <PlanoDos items={items} modulos={modulos} />
             )}
 
             {nav.vista === "trabajos" && (
