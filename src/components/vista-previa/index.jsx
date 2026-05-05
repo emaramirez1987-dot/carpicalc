@@ -545,7 +545,7 @@ function VistaPrevia({
                 <div style={{ width: paperW, background: P.bg, color: P.text, borderRadius: 16, boxShadow: "0 4px 40px rgba(0,0,0,0.14), 0 1px 8px rgba(0,0,0,0.07)", padding: "52px 56px", fontFamily: "'Bricolage Grotesque', sans-serif" }}>
 
                   {/* Header */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, gap: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, gap: 12 }}>
                     <div>
                       {perfil?.logo && (
                         <img src={perfil.logo} alt="logo" style={{ height: 40, marginBottom: 6, display: "block" }} />
@@ -567,15 +567,14 @@ function VistaPrevia({
                       <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 900, color: P.text, marginTop: 2, letterSpacing: "-0.01em" }}>
                         {presSel.nombre}
                       </div>
-                      <div style={{ marginTop: 10, fontSize: 10, color: P.muted, lineHeight: 1.8 }}>
-                        {presSel.creadoEn && <div>Fecha: {fmtFecha(presSel.creadoEn)}</div>}
-                        <div>Válido por {presSel.diasVigencia || 30} días</div>
-                      </div>
+                      {presSel.creadoEn && (
+                        <div style={{ marginTop: 8, fontSize: 10, color: P.muted }}>Fecha: {fmtFecha(presSel.creadoEn)}</div>
+                      )}
                     </div>
                   </div>
 
                   {/* Separator */}
-                  <div style={{ height: 1.5, background: `linear-gradient(90deg, transparent, ${P.sep}, transparent)`, margin: "0 0 20px" }} />
+                  <div style={{ height: 1.5, background: `linear-gradient(90deg, transparent, ${P.sep}, transparent)`, margin: "0 0 14px" }} />
 
                   {/* Texto apertura */}
                   {textoApertura && (
