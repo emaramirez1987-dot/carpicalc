@@ -406,7 +406,7 @@ function AppInterna() {
       <GlobalStyles />
       <div style={{ minHeight: "100vh", background: "var(--bg-base)", color: "var(--text-primary)", transition: "background 0.3s" }}>
         <Header tabs={tabs} saveEst={saveEst} tema={tema} toggleTema={toggleTema} />
-        <main className="rsp-main" style={{ maxWidth: 980, margin: "0 auto", padding: "28px 20px" }}>
+        <main className="rsp-main" style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 20px" }}>
           <div key={nav.vista} className="tab-view">
 
             {nav.vista === "presupuesto" && (

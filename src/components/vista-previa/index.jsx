@@ -185,7 +185,6 @@ function VistaPrevia({
   const [busqueda, setBusqueda]                 = useState("");
   const [mostrarPrecioUnitario, setMostrarPrecioUnitario] = useState(true);
   const [itemsOcultos, setItemsOcultos]         = useState([]);
-  const [zoom, setZoom]                         = useState(100);
   const [extraPages, setExtraPages]             = useState([]);
   const [paginaActiva, setPaginaActiva]         = useState('main');
   const agregarHoja = (tipo) => {
@@ -197,13 +196,7 @@ function VistaPrevia({
     setExtraPages(p => p.filter(h => h.id !== id));
     setPaginaActiva(prev => prev === id ? 'main' : prev);
   };
-  const [temaPDF, setTemaPDF]                   = useState(() => {
-    try { return localStorage.getItem("carpicalc:temaPDF") || "dorado"; } catch { return "dorado"; }
-  });
-  const cambiarTema = (t) => {
-    setTemaPDF(t);
-    try { localStorage.setItem("carpicalc:temaPDF", t); } catch {}
-  };
+  const temaPDF = "dorado";
   const [whatsappCopiado, setWhatsappCopiado]   = useState(false);
   const [guardandoTexto, setGuardandoTexto]     = useState(false);
   const [actualizadoVP, setActualizadoVP]       = useState(false);
@@ -395,33 +388,12 @@ function VistaPrevia({
           </button>
         )}
 
-        {/* Tema PDF */}
-        {presSel && (
-          <select value={temaPDF} onChange={e => cambiarTema(e.target.value)}
-            style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 600, padding: "5px 6px", borderRadius: 6, cursor: "pointer", outline: "none", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", maxWidth: 96 }}>
-            <option value="dorado">🟡 Dorado</option>
-            <option value="gris">⬜ Perla</option>
-            <option value="carbon">⬛ Carbón</option>
-            <option value="bosque">🟢 Bosque</option>
-            <option value="marino">🔵 Marino</option>
-            <option value="bordo">🟥 Burdeos</option>
-          </select>
-        )}
-
         {/* Guardar */}
         {presSel && (
           <button onClick={guardarTextos} style={{ ...btnBase, background: guardandoTexto ? "rgba(126,207,138,0.15)" : "var(--accent-soft)", border: `1px solid ${guardandoTexto ? "rgba(126,207,138,0.4)" : "var(--accent-border)"}`, color: guardandoTexto ? "#7ecf8a" : "var(--accent)" }}>
             {guardandoTexto ? "✓ Guardado" : "💾 Guardar"}
           </button>
         )}
-
-        {/* Zoom */}
-        <div style={{ display: "flex", alignItems: "center", gap: 3, borderLeft: "1px solid var(--border)", paddingLeft: 10, marginLeft: 2 }}>
-          <button onClick={() => setZoom(z => Math.max(50, z - 10))} style={{ ...btnBase, padding: "4px 8px", fontSize: 13 }}>−</button>
-          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)", minWidth: 36, textAlign: "center" }}>{zoom}%</span>
-          <button onClick={() => setZoom(z => Math.min(150, z + 10))} style={{ ...btnBase, padding: "4px 8px", fontSize: 13 }}>+</button>
-          <button onClick={() => setZoom(100)} style={{ ...btnBase, padding: "4px 8px", fontSize: 10 }}>⊡</button>
-        </div>
 
         {/* + Hoja / + Plano */}
         {presSel && (
@@ -531,25 +503,25 @@ function VistaPrevia({
         <div style={{ display: "flex", height: "calc(100vh - 130px)" }}>
 
           {/* ── DOCUMENT CANVAS ───────────────────────────────────── */}
-          <div style={{ flex: 1, background: "var(--bg-base)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ flex: 1, background: "#fff", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
             {/* ── Tab bar ──────────────────────────────────────────── */}
             {presSel && (
-              <div style={{ flexShrink: 0, display: "flex", alignItems: "flex-end", gap: 2, padding: "10px 20px 0", background: "var(--bg-surface)", borderBottom: "1px solid var(--border)" }}>
-                <div onClick={() => setPaginaActiva('main')} style={{ padding: "6px 14px", borderRadius: "6px 6px 0 0", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: -1, transition: "all 0.15s", background: paginaActiva === 'main' ? "var(--bg-base)" : "transparent", border: `1px solid ${paginaActiva === 'main' ? "var(--border)" : "transparent"}`, borderBottom: `1px solid ${paginaActiva === 'main' ? "var(--bg-base)" : "transparent"}`, color: paginaActiva === 'main' ? "var(--text-primary)" : "var(--text-muted)", opacity: paginaActiva === 'main' ? 1 : 0.65 }}>
+              <div style={{ flexShrink: 0, display: "flex", alignItems: "flex-end", gap: 2, padding: "10px 20px 0", background: "#f4f4f4", borderBottom: "1px solid #ddd" }}>
+                <div onClick={() => setPaginaActiva('main')} style={{ padding: "6px 14px", borderRadius: "6px 6px 0 0", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: -1, transition: "all 0.15s", background: paginaActiva === 'main' ? "#fff" : "transparent", border: `1px solid ${paginaActiva === 'main' ? "#ddd" : "transparent"}`, borderBottom: `1px solid ${paginaActiva === 'main' ? "#fff" : "transparent"}`, color: paginaActiva === 'main' ? "#1a1a1a" : "#888", opacity: paginaActiva === 'main' ? 1 : 0.65 }}>
                   Pág. 1
                 </div>
                 {extraPages.map((page, i) => (
-                  <div key={page.id} onClick={() => setPaginaActiva(page.id)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 8px 6px 14px", borderRadius: "6px 6px 0 0", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: -1, transition: "all 0.15s", background: paginaActiva === page.id ? "var(--bg-base)" : "transparent", border: `1px solid ${paginaActiva === page.id ? "var(--border)" : "transparent"}`, borderBottom: `1px solid ${paginaActiva === page.id ? "var(--bg-base)" : "transparent"}`, color: paginaActiva === page.id ? "var(--text-primary)" : "var(--text-muted)", opacity: paginaActiva === page.id ? 1 : 0.65 }}>
+                  <div key={page.id} onClick={() => setPaginaActiva(page.id)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 8px 6px 14px", borderRadius: "6px 6px 0 0", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: -1, transition: "all 0.15s", background: paginaActiva === page.id ? "#fff" : "transparent", border: `1px solid ${paginaActiva === page.id ? "#ddd" : "transparent"}`, borderBottom: `1px solid ${paginaActiva === page.id ? "#fff" : "transparent"}`, color: paginaActiva === page.id ? "#1a1a1a" : "#888", opacity: paginaActiva === page.id ? 1 : 0.65 }}>
                     <span>{page.tipo === 'plano' ? '📐 Plano' : `Pág. ${i + 2}`}</span>
-                    <button onClick={e => { e.stopPropagation(); eliminarHoja(page.id); }} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted)", padding: 0, lineHeight: 1, opacity: 0.6 }}>×</button>
+                    <button onClick={e => { e.stopPropagation(); eliminarHoja(page.id); }} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 12, color: "#999", padding: 0, lineHeight: 1, opacity: 0.6 }}>×</button>
                   </div>
                 ))}
               </div>
             )}
 
             {/* ── Paper scroll area ────────────────────────────────── */}
-            <div style={{ flex: 1, overflowY: "auto", display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "32px 32px 72px" }}>
+            <div style={{ flex: 1, overflowY: "auto", background: "#fff", padding: "40px 48px 80px" }}>
             {!presSel ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 300, color: "var(--text-muted)", gap: 12, opacity: 0.6 }}>
                 <span style={{ fontSize: 32 }}>📋</span>
@@ -557,7 +529,6 @@ function VistaPrevia({
                 <p style={{ fontSize: 12, margin: 0 }}>Usá el selector de arriba para elegir uno</p>
               </div>
             ) : (() => {
-              const paperW = Math.max(320, Math.min(720, Math.round(680 * zoom / 100)));
               const itemsVisiblesPaper = (presSel.items || []).filter(item => {
                 if (itemsOcultos.includes(item.id || item.codigo)) return false;
                 return !!modulos[item.codigo];
@@ -566,7 +537,7 @@ function VistaPrevia({
               const adsVisibles = (presSel.adicionales || []).filter(x => !itemsOcultos.includes(`ad-${x.id}`));
               const totalUnidades = (presSel.items || []).reduce((s, i) => s + i.cantidad, 0);
 
-              const paperStyle = { width: paperW, background: P.bg, color: P.text, borderRadius: 16, boxShadow: "0 4px 40px rgba(0,0,0,0.14), 0 1px 8px rgba(0,0,0,0.07)", padding: "52px 56px", fontFamily: "'Bricolage Grotesque', sans-serif" };
+              const paperStyle = { width: "100%", background: P.bg, color: P.text, padding: "52px 56px", fontFamily: "'Bricolage Grotesque', sans-serif" };
               const cabecera = (
                 <>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, gap: 12 }}>

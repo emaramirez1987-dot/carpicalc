@@ -1922,25 +1922,13 @@ function Presupuesto({
         </div>
 
         {/* Formulario cliente — siempre visible */}
-        <div style={{ padding: "14px 20px", background: "var(--bg-subtle)" }}>
-          <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 10 }}>
-            Datos del trabajo
-          </div>
-          <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 10 }}>
-            <TextInput
-              label="Nombre del trabajo *"
-              placeholder="Ej: Cocina Rodríguez"
-              small value={nombreTrabajo} onChange={setNombreTrabajo}
-            />
+        <div style={{ padding: "10px 20px", background: "var(--bg-subtle)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 0.8fr 1fr", gap: 10 }}>
+            <TextInput label="Trabajo *" placeholder="Ej: Cocina Rodríguez" small value={nombreTrabajo} onChange={setNombreTrabajo} />
             <TextInput label="Cliente" placeholder="Nombre del cliente" small value={clienteActivo.nombre} onChange={v => setClienteActivo(c => ({ ...c, nombre: v }))} />
             <TextInput label="Teléfono" placeholder="341 555-1234" small value={clienteActivo.tel} onChange={v => setClienteActivo(c => ({ ...c, tel: v }))} />
+            <TextInput label="Dirección" placeholder="Av. San Martín 456" small value={clienteActivo.dir} onChange={v => setClienteActivo(c => ({ ...c, dir: v }))} />
           </div>
-          <TextInput label="Dirección de entrega" placeholder="Av. San Martín 456" small value={clienteActivo.dir} onChange={v => setClienteActivo(c => ({ ...c, dir: v }))} />
-          {!nombreTrabajo.trim() && (
-            <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
-              * Completá el nombre del trabajo para habilitar la carga de módulos
-            </div>
-          )}
         </div>
       </div>
 

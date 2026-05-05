@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, Badge, SectionTitle } from '../ui/index.jsx';
 import { fmtNum, fmtPeso, resolverDim, recalcularTotalPresupuesto } from '../../utils.js';
 import { OptimizerButton } from './OptimizerButton.jsx';
@@ -82,7 +82,65 @@ function imprimirListaCompras(grupos, nombre) {
   else alert("El navegador bloqueo la ventana emergente. Habilita los popups para este sitio e intenta de nuevo.");
 }
 
-// Estilos de tabla para imprimirCorte
+// ── Helpers agrupado y export distribuidora ──────────────────────────────────
+function parseTcLados(tcLados) {
+  if (!tcLados || tcLados === '-') return { d1: 0, d2: 0 };
+  const m = tcLados.match(/D1:(\d+)[^D]*D2:(\d+)/);
+  return m ? { d1: parseInt(m[1]), d2: parseInt(m[2]) } : { d1: 0, d2: 0 };
+}
+
+function agruparPiezasPorMedida(piezas) {
+  const mapa = new Map();
+  piezas.forEach(pz => {
+    const key = `${pz.d1}_${pz.d2}`;
+    if (!mapa.has(key)) mapa.set(key, { d1: pz.d1, d2: pz.d2, cantTotal: 0, subPiezas: [] });
+    const g = mapa.get(key);
+    g.cantTotal += pz.cantidad;
+    const existing = g.subPiezas.find(s => s.piezaNombre === pz.piezaNombre && s.tcNombre === pz.tcNombre);
+    if (existing) existing.cantidad += pz.cantidad;
+    else g.subPiezas.push({ ...pz });
+  });
+  return [...mapa.values()];
+}
+
+function exportarDistribuidora(grupos, nombre) {
+  const filas = [['cant','base','altura','detalle','rota','canto_arr','canto_aba','canto_izq','canto_der'].join('\t')];
+  Object.entries(grupos).forEach(([, datos]) => {
+    datos.piezas.forEach(pz => {
+      const tc = parseTcLados(pz.tcLados);
+      const sinTC = pz.tcNombre === 'Sin tapacanto';
+      const [cArr, cAba] = sinTC ? [0,0] : tc.d1 >= 2 ? [1,1] : tc.d1 === 1 ? [1,0] : [0,0];
+      const [cIzq, cDer] = sinTC ? [0,0] : tc.d2 >= 2 ? [1,1] : tc.d2 === 1 ? [1,0] : [0,0];
+      filas.push([pz.cantidad, pz.d1, pz.d2, `${pz.modulo} - ${pz.piezaNombre}`, 1, cArr, cAba, cIzq, cDer].join('\t'));
+    });
+  });
+  const blob = new Blob([filas.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cortes${nombre ? '-' + nombre.replace(/[^a-z0-9]/gi,'_') : ''}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportarExcel(grupos, nombre) {
+  const bom = '﻿';
+  const filas = [['Material','Módulo','Pieza','Cant.','Largo (mm)','Ancho (mm)','Tapacanto'].join(',')];
+  Object.entries(grupos).forEach(([nombreMat, datos]) => {
+    datos.piezas.forEach(pz => {
+      filas.push([`"${nombreMat}"`,`"${pz.modulo}"`,`"${pz.piezaNombre}"`,pz.cantidad,pz.d1,pz.d2,`"${pz.tcNombre}"`].join(','));
+    });
+  });
+  const blob = new Blob([bom + filas.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cortes${nombre ? '-' + nombre.replace(/[^a-z0-9]/gi,'_') : ''}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Estilos de tabla
 const thStyle = {
   padding: "6px 10px", textAlign: "left", fontSize: 10,
   fontFamily: "'DM Mono',monospace", fontWeight: 700,
@@ -211,7 +269,16 @@ function ResumenCompra({ nombreMat, placaLargo, placaAncho, areaNetaM2, precioPl
   );
 }
 
-function TablaGrupoCorte({ nombreMat, piezas, rotadas, onToggleRotar, onOptimizar, hayRotaciones }) {
+function TablaGrupoCorte({ nombreMat, piezas, rotadas, onToggleRotar, onOptimizar, hayRotaciones, agruparPorMedida }) {
+  const [expandidas, setExpandidas] = useState(new Set());
+
+  const piezasVista = agruparPorMedida ? agruparPiezasPorMedida(piezas) : null;
+  const totalCortes  = agruparPorMedida ? piezasVista.length : piezas.length;
+
+  const toggleExpandir = (key) => setExpandidas(prev => {
+    const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s;
+  });
+
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
@@ -219,94 +286,157 @@ function TablaGrupoCorte({ nombreMat, piezas, rotadas, onToggleRotar, onOptimiza
           <h3 style={{ fontSize: 14, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, color: "var(--accent)", margin: 0 }}>
             🪵 {nombreMat}
           </h3>
-          <Badge color="#7090b0">{piezas.length} cortes</Badge>
+          <Badge color="#7090b0">{totalCortes} {agruparPorMedida ? "medidas" : "cortes"}</Badge>
         </div>
-        <button
-          onClick={hayRotaciones ? onOptimizar : undefined}
-          disabled={!hayRotaciones}
-          title={hayRotaciones ? "Re-optimizar con rotaciones aplicadas" : "Rotá piezas para habilitar"}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "6px 14px", borderRadius: 7,
-            fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-            letterSpacing: "0.08em", cursor: hayRotaciones ? "pointer" : "default",
-            transition: "all 0.2s",
-            background: hayRotaciones
-              ? "linear-gradient(135deg,var(--accent),var(--accent-hover))"
-              : "transparent",
-            border: hayRotaciones
-              ? "1px solid var(--accent-border)"
-              : "1px solid var(--border)",
-            color: hayRotaciones ? "var(--text-inverted)" : "var(--text-muted)",
-            boxShadow: hayRotaciones ? "0 2px 10px rgba(212,175,55,0.25)" : "none",
-            opacity: hayRotaciones ? 1 : 0.55,
-          }}
-        >
-          ↺ Actualizar optimización
-        </button>
+        {!agruparPorMedida && (
+          <button
+            onClick={hayRotaciones ? onOptimizar : undefined}
+            disabled={!hayRotaciones}
+            title={hayRotaciones ? "Re-optimizar con rotaciones aplicadas" : "Rotá piezas para habilitar"}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "6px 14px", borderRadius: 7,
+              fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+              letterSpacing: "0.08em", cursor: hayRotaciones ? "pointer" : "default",
+              transition: "all 0.2s",
+              background: hayRotaciones ? "linear-gradient(135deg,var(--accent),var(--accent-hover))" : "transparent",
+              border: hayRotaciones ? "1px solid var(--accent-border)" : "1px solid var(--border)",
+              color: hayRotaciones ? "var(--text-inverted)" : "var(--text-muted)",
+              boxShadow: hayRotaciones ? "0 2px 10px rgba(212,175,55,0.25)" : "none",
+              opacity: hayRotaciones ? 1 : 0.55,
+            }}
+          >
+            ↺ Actualizar optimización
+          </button>
+        )}
       </div>
+
       <div className="rsp-scroll-x" style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
         <div className="rsp-table-inner">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "var(--accent-soft)", borderBottom: "1px solid var(--border)" }}>
-              <tr>
-                <th style={thStyle}>Módulo</th>
-                <th style={thStyle}>Pieza</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Cant.</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>Medidas reales</th>
-                <th style={thStyle}>Tapacanto</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>↺</th>
-              </tr>
-            </thead>
-            <tbody>
-              {piezas.map((pz, idx) => {
-                const piezaId = `${pz.codigo}-${pz.piezaNombre}`;
-                const rotada = rotadas?.has(piezaId);
-                const d1 = rotada ? pz.d2 : pz.d1;
-                const d2 = rotada ? pz.d1 : pz.d2;
-                return (
-                  <tr key={idx}
-                    style={{ transition: "background 0.15s", background: rotada ? "rgba(212,175,55,0.06)" : "transparent" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = rotada ? "rgba(212,175,55,0.10)" : "var(--accent-soft)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = rotada ? "rgba(212,175,55,0.06)" : "transparent")}
-                  >
-                    <td style={tdStyle}>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", marginRight: 8 }}>
-                        {pz.codigo}
-                      </span>
-                      {pz.modulo}
-                    </td>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>{pz.piezaNombre}</td>
-                    <td style={{ ...tdStyle, textAlign: "right", fontFamily: "'DM Mono',monospace", fontWeight: 700, fontSize: 16, color: "var(--accent)" }}>
-                      {pz.cantidad}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center", fontFamily: "'DM Mono',monospace", color: rotada ? "var(--accent)" : "#c8d098", fontSize: 14 }}>
-                      {d1} × {d2} mm
-                      {rotada && <span style={{ fontSize: 9, marginLeft: 5, color: "var(--accent)", fontWeight: 700, verticalAlign: "middle" }}>90°</span>}
-                    </td>
-                    <td style={{ ...tdStyle, fontSize: 11, color: "var(--text-muted)" }}>
-                      {pz.tcNombre}{" "}
-                      <span style={{ fontFamily: "'DM Mono',monospace", marginLeft: 4, color: "var(--text-secondary)" }}>{pz.tcLados}</span>
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center" }}>
-                      <button
-                        onClick={() => onToggleRotar?.(piezaId)}
-                        title={rotada ? "Quitar rotación" : "Rotar 90°"}
-                        style={{
-                          background: rotada ? "var(--accent-soft)" : "transparent",
-                          border: `1px solid ${rotada ? "var(--accent-border)" : "var(--border)"}`,
-                          borderRadius: 5, cursor: "pointer", padding: "2px 7px",
-                          fontSize: 14, color: rotada ? "var(--accent)" : "var(--text-muted)",
-                          transition: "all 0.15s",
-                        }}
-                      >
-                        ↺
-                      </button>
-                    </td>
+
+            {agruparPorMedida ? (
+              <>
+                <thead style={{ background: "var(--accent-soft)", borderBottom: "1px solid var(--border)" }}>
+                  <tr>
+                    <th style={{ ...thStyle, textAlign: "center" }}>Medidas</th>
+                    <th style={thStyle}>Pieza</th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>Cant.</th>
+                    <th style={thStyle}>Tapacanto</th>
                   </tr>
-                );
-              })}
-            </tbody>
+                </thead>
+                <tbody>
+                  {piezasVista.map((grupo) => {
+                    const key = `${grupo.d1}_${grupo.d2}`;
+                    const multiNombre = grupo.subPiezas.length > 1;
+                    const expanded    = expandidas.has(key);
+                    const tcUnicos    = [...new Set(grupo.subPiezas.map(s => s.tcNombre))];
+                    const tcLabel     = tcUnicos.length === 1
+                      ? `${grupo.subPiezas[0].tcNombre} ${grupo.subPiezas[0].tcLados}`
+                      : "—";
+                    return (
+                      <React.Fragment key={key}>
+                        <tr
+                          onClick={multiNombre ? () => toggleExpandir(key) : undefined}
+                          style={{ cursor: multiNombre ? "pointer" : "default", background: expanded ? "rgba(212,175,55,0.06)" : "transparent", transition: "background 0.15s" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "var(--accent-soft)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = expanded ? "rgba(212,175,55,0.06)" : "transparent"; }}
+                        >
+                          <td style={{ ...tdStyle, textAlign: "center", fontFamily: "'DM Mono',monospace", color: "#c8d098", fontSize: 14, fontWeight: 700 }}>
+                            {grupo.d1} × {grupo.d2} mm
+                          </td>
+                          <td style={{ ...tdStyle, fontWeight: 600 }}>
+                            {multiNombre ? (
+                              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ fontSize: 9, color: "var(--accent)" }}>{expanded ? "▲" : "▼"}</span>
+                                <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                                  {grupo.subPiezas[0].piezaNombre}
+                                  <span style={{ color: "var(--text-muted)", marginLeft: 4 }}>(+{grupo.subPiezas.length - 1} más)</span>
+                                </span>
+                              </span>
+                            ) : grupo.subPiezas[0].piezaNombre}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontFamily: "'DM Mono',monospace", fontWeight: 700, fontSize: 16, color: "var(--accent)" }}>
+                            {grupo.cantTotal}
+                          </td>
+                          <td style={{ ...tdStyle, fontSize: 11, color: "var(--text-muted)" }}>{tcLabel}</td>
+                        </tr>
+                        {multiNombre && expanded && grupo.subPiezas.map((sub, i) => (
+                          <tr key={`${key}-sub-${i}`} style={{ background: "rgba(212,175,55,0.03)" }}>
+                            <td style={{ ...tdStyle, paddingLeft: 28 }}>
+                              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--accent)", marginRight: 6 }}>{sub.codigo}</span>
+                              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{sub.modulo}</span>
+                            </td>
+                            <td style={{ ...tdStyle, paddingLeft: 20, fontSize: 12, color: "var(--text-secondary)" }}>{sub.piezaNombre}</td>
+                            <td style={{ ...tdStyle, textAlign: "right", fontFamily: "'DM Mono',monospace", fontSize: 13, color: "var(--text-secondary)" }}>{sub.cantidad}</td>
+                            <td style={{ ...tdStyle, fontSize: 11, color: "var(--text-muted)" }}>
+                              {sub.tcNombre} <span style={{ fontFamily: "'DM Mono',monospace" }}>{sub.tcLados}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </>
+            ) : (
+              <>
+                <thead style={{ background: "var(--accent-soft)", borderBottom: "1px solid var(--border)" }}>
+                  <tr>
+                    <th style={thStyle}>Módulo</th>
+                    <th style={thStyle}>Pieza</th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>Cant.</th>
+                    <th style={{ ...thStyle, textAlign: "center" }}>Medidas reales</th>
+                    <th style={thStyle}>Tapacanto</th>
+                    <th style={{ ...thStyle, textAlign: "center" }}>↺</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {piezas.map((pz, idx) => {
+                    const piezaId = `${pz.codigo}-${pz.piezaNombre}`;
+                    const rotada  = rotadas?.has(piezaId);
+                    const d1      = rotada ? pz.d2 : pz.d1;
+                    const d2      = rotada ? pz.d1 : pz.d2;
+                    return (
+                      <tr key={idx}
+                        style={{ transition: "background 0.15s", background: rotada ? "rgba(212,175,55,0.06)" : "transparent" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = rotada ? "rgba(212,175,55,0.10)" : "var(--accent-soft)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = rotada ? "rgba(212,175,55,0.06)" : "transparent")}
+                      >
+                        <td style={tdStyle}>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", marginRight: 8 }}>{pz.codigo}</span>
+                          {pz.modulo}
+                        </td>
+                        <td style={{ ...tdStyle, fontWeight: 600 }}>{pz.piezaNombre}</td>
+                        <td style={{ ...tdStyle, textAlign: "right", fontFamily: "'DM Mono',monospace", fontWeight: 700, fontSize: 16, color: "var(--accent)" }}>{pz.cantidad}</td>
+                        <td style={{ ...tdStyle, textAlign: "center", fontFamily: "'DM Mono',monospace", color: rotada ? "var(--accent)" : "#c8d098", fontSize: 14 }}>
+                          {d1} × {d2} mm
+                          {rotada && <span style={{ fontSize: 9, marginLeft: 5, color: "var(--accent)", fontWeight: 700, verticalAlign: "middle" }}>90°</span>}
+                        </td>
+                        <td style={{ ...tdStyle, fontSize: 11, color: "var(--text-muted)" }}>
+                          {pz.tcNombre}{" "}
+                          <span style={{ fontFamily: "'DM Mono',monospace", marginLeft: 4, color: "var(--text-secondary)" }}>{pz.tcLados}</span>
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: "center" }}>
+                          <button
+                            onClick={() => onToggleRotar?.(piezaId)}
+                            title={rotada ? "Quitar rotación" : "Rotar 90°"}
+                            style={{
+                              background: rotada ? "var(--accent-soft)" : "transparent",
+                              border: `1px solid ${rotada ? "var(--accent-border)" : "var(--border)"}`,
+                              borderRadius: 5, cursor: "pointer", padding: "2px 7px",
+                              fontSize: 14, color: rotada ? "var(--accent)" : "var(--text-muted)",
+                              transition: "all 0.15s",
+                            }}
+                          >↺</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </>
+            )}
+
           </table>
         </div>
       </div>
@@ -319,6 +449,16 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
   const [layoutOptimizado, setLayoutOptimizado] = useState(null);
   const [bannerDesc, setBannerDesc] = useState(false);
   const [rotadas, setRotadas] = useState(new Set());
+  const [agruparPorMedida, setAgruparPorMedida] = useState(false);
+  const [menuAbierto, setMenuAbierto]           = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const handler = (e) => { if (!menuRef.current?.contains(e.target)) setMenuAbierto(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuAbierto]);
 
   // Si hay un presupuesto seleccionado en Vista Previa, usarlo en lugar del activo
   const presVP = presupuestoVistaPreviaId ? presupuestos[presupuestoVistaPreviaId] : null;
@@ -442,6 +582,33 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
   };
   const hayRotaciones = rotadas.size > 0;
 
+  const copiarLista = () => {
+    const lines = [`📦 LISTA DE COMPRAS${nombreActivo ? " — " + nombreActivo : ""}`, ""];
+    let total = 0;
+    Object.entries(grupos).forEach(([nombreMat, datos]) => {
+      const areaPlacaM2 = (datos.placaLargo * datos.placaAncho) / 1_000_000;
+      const placasNec = Math.ceil((datos.areaNetaM2 * 1.2) / areaPlacaM2);
+      const costo = datos.precioPlaca > 0 ? datos.precioPlaca * placasNec : 0;
+      total += costo;
+      const costoStr = costo > 0 ? ` (~${fmtPeso(Math.round(costo))})` : "";
+      lines.push(`• ${placasNec} placa${placasNec !== 1 ? "s" : ""} de ${nombreMat}${costoStr}`);
+    });
+    if (total > 0) { lines.push(""); lines.push(`TOTAL ESTIMADO: ${fmtPeso(Math.round(total))}`); }
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopiadoOk(true);
+      setMenuAbierto(false);
+      setTimeout(() => setCopiadoOk(false), 2000);
+    });
+  };
+
+  const mItemSty = {
+    display: "flex", alignItems: "center", gap: 10, width: "100%",
+    padding: "9px 16px", background: "transparent", border: "none",
+    textAlign: "left", fontSize: 12, fontFamily: "'DM Mono',monospace",
+    fontWeight: 600, color: "var(--text-secondary)", cursor: "pointer",
+    transition: "background 0.12s",
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div
@@ -456,60 +623,60 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
         <SectionTitle sub="Medidas reales descontando espesores y offsets, agrupadas para el operario">
           Lista de Corte
         </SectionTitle>
-        <div className="rsp-action-buttons" style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-          <button
-            onClick={() => {
-              const lines = [`📦 LISTA DE COMPRAS${nombreActivo ? " — " + nombreActivo : ""}`, ""];
-              let total = 0;
-              Object.entries(grupos).forEach(([nombreMat, datos]) => {
-                const areaPlacaM2 = (datos.placaLargo * datos.placaAncho) / 1_000_000;
-                const placasNec = Math.ceil((datos.areaNetaM2 * 1.2) / areaPlacaM2);
-                const costo = datos.precioPlaca > 0 ? datos.precioPlaca * placasNec : 0;
-                total += costo;
-                const costoStr = costo > 0 ? ` (~${fmtPeso(Math.round(costo))})` : "";
-                lines.push(`• ${placasNec} placa${placasNec !== 1 ? "s" : ""} de ${nombreMat}${costoStr}`);
-              });
-              if (total > 0) { lines.push(""); lines.push(`TOTAL ESTIMADO: ${fmtPeso(Math.round(total))}`); }
-              navigator.clipboard.writeText(lines.join("\n")).then(() => {
-                setCopiadoOk(true);
-                setTimeout(() => setCopiadoOk(false), 2000);
-              });
-            }}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px",
-              borderRadius: 6, fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-              letterSpacing: "0.05em", cursor: "pointer", transition: "all 0.18s",
-              background: copiadoOk ? "rgba(126,207,138,0.15)" : "var(--bg-surface)",
-              border: `1px solid ${copiadoOk ? "#7ecf8a" : "var(--border)"}`,
-              color: copiadoOk ? "#7ecf8a" : "var(--text-secondary)",
-            }}
-          >
-            {copiadoOk ? "✓ Copiado" : "📋 Copiar lista"}
-          </button>
-          <button
-            onClick={() => imprimirListaCompras(grupos, nombreActivo)}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px",
-              borderRadius: 6, fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-              letterSpacing: "0.05em", cursor: "pointer", transition: "all 0.18s",
-              background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-secondary)",
-            }}
-          >
-            🛒 Lista de compras
-          </button>
-          <button
-            onClick={() => imprimirCorte(grupos, nombreActivo)}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 16px",
-              borderRadius: 6, fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-              letterSpacing: "0.05em", cursor: "pointer", transition: "all 0.18s",
-              background: "linear-gradient(135deg,var(--accent),var(--accent-hover))",
-              border: "none", color: "var(--text-inverted)",
-              boxShadow: "0 3px 12px rgba(180,100,20,0.28)",
-            }}
-          >
-            🖨 Lista de corte
-          </button>
+        <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
+
+          {/* ── Menú Acciones ───────────────────────────── */}
+          <div style={{ position: "relative" }} ref={menuRef}>
+            <button
+              onClick={() => setMenuAbierto(m => !m)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 16px",
+                borderRadius: 6, fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                letterSpacing: "0.05em", cursor: "pointer", transition: "all 0.18s",
+                background: "linear-gradient(135deg,var(--accent),var(--accent-hover))",
+                border: "none", color: "var(--text-inverted)",
+                boxShadow: "0 3px 12px rgba(180,100,20,0.28)",
+              }}
+            >
+              Acciones {menuAbierto ? "▲" : "▾"}
+            </button>
+            {menuAbierto && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 200,
+                minWidth: 220, background: "var(--bg-surface)",
+                border: "1px solid var(--border)", borderRadius: 8,
+                boxShadow: "0 8px 32px rgba(0,0,0,0.30)", overflow: "hidden",
+              }}>
+                <button style={mItemSty} onClick={copiarLista}>
+                  {copiadoOk ? "✓ Copiado" : "📋 Copiar lista"}
+                </button>
+                <button style={mItemSty} onClick={() => { imprimirListaCompras(grupos, nombreActivo); setMenuAbierto(false); }}>
+                  🛒 Lista de compras
+                </button>
+                <button style={mItemSty} onClick={() => { imprimirCorte(grupos, nombreActivo); setMenuAbierto(false); }}>
+                  🪚 Lista de cortes
+                </button>
+                <div style={{ height: 1, background: "var(--border)", margin: "2px 0" }} />
+                <button style={mItemSty} onClick={() => { imprimirCorte(grupos, nombreActivo); setMenuAbierto(false); }}>
+                  ↗ Exportar PDF
+                </button>
+                <button style={mItemSty} onClick={() => { exportarExcel(grupos, nombreActivo); setMenuAbierto(false); }}>
+                  ↗ Exportar Excel (.csv)
+                </button>
+                <button style={mItemSty} onClick={() => { exportarDistribuidora(grupos, nombreActivo); setMenuAbierto(false); }}>
+                  ↗ Distribuidora (.txt)
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Toggle agrupar ──────────────────────────── */}
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 6, fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: agruparPorMedida ? "rgba(212,175,55,0.10)" : "var(--bg-surface)", border: `1px solid ${agruparPorMedida ? "var(--accent-border)" : "var(--border)"}`, color: agruparPorMedida ? "var(--accent)" : "var(--text-secondary)", transition: "all 0.18s" }}>
+            <input type="checkbox" checked={agruparPorMedida} onChange={e => setAgruparPorMedida(e.target.checked)} style={{ accentColor: "var(--accent)", width: 13, height: 13 }} />
+            Agrupar por medida
+          </label>
+
+          {/* ── Optimizador ─────────────────────────────── */}
           <OptimizerButton
             piezas={piezasOptimizer}
             plateDims={plateDimsOptimizer}
@@ -663,7 +830,8 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
             <TablaGrupoCorte nombreMat={nombreMat} piezas={datos.piezas} rotadas={rotadas}
               onToggleRotar={(id) => setRotadas(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; })}
               onOptimizar={handleOptimizar}
-              hayRotaciones={hayRotaciones} />
+              hayRotaciones={hayRotaciones}
+              agruparPorMedida={agruparPorMedida} />
           </Card>
         ))}
       </div>
