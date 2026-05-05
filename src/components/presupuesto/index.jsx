@@ -10,6 +10,7 @@ import { fmtPeso, fmtNum, fmtFecha, fmtFechaLarga,
          generarVistaSVG } from '../../utils.js';
 import { leerPerfil } from '../../storage.js';
 import { usePresupuesto } from '../../state/PresupuestoContext.jsx';
+import VistaModuloSVG from '../vista-svg/index.js';
 import { TIPO_MAT, ESTADOS_TRABAJO } from '../../constants.js';
 
 function imprimirPresupuesto(
@@ -1627,6 +1628,7 @@ function Presupuesto({
   hSaveModulos,
   onLimpiarTemps,   // limpia TEMP activos al cancelar el presupuesto
   onGuardarModuloCatalogo,
+  onAbrirEditorVista,
   borradorRecuperado = false,
   onDismissBorrador
 }) {
@@ -2078,6 +2080,28 @@ function Presupuesto({
               >
                 {/* Fila principal — mismo layout que FilaModuloLista */}
                 <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 14px", flexWrap: "wrap" }}>
+
+                  {/* Thumbnail SVG → Editor Visual */}
+                  <div
+                    onClick={() => onAbrirEditorVista?.(item.codigo)}
+                    title="Abrir Editor Visual"
+                    style={{
+                      width: 48, height: 48, flexShrink: 0, cursor: "pointer",
+                      border: "1px solid var(--border)", borderRadius: 7, overflow: "hidden",
+                      background: "var(--bg-subtle)", transition: "border-color 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent-border)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                  >
+                    <VistaModuloSVG
+                      modulo={modUsado}
+                      vistaConfig={modUsado.vistaConfig}
+                      theme="dark"
+                      width={48}
+                      height={48}
+                    />
+                  </div>
+
                   {/* Código */}
                   <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>
                     {item.codigo.startsWith("TEMP_") ? "VAR" : item.codigo}

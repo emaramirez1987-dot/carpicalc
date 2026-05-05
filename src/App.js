@@ -432,6 +432,7 @@ function AppInterna() {
                   setModulos(nuevos);
                   hSaveM(nuevos);
                 }}
+                onAbrirEditorVista={(cod) => dispatch({ type: "ABRIR_EDITOR_VISTA", payload: { cod } })}
                 onGuardarModuloCatalogo={(nuevoMod, nombreFinal, tempCod, presupuestoId) => {
                   const newId = `MC${String(Date.now()).slice(-6)}`;
                   const modPermanente = {
