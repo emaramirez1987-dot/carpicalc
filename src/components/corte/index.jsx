@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, Badge, SectionTitle } from '../ui/index.jsx';
 import { fmtNum, fmtPeso, resolverDim, recalcularTotalPresupuesto } from '../../utils.js';
 import { OptimizerButton } from './OptimizerButton.jsx';
+import * as optimizerService from '../../services/optimizerService.js';
 import { ResumenOptimizado } from './ResumenOptimizado.jsx';
 import { VisualizadorPlaca } from './VisualizadorPlaca.jsx';
 import { BancoSobrantes } from './BancoSobrantes.jsx';
@@ -210,14 +211,39 @@ function ResumenCompra({ nombreMat, placaLargo, placaAncho, areaNetaM2, precioPl
   );
 }
 
-function TablaGrupoCorte({ nombreMat, piezas, rotadas, onToggleRotar }) {
+function TablaGrupoCorte({ nombreMat, piezas, rotadas, onToggleRotar, onOptimizar, hayRotaciones }) {
   return (
     <div style={{ marginBottom: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-        <h3 style={{ fontSize: 14, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, color: "var(--accent)", margin: 0 }}>
-          🪵 {nombreMat}
-        </h3>
-        <Badge color="#7090b0">{piezas.length} cortes</Badge>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <h3 style={{ fontSize: 14, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, color: "var(--accent)", margin: 0 }}>
+            🪵 {nombreMat}
+          </h3>
+          <Badge color="#7090b0">{piezas.length} cortes</Badge>
+        </div>
+        <button
+          onClick={hayRotaciones ? onOptimizar : undefined}
+          disabled={!hayRotaciones}
+          title={hayRotaciones ? "Re-optimizar con rotaciones aplicadas" : "Rotá piezas para habilitar"}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "6px 14px", borderRadius: 7,
+            fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+            letterSpacing: "0.08em", cursor: hayRotaciones ? "pointer" : "default",
+            transition: "all 0.2s",
+            background: hayRotaciones
+              ? "linear-gradient(135deg,var(--accent),var(--accent-hover))"
+              : "transparent",
+            border: hayRotaciones
+              ? "1px solid var(--accent-border)"
+              : "1px solid var(--border)",
+            color: hayRotaciones ? "var(--text-inverted)" : "var(--text-muted)",
+            boxShadow: hayRotaciones ? "0 2px 10px rgba(212,175,55,0.25)" : "none",
+            opacity: hayRotaciones ? 1 : 0.55,
+          }}
+        >
+          ↺ Actualizar optimización
+        </button>
       </div>
       <div className="rsp-scroll-x" style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
         <div className="rsp-table-inner">
@@ -291,7 +317,7 @@ function TablaGrupoCorte({ nombreMat, piezas, rotadas, onToggleRotar }) {
 function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupuestoVistaPreviaId, onActualizarPresupuesto }) {
   const [copiadoOk, setCopiadoOk] = useState(false);
   const [layoutOptimizado, setLayoutOptimizado] = useState(null);
-  const [bannerDesc, setBannerDesc] = useState(false); // descartado por el usuario
+  const [bannerDesc, setBannerDesc] = useState(false);
   const [rotadas, setRotadas] = useState(new Set());
 
   // Si hay un presupuesto seleccionado en Vista Previa, usarlo en lugar del activo
@@ -386,6 +412,36 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
       });
     });
   });
+
+  const piezasOptimizer = Object.values(grupos).flatMap(g => g.piezas.map(p => {
+    const piezaId = `${p.codigo}-${p.piezaNombre}`;
+    const rotada = rotadas.has(piezaId);
+    return {
+      id: piezaId,
+      d1: rotada ? p.d2 : p.d1,
+      d2: rotada ? p.d1 : p.d2,
+      cantidad: p.cantidad,
+      modId: p.modulo.toLowerCase().replace(/\s+/g, ''),
+      nombre: p.piezaNombre,
+      rotable: !rotada,
+      vetaDir: "horizontal"
+    };
+  }));
+  const plateDimsOptimizer = {
+    largo: Object.values(grupos)[0]?.placaLargo ?? 2750,
+    ancho: Object.values(grupos)[0]?.placaAncho ?? 1830,
+  };
+  const handleOptimizar = () => {
+    try {
+      const result = optimizerService.layoutPiezas(piezasOptimizer, plateDimsOptimizer);
+      setLayoutOptimizado(result);
+      setBannerDesc(false);
+    } catch (e) {
+      console.error('Optimizer error:', e);
+    }
+  };
+  const hayRotaciones = rotadas.size > 0;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div
@@ -455,24 +511,8 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
             🖨 Lista de corte
           </button>
           <OptimizerButton
-            piezas={Object.values(grupos).flatMap(g => g.piezas.map(p => {
-              const piezaId = `${p.codigo}-${p.piezaNombre}`;
-              const rotada = rotadas.has(piezaId);
-              return {
-                id: piezaId,
-                d1: rotada ? p.d2 : p.d1,
-                d2: rotada ? p.d1 : p.d2,
-                cantidad: p.cantidad,
-                modId: p.modulo.toLowerCase().replace(/\s+/g, ''),
-                nombre: p.piezaNombre,
-                rotable: !rotada,
-                vetaDir: "horizontal"
-              };
-            }))}
-            plateDims={{
-              largo: Object.values(grupos)[0]?.placaLargo ?? 2750,
-              ancho: Object.values(grupos)[0]?.placaAncho ?? 1830,
-            }}
+            piezas={piezasOptimizer}
+            plateDims={plateDimsOptimizer}
             onResult={(r) => { setLayoutOptimizado(r); setBannerDesc(false); }}
             onError={(e) => console.error('Optimizer error:', e)}
           />
@@ -621,7 +661,9 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
             style={{ marginBottom: 20 }}
           >
             <TablaGrupoCorte nombreMat={nombreMat} piezas={datos.piezas} rotadas={rotadas}
-              onToggleRotar={(id) => setRotadas(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; })} />
+              onToggleRotar={(id) => setRotadas(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; })}
+              onOptimizar={handleOptimizar}
+              hayRotaciones={hayRotaciones} />
           </Card>
         ))}
       </div>
