@@ -21,7 +21,7 @@ const SVG_W = 820;
 const SVG_H = 360;
 const PAD   = { top: 36, right: 24, bottom: 68, left: 34 };
 
-export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSelect, selectedIdx, modulos, temaClaro = false }) {
+export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSelect, selectedIdx, modulos, temaClaro = false, offsetBajos = 0, offsetAltos = 0, colgadoAereos = 200 }) {
   const plotW = SVG_W - PAD.left - PAD.right;
   const plotH = SVG_H - PAD.top  - PAD.bottom;
 
@@ -38,10 +38,13 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
   const emptyTxt  = temaClaro ? "#BDB5A2"  : "#1e2533";
   const numUnsel  = temaClaro ? "rgba(139,105,20,0.45)" : "rgba(212,175,55,0.35)";
 
-  const { posiciones } = calcularLayout(bloques, plotW, plotH, altoCielorraso);
+  const { posiciones, scale } = calcularLayout(bloques, plotW, plotH, altoCielorraso);
 
   const absFloor   = PAD.top + plotH;
   const absCeiling = PAD.top;
+  const offBPx     = offsetBajos * scale;
+  const offAPx     = offsetAltos * scale;
+  const colgadoPx  = colgadoAereos * scale;
 
   const vistaDataUrls = useMemo(() => {
     if (!modulos) return {};
@@ -86,9 +89,10 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
         const colors = TC[b.tipoVisual] || CNul;
         const sel    = selectedIdx === idx;
 
-        const rectX  = PAD.left + pos.x;
-        const rectY  = b.tipoVisual === "aereo"
-          ? absCeiling + 4
+        const isAereo = b.tipoVisual === "aereo";
+        const rectX  = PAD.left + pos.x + (isAereo ? offAPx : offBPx);
+        const rectY  = isAereo
+          ? absCeiling + colgadoPx
           : absFloor - pos.heightPx;
 
         const midX   = rectX + pos.widthPx / 2;

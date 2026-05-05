@@ -45,12 +45,15 @@ export function PlanoDos({ modulos }) {
   const saved = leerPlano();
   const [bloques, setBloques]         = useState(() => saved?.bloques || []);
   const [altoCielorraso, setAlto]     = useState(() => saved?.altoCielorraso || 2400);
+  const [offsetBajos, setOffsetBajos] = useState(() => saved?.offsetBajos ?? 0);
+  const [offsetAltos, setOffsetAltos] = useState(() => saved?.offsetAltos ?? 0);
+  const [colgadoAereos, setColgado]   = useState(() => saved?.colgadoAereos ?? 200);
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [temaClaro, setTemaClaro]     = useState(false);
   const svgRef = useRef(null);
 
-  const persistir = (nuevosBloques, nuevoAlto) => {
-    guardarPlano({ bloques: nuevosBloques, altoCielorraso: nuevoAlto });
+  const persistir = (nuevosBloques, nuevoAlto, offB = offsetBajos, offA = offsetAltos, colgado = colgadoAereos) => {
+    guardarPlano({ bloques: nuevosBloques, altoCielorraso: nuevoAlto, offsetBajos: offB, offsetAltos: offA, colgadoAereos: colgado });
   };
 
   const moverIzquierda = (idx) => {
@@ -84,10 +87,36 @@ export function PlanoDos({ modulos }) {
     setSelectedIdx(null);
   };
 
+  const cambiarTipo = (idx, tipo) => {
+    setBloques((prev) => {
+      const a = prev.map((b, i) => i === idx ? { ...b, tipoVisual: tipo || undefined } : b);
+      persistir(a, altoCielorraso);
+      return a;
+    });
+  };
+
   const handleAlto = (v) => {
     const val = Math.max(1800, parseInt(v) || 2400);
     setAlto(val);
     persistir(bloques, val);
+  };
+
+  const handleOffsetBajos = (v) => {
+    const val = Math.max(-2000, Math.min(2000, parseInt(v) || 0));
+    setOffsetBajos(val);
+    persistir(bloques, altoCielorraso, val, offsetAltos, colgadoAereos);
+  };
+
+  const handleOffsetAltos = (v) => {
+    const val = Math.max(-2000, Math.min(2000, parseInt(v) || 0));
+    setOffsetAltos(val);
+    persistir(bloques, altoCielorraso, offsetBajos, val, colgadoAereos);
+  };
+
+  const handleColgado = (v) => {
+    const val = Math.max(0, Math.min(1200, parseInt(v) || 200));
+    setColgado(val);
+    persistir(bloques, altoCielorraso, offsetBajos, offsetAltos, val);
   };
 
   const sinTipo = bloques.filter((b) => !b.tipoVisual).length;
@@ -119,33 +148,57 @@ export function PlanoDos({ modulos }) {
       </div>
 
       {/* ── Barra de configuración ────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+
+        {/* Piso-techo */}
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
           PISO–TECHO
-          <input
-            type="number" value={altoCielorraso} min={1800} max={4000} step={50}
+          <input type="number" value={altoCielorraso} min={1800} max={4000} step={50}
             onChange={(e) => handleAlto(e.target.value)}
-            style={{
-              width: 72, padding: "4px 8px", borderRadius: 5,
-              border: "1px solid var(--border)", background: "var(--bg-subtle)",
-              color: "var(--text-primary)", fontFamily: "'DM Mono',monospace",
-              fontSize: 12, textAlign: "right",
-            }}
-          />
-          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>mm</span>
+            style={{ width: 68, padding: "4px 6px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 12, textAlign: "right" }} />
+          <span style={{ fontSize: 10 }}>mm</span>
         </label>
 
-        {sinTipo > 0 && (
-          <div style={{
-            fontSize: 10, fontFamily: "'DM Mono',monospace",
-            padding: "3px 9px", borderRadius: 5,
-            color: "#e07070",
-            background: "rgba(200,60,60,0.08)",
-            border: "1px solid rgba(200,60,60,0.22)",
-          }}>
-            ⚠ {sinTipo} sin tipo visual — asignalo en Catálogo
-          </div>
-        )}
+        <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+
+        {/* Colgado aereos */}
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+          AEREOS DESDE TECHO
+          <input type="number" value={colgadoAereos} min={0} max={1200} step={50}
+            onChange={(e) => handleColgado(e.target.value)}
+            style={{ width: 56, padding: "4px 6px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 12, textAlign: "right" }} />
+          <span style={{ fontSize: 10 }}>mm</span>
+        </label>
+
+        <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+
+        {/* Offset bajos */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+          BAJOS
+          <button onClick={() => handleOffsetBajos(offsetBajos - 50)} style={arrowBtn(false)}>←</button>
+          <span style={{ minWidth: 42, textAlign: "center", fontSize: 10, color: offsetBajos !== 0 ? "var(--accent)" : "var(--text-muted)" }}>
+            {offsetBajos > 0 ? `+${offsetBajos}` : offsetBajos} mm
+          </span>
+          <button onClick={() => handleOffsetBajos(offsetBajos + 50)} style={arrowBtn(false)}>→</button>
+          {offsetBajos !== 0 && (
+            <button onClick={() => handleOffsetBajos(0)} style={{ ...arrowBtn(false), fontSize: 9, padding: "3px 6px", color: "var(--text-muted)" }}>0</button>
+          )}
+        </div>
+
+        {/* Offset altos */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+          ALTOS
+          <button onClick={() => handleOffsetAltos(offsetAltos - 50)} style={arrowBtn(false)}>←</button>
+          <span style={{ minWidth: 42, textAlign: "center", fontSize: 10, color: offsetAltos !== 0 ? "var(--accent)" : "var(--text-muted)" }}>
+            {offsetAltos > 0 ? `+${offsetAltos}` : offsetAltos} mm
+          </span>
+          <button onClick={() => handleOffsetAltos(offsetAltos + 50)} style={arrowBtn(false)}>→</button>
+          {offsetAltos !== 0 && (
+            <button onClick={() => handleOffsetAltos(0)} style={{ ...arrowBtn(false), fontSize: 9, padding: "3px 6px", color: "var(--text-muted)" }}>0</button>
+          )}
+        </div>
+
+        <div style={{ width: 1, height: 18, background: "var(--border)" }} />
 
         <button
           onClick={() => setTemaClaro(t => !t)}
@@ -153,9 +206,15 @@ export function PlanoDos({ modulos }) {
           {temaClaro ? "☀ Claro" : "🌙 Oscuro"}
         </button>
 
+        {sinTipo > 0 && (
+          <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", padding: "3px 9px", borderRadius: 5, color: "#e07070", background: "rgba(200,60,60,0.08)", border: "1px solid rgba(200,60,60,0.22)" }}>
+            ⚠ {sinTipo} sin tipo
+          </div>
+        )}
+
         {bloques.length > 0 && (
           <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginLeft: "auto" }}>
-            {bloques.length} módulo{bloques.length !== 1 ? "s" : ""} · {totalMM} mm
+            {bloques.length} mód. · {totalMM} mm
           </div>
         )}
       </div>
@@ -172,6 +231,9 @@ export function PlanoDos({ modulos }) {
           selectedIdx={selectedIdx}
           modulos={modulos}
           temaClaro={temaClaro}
+          offsetBajos={offsetBajos}
+          offsetAltos={offsetAltos}
+          colgadoAereos={colgadoAereos}
         />
       </Card>
 
@@ -218,16 +280,25 @@ export function PlanoDos({ modulos }) {
                     {idx + 1}
                   </span>
 
-                  {/* Badge tipo */}
-                  <span style={{
-                    fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                    padding: "2px 8px", borderRadius: 4, minWidth: 46, textAlign: "center",
-                    background: meta ? `${meta.color}18` : "rgba(90,95,120,0.14)",
-                    border: `1px solid ${meta ? meta.color + "40" : "rgba(90,95,120,0.30)"}`,
-                    color: meta ? meta.color : "#4a5060",
-                  }}>
-                    {meta ? meta.label : "—"}
-                  </span>
+                  {/* Selector tipo */}
+                  <select
+                    value={b.tipoVisual || ""}
+                    onChange={(e) => { e.stopPropagation(); cambiarTipo(idx, e.target.value); }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                      padding: "3px 6px", borderRadius: 4, cursor: "pointer",
+                      background: meta ? `${meta.color}18` : "rgba(90,95,120,0.14)",
+                      border: `1px solid ${meta ? meta.color + "55" : "rgba(90,95,120,0.35)"}`,
+                      color: meta ? meta.color : "var(--text-muted)",
+                      outline: "none",
+                    }}
+                  >
+                    <option value="">—</option>
+                    <option value="bajo">Bajo</option>
+                    <option value="aereo">Aéreo</option>
+                    <option value="torre">Torre</option>
+                  </select>
 
                   {/* Nombre y dimensiones */}
                   <div style={{ flex: 1, minWidth: 0 }}>
