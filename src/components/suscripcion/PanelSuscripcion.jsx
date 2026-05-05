@@ -3,8 +3,9 @@ import { Card } from "../ui/index.jsx";
 import { supabase } from "../../lib/supabase.js";
 
 export function PanelSuscripcion({ suscripcion }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
+  const [loading,         setLoading]         = useState(false);
+  const [error,           setError]           = useState("");
+  const [confirmCancelar, setConfirmCancelar] = useState(false);
 
   if (!suscripcion) return null;
 
@@ -46,6 +47,24 @@ export function PanelSuscripcion({ suscripcion }) {
     </span>
   );
 
+  const handleCancelar = async () => {
+    setError(""); setLoading(true);
+    try {
+      const { data: ws } = await supabase.from("workspaces").select("id").single();
+      const res = await fetch("/api/cancel-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preapprovalId: mp_preapproval_id, workspaceId: ws.id }),
+      });
+      const json = await res.json();
+      if (!json.ok) setError(json.error || "Error al cancelar");
+      else window.location.reload();
+    } catch (e) {
+      setError(e.message);
+    }
+    setLoading(false);
+  };
+
   const btnSuscribir = (label) => (
     <button onClick={handleSuscribir} disabled={loading}
       style={{ padding: "10px 0", borderRadius: 8, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", fontSize: 13, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", letterSpacing: "0.08em" }}>
@@ -82,10 +101,33 @@ export function PanelSuscripcion({ suscripcion }) {
       )}
 
       {estado === "active" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {badge("Activa", "#7ecf8a")}
-          {periodFin && (
-            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Próximo cobro: {periodFin}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {badge("Activa", "#7ecf8a")}
+            {periodFin && (
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Próximo cobro: {periodFin}</span>
+            )}
+          </div>
+          {!confirmCancelar ? (
+            <button onClick={() => setConfirmCancelar(true)}
+              style={{ padding: "7px 0", borderRadius: 7, background: "transparent", border: "1px solid rgba(200,60,60,0.30)", color: "#e07070", fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer" }}>
+              Cancelar suscripción
+            </button>
+          ) : (
+            <div style={{ padding: "12px 14px", borderRadius: 8, background: "rgba(200,60,60,0.08)", border: "1px solid rgba(200,60,60,0.28)", display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 12, color: "#e07070", fontWeight: 700 }}>¿Confirmás la cancelación?</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Perderás acceso al finalizar el período pagado.</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={handleCancelar} disabled={loading}
+                  style={{ flex: 1, padding: "7px 0", borderRadius: 7, background: "rgba(200,60,60,0.18)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer" }}>
+                  {loading ? "..." : "Sí, cancelar"}
+                </button>
+                <button onClick={() => setConfirmCancelar(false)} disabled={loading}
+                  style={{ flex: 1, padding: "7px 0", borderRadius: 7, background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer" }}>
+                  Volver
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}
