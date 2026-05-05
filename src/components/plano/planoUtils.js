@@ -1,6 +1,6 @@
 // ── Cálculo de layout SVG ─────────────────────────────────────────────────
 // gapPx: separación visual fija en píxeles entre bloques (no representa mm reales)
-export function calcularLayout(bloques, plotW, plotH, altoCielorraso = 2400, gapPx = 2) {
+export function calcularLayout(bloques, plotW, plotH, altoCielorraso = 2400, gapPx = 0) {
   if (!bloques.length) return { scale: 1, posiciones: [], floorY: plotH };
 
   const totalAnchoMM  = bloques.reduce((s, b) => s + b.ancho, 0);

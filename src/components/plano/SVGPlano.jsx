@@ -18,7 +18,7 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
   const plotW = SVG_W - PAD.left - PAD.right;
   const plotH = SVG_H - PAD.top  - PAD.bottom;
 
-  const { scale, posiciones } = calcularLayout(bloques, plotW, plotH, altoCielorraso);
+  const { posiciones } = calcularLayout(bloques, plotW, plotH, altoCielorraso);
 
   const absFloor   = PAD.top + plotH;
   const absCeiling = PAD.top;
@@ -32,7 +32,7 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
       if (!mod?.vistaConfig) return;
       try {
         const h   = Math.max(40, Math.round(200 * b.alto / Math.max(1, b.ancho)));
-        const str = generarVistaSVG(mod, { width: 200, height: h, theme: "dark" });
+        const str = generarVistaSVG(mod, { width: 200, height: h, theme: "dark", plano: true });
         result[b.id] = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(str)}`;
       } catch {}
     });
@@ -91,18 +91,6 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
 
         return (
           <g key={b.id} onClick={() => onSelect?.(idx)} style={{ cursor: "pointer" }}>
-            {/* Glow de selección */}
-            {sel && (
-              <rect
-                x={rectX - 2} y={rectY - 2}
-                width={pos.widthPx + 4} height={pos.heightPx + 4}
-                fill="none"
-                stroke="rgba(212,175,55,0.22)"
-                strokeWidth="5"
-                rx="4"
-              />
-            )}
-
             {dataUrl ? (
               /* Vista técnica configurada en catálogo */
               <image
@@ -118,7 +106,6 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
                   x={rectX} y={rectY}
                   width={pos.widthPx} height={pos.heightPx}
                   fill={colors.fill}
-                  rx="2"
                 />
                 {pos.widthPx > 28 && pos.heightPx > 20 && (
                   <text
@@ -142,15 +129,16 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
               </>
             )}
 
-            {/* Borde siempre visible (encima de la imagen o del fallback) */}
-            <rect
-              x={rectX} y={rectY}
-              width={pos.widthPx} height={pos.heightPx}
-              fill="none"
-              stroke={sel ? "#D4AF37" : colors.stroke}
-              strokeWidth={sel ? 1.5 : 0.8}
-              rx="2"
-            />
+            {/* Borde de selección — solo cuando está seleccionado */}
+            {sel && (
+              <rect
+                x={rectX} y={rectY}
+                width={pos.widthPx} height={pos.heightPx}
+                fill="none"
+                stroke="#D4AF37"
+                strokeWidth="1.5"
+              />
+            )}
 
             {/* Número de orden */}
             <text
@@ -160,6 +148,21 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
               {idx + 1}
             </text>
           </g>
+        );
+      })}
+
+      {/* Juntas constructivas — línea vertical sutil entre módulos adyacentes */}
+      {bloques.map((b, idx) => {
+        if (idx === 0) return null;
+        const juntaX = PAD.left + posiciones[idx].x;
+        return (
+          <line
+            key={`junta-${b.id}`}
+            x1={juntaX} y1={absCeiling}
+            x2={juntaX} y2={absFloor}
+            stroke="rgba(255,255,255,0.07)"
+            strokeWidth="0.5"
+          />
         );
       })}
 
@@ -188,7 +191,6 @@ export default function SVGPlano({ bloques, altoCielorraso = 2400, svgRef, onSel
       <Cotas
         bloques={bloques}
         posiciones={posiciones}
-        scale={scale}
         padLeft={PAD.left}
         floorY={absFloor}
       />
