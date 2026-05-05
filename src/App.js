@@ -461,7 +461,13 @@ function AppInterna() {
                 onLimpiarTemps={(itemsActuales) => {
                   const codsTemp = itemsActuales.filter(it => it.codigo?.startsWith("TEMP_")).map(it => it.codigo);
                   if (codsTemp.length === 0) return;
-                  const nuevos = Object.fromEntries(Object.entries(modulos).filter(([c]) => !codsTemp.includes(c)));
+                  // No borrar TEMPs que ya quedaron guardados en algún presupuesto
+                  const codsEnPresupuestos = new Set(
+                    Object.values(presupuestos).flatMap(p => (p.items || []).map(it => it.codigo))
+                  );
+                  const codsABorrar = codsTemp.filter(c => !codsEnPresupuestos.has(c));
+                  if (codsABorrar.length === 0) return;
+                  const nuevos = Object.fromEntries(Object.entries(modulos).filter(([c]) => !codsABorrar.includes(c)));
                   setModulos(nuevos);
                   hSaveM(nuevos);
                 }}
