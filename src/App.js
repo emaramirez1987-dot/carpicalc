@@ -601,11 +601,14 @@ function AppInterna() {
 }
 
 // ─── App (raíz) ───────────────────────────────────────────────────────────────
+const LOCAL_DEV = process.env.REACT_APP_LOCAL_DEV === "true";
+
 export default function App() {
   // null = cargando sesión, false = no autenticado, true = autenticado
-  const [autenticado, setAutenticado] = useState(null);
+  const [autenticado, setAutenticado] = useState(LOCAL_DEV ? true : null);
 
   useEffect(() => {
+    if (LOCAL_DEV) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       setAutenticado(!!session);
     });
