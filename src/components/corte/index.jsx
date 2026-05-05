@@ -210,130 +210,76 @@ function ResumenCompra({ nombreMat, placaLargo, placaAncho, areaNetaM2, precioPl
   );
 }
 
-function TablaGrupoCorte({ nombreMat, piezas }) {
+function TablaGrupoCorte({ nombreMat, piezas, rotadas, onToggleRotar }) {
   return (
     <div style={{ marginBottom: 20 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 12
-        }}
-      >
-        <h3
-          style={{
-            fontSize: 14,
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-            fontWeight: 700,
-            color: "var(--accent)",
-            margin: 0
-          }}
-        >
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+        <h3 style={{ fontSize: 14, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, color: "var(--accent)", margin: 0 }}>
           🪵 {nombreMat}
         </h3>
         <Badge color="#7090b0">{piezas.length} cortes</Badge>
       </div>
-      {/* rsp-scroll-x: scroll táctil en tablas */}
-      <div
-        className="rsp-scroll-x"
-        style={{
-          borderRadius: 8,
-          overflow: "hidden",
-          border: "1px solid var(--border)"
-        }}
-      >
+      <div className="rsp-scroll-x" style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
         <div className="rsp-table-inner">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead
-              style={{
-                background: "var(--accent-soft)",
-                borderBottom: "1px solid var(--border)"
-              }}
-            >
+            <thead style={{ background: "var(--accent-soft)", borderBottom: "1px solid var(--border)" }}>
               <tr>
                 <th style={thStyle}>Módulo</th>
                 <th style={thStyle}>Pieza</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Cant.</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>
-                  Medidas reales
-                </th>
+                <th style={{ ...thStyle, textAlign: "center" }}>Medidas reales</th>
                 <th style={thStyle}>Tapacanto</th>
+                <th style={{ ...thStyle, textAlign: "center" }}>↺</th>
               </tr>
             </thead>
             <tbody>
-              {piezas.map((pz, idx) => (
-                <tr
-                  key={idx}
-                  style={{ transition: "background 0.15s" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "var(--accent-soft)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "transparent")
-                  }
-                >
-                  <td style={tdStyle}>
-                    <span
-                      style={{
-                        fontFamily: "'DM Mono',monospace",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "var(--accent)",
-                        marginRight: 8
-                      }}
-                    >
-                      {pz.codigo}
-                    </span>
-                    {pz.modulo}
-                  </td>
-                  <td style={{ ...tdStyle, fontWeight: 600 }}>
-                    {pz.piezaNombre}
-                  </td>
-                  <td
-                    style={{
-                      ...tdStyle,
-                      textAlign: "right",
-                      fontFamily: "'DM Mono',monospace",
-                      fontWeight: 700,
-                      fontSize: 16,
-                      color: "var(--accent)"
-                    }}
+              {piezas.map((pz, idx) => {
+                const piezaId = `${pz.codigo}-${pz.piezaNombre}`;
+                const rotada = rotadas?.has(piezaId);
+                const d1 = rotada ? pz.d2 : pz.d1;
+                const d2 = rotada ? pz.d1 : pz.d2;
+                return (
+                  <tr key={idx}
+                    style={{ transition: "background 0.15s", background: rotada ? "rgba(212,175,55,0.06)" : "transparent" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = rotada ? "rgba(212,175,55,0.10)" : "var(--accent-soft)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = rotada ? "rgba(212,175,55,0.06)" : "transparent")}
                   >
-                    {pz.cantidad}
-                  </td>
-                  <td
-                    style={{
-                      ...tdStyle,
-                      textAlign: "center",
-                      fontFamily: "'DM Mono',monospace",
-                      color: "#c8d098",
-                      fontSize: 14
-                    }}
-                  >
-                    {pz.d1} × {pz.d2} mm
-                  </td>
-                  <td
-                    style={{
-                      ...tdStyle,
-                      fontSize: 11,
-                      color: "var(--text-muted)"
-                    }}
-                  >
-                    {pz.tcNombre}{" "}
-                    <span
-                      style={{
-                        fontFamily: "'DM Mono',monospace",
-                        marginLeft: 4,
-                        color: "var(--text-secondary)"
-                      }}
-                    >
-                      {pz.tcLados}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                    <td style={tdStyle}>
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", marginRight: 8 }}>
+                        {pz.codigo}
+                      </span>
+                      {pz.modulo}
+                    </td>
+                    <td style={{ ...tdStyle, fontWeight: 600 }}>{pz.piezaNombre}</td>
+                    <td style={{ ...tdStyle, textAlign: "right", fontFamily: "'DM Mono',monospace", fontWeight: 700, fontSize: 16, color: "var(--accent)" }}>
+                      {pz.cantidad}
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontFamily: "'DM Mono',monospace", color: rotada ? "var(--accent)" : "#c8d098", fontSize: 14 }}>
+                      {d1} × {d2} mm
+                      {rotada && <span style={{ fontSize: 9, marginLeft: 5, color: "var(--accent)", fontWeight: 700, verticalAlign: "middle" }}>90°</span>}
+                    </td>
+                    <td style={{ ...tdStyle, fontSize: 11, color: "var(--text-muted)" }}>
+                      {pz.tcNombre}{" "}
+                      <span style={{ fontFamily: "'DM Mono',monospace", marginLeft: 4, color: "var(--text-secondary)" }}>{pz.tcLados}</span>
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: "center" }}>
+                      <button
+                        onClick={() => onToggleRotar?.(piezaId)}
+                        title={rotada ? "Quitar rotación" : "Rotar 90°"}
+                        style={{
+                          background: rotada ? "var(--accent-soft)" : "transparent",
+                          border: `1px solid ${rotada ? "var(--accent-border)" : "var(--border)"}`,
+                          borderRadius: 5, cursor: "pointer", padding: "2px 7px",
+                          fontSize: 14, color: rotada ? "var(--accent)" : "var(--text-muted)",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        ↺
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -346,6 +292,7 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
   const [copiadoOk, setCopiadoOk] = useState(false);
   const [layoutOptimizado, setLayoutOptimizado] = useState(null);
   const [bannerDesc, setBannerDesc] = useState(false); // descartado por el usuario
+  const [rotadas, setRotadas] = useState(new Set());
 
   // Si hay un presupuesto seleccionado en Vista Previa, usarlo en lugar del activo
   const presVP = presupuestoVistaPreviaId ? presupuestos[presupuestoVistaPreviaId] : null;
@@ -508,16 +455,20 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
             🖨 Lista de corte
           </button>
           <OptimizerButton
-            piezas={Object.values(grupos).flatMap(g => g.piezas.map(p => ({
-              id: `${p.codigo}-${p.piezaNombre}`,
-              d1: p.d1,
-              d2: p.d2,
-              cantidad: p.cantidad,
-              modId: p.modulo.toLowerCase().replace(/\s+/g, ''),
-              nombre: p.piezaNombre,
-              rotable: true,
-              vetaDir: "horizontal"
-            })))}
+            piezas={Object.values(grupos).flatMap(g => g.piezas.map(p => {
+              const piezaId = `${p.codigo}-${p.piezaNombre}`;
+              const rotada = rotadas.has(piezaId);
+              return {
+                id: piezaId,
+                d1: rotada ? p.d2 : p.d1,
+                d2: rotada ? p.d1 : p.d2,
+                cantidad: p.cantidad,
+                modId: p.modulo.toLowerCase().replace(/\s+/g, ''),
+                nombre: p.piezaNombre,
+                rotable: !rotada,
+                vetaDir: "horizontal"
+              };
+            }))}
             plateDims={{
               largo: Object.values(grupos)[0]?.placaLargo ?? 2750,
               ancho: Object.values(grupos)[0]?.placaAncho ?? 1830,
@@ -669,7 +620,8 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
             className="rsp-card"
             style={{ marginBottom: 20 }}
           >
-            <TablaGrupoCorte nombreMat={nombreMat} piezas={datos.piezas} />
+            <TablaGrupoCorte nombreMat={nombreMat} piezas={datos.piezas} rotadas={rotadas}
+              onToggleRotar={(id) => setRotadas(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; })} />
           </Card>
         ))}
       </div>
