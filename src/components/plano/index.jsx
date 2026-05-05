@@ -56,26 +56,44 @@ export function PlanoDos({ modulos }) {
     guardarPlano({ bloques: nuevosBloques, altoCielorraso: nuevoAlto, offsetBajos: offB, offsetAltos: offA, colgadoAereos: colgado });
   };
 
+  const prevMismoTipo = (idx) => {
+    const tipo = bloques[idx]?.tipoVisual;
+    for (let i = idx - 1; i >= 0; i--) {
+      if (bloques[i]?.tipoVisual === tipo) return i;
+    }
+    return -1;
+  };
+
+  const nextMismoTipo = (idx) => {
+    const tipo = bloques[idx]?.tipoVisual;
+    for (let i = idx + 1; i < bloques.length; i++) {
+      if (bloques[i]?.tipoVisual === tipo) return i;
+    }
+    return -1;
+  };
+
   const moverIzquierda = (idx) => {
-    if (idx === 0) return;
+    const prevIdx = prevMismoTipo(idx);
+    if (prevIdx === -1) return;
     setBloques((prev) => {
       const a = [...prev];
-      [a[idx - 1], a[idx]] = [a[idx], a[idx - 1]];
+      [a[prevIdx], a[idx]] = [a[idx], a[prevIdx]];
       persistir(a, altoCielorraso);
       return a;
     });
-    setSelectedIdx(idx - 1);
+    setSelectedIdx(prevIdx);
   };
 
   const moverDerecha = (idx) => {
-    if (idx >= bloques.length - 1) return;
+    const nextIdx = nextMismoTipo(idx);
+    if (nextIdx === -1) return;
     setBloques((prev) => {
       const a = [...prev];
-      [a[idx], a[idx + 1]] = [a[idx + 1], a[idx]];
+      [a[idx], a[nextIdx]] = [a[nextIdx], a[idx]];
       persistir(a, altoCielorraso);
       return a;
     });
-    setSelectedIdx(idx + 1);
+    setSelectedIdx(nextIdx);
   };
 
   const eliminarBloque = (idx) => {
@@ -315,18 +333,14 @@ export function PlanoDos({ modulos }) {
 
                   {/* Controles */}
                   <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); moverIzquierda(idx); }}
-                      disabled={idx === 0}
-                      style={arrowBtn(idx === 0)}>
-                      ←
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); moverDerecha(idx); }}
-                      disabled={idx === bloques.length - 1}
-                      style={arrowBtn(idx === bloques.length - 1)}>
-                      →
-                    </button>
+                    {(() => {
+                      const disL = prevMismoTipo(idx) === -1;
+                      const disR = nextMismoTipo(idx) === -1;
+                      return (<>
+                        <button onClick={(e) => { e.stopPropagation(); moverIzquierda(idx); }} disabled={disL} style={arrowBtn(disL)}>←</button>
+                        <button onClick={(e) => { e.stopPropagation(); moverDerecha(idx); }}  disabled={disR} style={arrowBtn(disR)}>→</button>
+                      </>);
+                    })()}
                     <button
                       onClick={(e) => { e.stopPropagation(); eliminarBloque(idx); }}
                       style={{ ...arrowBtn(false), color: "#c05050", borderColor: "rgba(200,60,60,0.28)" }}>
