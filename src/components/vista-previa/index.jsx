@@ -196,13 +196,7 @@ function VistaPrevia({
     setExtraPages(p => p.filter(h => h.id !== id));
     setPaginaActiva(prev => prev === id ? 'main' : prev);
   };
-  const [temaPDF, setTemaPDF]                   = useState(() => {
-    try { return localStorage.getItem("carpicalc:temaPDF") || "dorado"; } catch { return "dorado"; }
-  });
-  const cambiarTema = (t) => {
-    setTemaPDF(t);
-    try { localStorage.setItem("carpicalc:temaPDF", t); } catch {}
-  };
+  const temaPDF = "dorado";
   const [whatsappCopiado, setWhatsappCopiado]   = useState(false);
   const [guardandoTexto, setGuardandoTexto]     = useState(false);
   const [actualizadoVP, setActualizadoVP]       = useState(false);
@@ -392,19 +386,6 @@ function VistaPrevia({
           >
             🖨 PDF
           </button>
-        )}
-
-        {/* Tema PDF */}
-        {presSel && (
-          <select value={temaPDF} onChange={e => cambiarTema(e.target.value)}
-            style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 600, padding: "5px 6px", borderRadius: 6, cursor: "pointer", outline: "none", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", maxWidth: 96 }}>
-            <option value="dorado">🟡 Dorado</option>
-            <option value="gris">⬜ Perla</option>
-            <option value="carbon">⬛ Carbón</option>
-            <option value="bosque">🟢 Bosque</option>
-            <option value="marino">🔵 Marino</option>
-            <option value="bordo">🟥 Burdeos</option>
-          </select>
         )}
 
         {/* Guardar */}
