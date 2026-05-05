@@ -82,50 +82,62 @@ function ListaItemsVP({ items, modulos, costos, dimOverride, costosDirectos = []
                 background: esOculto ? "rgba(200,60,60,0.04)" : "var(--bg-surface)",
                 overflow: "hidden", opacity: esOculto ? 0.6 : 1, transition: "all 0.18s",
               }}>
-                {/* Fila principal con thumbnail */}
-                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", flexWrap: "wrap" }}>
-                  {/* Thumbnail SVG clickeable */}
+                {/* Fila principal */}
+                <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 14px", flexWrap: "wrap" }}>
+
+                  {/* Thumbnail compacto — clic para expandir */}
                   <div
                     onClick={() => setExpandidoItem(expandido ? null : keyId)}
+                    title={expandido ? "Cerrar detalle" : "Ver detalle"}
                     style={{
-                      width: 120, height: 120, flexShrink: 0, cursor: "pointer",
-                      border: "1px solid var(--border)", borderRadius: 6, padding: 4,
-                      background: "var(--bg-subtle)", transition: "all 0.2s",
-                      opacity: esOculto ? 0.3 : 1, filter: esOculto ? "grayscale(100%)" : "none",
+                      width: 56, height: 56, flexShrink: 0, cursor: "pointer",
+                      border: `1px solid ${expandido ? "var(--accent-border)" : "var(--border)"}`,
+                      borderRadius: 7, overflow: "hidden",
+                      background: "var(--bg-subtle)", transition: "border-color 0.15s",
+                      opacity: esOculto ? 0.35 : 1, filter: esOculto ? "grayscale(80%)" : "none",
                     }}
-                    title="Clic para expandir"
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent-border)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = expandido ? "var(--accent-border)" : "var(--border)"; }}
                   >
                     <VistaModuloSVG
                       modulo={modUsado}
                       vistaConfig={modUsado.vistaConfig}
                       theme={tema}
-                      width={120}
-                      height={120}
+                      width={56}
+                      height={56}
                     />
                   </div>
 
-                  {/* Info del item */}
-                  <div style={{ flex: 2, minWidth: 120 }}>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>
-                      {item.codigo.startsWith("TEMP_") ? "VAR" : item.codigo}
-                    </span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                  {/* Código */}
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>
+                    {item.codigo.startsWith("TEMP_") ? "VAR" : item.codigo}
+                  </span>
+
+                  {/* Nombre + dims */}
+                  <div style={{ flex: 2, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{modUsado.nombre}</span>
                       {esTemp && (
                         <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.30)", color: "#c8a02a", borderRadius: 3, padding: "1px 5px" }}>✦ var</span>
                       )}
                     </div>
-                    <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: dimDif ? "var(--accent)" : "var(--text-muted)", marginTop: 4 }}>
+                    <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: dimDif ? "var(--accent)" : "var(--text-muted)", marginTop: 2 }}>
                       {over.ancho}×{over.profundidad}×{over.alto} mm
                     </div>
                   </div>
+
+                  {/* Material + espesor */}
                   <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
                     <Badge>{TIPO_MAT[modUsado.material]}</Badge>
                     {calc.espesor && <Badge color="#705090">{calc.espesor}mm</Badge>}
                   </div>
+
+                  {/* Cantidad */}
                   <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>
                     ×{item.cantidad}
                   </span>
+
+                  {/* Precio */}
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, flexShrink: 0, fontFamily: "'DM Mono',monospace" }}>
                     <span style={{ fontSize: 12, color: "#7ecf8a", fontWeight: 700 }}>{fmtPeso(calc.total * item.cantidad)}</span>
                     {mostrarPrecioUnitario && item.cantidad > 1 && (
@@ -133,6 +145,7 @@ function ListaItemsVP({ items, modulos, costos, dimOverride, costosDirectos = []
                     )}
                     <span style={{ fontSize: 10, color: "#9ab080" }}>{fmtNum(calc.m2Neto)} m²</span>
                   </div>
+
                   <BtnOjo keyId={keyId} itemsOcultos={itemsOcultos} onToggleOculto={onToggleOculto}
                     titleVisible="Visible en PDF — clic para ocultar"
                     titleOculto="Oculto de PDF — clic para mostrar" />
