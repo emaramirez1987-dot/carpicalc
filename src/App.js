@@ -523,7 +523,7 @@ function AppInterna() {
             )}
 
             {nav.vista === "plano" && (
-              <PlanoDos modulos={modulos} />
+              <PlanoDos modulos={modulos} items={items} dimOverride={dimOverride} />
             )}
 
             {nav.vista === "trabajos" && (
