@@ -105,6 +105,7 @@ function ListaItemsVP({ items, modulos, costos, dimOverride, costosDirectos = []
                       theme={tema}
                       width={56}
                       height={56}
+                      plano={true}
                     />
                   </div>
 

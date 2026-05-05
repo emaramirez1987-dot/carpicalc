@@ -18,18 +18,19 @@ export function VistaModuloSVG({
   width = 200,
   height = 200,
   className = '',
+  plano = false,
 }) {
   const svgStr = useMemo(() => {
     try {
       return generarVistaSVG(
         { ...modulo, vistaConfig },
-        { width, height, theme }
+        { width, height, theme, plano }
       );
     } catch (e) {
       console.error('Error rendering VistaModuloSVG:', e);
       return null;
     }
-  }, [modulo, vistaConfig, width, height, theme]);
+  }, [modulo, vistaConfig, width, height, theme, plano]);
 
   if (!svgStr) {
     // Fallback visual consistente — no texto plano
