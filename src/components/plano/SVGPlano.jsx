@@ -85,8 +85,10 @@ export default function SVGPlano({
       const mod = modulos[b.codigo];
       if (!mod?.vistaConfig) return;
       try {
+        // Usar las dims del bloque (pueden venir de dimOverride), no las del catálogo
+        const modConDims = { ...mod, dimensiones: { ...mod.dimensiones, ancho: b.ancho, alto: b.alto, profundidad: b.profundidad } };
         const h   = Math.max(40, Math.round(200 * b.alto / Math.max(1, b.ancho)));
-        const str = generarVistaSVG(mod, { width: 200, height: h, theme: temaClaro ? "light" : "dark", plano: true });
+        const str = generarVistaSVG(modConDims, { width: 200, height: h, theme: temaClaro ? "light" : "dark", plano: true });
         result[b.id] = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(str)}`;
       } catch {}
     });
