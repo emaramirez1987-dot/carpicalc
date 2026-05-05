@@ -21,7 +21,7 @@ import { calcularModulo } from "./utils.js";
 import {
   cargarDatos, cargarSuscripcion,
   guardarModulos, guardarPresupuestos, guardarPerfil, guardarCostos,
-  leerVersionCostos,
+  leerVersionCostos, guardarPlano,
 } from "./storage.js";
 import { useTema } from "./hooks/useTema.js";
 import {
@@ -297,6 +297,20 @@ function AppInterna() {
     setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
     if (id) setPresupuestoActivoId(id);
     localStorage.removeItem("carpicalc:borrador");
+    const bloques = (p.items || []).flatMap(item => {
+      const mod = modulos[item.codigo];
+      if (!mod) return [];
+      return Array.from({ length: item.cantidad }, () => ({
+        id: crypto.randomUUID(),
+        codigo: item.codigo,
+        nombre: mod.nombre,
+        tipoVisual: mod.tipoVisual || null,
+        ancho: mod.dimensiones.ancho,
+        alto: mod.dimensiones.alto,
+        profundidad: mod.dimensiones.profundidad,
+      }));
+    });
+    guardarPlano({ bloques, altoCielorraso: 2400 });
   };
 
   const handleEliminarPresupuesto = (id) => {

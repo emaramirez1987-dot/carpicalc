@@ -9,6 +9,7 @@ import { fmtPeso, fmtNum, fmtFecha,
 import { ESTADOS_TRABAJO } from '../../constants.js';
 import { TIPO_MAT } from '../../constants.js';
 import { imprimirPresupuesto } from '../presupuesto/index.jsx';
+import { guardarPlano } from '../../storage.js';
 
 // ── Helpers internos ──────────────────────────────────────────────
 const COLOR_CD = { mo: "#9b7fd4", material: "#7090c0", herraje: "#c0906a", tapacanto: "#6aab8e" };
@@ -32,6 +33,34 @@ function BtnOjo({ keyId, itemsOcultos, onToggleOculto, titleVisible, titleOculto
     >
       {esOculto ? "🚫" : "👁"}
     </button>
+  );
+}
+
+function SeccionColapsable({ titulo, resumen, children }) {
+  const [abierta, setAbierta] = useState(false);
+  return (
+    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+      <button
+        onClick={() => setAbierta(a => !a)}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer", background: "transparent", border: "none", textAlign: "left" }}
+      >
+        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", flexShrink: 0 }}>
+          {titulo}
+        </span>
+        {!abierta && resumen && (
+          <span style={{ flex: 1, fontSize: 11, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: "italic" }}>
+            {resumen}
+          </span>
+        )}
+        {abierta && <div style={{ flex: 1 }} />}
+        <span style={{ color: "var(--text-muted)", fontSize: 12, display: "inline-block", transition: "transform 0.18s", transform: abierta ? "rotate(180deg)" : "none", flexShrink: 0 }}>▾</span>
+      </button>
+      {abierta && (
+        <div style={{ borderTop: "1px solid var(--border)", padding: "14px" }}>
+          {children}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -420,7 +449,7 @@ function VistaPrevia({
           Vista Previa
         </SectionTitle>
         {presSelId && (
-          <button onClick={() => { setPresSelId(null); setAcordeonAbierto(true); setBusqueda(""); if (onSeleccionarPresupuesto) onSeleccionarPresupuesto(null); }}
+          <button onClick={() => { guardarPlano({ bloques: [], altoCielorraso: 2400 }); setPresSelId(null); setAcordeonAbierto(true); setBusqueda(""); if (onSeleccionarPresupuesto) onSeleccionarPresupuesto(null); }}
             style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "transparent", border: "1px solid rgba(200,60,60,0.25)", color: "#e07070", flexShrink: 0, marginTop: 4 }}>
             ✕ Limpiar vista
           </button>
@@ -512,7 +541,25 @@ function VistaPrevia({
                       const tv = calcularTotalVisual(p.total, p.descuento, p.gananciaExtra);
                       return (
                         <div key={id}
-                          onClick={() => { setPresSelId(id); setAcordeonAbierto(false); setBusqueda(""); }}
+                          onClick={() => {
+                            setPresSelId(id);
+                            setAcordeonAbierto(false);
+                            setBusqueda("");
+                            const bloques = (p.items || []).flatMap(item => {
+                              const mod = modulos[item.codigo];
+                              if (!mod) return [];
+                              return Array.from({ length: item.cantidad }, () => ({
+                                id: crypto.randomUUID(),
+                                codigo: item.codigo,
+                                nombre: mod.nombre,
+                                tipoVisual: mod.tipoVisual || null,
+                                ancho: mod.dimensiones.ancho,
+                                alto: mod.dimensiones.alto,
+                                profundidad: mod.dimensiones.profundidad,
+                              }));
+                            });
+                            guardarPlano({ bloques, altoCielorraso: 2400 });
+                          }}
                           style={{
                             cursor: "pointer", display: "flex", alignItems: "center", gap: 12,
                             padding: "10px 16px", borderBottom: "1px solid var(--separator)",
@@ -585,58 +632,77 @@ function VistaPrevia({
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-                {/* ── Toolbar — Estado + Actualizar + Tema PDF ── */}
-                <div style={{
-                  background: "var(--bg-surface)", border: "1px solid var(--border)",
-                  borderRadius: 12, overflow: "hidden",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.22)"
-                }}>
-                  {/* ROW 1 — ESTADO */}
-                  <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)" }}>
-                    <select
-                      value={presSel.estado || "nuevo"}
-                      onChange={e => onCambiarEstado(presSelId, e.target.value)}
-                      style={{
-                        width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 12,
-                        padding: "9px 12px", borderRadius: 8, cursor: "pointer",
-                        outline: "none", fontWeight: 700, letterSpacing: "0.04em",
-                        background: `${estSel.color}14`,
-                        border: `1.5px solid ${estSel.color}50`,
-                        color: estSel.color
-                      }}>
-                      {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
-                    </select>
-                  </div>
+              {/* ── 1. Encabezado prominente ── */}
+              {(() => {
+                const descuentoActual = parseFloat(presSel.descuento) || 0;
+                const gananciaActual  = parseFloat(presSel.gananciaExtra) || 0;
+                const totalAjustado   = presSel.total + gananciaActual - descuentoActual;
+                const hayAjustes      = descuentoActual > 0 || gananciaActual > 0;
+                const necesitaAct     = presSelId && presupuestoNecesitaActualizacion(presSelId, costosVersion, presSel);
+                return (
+                  <div style={{ background: "var(--bg-surface)", border: "1px solid var(--accent-border)", borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.32)" }}>
+                    {/* Título + total */}
+                    <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {presSel.nombre}
+                        </div>
+                        {(presSel.cliente?.nombre || presSel.cliente?.tel) && (
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                            {[presSel.cliente.nombre, presSel.cliente.tel].filter(Boolean).join(" · ")}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ flexShrink: 0, textAlign: "right" }}>
+                        <div style={{ fontSize: 20, fontWeight: 900, fontFamily: "'DM Mono',monospace", color: "#7ecf8a" }}>
+                          {fmtPeso(hayAjustes ? totalAjustado : presSel.total)}
+                        </div>
+                        {hayAjustes && (
+                          <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", opacity: 0.6, textDecoration: "line-through" }}>
+                            {fmtPeso(presSel.total)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                  {/* ROW 2 — CONFIGURACIÓN: tema PDF + actualizar */}
-                  <div style={{ padding: "8px 14px", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "var(--bg-subtle)" }}>
-                    <select value={temaPDF} onChange={e => cambiarTema(e.target.value)}
-                      title="Tema de color del PDF"
-                      style={{
-                        fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 600,
-                        padding: "5px 8px", borderRadius: 6, cursor: "pointer", outline: "none",
-                        background: "transparent", border: "1px solid var(--border)",
-                        color: "var(--text-muted)", flex: 1, minWidth: 90
+                    {/* Estado + acciones */}
+                    <div style={{ padding: "10px 14px", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "rgba(0,0,0,0.06)" }}>
+                      <select
+                        value={presSel.estado || "nuevo"}
+                        onChange={e => onCambiarEstado(presSelId, e.target.value)}
+                        style={{
+                          fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
+                          padding: "6px 10px", borderRadius: 7, cursor: "pointer", outline: "none",
+                          background: `${estSel.color}14`, border: `1.5px solid ${estSel.color}50`,
+                          color: estSel.color, letterSpacing: "0.04em"
+                        }}
+                      >
+                        {ESTADOS_TRABAJO.map(e => <option key={e.id} value={e.id}>{e.icon} {e.label}</option>)}
+                      </select>
+
+                      <div style={{ width: 1, height: 18, background: "var(--border)", flexShrink: 0 }} />
+
+                      <button onClick={handleWhatsApp} style={{
+                        padding: "6px 14px", borderRadius: 7, cursor: "pointer", fontSize: 11,
+                        fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                        background: whatsappCopiado ? "rgba(126,207,138,0.12)" : "var(--bg-subtle)",
+                        border: `1px solid ${whatsappCopiado ? "rgba(126,207,138,0.40)" : "var(--border)"}`,
+                        color: whatsappCopiado ? "#7ecf8a" : "var(--text-secondary)", transition: "all 0.15s"
                       }}>
-                      <option value="dorado">🟡 Dorado</option>
-                      <option value="gris">⬜ Gris Perla</option>
-                      <option value="carbon">⬛ Carbón</option>
-                      <option value="bosque">🟢 Bosque</option>
-                      <option value="marino">🔵 Marino</option>
-                      <option value="bordo">🟥 Burdeos</option>
-                    </select>
-                    <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
-                    {(() => {
-                      const necesita = presSelId && presupuestoNecesitaActualizacion(presSelId, costosVersion, presSel);
-                      if (actualizadoVP) {
-                        return (
-                          <span style={{ padding: "5px 10px", borderRadius: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(126,207,138,0.15)", border: "1px solid rgba(126,207,138,0.40)", color: "#7ecf8a", whiteSpace: "nowrap" }}>
-                            ✓ Actualizado
-                          </span>
-                        );
-                      }
-                      if (!necesita) return null;
-                      return (
+                        {whatsappCopiado ? "✓ Copiado" : "📲 WA"}
+                      </button>
+
+                      <button onClick={handlePDF}
+                        style={{ padding: "6px 14px", borderRadius: 7, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "transparent", border: "1.5px solid var(--accent)", color: "var(--accent)", transition: "all 0.18s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--text-inverted)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--accent)"; }}
+                      >
+                        🖨 PDF
+                      </button>
+
+                      <div style={{ flex: 1 }} />
+
+                      {necesitaAct && !actualizadoVP && (
                         <button
                           onClick={() => {
                             const nuevoTotalModulos = recalcularTotalPresupuesto(presSel, modulos, costos);
@@ -653,214 +719,168 @@ function VistaPrevia({
                             setActualizadoVP(true);
                             setTimeout(() => setActualizadoVP(false), 3000);
                           }}
-                          title="Costos actualizados — recalculá el precio"
-                          style={{ padding: "5px 10px", borderRadius: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a", whiteSpace: "nowrap" }}>
-                          ↻ Actualizar precio
-                        </button>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                {/* Historial de versiones */}
-                {(presSel.historialVersiones || []).length > 0 && (
-                  <div style={{ padding: "8px 14px", background: "rgba(200,160,42,0.08)", border: "1px solid rgba(200,160,42,0.20)", borderRadius: 8, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--accent)", fontWeight: 700 }}>Versiones anteriores:</span>
-                    {(presSel.historialVersiones || []).map((v, i) => (
-                      <span key={i} style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
-                        {fmtFecha(v.fecha)}: {fmtPeso(v.total)}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Ajustes de precio */}
-                {(() => {
-                  const descuentoActual = parseFloat(presSel.descuento) || 0;
-                  const gananciaActual  = parseFloat(presSel.gananciaExtra) || 0;
-                  const totalAjustadoVP = presSel.total + gananciaActual - descuentoActual;
-                  const guardarAjuste = (d, g) => {
-                    onActualizarPresupuesto(presSelId, {
-                      descuento: parseFloat(d) || 0,
-                      gananciaExtra: parseFloat(g) || 0
-                    });
-                  };
-                  return (
-                    <div style={{
-                      background: "var(--bg-surface)", border: "1px solid var(--border)",
-                      borderRadius: 12, overflow: "hidden",
-                      boxShadow: "0 2px 12px rgba(0,0,0,0.22)"
-                    }}>
-                      <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>
-                          💲 Ajustes de precio
+                          style={{ padding: "6px 12px", borderRadius: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a", whiteSpace: "nowrap" }}
+                        >↻ Actualizar</button>
+                      )}
+                      {actualizadoVP && (
+                        <span style={{ padding: "6px 12px", borderRadius: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(126,207,138,0.15)", border: "1px solid rgba(126,207,138,0.40)", color: "#7ecf8a", whiteSpace: "nowrap" }}>
+                          ✓ Actualizado
                         </span>
-                        {(descuentoActual > 0 || gananciaActual > 0) && (
-                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 900, color: "#7ecf8a" }}>
-                            Total ajustado: {fmtPeso(totalAjustadoVP)}
+                      )}
+
+                      <select value={temaPDF} onChange={e => cambiarTema(e.target.value)}
+                        title="Tema del PDF"
+                        style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 600, padding: "5px 8px", borderRadius: 6, cursor: "pointer", outline: "none", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", maxWidth: 110 }}
+                      >
+                        <option value="dorado">🟡 Dorado</option>
+                        <option value="gris">⬜ Gris Perla</option>
+                        <option value="carbon">⬛ Carbón</option>
+                        <option value="bosque">🟢 Bosque</option>
+                        <option value="marino">🔵 Marino</option>
+                        <option value="bordo">🟥 Burdeos</option>
+                      </select>
+
+                      <button onClick={guardarTextos} style={{
+                        padding: "6px 18px", borderRadius: 7, cursor: "pointer",
+                        background: guardandoTexto ? "rgba(126,207,138,0.15)" : "var(--accent-soft)",
+                        border: `1px solid ${guardandoTexto ? "rgba(126,207,138,0.4)" : "var(--accent-border)"}`,
+                        color: guardandoTexto ? "#7ecf8a" : "var(--accent)",
+                        fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, transition: "all 0.2s"
+                      }}>
+                        {guardandoTexto ? "✓ Guardado" : "💾 Guardar"}
+                      </button>
+                    </div>
+
+                    {/* Historial de versiones (si hay) */}
+                    {(presSel.historialVersiones || []).length > 0 && (
+                      <div style={{ padding: "6px 14px", background: "rgba(200,160,42,0.06)", borderTop: "1px solid rgba(200,160,42,0.15)", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                        <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: "var(--accent)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>versiones:</span>
+                        {(presSel.historialVersiones || []).map((v, i) => (
+                          <span key={i} style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+                            {fmtFecha(v.fecha)}: {fmtPeso(v.total)}
                           </span>
-                        )}
+                        ))}
                       </div>
-                      <div style={{ display: "flex", gap: 0 }}>
-                        <div style={{ flex: 1, padding: "10px 14px", borderRight: "1px solid var(--border)", background: descuentoActual > 0 ? "rgba(224,112,112,0.06)" : "transparent" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                            <span style={{ fontSize: 13 }}>🏷</span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>Descuento</span>
-                            <span style={{ fontSize: 12, color: "#e07070", fontWeight: 900, fontFamily: "'DM Mono',monospace" }}>−</span>
-                          </div>
-                          <input type="number" min="0" value={descuentoVP} placeholder="0"
-                            onChange={e => setDescuentoVP(e.target.value)}
-                            onKeyDown={e => e.key === "Enter" && guardarAjuste(descuentoVP, gananciaExtraVP)}
-                            style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "6px 10px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "#e07070", outline: "none" }}
-                            onFocus={e => e.target.style.borderColor = "#e07070"} />
-                          <button onClick={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
-                            style={{ marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, cursor: "pointer", background: parseFloat(descuentoVP) !== parseFloat(presSel?.descuento || 0) ? "rgba(224,112,112,0.18)" : "var(--bg-base)", border: `1px solid ${parseFloat(descuentoVP) !== parseFloat(presSel?.descuento || 0) ? "#e07070" : "var(--border)"}`, color: "#e07070", fontSize: 13, fontWeight: 700 }}>
-                            ✓ Confirmar
-                          </button>
-                        </div>
-                        <div style={{ flex: 1, padding: "10px 14px", background: gananciaActual > 0 ? "rgba(126,207,138,0.06)" : "transparent" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                            <span style={{ fontSize: 13 }}>💵</span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>Ganancia extra</span>
-                            <span style={{ fontSize: 12, color: "#7ecf8a", fontWeight: 900, fontFamily: "'DM Mono',monospace" }}>+</span>
-                          </div>
-                          <input type="number" min="0" value={gananciaExtraVP} placeholder="0"
-                            onChange={e => setGananciaExtraVP(e.target.value)}
-                            onKeyDown={e => e.key === "Enter" && guardarAjuste(descuentoVP, gananciaExtraVP)}
-                            style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "6px 10px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "#7ecf8a", outline: "none" }}
-                            onFocus={e => e.target.style.borderColor = "#7ecf8a"} />
-                          <button onClick={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
-                            style={{ marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, cursor: "pointer", background: parseFloat(gananciaExtraVP) !== parseFloat(presSel?.gananciaExtra || 0) ? "rgba(126,207,138,0.18)" : "var(--bg-base)", border: `1px solid ${parseFloat(gananciaExtraVP) !== parseFloat(presSel?.gananciaExtra || 0) ? "#7ecf8a" : "var(--border)"}`, color: "#7ecf8a", fontSize: 13, fontWeight: 700 }}>
-                            ✓ Confirmar
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Texto de apertura */}
-                <div style={{
-                  background: "var(--bg-surface)", border: "1px solid var(--border)",
-                  borderRadius: 12, padding: "14px 16px",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.22)"
-                }}>
-                  <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
-                    📝 Texto de apertura
+                    )}
                   </div>
-                  <textarea value={textoApertura} onChange={e => setTextoApertura(e.target.value)}
-                    placeholder="Ej: Estimado cliente, le hacemos llegar el presente presupuesto..."
-                    rows={3}
-                    style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 8, outline: "none", resize: "vertical", lineHeight: 1.6 }}
-                    onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                    onBlur={e => e.target.style.borderColor = "var(--border)"} />
-                </div>
+                );
+              })()}
 
-                {/* Lista de items — misma estructura que Presupuesto editor + toggle visibilidad */}
-                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.22)" }}>
-                  {/* Header */}
-                  {/* Header */}
-                  <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>
-                      📦 {(presSel.items?.length || 0) + (presSel.costosDirectos?.length || 0) + (presSel.adicionales?.length || 0)} ítems
+              {/* ── 2. Lista de ítems (bloque central, mayor jerarquía) ── */}
+              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.22)" }}>
+                <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                  <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>
+                    📦 {(presSel.items?.length || 0) + (presSel.costosDirectos?.length || 0) + (presSel.adicionales?.length || 0)} ítems
+                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+                      👁 visible &nbsp;·&nbsp; 🚫 oculto
                     </span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
-                        👁 visible &nbsp;·&nbsp; 🚫 oculto
-                      </span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>Precio unit.</span>
-                        <ToggleSwitch value={mostrarPrecioUnitario} onChange={setMostrarPrecioUnitario} label="" />
-                      </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>Precio unit.</span>
+                      <ToggleSwitch value={mostrarPrecioUnitario} onChange={setMostrarPrecioUnitario} label="" />
                     </div>
                   </div>
-                  <ListaItemsVP
-                    items={presSel.items}
-                    modulos={modulos}
-                    costos={costos}
-                    dimOverride={presSel.dimOverride}
-                    costosDirectos={presSel.costosDirectos || []}
-                    adicionales={presSel.adicionales || []}
-                    itemsOcultos={itemsOcultos}
-                    onToggleOculto={toggleOculto}
-                    mostrarPrecioUnitario={mostrarPrecioUnitario}
-                  />
-                  {/* Total footer */}
-                  <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 16 }}>
-                    <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
-                      {(presSel.items || []).length} mód.
-                      {(presSel.costosDirectos || []).length > 0 && ` · ${presSel.costosDirectos.length} CD`}
-                      {(presSel.adicionales || []).length > 0 && ` · ${presSel.adicionales.length} extra${presSel.adicionales.length !== 1 ? "s" : ""}`}
-                      {itemsOcultos.length > 0 && ` · ${itemsOcultos.length} oculto${itemsOcultos.length !== 1 ? "s" : ""}`}
-                    </span>
-                    <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "'DM Mono',monospace", color: "#7ecf8a" }}>
-                      {fmtPeso(presSel.total)}
-                    </span>
-                  </div>
                 </div>
-
-                {/* Condiciones editables */}
-                <div style={{
-                  background: "var(--bg-surface)", border: "1px solid var(--border)",
-                  borderRadius: 12, padding: "14px 16px",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.22)"
-                }}>
-                  <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
-                    📋 Condiciones y observaciones
-                  </div>
-                  <textarea value={condiciones} onChange={e => setCondiciones(e.target.value)}
-                    placeholder="Ej: Validez 15 días. Precios sin IVA. Seña del 40% para iniciar fabricación."
-                    rows={3}
-                    style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 8, outline: "none", resize: "vertical", lineHeight: 1.6 }}
-                    onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                    onBlur={e => e.target.style.borderColor = "var(--border)"} />
-                </div>
-
-                {/* Fila inferior: WhatsApp + PDF + Guardar cambios — alineados a la izquierda */}
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                  {/* WhatsApp */}
-                  <button onClick={handleWhatsApp}
-                    style={{
-                      padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontSize: 12,
-                      fontFamily: "'DM Mono',monospace", fontWeight: 700, letterSpacing: "0.03em",
-                      background: whatsappCopiado ? "rgba(126,207,138,0.12)" : "var(--bg-surface)",
-                      border: `1px solid ${whatsappCopiado ? "rgba(126,207,138,0.40)" : "var(--border)"}`,
-                      color: whatsappCopiado ? "#7ecf8a" : "var(--text-secondary)",
-                      transition: "all 0.15s"
-                    }}
-                    onMouseEnter={e => { if (!whatsappCopiado) { e.currentTarget.style.background = "var(--bg-subtle)"; e.currentTarget.style.borderColor = "var(--text-muted)"; }}}
-                    onMouseLeave={e => { if (!whatsappCopiado) { e.currentTarget.style.background = "var(--bg-surface)"; e.currentTarget.style.borderColor = "var(--border)"; }}}
-                  >
-                    {whatsappCopiado ? "✓ Copiado" : "📲 WhatsApp"}
-                  </button>
-                  {/* PDF — ghost con hover fill dorado */}
-                  <button onClick={handlePDF}
-                    style={{
-                      padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontSize: 12,
-                      fontFamily: "'DM Mono',monospace", fontWeight: 700, letterSpacing: "0.06em",
-                      background: "transparent",
-                      border: "1.5px solid var(--accent)",
-                      color: "var(--accent)", transition: "background 0.2s, color 0.2s"
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg,var(--accent),var(--accent-hover))"; e.currentTarget.style.color = "var(--text-inverted)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--accent)"; }}
-                  >
-                    🖨 PDF
-                  </button>
-                  {/* Separador */}
-                  <div style={{ flex: 1 }} />
-                  {/* Guardar cambios */}
-                  <button onClick={guardarTextos} style={{
-                    padding: "9px 22px", borderRadius: 8, cursor: "pointer",
-                    background: guardandoTexto ? "rgba(126,207,138,0.15)" : "var(--accent-soft)",
-                    border: `1px solid ${guardandoTexto ? "rgba(126,207,138,0.4)" : "var(--accent-border)"}`,
-                    color: guardandoTexto ? "#7ecf8a" : "var(--accent)",
-                    fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, transition: "all 0.2s"
-                  }}>
-                    {guardandoTexto ? "✓ Guardado" : "💾 Guardar cambios"}
-                  </button>
+                <ListaItemsVP
+                  items={presSel.items}
+                  modulos={modulos}
+                  costos={costos}
+                  dimOverride={presSel.dimOverride}
+                  costosDirectos={presSel.costosDirectos || []}
+                  adicionales={presSel.adicionales || []}
+                  itemsOcultos={itemsOcultos}
+                  onToggleOculto={toggleOculto}
+                  mostrarPrecioUnitario={mostrarPrecioUnitario}
+                />
+                <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border)", background: "var(--bg-subtle)", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 16 }}>
+                  <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+                    {(presSel.items || []).length} mód.
+                    {(presSel.costosDirectos || []).length > 0 && ` · ${presSel.costosDirectos.length} CD`}
+                    {(presSel.adicionales || []).length > 0 && ` · ${presSel.adicionales.length} extra${presSel.adicionales.length !== 1 ? "s" : ""}`}
+                    {itemsOcultos.length > 0 && ` · ${itemsOcultos.length} oculto${itemsOcultos.length !== 1 ? "s" : ""}`}
+                  </span>
+                  <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "'DM Mono',monospace", color: "#7ecf8a" }}>
+                    {fmtPeso(presSel.total)}
+                  </span>
                 </div>
               </div>
+
+              {/* ── 3. Ajustes de precio (colapsable) ── */}
+              {(() => {
+                const descuentoActual = parseFloat(presSel.descuento) || 0;
+                const gananciaActual  = parseFloat(presSel.gananciaExtra) || 0;
+                const totalAjustadoVP = presSel.total + gananciaActual - descuentoActual;
+                const guardarAjuste   = (d, g) => onActualizarPresupuesto(presSelId, { descuento: parseFloat(d) || 0, gananciaExtra: parseFloat(g) || 0 });
+                const resumenAjustes  = descuentoActual > 0 || gananciaActual > 0
+                  ? `${descuentoActual > 0 ? `−${fmtPeso(descuentoActual)}` : ""}${descuentoActual > 0 && gananciaActual > 0 ? " / " : ""}${gananciaActual > 0 ? `+${fmtPeso(gananciaActual)}` : ""} → ${fmtPeso(totalAjustadoVP)}`
+                  : "Sin ajustes";
+                return (
+                  <SeccionColapsable titulo="Ajustes de precio" resumen={resumenAjustes}>
+                    <div style={{ display: "flex", gap: 16 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>🏷 Descuento</span>
+                          <span style={{ fontSize: 12, color: "#e07070", fontWeight: 900, fontFamily: "'DM Mono',monospace" }}>−</span>
+                        </div>
+                        <input type="number" min="0" value={descuentoVP} placeholder="0"
+                          onChange={e => setDescuentoVP(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && guardarAjuste(descuentoVP, gananciaExtraVP)}
+                          style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "6px 10px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "#e07070", outline: "none" }}
+                          onFocus={e => e.target.style.borderColor = "#e07070"}
+                          onBlur={e => e.target.style.borderColor = "var(--border)"}
+                        />
+                        <button onClick={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
+                          style={{ marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, cursor: "pointer", background: parseFloat(descuentoVP) !== parseFloat(presSel?.descuento || 0) ? "rgba(224,112,112,0.18)" : "var(--bg-base)", border: `1px solid ${parseFloat(descuentoVP) !== parseFloat(presSel?.descuento || 0) ? "#e07070" : "var(--border)"}`, color: "#e07070", fontSize: 13, fontWeight: 700 }}>
+                          ✓ Confirmar
+                        </button>
+                      </div>
+                      <div style={{ width: 1, background: "var(--border)", flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>💵 Ganancia extra</span>
+                          <span style={{ fontSize: 12, color: "#7ecf8a", fontWeight: 900, fontFamily: "'DM Mono',monospace" }}>+</span>
+                        </div>
+                        <input type="number" min="0" value={gananciaExtraVP} placeholder="0"
+                          onChange={e => setGananciaExtraVP(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && guardarAjuste(descuentoVP, gananciaExtraVP)}
+                          style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, padding: "6px 10px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "#7ecf8a", outline: "none" }}
+                          onFocus={e => e.target.style.borderColor = "#7ecf8a"}
+                          onBlur={e => e.target.style.borderColor = "var(--border)"}
+                        />
+                        <button onClick={() => guardarAjuste(descuentoVP, gananciaExtraVP)}
+                          style={{ marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, cursor: "pointer", background: parseFloat(gananciaExtraVP) !== parseFloat(presSel?.gananciaExtra || 0) ? "rgba(126,207,138,0.18)" : "var(--bg-base)", border: `1px solid ${parseFloat(gananciaExtraVP) !== parseFloat(presSel?.gananciaExtra || 0) ? "#7ecf8a" : "var(--border)"}`, color: "#7ecf8a", fontSize: 13, fontWeight: 700 }}>
+                          ✓ Confirmar
+                        </button>
+                      </div>
+                    </div>
+                  </SeccionColapsable>
+                );
+              })()}
+
+              {/* ── 4. Texto de apertura (colapsable) ── */}
+              <SeccionColapsable titulo="Texto de apertura" resumen={textoApertura ? textoApertura.slice(0, 80) + (textoApertura.length > 80 ? "…" : "") : "Sin texto"}>
+                <textarea value={textoApertura} onChange={e => setTextoApertura(e.target.value)}
+                  placeholder="Ej: Estimado cliente, le hacemos llegar el presente presupuesto..."
+                  rows={3}
+                  style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 8, outline: "none", resize: "vertical", lineHeight: 1.6 }}
+                  onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                  onBlur={e => e.target.style.borderColor = "var(--border)"}
+                />
+              </SeccionColapsable>
+
+              {/* ── 5. Condiciones (colapsable) ── */}
+              <SeccionColapsable titulo="Condiciones y observaciones" resumen={condiciones ? condiciones.slice(0, 80) + (condiciones.length > 80 ? "…" : "") : "Sin condiciones"}>
+                <textarea value={condiciones} onChange={e => setCondiciones(e.target.value)}
+                  placeholder="Ej: Validez 15 días. Precios sin IVA. Seña del 40% para iniciar fabricación."
+                  rows={3}
+                  style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "9px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 8, outline: "none", resize: "vertical", lineHeight: 1.6 }}
+                  onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                  onBlur={e => e.target.style.borderColor = "var(--border)"}
+                />
+              </SeccionColapsable>
+
+            </div>
             )}
           </div>
       )}
