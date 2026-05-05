@@ -554,7 +554,7 @@ function _drawZona(els, tipo, zc, bounds, paleta, stroke, zonaId) {
  * @returns {string} Markup SVG listo para dangerouslySetInnerHTML o PDF inline
  */
 export function generarVistaSVG(modulo, opts = {}) {
-  const { width = 200, height = 200, theme = "dark" } = opts;
+  const { width = 200, height = 200, theme = "dark", plano = false } = opts;
 
   const dims  = modulo.dimensiones || {};
   const ancho = Math.max(1, dims.ancho  || 600);
@@ -572,7 +572,7 @@ export function generarVistaSVG(modulo, opts = {}) {
   const fill    = paleta.fill;
   const txtCol  = paleta.text;
 
-  const padL = 6, padT = 10, padR = 38, padB = 20;
+  const padL = plano ? 0 : 6, padT = plano ? 0 : 10, padR = plano ? 0 : 38, padB = plano ? 0 : 20;
   const availW = width  - padL - padR;
   const availH = height - padT - padB;
   const scale  = Math.min(availW / ancho, availH / alto);
@@ -633,11 +633,13 @@ export function generarVistaSVG(modulo, opts = {}) {
     }
   }
 
-  // Etiquetas de dimensiones
-  const fs = _f(Math.max(7, Math.min(9, sw / 22)));
-  els.push(`<text x="${_f(ox + sw / 2)}" y="${_f(oy + sh + 13)}" text-anchor="middle" font-family="DM Mono,monospace" font-size="${fs}" fill="${txtCol}">${ancho}</text>`);
-  els.push(`<text x="${_f(ox + sw + 6)}" y="${_f(oy + sh / 2)}" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="${fs}" fill="${txtCol}">${alto}</text>`);
-  els.push(`<text x="${_f(ox + sw)}" y="${_f(oy - 3)}" text-anchor="end" font-family="DM Mono,monospace" font-size="6.5" fill="${txtCol}" opacity="0.55">⊙${prof}</text>`);
+  // Etiquetas de dimensiones (no en modo plano 2D)
+  if (!plano) {
+    const fs = _f(Math.max(7, Math.min(9, sw / 22)));
+    els.push(`<text x="${_f(ox + sw / 2)}" y="${_f(oy + sh + 13)}" text-anchor="middle" font-family="DM Mono,monospace" font-size="${fs}" fill="${txtCol}">${ancho}</text>`);
+    els.push(`<text x="${_f(ox + sw + 6)}" y="${_f(oy + sh / 2)}" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="${fs}" fill="${txtCol}">${alto}</text>`);
+    els.push(`<text x="${_f(ox + sw)}" y="${_f(oy - 3)}" text-anchor="end" font-family="DM Mono,monospace" font-size="6.5" fill="${txtCol}" opacity="0.55">⊙${prof}</text>`);
+  }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${els.join("")}</svg>`;
 }
