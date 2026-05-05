@@ -52,7 +52,7 @@ function SeccionColapsable({ titulo, resumen, children, defaultOpen = false }) {
     <div style={{ borderBottom: "1px solid var(--border)" }}>
       <button
         onClick={() => setAbierta(a => !a)}
-        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", cursor: "pointer", background: "transparent", border: "none", textAlign: "left" }}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "13px 20px", cursor: "pointer", background: "transparent", border: "none", textAlign: "left" }}
       >
         <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", flexShrink: 0 }}>
           {titulo}
@@ -66,7 +66,7 @@ function SeccionColapsable({ titulo, resumen, children, defaultOpen = false }) {
         <span style={{ color: "var(--text-muted)", fontSize: 11, display: "inline-block", transition: "transform 0.18s", transform: abierta ? "rotate(180deg)" : "none", flexShrink: 0 }}>▾</span>
       </button>
       {abierta && (
-        <div style={{ padding: "0 16px 14px" }}>
+        <div style={{ padding: "0 20px 16px" }}>
           {children}
         </div>
       )}
@@ -313,13 +313,17 @@ function VistaPrevia({
     <div style={{ margin: "0 -20px", display: "flex", flexDirection: "column", position: "relative" }}>
 
       {/* ── TOP TOOLBAR ─────────────────────────────────────────────── */}
-      <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", flexWrap: "nowrap", boxShadow: "0 1px 0 var(--separator)", position: "relative", zIndex: 101 }}>
+      <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", flexWrap: "nowrap", boxShadow: "0 1px 0 var(--separator)", position: "relative", zIndex: 101 }}>
 
         {/* Selector button */}
         <button
           onClick={() => setSelectorAbierto(a => !a)}
           style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", borderRadius: 7, cursor: "pointer", background: selectorAbierto ? "var(--accent-soft)" : "var(--bg-subtle)", border: `1px solid ${selectorAbierto ? "var(--accent-border)" : "var(--border)"}`, maxWidth: 280, minWidth: 120, transition: "all 0.15s" }}
         >
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0, opacity: 0.45 }}>
+            <circle cx="5.5" cy="5.5" r="4" stroke="var(--text-muted)" strokeWidth="1.5"/>
+            <line x1="8.7" y1="8.7" x2="12" y2="12" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
           {presSel ? (
             <>
               {estSel && (
@@ -506,7 +510,7 @@ function VistaPrevia({
         <div style={{ display: "flex", minHeight: "calc(100vh - 200px)" }}>
 
           {/* ── DOCUMENT CANVAS ───────────────────────────────────── */}
-          <div style={{ flex: 1, background: "#13151c", overflowY: "auto", display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "36px 20px 60px" }}>
+          <div style={{ flex: 1, background: "var(--bg-base)", overflowY: "auto", display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "44px 32px 72px" }}>
             {!presSel ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 300, color: "var(--text-muted)", gap: 12, opacity: 0.6 }}>
                 <span style={{ fontSize: 32 }}>📋</span>
@@ -524,7 +528,7 @@ function VistaPrevia({
               const totalUnidades = (presSel.items || []).reduce((s, i) => s + i.cantidad, 0);
 
               return (
-                <div style={{ width: paperW, background: P.bg, color: P.text, borderRadius: 2, boxShadow: "0 8px 48px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3)", padding: "52px 56px", fontFamily: "'Bricolage Grotesque', sans-serif" }}>
+                <div style={{ width: paperW, background: P.bg, color: P.text, borderRadius: 16, boxShadow: "0 4px 40px rgba(0,0,0,0.14), 0 1px 8px rgba(0,0,0,0.07)", padding: "52px 56px", fontFamily: "'Bricolage Grotesque', sans-serif" }}>
 
                   {/* Header */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, gap: 12 }}>
@@ -689,7 +693,7 @@ function VistaPrevia({
           </div>
 
           {/* ── RIGHT SIDEBAR ─────────────────────────────────────── */}
-          <div style={{ width: 296, borderLeft: "1px solid var(--border)", background: "var(--bg-surface)", overflowY: "auto", flexShrink: 0, display: "flex", flexDirection: "column" }}>
+          <div style={{ width: 308, borderLeft: "1px solid var(--border)", background: "var(--bg-surface)", overflowY: "auto", flexShrink: 0, display: "flex", flexDirection: "column" }}>
             {!presSel ? (
               <div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 13, marginTop: 40 }}>
                 <div style={{ fontSize: 24, marginBottom: 10, opacity: 0.4 }}>⚙</div>
@@ -698,7 +702,7 @@ function VistaPrevia({
             ) : (
               <>
                 {/* Resumen del total */}
-                <div style={{ padding: "16px 16px 14px", borderBottom: "1px solid var(--border)", background: "var(--bg-surface)" }}>
+                <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-surface)" }}>
                   <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 4 }}>
                     Total del presupuesto
                   </div>
@@ -811,7 +815,7 @@ function VistaPrevia({
                 )}
 
                 {/* Guardar texto (footer del sidebar) */}
-                <div style={{ padding: "14px 16px", borderTop: "1px solid var(--border)", marginTop: "auto" }}>
+                <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)", marginTop: "auto" }}>
                   <button onClick={guardarTextos} style={{ width: "100%", padding: "9px 0", borderRadius: 8, cursor: "pointer", background: guardandoTexto ? "rgba(126,207,138,0.15)" : "var(--accent-soft)", border: `1px solid ${guardandoTexto ? "rgba(126,207,138,0.4)" : "var(--accent-border)"}`, color: guardandoTexto ? "#7ecf8a" : "var(--accent)", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, transition: "all 0.2s" }}>
                     {guardandoTexto ? "✓ Guardado" : "💾 Guardar cambios"}
                   </button>
