@@ -1903,11 +1903,13 @@ function Presupuesto({
             {tieneContenidoEditor && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {presupuestoActivoId && (() => {
-                  const necesita = presupuestoNecesitaActualizacion(presupuestoActivoId, costosVersion, presupuestos[presupuestoActivoId]);
+                  const pActivo = presupuestos[presupuestoActivoId];
+                  const nuevoTotal = pActivo ? recalcularTotalPresupuesto(pActivo, modulos, costos) : null;
+                  const necesita = nuevoTotal !== null
+                    ? Math.abs(Math.round(nuevoTotal) - (pActivo?.total || 0)) > 1
+                    : presupuestoNecesitaActualizacion(presupuestoActivoId, costosVersion, pActivo);
                   return necesita ? (
                     <button onClick={() => {
-                      const pActivo = presupuestos[presupuestoActivoId];
-                      const nuevoTotal = recalcularTotalPresupuesto(pActivo, modulos, costos);
                       if (nuevoTotal !== null) onActualizarPresupuesto(presupuestoActivoId, { total: Math.round(nuevoTotal), costosVersionAl: Date.now() });
                     }} style={{ padding: "6px 12px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a" }}>
                       ↻ Actualizar
