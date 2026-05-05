@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import { Card, SectionTitle } from "../ui/index.jsx";
 import { leerPlano, guardarPlano } from "../../storage.js";
 import SVGPlano from "./SVGPlano.jsx";
@@ -47,12 +47,57 @@ function derivarSecuencias(bloques) {
   };
 }
 
-export function PlanoDos({ modulos }) {
+// Aplica dimensiones del editor activo a los bloques existentes (FIFO por código).
+// Devuelve { bloques, cambio } — preserva IDs, orden y tipoVisual.
+function sincronizarDimensiones(bloquesPrev, items, dimOverride, modulos) {
+  if (!modulos || !items.length || !bloquesPrev.length) return { bloques: bloquesPrev, cambio: false };
+  const dimsPorCodigo = {};
+  items.forEach(it => {
+    const mod = modulos[it.codigo];
+    if (!mod) return;
+    const dim = (dimOverride && dimOverride[it.id || it.codigo]) || mod.dimensiones;
+    if (!dimsPorCodigo[it.codigo]) dimsPorCodigo[it.codigo] = [];
+    for (let i = 0; i < (it.cantidad || 1); i++) dimsPorCodigo[it.codigo].push(dim);
+  });
+  const consumido = {};
+  let cambio = false;
+  const nuevos = bloquesPrev.map(b => {
+    consumido[b.codigo] = (consumido[b.codigo] || 0) + 1;
+    const dim = (dimsPorCodigo[b.codigo] || [])[consumido[b.codigo] - 1];
+    if (!dim) return b;
+    if (b.ancho !== dim.ancho || b.alto !== dim.alto || b.profundidad !== dim.profundidad) {
+      cambio = true;
+      return { ...b, ancho: dim.ancho, alto: dim.alto, profundidad: dim.profundidad };
+    }
+    return b;
+  });
+  return { bloques: nuevos, cambio };
+}
+
+export function PlanoDos({ modulos, items = [], dimOverride = {} }) {
   const saved = leerPlano();
-  const bloquesInit = saved?.bloques || [];
+  const bloquesSaved = saved?.bloques || [];
+  // Sincronizar al montar (sin flicker): aplicar dimOverride antes del primer render
+  const { bloques: bloquesInit, cambio: bloquesSincronizados } = sincronizarDimensiones(bloquesSaved, items, dimOverride, modulos);
   const { idsBajos: defB, idsAltos: defA } = derivarSecuencias(bloquesInit);
 
   const [bloques, setBloques]         = useState(bloquesInit);
+
+  // Persistir la sincronización si hubo cambios
+  useEffect(() => {
+    if (!bloquesSincronizados) return;
+    guardarPlano({
+      bloques: bloquesInit,
+      idsBajos: saved?.idsBajos ?? defB,
+      idsAltos: saved?.idsAltos ?? defA,
+      altoCielorraso: saved?.altoCielorraso || 2400,
+      offsetBajos: saved?.offsetBajos ?? 0,
+      offsetAltos: saved?.offsetAltos ?? 0,
+      colgadoAereos: saved?.colgadoAereos ?? 200,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [idsBajos, setIdsBajos]       = useState(() => saved?.idsBajos ?? defB);
   const [idsAltos, setIdsAltos]       = useState(() => saved?.idsAltos ?? defA);
   const [altoCielorraso, setAlto]     = useState(() => saved?.altoCielorraso || 2400);

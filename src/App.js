@@ -30,6 +30,7 @@ import {
   cambiarEstado,
   actualizarPresupuesto,
   migrarTempEnPresupuestos,
+  migrarDimOverridePresupuestos,
 } from "./services/presupuestoService.js";
 
 // ─── Header ──────────────────────────────────────────────────────────────────
@@ -161,9 +162,11 @@ function AppInterna() {
       cargarSuscripcion().then(setSuscripcion);
     }
     cargarDatos().then(({ modulos, costos, presupuestos, perfil }) => {
+      const { presupuestos: migrados, cambiaron } = migrarDimOverridePresupuestos(presupuestos || {});
       setModulos(modulos);
       setCostos(costos);
-      setPresupuestos(presupuestos || {});
+      setPresupuestos(migrados);
+      if (cambiaron) guardarPresupuestos(migrados);
       if (perfil) setPerfil(perfil);
       // Primera vez: perfil vacío y nunca completó onboarding → ir a Mi Taller
       const onboardingDone = localStorage.getItem("carpicalc:onboarding_done");
@@ -255,6 +258,7 @@ function AppInterna() {
     const over  = dimOverride[keyId] || {};
     return {
       ...base,
+      material: over.material ?? base.material,
       dimensiones: {
         ancho:       over.ancho       ?? base.dimensiones.ancho,
         profundidad: over.profundidad ?? base.dimensiones.profundidad,
@@ -292,23 +296,38 @@ function AppInterna() {
   };
 
   const handleCargarPresupuesto = (p, id) => {
-    setItems(p.items ? [...p.items] : []);
-    setDimOverride(p.dimOverride && typeof p.dimOverride === "object" ? { ...p.dimOverride } : {});
+    // Ensure every item has a stable UUID (legacy items may lack id)
+    const rawItems = p.items ? [...p.items] : [];
+    const migratedItems = rawItems.map(item =>
+      item.id ? item : { ...item, id: crypto.randomUUID() }
+    );
+    // Remap Format B dimOverride keys (`${codigo}-${id}`) to Format A (`id || codigo`)
+    const rawDim = p.dimOverride && typeof p.dimOverride === "object" ? { ...p.dimOverride } : {};
+    const migratedDim = {};
+    migratedItems.forEach(item => {
+      const keyA = item.id || item.codigo;
+      const keyB = `${item.codigo}-${item.id || 0}`;
+      if (rawDim[keyA] !== undefined) migratedDim[keyA] = rawDim[keyA];
+      else if (rawDim[keyB] !== undefined) migratedDim[keyA] = rawDim[keyB];
+    });
+    setItems(migratedItems);
+    setDimOverride(migratedDim);
     setAdicionales(Array.isArray(p.adicionales) ? [...p.adicionales] : []);
     setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
     if (id) setPresupuestoActivoId(id);
     localStorage.removeItem("carpicalc:borrador");
-    const bloques = (p.items || []).flatMap(item => {
+    const bloques = migratedItems.flatMap(item => {
       const mod = modulos[item.codigo];
       if (!mod) return [];
+      const over = migratedDim[item.id || item.codigo] || {};
       return Array.from({ length: item.cantidad }, () => ({
         id: crypto.randomUUID(),
         codigo: item.codigo,
         nombre: mod.nombre,
         tipoVisual: mod.tipoVisual || null,
-        ancho: mod.dimensiones.ancho,
-        alto: mod.dimensiones.alto,
-        profundidad: mod.dimensiones.profundidad,
+        ancho: over.ancho || mod.dimensiones.ancho,
+        alto: over.alto || mod.dimensiones.alto,
+        profundidad: over.profundidad || mod.dimensiones.profundidad,
       }));
     });
     guardarPlano({ bloques, altoCielorraso: 2400 });
@@ -443,7 +462,13 @@ function AppInterna() {
                 onLimpiarTemps={(itemsActuales) => {
                   const codsTemp = itemsActuales.filter(it => it.codigo?.startsWith("TEMP_")).map(it => it.codigo);
                   if (codsTemp.length === 0) return;
-                  const nuevos = Object.fromEntries(Object.entries(modulos).filter(([c]) => !codsTemp.includes(c)));
+                  // No borrar TEMPs que ya quedaron guardados en algún presupuesto
+                  const codsEnPresupuestos = new Set(
+                    Object.values(presupuestos).flatMap(p => (p.items || []).map(it => it.codigo))
+                  );
+                  const codsABorrar = codsTemp.filter(c => !codsEnPresupuestos.has(c));
+                  if (codsABorrar.length === 0) return;
+                  const nuevos = Object.fromEntries(Object.entries(modulos).filter(([c]) => !codsABorrar.includes(c)));
                   setModulos(nuevos);
                   hSaveM(nuevos);
                 }}
@@ -505,7 +530,7 @@ function AppInterna() {
             )}
 
             {nav.vista === "plano" && (
-              <PlanoDos modulos={modulos} />
+              <PlanoDos modulos={modulos} items={items} dimOverride={dimOverride} />
             )}
 
             {nav.vista === "trabajos" && (

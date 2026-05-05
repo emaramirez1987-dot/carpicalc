@@ -330,7 +330,7 @@ export function resolverModuloDesdePresupuesto(p, item, modulos) {
   const base  = modulos[cod];
   if (!base) return null;
   const keyId = item.id || cod;
-  const over  = (p.dimOverride && p.dimOverride[`${cod}-${keyId}`]) || {};
+  const over  = (p.dimOverride && p.dimOverride[keyId]) || {};
   return {
     ...base,
     dimensiones: {

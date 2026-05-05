@@ -359,7 +359,7 @@ function generarFichaObra(id, p, modulos, costos, perfil = {}) {
   (p.items || []).forEach(item => {
     const modBase = modulos[item.codigo];
     if (!modBase) return;
-    const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+    const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
     const modUsado = { ...modBase, dimensiones: dims };
     const matDef = costos.materiales.find(m => m.tipo === modUsado.material) || costos.materiales[0];
     const esp = matDef?.espesor || 18;
@@ -380,7 +380,7 @@ function generarFichaObra(id, p, modulos, costos, perfil = {}) {
     (p.items || []).forEach(item => {
       const modBase = modulos[item.codigo];
       if (!modBase) return;
-      const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+      const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
       const modUsado = { ...modBase, dimensiones: dims };
       const calc = calcularModulo(modUsado, costos);
       if (!calc) return;
@@ -399,7 +399,7 @@ function generarFichaObra(id, p, modulos, costos, perfil = {}) {
     (p.items || []).forEach(item => {
       const modBase = modulos[item.codigo];
       if (!modBase) return;
-      const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+      const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
       const modUsado = { ...modBase, dimensiones: dims };
       const calc = calcularModulo(modUsado, costos);
       if (!calc) return;
@@ -488,7 +488,7 @@ ${p.cliente && (p.cliente.nombre || p.cliente.tel || p.cliente.dir) ? `
     ${(p.items || []).map(item => {
       const modBase = modulos[item.codigo];
       if (!modBase) return '';
-      const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+      const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
       const modUsado = { ...modBase, dimensiones: dims };
       const svgStr = generarVistaSVG({ ...modUsado, vistaConfig: modUsado.vistaConfig }, { width: 80, height: 80, theme: 'dark' });
       return `<div style="padding:8px 0;border-bottom:1px solid #e8d8c0;display:flex;justify-content:space-between;align-items:center;gap:12px">
@@ -1695,7 +1695,7 @@ function Presupuesto({
   const handleUpdateModule = (cod, cant, dims) => {
     const modBase = modulos[cod];
     if (!modBase) return;
-    const key = `${cod}-${items[editandoModuloIdx]?.id || 0}`;
+    const key = items[editandoModuloIdx]?.id || items[editandoModuloIdx]?.codigo || cod;
     const nuevoItem = { ...items[editandoModuloIdx], codigo: cod, cantidad: cant };
     const nuevoItems = items.map((it, i) => i === editandoModuloIdx ? nuevoItem : it);
     const nuevoDimOverride = { ...dimOverride };
@@ -1706,7 +1706,7 @@ function Presupuesto({
     if (presupuestoActivoId) {
       const totalNuevo = nuevoItems.reduce((acc, item) => {
         const base = modulos[item.codigo]; if (!base) return acc;
-        const d = nuevoDimOverride[`${item.codigo}-${item.id || 0}`] || base.dimensiones;
+        const d = nuevoDimOverride[item.id || item.codigo] || base.dimensiones;
         const calc = calcularModulo({ ...base, dimensiones: d }, costos);
         return acc + (calc ? calc.total * item.cantidad : 0);
       }, 0);
@@ -1772,8 +1772,7 @@ function Presupuesto({
       return;
     }
     const cant = parseInt(inputCant) || 1;
-    const nuevoId =
-      Date.now().toString(36) + Math.random().toString(36).substring(2);
+    const nuevoId = crypto.randomUUID();
     const isCustom =
       preDim &&
       (preDim.ancho !== modBase.dimensiones.ancho ||
@@ -1895,11 +1894,13 @@ function Presupuesto({
             {tieneContenidoEditor && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {presupuestoActivoId && (() => {
-                  const necesita = presupuestoNecesitaActualizacion(presupuestoActivoId, costosVersion, presupuestos[presupuestoActivoId]);
+                  const pActivo = presupuestos[presupuestoActivoId];
+                  const nuevoTotal = pActivo ? recalcularTotalPresupuesto(pActivo, modulos, costos) : null;
+                  const necesita = nuevoTotal !== null
+                    ? Math.abs(Math.round(nuevoTotal) - (pActivo?.total || 0)) > 1
+                    : presupuestoNecesitaActualizacion(presupuestoActivoId, costosVersion, pActivo);
                   return necesita ? (
                     <button onClick={() => {
-                      const pActivo = presupuestos[presupuestoActivoId];
-                      const nuevoTotal = recalcularTotalPresupuesto(pActivo, modulos, costos);
                       if (nuevoTotal !== null) onActualizarPresupuesto(presupuestoActivoId, { total: Math.round(nuevoTotal), costosVersionAl: Date.now() });
                     }} style={{ padding: "6px 12px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a" }}>
                       ↻ Actualizar
@@ -1933,33 +1934,93 @@ function Presupuesto({
       </div>
 
       {/* Diálogo guardar */}
-      {dialogoGuardar && (
-        <div style={{ padding: "16px 20px", borderRadius: 10, background: "var(--bg-surface)", border: "1px solid var(--accent-border)" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>💾 ¿Cómo querés guardar?</div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14 }}>"{nombreTrabajo || "Sin nombre"}"</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button onClick={() => {
-              onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
-              setDialogoGuardar(false);
-              limpiarEditor();
-            }} style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
-              ✓ Actualizar original
-            </button>
-            <button onClick={() => {
-              onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
-              setDialogoGuardar(false);
-              limpiarEditor();
-            }}
-              style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-              + Guardar como copia
-            </button>
-            <button onClick={() => setDialogoGuardar(false)}
-              style={{ padding: "8px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-              Cancelar
-            </button>
+      {dialogoGuardar && (() => {
+        const itemsConOverride = items.filter(item => {
+          const key = item.id || item.codigo;
+          const over = dimOverride?.[key];
+          if (!over) return false;
+          const base = modulos[item.codigo];
+          if (!base) return false;
+          return (over.ancho != null && over.ancho !== base.dimensiones?.ancho)
+            || (over.alto != null && over.alto !== base.dimensiones?.alto)
+            || (over.profundidad != null && over.profundidad !== base.dimensiones?.profundidad)
+            || (over.material != null && over.material !== (base.material ?? "melamina"));
+        });
+
+        const crearVariantesYGuardar = (esNuevo) => {
+          let newItems = [...items];
+          let newDim = { ...dimOverride };
+          for (const item of itemsConOverride) {
+            const key = item.id || item.codigo;
+            const over = newDim[key];
+            const base = modulos[item.codigo];
+            if (!base || !over) continue;
+            const newMod = {
+              ...base,
+              dimensiones: {
+                ...base.dimensiones,
+                ancho: over.ancho ?? base.dimensiones?.ancho,
+                alto: over.alto ?? base.dimensiones?.alto,
+                profundidad: over.profundidad ?? base.dimensiones?.profundidad,
+              },
+              material: over.material ?? base.material,
+            };
+            const newId = onGuardarModuloCatalogo && onGuardarModuloCatalogo(newMod, `${base.nombre || item.codigo} (variante)`);
+            if (newId) {
+              newItems = newItems.map(it => (it.id || it.codigo) === key ? { ...it, codigo: newId } : it);
+              delete newDim[key];
+            }
+          }
+          setItems(newItems);
+          setDimOverride(newDim);
+          if (esNuevo) {
+            onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
+          } else {
+            onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: newItems, dimOverride: newDim, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
+          }
+          setDialogoGuardar(false);
+          limpiarEditor();
+        };
+
+        return (
+          <div style={{ padding: "16px 20px", borderRadius: 10, background: "var(--bg-surface)", border: "1px solid var(--accent-border)" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>💾 ¿Cómo querés guardar?</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14 }}>"{nombreTrabajo || "Sin nombre"}"</div>
+            {itemsConOverride.length > 0 && (
+              <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(100,140,220,0.08)", border: "1px solid rgba(100,140,220,0.20)" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
+                  {itemsConOverride.length} módulo{itemsConOverride.length > 1 ? "s tienen" : " tiene"} dimensiones personalizadas
+                </div>
+                <button onClick={() => crearVariantesYGuardar(!presupuestoActivoId)}
+                  style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(100,140,220,0.15)", border: "1px solid rgba(100,140,220,0.35)", color: "#7090d8", width: "100%" }}>
+                  📚 Crear variantes en catálogo y guardar
+                </button>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={() => {
+                onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
+                setDialogoGuardar(false);
+                limpiarEditor();
+              }} style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+                ✓ Actualizar original
+              </button>
+              <button onClick={() => {
+                onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
+                setDialogoGuardar(false);
+                limpiarEditor();
+              }}
+                style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                + Guardar como copia
+              </button>
+              <button onClick={() => setDialogoGuardar(false)}
+                style={{ padding: "8px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                Cancelar
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Alerta precios */}
       {alertaPrecios && (
@@ -2151,37 +2212,29 @@ function Presupuesto({
                         }
                         const modOrig = modulos[item.codigo];
                         if (modOrig?.temporal) {
+                          // ítem ya tiene TEMP de edición Nivel 3 — abrir con dims actuales del TEMP
                           setModalEdicion({
                             item, idx, modBase: modOrig,
                             dims: { ...modOrig.dimensiones },
                             material: modOrig.material || "melamina",
-                            cantidad: item.cantidad, dialogoGuardar: false,
-                            tempCod: item.codigo,
+                            cantidad: item.cantidad,
                             origenCodigo: modOrig.origenCodigo || item.codigo
                           });
                           return;
                         }
-                        const origenBase = item.codigo;
-                        const modOrigenReal = modOrig;
-                        const varianteN = Object.values(modulos).filter(m => m.origenCodigo === origenBase && m.temporal).length + 1;
-                        const tempCod = `TEMP_${Date.now()}`;
-                        const copiaInicial = {
-                          ...modOrigenReal,
-                          nombre: `${modOrigenReal?.nombre || origenBase} - Variante ${varianteN}`,
-                          temporal: true, origenCodigo: origenBase,
-                          presupuestoId: presupuestoActivoId || null,
-                          piezas:   (modOrigenReal?.piezas   || []).map(p => ({ ...p })),
-                          herrajes: (modOrigenReal?.herrajes  || []).map(h => ({ ...h }))
-                        };
-                        setModulos && setModulos(prev => ({ ...prev, [tempCod]: copiaInicial }));
-                        const nuevoItem = { ...item, codigo: tempCod };
-                        setItems(its => its.map((it, i) => i === idx ? nuevoItem : it));
+                        // ítem normal: abrir con dims del dimOverride actual (o base si no hay override)
+                        const keyIdEdit = item.id || item.codigo;
+                        const overEdit = dimOverride?.[keyIdEdit] || {};
                         setModalEdicion({
-                          item: nuevoItem, idx, modBase: copiaInicial,
-                          dims: { ...copiaInicial.dimensiones },
-                          material: copiaInicial.material || "melamina",
-                          cantidad: item.cantidad, dialogoGuardar: false,
-                          tempCod, origenCodigo: origenBase
+                          item, idx, modBase: modOrig,
+                          dims: {
+                            ancho:       overEdit.ancho       ?? modOrig?.dimensiones.ancho,
+                            profundidad: overEdit.profundidad ?? modOrig?.dimensiones.profundidad,
+                            alto:        overEdit.alto        ?? modOrig?.dimensiones.alto,
+                          },
+                          material: overEdit.material ?? modOrig?.material ?? "melamina",
+                          cantidad: item.cantidad,
+                          origenCodigo: item.codigo
                         });
                       }}
                       style={{ padding: "4px 10px", borderRadius: 5, border: `1px solid ${estaEditando ? "var(--accent-border)" : "var(--border)"}`, background: estaEditando ? "var(--accent-soft)" : "transparent", color: estaEditando ? "var(--accent)" : "var(--text-muted)", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.15s" }}>
@@ -2205,12 +2258,13 @@ function Presupuesto({
                 {estaEditando && modalEdicion && (
                   <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 16px", background: "rgba(0,0,0,0.12)" }}>
 
-                    {/* Estado 1: edición de dimensiones */}
-                    {!modalEdicion.dialogoGuardar && (
-                      <>
+                    {/* Edición de dimensiones */}
+                    <>
                         <div style={{ fontSize: 11, color: "var(--accent)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 6px", fontSize: 10 }}>COPIA</span>
-                          Editás una copia — el original queda intacto
+                          {modalEdicion.item?.codigo?.startsWith("TEMP_")
+                            ? <><span style={{ background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 6px", fontSize: 10 }}>VARIANTE</span> Editando módulo temporal</>
+                            : <><span style={{ background: "rgba(120,180,100,0.12)", border: "1px solid rgba(120,180,100,0.35)", borderRadius: 4, padding: "1px 6px", fontSize: 10, color: "#7ecf8a" }}>SOLO ESTE PRESUPUESTO</span> Las dims del catálogo no cambian</>
+                          }
                         </div>
                         <div style={{ marginBottom: 12 }}>
                           <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>Dimensiones (mm)</div>
@@ -2237,41 +2291,74 @@ function Presupuesto({
                           </select>
                         </div>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <button onClick={() => setModalEdicion(m => ({ ...m, dialogoGuardar: true }))}
-                            style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 3px 10px rgba(180,100,20,0.25)" }}>
-                            ✓ Confirmar cambio
-                          </button>
                           <button onClick={() => {
-                            // Cancelar: revertir al original y persistir limpieza
-                            if (modalEdicion?.tempCod && modalEdicion?.origenCodigo) {
-                              const nuevosModulos = { ...modulos };
-                              delete nuevosModulos[modalEdicion.tempCod];
+                            const esTemp = modalEdicion.item.codigo.startsWith("TEMP_");
+                            if (esTemp) {
+                              // TEMP (Nivel 3): actualizar dims en el módulo TEMP directo
+                              const tempCod = modalEdicion.item.codigo;
+                              const nuevosModulos = {
+                                ...modulos,
+                                [tempCod]: { ...modulos[tempCod], dimensiones: modalEdicion.dims, material: modalEdicion.material }
+                              };
                               setModulos && setModulos(nuevosModulos);
                               hSaveModulos && hSaveModulos(nuevosModulos);
-                              setItems(its => its.map((it, i) => i === idx ? { ...it, codigo: modalEdicion.origenCodigo } : it));
+                              if (presupuestoActivoId) {
+                                const nuevoItems = items.map((it, i) => i === modalEdicion.idx ? modalEdicion.item : it);
+                                const totalNuevo = nuevoItems.reduce((acc, it) => {
+                                  const base = nuevosModulos[it.codigo]; if (!base) return acc;
+                                  const calc = calcularModulo(base, costos);
+                                  return acc + (calc ? calc.total * it.cantidad : 0);
+                                }, 0);
+                                onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { items: nuevoItems, total: Math.round(totalNuevo) });
+                              }
+                            } else {
+                              // Normal: escribir dims/material en dimOverride (sin crear TEMP)
+                              const keyId = modalEdicion.item.id || modalEdicion.item.codigo;
+                              const base = modulos[modalEdicion.origenCodigo];
+                              const bd = base?.dimensiones || {};
+                              const difiere =
+                                modalEdicion.dims.ancho !== bd.ancho ||
+                                modalEdicion.dims.profundidad !== bd.profundidad ||
+                                modalEdicion.dims.alto !== bd.alto ||
+                                modalEdicion.material !== (base?.material ?? "melamina");
+                              const nuevoOverride = { ...dimOverride };
+                              if (difiere) nuevoOverride[keyId] = { ...modalEdicion.dims, material: modalEdicion.material };
+                              else delete nuevoOverride[keyId];
+                              setDimOverride(nuevoOverride);
                             }
                             setModalEdicion(null);
                           }}
+                            style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 3px 10px rgba(180,100,20,0.25)" }}>
+                            ✓ Confirmar cambio
+                          </button>
+                          <button onClick={() => setModalEdicion(null)}
                             style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>Cancelar</button>
                           <button onClick={() => {
-                            // Nivel 3: actualiza las dims en la copia y setea el pendingDeepLink.
-                            // El useEffect detectará cuando modulos[tempCod] exista y navegará.
-                            const codigoCopia = modalEdicion.tempCod || item.codigo;
-                            setModulos && setModulos(prev => ({
-                              ...prev,
-                              [codigoCopia]: {
-                                ...prev[codigoCopia],
+                            // Nivel 3: crear TEMP aquí si no existe, luego abrir catálogo
+                            const yaEsTemp = modalEdicion.item.codigo.startsWith("TEMP_");
+                            const tempCod = yaEsTemp ? modalEdicion.item.codigo : `TEMP_${Date.now()}`;
+                            if (!yaEsTemp) {
+                              const modOrig = modulos[modalEdicion.item.codigo];
+                              const varianteN = Object.values(modulos).filter(m => m.origenCodigo === modalEdicion.item.codigo && m.temporal).length + 1;
+                              const copiaInicial = {
+                                ...modOrig,
+                                nombre: `${modOrig?.nombre || modalEdicion.item.codigo} - Variante ${varianteN}`,
                                 dimensiones: modalEdicion.dims,
-                                material:    modalEdicion.material
-                              }
-                            }));
-                            // Disparar INICIAR_EDICION_NIVEL3 vía prop — el reducer en NavContext
-                            // setea el pending y el useEffect de Presupuesto detecta cuando está listo
-                            onVerCatalogo && onVerCatalogo(codigoCopia, {
-                              tipo:          "presupuesto",
-                              presupuestoId: presupuestoActivoId,
-                              itemIdx:       idx,
-                              tempCod:       codigoCopia,
+                                material: modalEdicion.material,
+                                temporal: true, origenCodigo: modalEdicion.item.codigo,
+                                presupuestoId: presupuestoActivoId || null,
+                                piezas:   (modOrig?.piezas   || []).map(p => ({ ...p })),
+                                herrajes: (modOrig?.herrajes  || []).map(h => ({ ...h })),
+                              };
+                              setModulos && setModulos(prev => ({ ...prev, [tempCod]: copiaInicial }));
+                              setItems(its => its.map((it, i) => i === modalEdicion.idx ? { ...it, codigo: tempCod } : it));
+                            } else {
+                              setModulos && setModulos(prev => ({
+                                ...prev, [tempCod]: { ...prev[tempCod], dimensiones: modalEdicion.dims, material: modalEdicion.material }
+                              }));
+                            }
+                            onVerCatalogo && onVerCatalogo(tempCod, {
+                              tipo: "presupuesto", presupuestoId: presupuestoActivoId, itemIdx: modalEdicion.idx, tempCod,
                             });
                             setModalEdicion(null);
                           }}
@@ -2282,103 +2369,6 @@ function Presupuesto({
                       </>
                     )}
 
-                    {/* Estado 2: modal de decisión */}
-                    {modalEdicion.dialogoGuardar && (
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>¿Dónde guardás este módulo editado?</div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 14 }}>La copia tiene las nuevas dimensiones. El original no fue tocado.</div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-
-                          {/* Opción A: solo en este presupuesto — la copia ya existe */}
-                          <button onClick={() => {
-                            const tempCod = modalEdicion.tempCod || item.codigo;
-                            // Actualizar dimensiones y material en la copia existente
-                            const nuevosModulos = {
-                              ...modulos,
-                              [tempCod]: {
-                                ...modulos[tempCod],
-                                dimensiones: modalEdicion.dims,
-                                material:    modalEdicion.material
-                              }
-                            };
-                            setModulos && setModulos(nuevosModulos);
-                            hSaveModulos && hSaveModulos(nuevosModulos); // persiste TEMP actualizado
-                            // Persistir presupuesto
-                            if (presupuestoActivoId) {
-                              const nuevoItems = items.map((it, i) => i === idx ? modalEdicion.item : it);
-                              const totalNuevo = nuevoItems.reduce((acc, it) => {
-                                const base = nuevosModulos[it.codigo];
-                                if (!base) return acc;
-                                const calc = calcularModulo(base, costos);
-                                return acc + (calc ? calc.total * it.cantidad : 0);
-                              }, 0);
-                              onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, {
-                                items: nuevoItems,
-                                total: Math.round(totalNuevo)
-                              });
-                            }
-                            setModalEdicion(null);
-                          }} style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", fontSize: 12, fontWeight: 700 }}>
-                            📋 Solo en este presupuesto
-                            <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginTop: 2 }}>
-                              El catálogo no cambia. Badge ✦ Temporal en el ítem.
-                              Se borra automáticamente si eliminás el presupuesto.
-                            </div>
-                          </button>
-
-                          {/* Opción B: guardar en catálogo */}
-                          {!modalEdicion.pidiendonombre ? (
-                            <button onClick={() => setModalEdicion(m => ({ ...m, pidiendonombre: true, nombreNuevo: `${modulos[item.codigo]?.nombre || item.codigo} (variante)` }))}
-                              style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700 }}>
-                              📚 Guardar en catálogo como módulo nuevo
-                              <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginTop: 2 }}>
-                                Quedará disponible para futuros presupuestos. Podés darle un nombre.
-                              </div>
-                            </button>
-                          ) : (
-                            <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-surface)", border: "1px solid var(--accent-border)" }}>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>📚 Nombre en el catálogo:</div>
-                              <input
-                                value={modalEdicion.nombreNuevo || ""}
-                                onChange={e => setModalEdicion(m => ({ ...m, nombreNuevo: e.target.value }))}
-                                style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "8px 10px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-primary)", outline: "none", marginBottom: 8 }}
-                                placeholder="Nombre del nuevo módulo..."
-                                autoFocus
-                                onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                                onBlur={e => e.target.style.borderColor = "var(--border)"} />
-                              <div style={{ display: "flex", gap: 6 }}>
-                                <button onClick={() => {
-                                  const modBase = modulos[item.codigo];
-                                  const nombreFinal = (modalEdicion.nombreNuevo || "").trim() || `${modBase?.nombre} (variante)`;
-                                  // Guardar permanentemente en catálogo
-                                  const newId = onGuardarModuloCatalogo && onGuardarModuloCatalogo({
-                                    ...modBase,
-                                    dimensiones: modalEdicion.dims,
-                                    material: modalEdicion.material
-                                  }, nombreFinal);
-                                  // Actualizar el item para apuntar al nuevo módulo permanente
-                                  const nuevoItem = { ...item, codigo: newId || item.codigo, cantidad: modalEdicion.cantidad || item.cantidad };
-                                  const nuevoItems = items.map((it, i) => i === idx ? nuevoItem : it);
-                                  setItems(nuevoItems);
-                                  if (presupuestoActivoId) {
-                                    onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { items: nuevoItems });
-                                  }
-                                  setModalEdicion(null);
-                                }} style={{ flex: 1, padding: "8px 0", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
-                                  ✓ Confirmar y guardar
-                                </button>
-                                <button onClick={() => setModalEdicion(m => ({ ...m, pidiendonombre: false }))}
-                                  style={{ padding: "8px 12px", borderRadius: 7, cursor: "pointer", fontSize: 11, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                                  ← Volver
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <button onClick={() => setModalEdicion(m => ({ ...m, dialogoGuardar: false }))}
-                          style={{ marginTop: 8, width: "100%", padding: "6px 0", borderRadius: 6, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 11 }}>← Volver a editar</button>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

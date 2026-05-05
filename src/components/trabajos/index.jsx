@@ -236,7 +236,7 @@ function TabPresupuestoTrabajo({ p, modulos, costos }) {
       {p.items.map((item, idx) => {
         const modBase = modulos[item.codigo];
         if (!modBase) return null;
-        const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+        const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
         const modUsado = { ...modBase, dimensiones: dims };
         const calc = calcularModulo(modUsado, costos);
         return (
@@ -265,7 +265,7 @@ function TabCorteTrabajo({ p, modulos, costos }) {
   p.items.forEach(item => {
     const modBase = modulos[item.codigo];
     if (!modBase) return;
-    const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+    const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
     const modUsado = { ...modBase, dimensiones: dims };
     const matDef = costos.materiales.find(m => m.tipo === modUsado.material) || costos.materiales[0];
     const esp = matDef?.espesor || 18;
@@ -308,13 +308,13 @@ function TabModulosTrabajo({ id, p, modulos, costos, onActualizar }) {
 
   const abrirEdit = (idx, item) => {
     const modBase = modulos[item.codigo];
-    const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase?.dimensiones || { ancho: 600, profundidad: 550, alto: 700 };
+    const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase?.dimensiones || { ancho: 600, profundidad: 550, alto: 700 };
     setDimsEdit({ ...dims });
     setEditandoIdx(idx);
   };
 
   const guardarDims = (idx, item) => {
-    const keyId = `${item.codigo}-${item.id || 0}`;
+    const keyId = item.id || item.codigo;
     const nuevoOverride = { ...(p.dimOverride || {}), [keyId]: { ...dimsEdit } };
     onActualizar(id, { dimOverride: nuevoOverride });
     setEditandoIdx(null);
@@ -330,7 +330,7 @@ function TabModulosTrabajo({ id, p, modulos, costos, onActualizar }) {
       {p.items.map((item, idx) => {
         const modBase = modulos[item.codigo];
         if (!modBase) return null;
-        const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+        const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
         const estaEditando = editandoIdx === idx;
         const cat = CATEGORIAS_DEFAULT.find(c => c.id === (modBase.categoria || "otros")) || CATEGORIAS_DEFAULT[5];
 
@@ -379,9 +379,9 @@ function TabModulosTrabajo({ id, p, modulos, costos, onActualizar }) {
                     style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
                     Cancelar
                   </button>
-                  {p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`] && (
+                  {p.dimOverride && p.dimOverride[item.id || item.codigo] && (
                     <button onClick={() => {
-                      const keyId = `${item.codigo}-${item.id || 0}`;
+                      const keyId = item.id || item.codigo;
                       const nuevoOverride = { ...(p.dimOverride || {}) };
                       delete nuevoOverride[keyId];
                       onActualizar(id, { dimOverride: nuevoOverride });
