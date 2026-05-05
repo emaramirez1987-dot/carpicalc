@@ -631,6 +631,7 @@ function FormModulo({
           dimensiones: { ...moduloBase.dimensiones },
           material: moduloBase.material,
           categoria: moduloBase.categoria || "otros",
+          tipoVisual: moduloBase.tipoVisual || null,
           variables: moduloBase.variables ? { ...moduloBase.variables } : {}
         }
       : (_draft?.datos || {
@@ -640,6 +641,7 @@ function FormModulo({
           dimensiones: { ancho: 600, profundidad: 550, alto: 700 },
           material: "melamina",
           categoria: "otros",
+          tipoVisual: null,
           variables: {}
         })
   );
@@ -757,7 +759,8 @@ function FormModulo({
     if (datos.nombre !== moduloBase.nombre ||
         datos.descripcion !== (moduloBase.descripcion || "") ||
         datos.material !== moduloBase.material ||
-        datos.categoria !== (moduloBase.categoria || "otros")) return true;
+        datos.categoria !== (moduloBase.categoria || "otros") ||
+        datos.tipoVisual !== (moduloBase.tipoVisual || null)) return true;
     if (JSON.stringify(datos.dimensiones) !== JSON.stringify(moduloBase.dimensiones)) return true;
     if (JSON.stringify(datos.variables || {}) !== JSON.stringify(moduloBase.variables || {})) return true;
     const piezasBase = (moduloBase.piezas || []).map(p => ({
@@ -781,6 +784,7 @@ function FormModulo({
     dimensiones: datos.dimensiones,
     material:    datos.material,
     categoria:   datos.categoria || "otros",
+    tipoVisual:  datos.tipoVisual || null,
     variables:   datos.variables || {},
     piezas,
     herrajes,
@@ -970,6 +974,40 @@ function FormModulo({
                       boxShadow: activa ? `0 0 10px ${cat.color}30` : "none"
                     }}>
                     {cat.icon} {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tipo visual — Plano 2D */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 4 }}>
+              Tipo visual — Plano 2D
+            </div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 8 }}>
+              Define cómo se posiciona en la vista frontal
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[
+                { id: null,    label: "Sin definir", icon: "—",  color: "#606880" },
+                { id: "bajo",  label: "Bajo",        icon: "⬇",  color: "#7090c8" },
+                { id: "aereo", label: "Aéreo",        icon: "⬆",  color: "#a070c8" },
+                { id: "torre", label: "Torre",        icon: "⬛", color: "#7ecf8a" },
+              ].map((tipo) => {
+                const activo = datos.tipoVisual === tipo.id;
+                return (
+                  <button key={String(tipo.id)} onClick={() => setDatos((d) => ({ ...d, tipoVisual: tipo.id }))}
+                    style={{
+                      padding: "6px 14px", borderRadius: 20, cursor: "pointer",
+                      fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
+                      transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5,
+                      background: activo ? `${tipo.color}25` : "transparent",
+                      border: `1px solid ${activo ? tipo.color : "var(--border)"}`,
+                      color: activo ? tipo.color : "var(--text-muted)",
+                      boxShadow: activo ? `0 0 10px ${tipo.color}30` : "none",
+                    }}>
+                    {tipo.icon} {tipo.label}
                   </button>
                 );
               })}

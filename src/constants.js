@@ -161,6 +161,7 @@ export const modulosIniciales = {
     descripcion: "Bajo mesada con puerta",
     dimensiones: { ancho: 600, profundidad: 550, alto: 700 },
     material:    "melamina",
+    tipoVisual:  "bajo",
     piezas: [
       { nombre: "Lateral", cantidad: 2, usaDim: "alto",  usaDim2: "profundidad", offsetEsp: 0,  offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 1, lados2: 0 } },
       { nombre: "Base",    cantidad: 1, usaDim: "ancho", usaDim2: "profundidad", offsetEsp: -2, offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 0, lados2: 1 } },
@@ -175,6 +176,7 @@ export const modulosIniciales = {
     descripcion: "Alacena 2 puertas",
     dimensiones: { ancho: 600, profundidad: 350, alto: 700 },
     material:    "melamina",
+    tipoVisual:  "aereo",
     piezas: [
       { nombre: "Lateral", cantidad: 2, usaDim: "alto",  usaDim2: "profundidad", offsetEsp: 0,  offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 1, lados2: 0 } },
       { nombre: "Base",    cantidad: 1, usaDim: "ancho", usaDim2: "profundidad", offsetEsp: -2, offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 0, lados2: 1 } },
