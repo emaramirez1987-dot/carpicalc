@@ -93,7 +93,7 @@ function ListaItemsVP({ items, modulos, costos, dimOverride, costosDirectos = []
       {validos.map((item) => {
         const keyId  = item.id || item.codigo;
         const base   = modulos[item.codigo];
-        const dims   = (dimOverride && dimOverride[`${item.codigo}-${item.id || 0}`]) || base?.dimensiones;
+        const dims   = (dimOverride && dimOverride[item.id || item.codigo]) || base?.dimensiones;
         const modUsado = { ...base, dimensiones: dims };
         const calc   = calcularModulo(modUsado, costos);
         if (!calc) return null;

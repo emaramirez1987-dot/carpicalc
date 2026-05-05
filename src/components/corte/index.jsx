@@ -467,7 +467,7 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
     ? (item) => {
         const base = modulos[item.codigo];
         if (!base) return null;
-        const dims = (presVP.dimOverride && presVP.dimOverride[`${item.codigo}-${item.id || 0}`]) || base.dimensiones;
+        const dims = (presVP.dimOverride && presVP.dimOverride[item.id || item.codigo]) || base.dimensiones;
         return { ...base, dimensiones: dims };
       }
     : getModUsado;

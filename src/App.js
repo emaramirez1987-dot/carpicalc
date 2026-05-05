@@ -292,23 +292,38 @@ function AppInterna() {
   };
 
   const handleCargarPresupuesto = (p, id) => {
-    setItems(p.items ? [...p.items] : []);
-    setDimOverride(p.dimOverride && typeof p.dimOverride === "object" ? { ...p.dimOverride } : {});
+    // Ensure every item has a stable UUID (legacy items may lack id)
+    const rawItems = p.items ? [...p.items] : [];
+    const migratedItems = rawItems.map(item =>
+      item.id ? item : { ...item, id: crypto.randomUUID() }
+    );
+    // Remap Format B dimOverride keys (`${codigo}-${id}`) to Format A (`id || codigo`)
+    const rawDim = p.dimOverride && typeof p.dimOverride === "object" ? { ...p.dimOverride } : {};
+    const migratedDim = {};
+    migratedItems.forEach(item => {
+      const keyA = item.id || item.codigo;
+      const keyB = `${item.codigo}-${item.id || 0}`;
+      if (rawDim[keyA] !== undefined) migratedDim[keyA] = rawDim[keyA];
+      else if (rawDim[keyB] !== undefined) migratedDim[keyA] = rawDim[keyB];
+    });
+    setItems(migratedItems);
+    setDimOverride(migratedDim);
     setAdicionales(Array.isArray(p.adicionales) ? [...p.adicionales] : []);
     setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
     if (id) setPresupuestoActivoId(id);
     localStorage.removeItem("carpicalc:borrador");
-    const bloques = (p.items || []).flatMap(item => {
+    const bloques = migratedItems.flatMap(item => {
       const mod = modulos[item.codigo];
       if (!mod) return [];
+      const over = migratedDim[item.id || item.codigo] || {};
       return Array.from({ length: item.cantidad }, () => ({
         id: crypto.randomUUID(),
         codigo: item.codigo,
         nombre: mod.nombre,
         tipoVisual: mod.tipoVisual || null,
-        ancho: mod.dimensiones.ancho,
-        alto: mod.dimensiones.alto,
-        profundidad: mod.dimensiones.profundidad,
+        ancho: over.ancho || mod.dimensiones.ancho,
+        alto: over.alto || mod.dimensiones.alto,
+        profundidad: over.profundidad || mod.dimensiones.profundidad,
       }));
     });
     guardarPlano({ bloques, altoCielorraso: 2400 });

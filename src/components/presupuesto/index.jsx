@@ -368,7 +368,7 @@ function generarFichaObra(id, p, modulos, costos, perfil = {}) {
   (p.items || []).forEach(item => {
     const modBase = modulos[item.codigo];
     if (!modBase) return;
-    const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+    const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
     const modUsado = { ...modBase, dimensiones: dims };
     const matDef = costos.materiales.find(m => m.tipo === modUsado.material) || costos.materiales[0];
     const esp = matDef?.espesor || 18;
@@ -389,7 +389,7 @@ function generarFichaObra(id, p, modulos, costos, perfil = {}) {
     (p.items || []).forEach(item => {
       const modBase = modulos[item.codigo];
       if (!modBase) return;
-      const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+      const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
       const modUsado = { ...modBase, dimensiones: dims };
       const calc = calcularModulo(modUsado, costos);
       if (!calc) return;
@@ -408,7 +408,7 @@ function generarFichaObra(id, p, modulos, costos, perfil = {}) {
     (p.items || []).forEach(item => {
       const modBase = modulos[item.codigo];
       if (!modBase) return;
-      const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+      const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
       const modUsado = { ...modBase, dimensiones: dims };
       const calc = calcularModulo(modUsado, costos);
       if (!calc) return;
@@ -497,7 +497,7 @@ ${p.cliente && (p.cliente.nombre || p.cliente.tel || p.cliente.dir) ? `
     ${(p.items || []).map(item => {
       const modBase = modulos[item.codigo];
       if (!modBase) return '';
-      const dims = (p.dimOverride && p.dimOverride[`${item.codigo}-${item.id || 0}`]) || modBase.dimensiones;
+      const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
       const modUsado = { ...modBase, dimensiones: dims };
       const svgStr = generarVistaSVG({ ...modUsado, vistaConfig: modUsado.vistaConfig }, { width: 80, height: 80, theme: 'dark' });
       return `<div style="padding:8px 0;border-bottom:1px solid #e8d8c0;display:flex;justify-content:space-between;align-items:center;gap:12px">
@@ -1704,7 +1704,7 @@ function Presupuesto({
   const handleUpdateModule = (cod, cant, dims) => {
     const modBase = modulos[cod];
     if (!modBase) return;
-    const key = `${cod}-${items[editandoModuloIdx]?.id || 0}`;
+    const key = items[editandoModuloIdx]?.id || items[editandoModuloIdx]?.codigo || cod;
     const nuevoItem = { ...items[editandoModuloIdx], codigo: cod, cantidad: cant };
     const nuevoItems = items.map((it, i) => i === editandoModuloIdx ? nuevoItem : it);
     const nuevoDimOverride = { ...dimOverride };
@@ -1715,7 +1715,7 @@ function Presupuesto({
     if (presupuestoActivoId) {
       const totalNuevo = nuevoItems.reduce((acc, item) => {
         const base = modulos[item.codigo]; if (!base) return acc;
-        const d = nuevoDimOverride[`${item.codigo}-${item.id || 0}`] || base.dimensiones;
+        const d = nuevoDimOverride[item.id || item.codigo] || base.dimensiones;
         const calc = calcularModulo({ ...base, dimensiones: d }, costos);
         return acc + (calc ? calc.total * item.cantidad : 0);
       }, 0);
@@ -1781,8 +1781,7 @@ function Presupuesto({
       return;
     }
     const cant = parseInt(inputCant) || 1;
-    const nuevoId =
-      Date.now().toString(36) + Math.random().toString(36).substring(2);
+    const nuevoId = crypto.randomUUID();
     const isCustom =
       preDim &&
       (preDim.ancho !== modBase.dimensiones.ancho ||
