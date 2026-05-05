@@ -174,12 +174,20 @@ carpicalc:auth           → session flag
 
 ## Roadmap
 
+### Features
 | Priority | Feature | Notes |
 |---|---|---|
 | High | Public budget link | Flujo de aprobación del cliente |
 | Medium | Supabase migration | Auth + PostgreSQL + RLS, región São Paulo |
 | Medium | Lemon Squeezy subscriptions | Bronce $8 / Plata $18 / Oro $35 USD |
 | Low | Monthly summary, m² calculator, purchase list export | |
+
+### Deuda técnica / refactors
+| Priority | Tarea | Detalle |
+|---|---|---|
+| High | Extraer componentes de App.js | `LoginScreen`, `PanelPerfil`, `PanelSuscripcion` → `components/auth/` y `components/perfil/` |
+| High | Completar `presupuestoService.js` | Mover `crearPresupuesto`, `eliminarPresupuesto`, `cambiarEstado` desde App.js |
+| Medium | Validación de schema en `storage.js` | Al leer localStorage, detectar datos malformados y hacer fallback a defaults |
 
 ## Architecture Principles — Non-negotiable
 
@@ -191,6 +199,15 @@ Cada archivo/función tiene UNA razón para cambiar.
 - Si un componente maneja UI Y lógica de negocio → extraer la lógica a un service
 - Si una función lee datos Y los transforma → separarla en dos
 - Si App.js crece por algo que no es "orquestar estado de dominio" → está mal ubicado
+
+### Componentes nuevos — fuera de App.js desde el día 1
+**Nunca crear un componente nuevo dentro de `App.js`.** Aunque sea pequeño hoy, va a escalar.
+- Componentes de autenticación → `components/auth/`
+- Componentes de perfil/taller → `components/perfil/`
+- Componentes de suscripción/planes → `components/suscripcion/`
+- Cualquier otro dominio → `components/[dominio]/`
+
+App.js solo orquesta: declara estado de dominio, define handlers, arma el layout raíz. Nada más.
 
 ### Dónde va el código nuevo — Protocolo de 4 preguntas
 
