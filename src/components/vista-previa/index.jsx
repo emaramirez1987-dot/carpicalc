@@ -371,14 +371,31 @@ function VistaPrevia({
   const [gananciaExtraVP, setGananciaExtraVP] = useState("");
 
   useEffect(() => {
-    if (presSel) {
-      setTextoApertura(presSel.textoApertura || perfil?.textoApertura || "");
-      setCondiciones(presSel.condiciones || perfil?.condiciones || "");
-      // Sincronización: cargar ajustes desde el presupuesto seleccionado
-      setDescuentoVP(presSel.descuento ?? "");
-      setGananciaExtraVP(presSel.gananciaExtra ?? "");
-      setItemsOcultos(presSel.itemsOcultos || []);
+    const p = presSelId ? presupuestos[presSelId] : null;
+    if (p) {
+      setTextoApertura(p.textoApertura || perfil?.textoApertura || "");
+      setCondiciones(p.condiciones || perfil?.condiciones || "");
+      setDescuentoVP(p.descuento ?? "");
+      setGananciaExtraVP(p.gananciaExtra ?? "");
+      setItemsOcultos(p.itemsOcultos || []);
       setAcordeonAbierto(false);
+      // Auto-sync Plano 2D — cubre "Ver" desde GestorPresupuestos y selección en acordeón
+      const bloques = (p.items || []).flatMap(item => {
+        const mod = modulos[item.codigo];
+        if (!mod) return [];
+        return Array.from({ length: item.cantidad }, () => ({
+          id: crypto.randomUUID(),
+          codigo: item.codigo,
+          nombre: mod.nombre,
+          tipoVisual: mod.tipoVisual || null,
+          ancho: mod.dimensiones.ancho,
+          alto: mod.dimensiones.alto,
+          profundidad: mod.dimensiones.profundidad,
+        }));
+      });
+      guardarPlano({ bloques, altoCielorraso: 2400 });
+    } else {
+      guardarPlano({ bloques: [], altoCielorraso: 2400 });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presSelId]);
