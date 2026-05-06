@@ -3,7 +3,7 @@ import { SectionTitle } from "../ui/index.jsx";
 import { leerPlano, leerPromptsRender, guardarPromptsRender } from "../../storage.js";
 import { PLANES_RENDER } from "../../constants.js";
 import { supabase } from "../../lib/supabase.js";
-import { svgABase64 } from "../plano/planoUtils.js";
+import { generarImagenReferencia } from "../plano/planoUtils.js";
 import SVGPlano from "../plano/SVGPlano.jsx";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ function PanelRender({ imagenUrl, generando, compact = false }) {
 
 // ── Panel SVG estático ────────────────────────────────────────────────────────
 
-function PanelSVG({ bloques, idsBajos, idsAltos, altoCielorraso, composicionOverride, modulos, svgRef, compact = false }) {
+function PanelSVG({ bloques, idsBajos, idsAltos, altoCielorraso, composicionOverride, modulos, compact = false }) {
   const bloquesAltos = bloques.filter(b => idsAltos.includes(b.id));
   const bloquesBajos = bloques.filter(b => idsBajos.includes(b.id));
   const svgProps = { bloquesAltos, bloquesBajos, altoCielorraso, modulos, composicionOverride, onSelect: null, selectedId: null };
@@ -135,10 +135,6 @@ function PanelSVG({ bloques, idsBajos, idsAltos, altoCielorraso, composicionOver
       </div>
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
         <SVGPlano {...svgProps} />
-      </div>
-      {/* SVG oculto en tema claro — usado solo para captura img2img (mejor contraste) */}
-      <div style={{ position: "absolute", left: -9999, top: -9999, pointerEvents: "none", opacity: 0 }}>
-        <SVGPlano {...svgProps} svgRef={svgRef} temaClaro={true} />
       </div>
     </div>
   );
@@ -341,7 +337,6 @@ export function RenderIA({
   const [imagenUrl, setImagenUrl]     = useState(null);
   const [errorRender, setErrorRender] = useState(null);
   const prevKeyRef                    = useRef(null);
-  const svgRef                        = useRef(null);
 
   useEffect(() => {
     supabase.from("workspaces").select("id").single().then(({ data }) => {
@@ -357,10 +352,12 @@ export function RenderIA({
     setErrorRender(null);
     setImagenUrl(null);
     try {
-      // Solo usar img2img si hay bloques reales en el plano — imagen vacía confunde al modelo
+      // img2img: genera imagen de referencia con los módulos ampliados
       let imageBase64 = null;
-      if (svgRef.current && bloques.length > 0) {
-        try { imageBase64 = await svgABase64(svgRef.current); } catch {}
+      if (bloques.length > 0) {
+        const bloquesAltosRef = bloques.filter(b => idsAltos.includes(b.id));
+        const bloquesBajosRef = bloques.filter(b => idsBajos.includes(b.id));
+        try { imageBase64 = await generarImagenReferencia({ bloquesAltos: bloquesAltosRef, bloquesBajos: bloquesBajosRef }); } catch {}
       }
       const res = await fetch("/api/generate-render", {
         method: "POST",
@@ -405,7 +402,7 @@ export function RenderIA({
   }, [presupuestoActivoId]);
 
   const sinDatos    = bloques.length === 0;
-  const svgProps    = { bloques, idsBajos, idsAltos, altoCielorraso: alto, composicionOverride, modulos, svgRef };
+  const svgProps    = { bloques, idsBajos, idsAltos, altoCielorraso: alto, composicionOverride, modulos };
   const creditos    = calcularCreditos(suscripcion);
   const renderProps = { imagenUrl, generando };
 
