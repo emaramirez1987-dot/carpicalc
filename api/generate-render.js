@@ -96,8 +96,9 @@ module.exports = async function handler(req, res) {
     const data = await rpRes.json();
 
     if (!rpRes.ok || data.error) {
-      console.error("Replicate error:", data);
-      return res.status(500).json({ error: data.error || "Error de Replicate" });
+      console.error("Replicate error status:", rpRes.status, JSON.stringify(data));
+      const msg = data.detail || data.error || `Replicate HTTP ${rpRes.status}`;
+      return res.status(500).json({ error: msg });
     }
 
     const imageUrl = Array.isArray(data.output) ? data.output[0] : data.output;
