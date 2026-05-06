@@ -71,17 +71,32 @@ module.exports = async function handler(req, res) {
   if (!deduct.ok) return res.status(403).json({ error: deduct.error });
 
   try {
-    const fullPrompt = prompt;
+    let endpoint, input;
 
-    // flux-schnell text2img — rápido y confiable desde el prompt
-    // TODO: img2img con plano recortado al bounding box de módulos (mejora futura)
-    const endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions";
-    const input = {
-      prompt:               fullPrompt,
-      aspect_ratio:         "4:3",
-      num_outputs:          1,
-      num_inference_steps:  4,
-    };
+    if (imageBase64) {
+      // flux-dev img2img — usa el plano de módulos como referencia estructural
+      endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-dev/predictions";
+      const basePrompt = "render fotorrealista del mismo mueble, misma cantidad de módulos, misma distribución de puertas y cajones, melamina blanca, fondo neutro liso, iluminación suave y pareja";
+      const fullPrompt = prompt.trim() ? `${basePrompt}, ${prompt.trim()}` : basePrompt;
+      input = {
+        prompt:              fullPrompt,
+        image:               `data:image/jpeg;base64,${imageBase64}`,
+        prompt_strength:     0.80,
+        num_inference_steps: 28,
+        aspect_ratio:        "4:3",
+        num_outputs:         1,
+        output_format:       "webp",
+      };
+    } else {
+      // flux-schnell text2img — sin plano de referencia
+      endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions";
+      input = {
+        prompt:               prompt.trim(),
+        aspect_ratio:         "4:3",
+        num_outputs:          1,
+        num_inference_steps:  4,
+      };
+    }
 
     const rpRes = await fetch(endpoint, {
       method: "POST",

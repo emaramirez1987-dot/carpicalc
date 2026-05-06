@@ -95,6 +95,80 @@ export function svgABase64(svgEl) {
   });
 }
 
+// ── Imagen de referencia para img2img (solo módulos, ampliados) ──────────────
+// Genera un JPEG base64 con los módulos centrados sobre fondo blanco.
+// Sin decoraciones de sala — el AI solo ve la estructura del mueble.
+export async function generarImagenReferencia({ bloquesAltos = [], bloquesBajos = [] }) {
+  const W = 800, H = 600;
+  const PAD_X = 50, PAD_Y = 40;
+  const plotW = W - 2 * PAD_X;
+  const plotH = H - 2 * PAD_Y;
+
+  const sumBajosW = bloquesBajos.reduce((s, b) => s + b.ancho, 0);
+  const sumAltosW = bloquesAltos.reduce((s, b) => s + b.ancho, 0);
+  const totalAnchoMM = Math.max(sumBajosW, sumAltosW, 1);
+
+  const maxAltoBajos = bloquesBajos.length ? Math.max(...bloquesBajos.map(b => b.alto)) : 0;
+  const maxAltoAltos = bloquesAltos.length ? Math.max(...bloquesAltos.map(b => b.alto)) : 0;
+  const GAP_MM = (bloquesBajos.length > 0 && bloquesAltos.length > 0) ? 200 : 0;
+  const totalAltoMM = (maxAltoBajos + GAP_MM + maxAltoAltos) || 700;
+
+  const scaleH = plotH / totalAltoMM;
+  const scaleW = plotW / totalAnchoMM;
+  const scale  = Math.min(scaleH, scaleW);
+
+  const bajosW     = sumBajosW * scale;
+  const altosW     = sumAltosW * scale;
+  const bajosStartX = PAD_X + (plotW - bajosW) / 2;
+  const altosStartX = PAD_X + (plotW - altosW) / 2;
+  const floorY     = PAD_Y + plotH;
+
+  const rects = [];
+
+  let x = bajosStartX;
+  bloquesBajos.forEach(b => {
+    const w = b.ancho * scale, h = b.alto * scale;
+    const y = floorY - h;
+    rects.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#D4E0F5" stroke="#6884C8" stroke-width="1.5" rx="2"/>`);
+    x += w;
+  });
+
+  x = altosStartX;
+  bloquesAltos.forEach(b => {
+    const w = b.ancho * scale, h = b.alto * scale;
+    const y = floorY - totalAltoMM * scale;
+    rects.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#E5D4F5" stroke="#A064C8" stroke-width="1.5" rx="2"/>`);
+    x += w;
+  });
+
+  const svgStr = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
+    `<rect width="${W}" height="${H}" fill="#FAFAF7"/>`,
+    ...rects,
+    `<line x1="${PAD_X}" y1="${floorY.toFixed(1)}" x2="${W - PAD_X}" y2="${floorY.toFixed(1)}" stroke="#9A8060" stroke-width="2" opacity="0.6"/>`,
+    `</svg>`,
+  ].join("");
+
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+    const img  = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#FAFAF7";
+      ctx.fillRect(0, 0, W, H);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.90).split(",")[1]);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Error generando imagen referencia")); };
+    img.src = url;
+  });
+}
+
 // ── Exportar PNG (retina 2×) ──────────────────────────────────────────────
 export function exportarPNG(svgEl, nombre) {
   if (!svgEl) return;
