@@ -542,6 +542,7 @@ function AppInterna() {
                 presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
                 presupuestos={presupuestos}
                 suscripcion={suscripcion}
+                onRenderGenerado={() => cargarSuscripcion().then(setSuscripcion)}
               />
             </div>
 

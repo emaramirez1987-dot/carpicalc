@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { SectionTitle } from "../ui/index.jsx";
 import { leerPlano, leerPromptsRender, guardarPromptsRender } from "../../storage.js";
 import { PLANES_RENDER } from "../../constants.js";
+import { supabase } from "../../lib/supabase.js";
 import SVGPlano from "../plano/SVGPlano.jsx";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -80,7 +81,42 @@ function BtnModo({ activo, onClick, children }) {
 
 // ── Placeholder render ────────────────────────────────────────────────────────
 
-function PlaceholderRender({ compact = false }) {
+function PanelRender({ imagenUrl, generando, compact = false }) {
+  if (generando) {
+    return (
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        background: "var(--bg-surface)", border: "1px dashed var(--border)",
+        borderRadius: 12, padding: compact ? "24px 16px" : "60px 32px", gap: 12,
+      }}>
+        <div style={{ fontSize: compact ? 26 : 38 }}>⏳</div>
+        <div style={{ fontSize: compact ? 12 : 14, fontWeight: 700, color: "var(--text-primary)" }}>
+          Generando render…
+        </div>
+        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Puede tardar unos segundos</div>
+      </div>
+    );
+  }
+  if (imagenUrl) {
+    return (
+      <div style={{
+        flex: 1, background: "var(--bg-surface)", border: "1px solid var(--border)",
+        borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column",
+      }}>
+        <div style={{ padding: compact ? "8px 12px" : "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", flex: 1 }}>
+            ✨ Render IA
+          </span>
+          <a href={imagenUrl} download="render.webp" target="_blank" rel="noopener noreferrer"
+            style={{ ...btnSm("accent"), textDecoration: "none", display: "inline-block" }}>
+            ⬇ Descargar
+          </a>
+        </div>
+        <img src={imagenUrl} alt="render IA" style={{ width: "100%", height: "auto", display: "block" }} />
+      </div>
+    );
+  }
   return (
     <div style={{
       flex: 1, display: "flex", flexDirection: "column",
@@ -93,7 +129,7 @@ function PlaceholderRender({ compact = false }) {
         Render realista con IA
       </div>
       <div style={{ fontSize: 11, color: "var(--text-secondary)", textAlign: "center", maxWidth: 240 }}>
-        Próximamente — ingresá un prompt y la IA generará una foto realista
+        Escribí un prompt y presioná Generar render
       </div>
     </div>
   );
@@ -237,7 +273,7 @@ function calcularCreditos(suscripcion) {
 
 // ── Panel de prompt activo ────────────────────────────────────────────────────
 
-function PanelPrompt({ prompt, onPromptChange, onGuardar, creditos }) {
+function PanelPrompt({ prompt, onPromptChange, onGuardar, onGenerar, generando, creditos }) {
   const [nombre, setNombre]         = useState("");
   const [guardadoOk, setGuardadoOk] = useState(false);
 
@@ -249,7 +285,8 @@ function PanelPrompt({ prompt, onPromptChange, onGuardar, creditos }) {
     setTimeout(() => setGuardadoOk(false), 1800);
   };
 
-  const puedeGuardar = prompt.trim() && nombre.trim();
+  const puedeGuardar  = prompt.trim() && nombre.trim();
+  const puedeGenerar  = prompt.trim() && !generando && creditos && !creditos.bloqueado;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px", background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10 }}>
@@ -277,8 +314,12 @@ function PanelPrompt({ prompt, onPromptChange, onGuardar, creditos }) {
         >
           {guardadoOk ? "✓ Guardado" : "Guardar prompt"}
         </button>
-        <button disabled title="Disponible próximamente" style={{ ...btnSm("accent"), opacity: 0.4, cursor: "default" }}>
-          ▶ Generar render
+        <button
+          onClick={onGenerar}
+          disabled={!puedeGenerar}
+          style={{ ...btnSm("accent"), opacity: puedeGenerar ? 1 : 0.4, cursor: puedeGenerar ? "pointer" : "default" }}
+        >
+          {generando ? "⏳ Generando…" : "▶ Generar render"}
         </button>
         {creditos && (
           <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: creditos.bloqueado ? "#e07070" : "var(--text-muted)", whiteSpace: "nowrap" }}>
@@ -286,7 +327,7 @@ function PanelPrompt({ prompt, onPromptChange, onGuardar, creditos }) {
               ? "Sin renders este mes"
               : creditos.limite === null
                 ? `${creditos.usados} usados · ∞`
-                : `${creditos.restantes} render${creditos.restantes !== 1 ? "s" : ""} disponible${creditos.restantes !== 1 ? "s" : ""}`}
+                : `${creditos.limite - creditos.usados} render${creditos.limite - creditos.usados !== 1 ? "s" : ""} disponible${creditos.limite - creditos.usados !== 1 ? "s" : ""}`}
           </span>
         )}
       </div>
@@ -306,17 +347,51 @@ export function RenderIA({
   presupuestoVistaPreviaId = null,
   presupuestos = {},
   suscripcion = null,
+  onRenderGenerado = null,
 }) {
-  const [modo, setModo]         = useState("svg");
-  const [bloques, setBloques]   = useState([]);
-  const [idsBajos, setIdsBajos] = useState([]);
-  const [idsAltos, setIdsAltos] = useState([]);
-  const [alto, setAlto]         = useState(2400);
-  const [prompt, setPrompt]     = useState("");
-  const [prompts, setPrompts]   = useState(() => leerPromptsRender());
-  const prevKeyRef              = useRef(null);
+  const [modo, setModo]               = useState("svg");
+  const [bloques, setBloques]         = useState([]);
+  const [idsBajos, setIdsBajos]       = useState([]);
+  const [idsAltos, setIdsAltos]       = useState([]);
+  const [alto, setAlto]               = useState(2400);
+  const [prompt, setPrompt]           = useState("");
+  const [prompts, setPrompts]         = useState(() => leerPromptsRender());
+  const [wsId, setWsId]               = useState(null);
+  const [generando, setGenerando]     = useState(false);
+  const [imagenUrl, setImagenUrl]     = useState(null);
+  const [errorRender, setErrorRender] = useState(null);
+  const prevKeyRef                    = useRef(null);
+
+  useEffect(() => {
+    supabase.from("workspaces").select("id").single().then(({ data }) => {
+      if (data) setWsId(data.id);
+    });
+  }, []);
 
   const persistirPrompts = (nuevo) => { setPrompts(nuevo); guardarPromptsRender(nuevo); };
+
+  const handleGenerar = async () => {
+    if (!wsId || !prompt.trim()) return;
+    setGenerando(true);
+    setErrorRender(null);
+    setImagenUrl(null);
+    try {
+      const res = await fetch("/api/generate-render", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: wsId, prompt: prompt.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setErrorRender(data.error || "Error al generar"); return; }
+      setImagenUrl(data.imageUrl);
+      setModo("render");
+      if (onRenderGenerado) onRenderGenerado();
+    } catch (e) {
+      setErrorRender(e.message);
+    } finally {
+      setGenerando(false);
+    }
+  };
 
   const handleGuardarPrompt = (nombre, texto) =>
     persistirPrompts([...prompts, { id: crypto.randomUUID(), nombre, texto, creadoEn: Date.now() }]);
@@ -353,9 +428,10 @@ export function RenderIA({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presupuestoVistaPreviaId, presupuestoActivoId]);
 
-  const sinDatos  = bloques.length === 0;
-  const svgProps  = { bloques, idsBajos, idsAltos, altoCielorraso: alto, composicionOverride, modulos };
-  const creditos  = calcularCreditos(suscripcion);
+  const sinDatos    = bloques.length === 0;
+  const svgProps    = { bloques, idsBajos, idsAltos, altoCielorraso: alto, composicionOverride, modulos };
+  const creditos    = calcularCreditos(suscripcion);
+  const renderProps = { imagenUrl, generando };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -389,11 +465,11 @@ export function RenderIA({
 
       {/* Visualización */}
       {!sinDatos && modo === "svg"    && <PanelSVG {...svgProps} />}
-      {!sinDatos && modo === "render" && <PlaceholderRender />}
+      {!sinDatos && modo === "render" && <PanelRender {...renderProps} />}
       {!sinDatos && modo === "split"  && (
         <div style={{ display: "flex", gap: 12, alignItems: "stretch", minHeight: 360 }}>
           <PanelSVG {...svgProps} compact />
-          <PlaceholderRender compact />
+          <PanelRender {...renderProps} compact />
         </div>
       )}
 
@@ -404,8 +480,15 @@ export function RenderIA({
             prompt={prompt}
             onPromptChange={setPrompt}
             onGuardar={handleGuardarPrompt}
+            onGenerar={handleGenerar}
+            generando={generando}
             creditos={creditos}
           />
+          {errorRender && (
+            <div style={{ fontSize: 12, color: "#e07070", fontFamily: "'DM Mono',monospace", padding: "8px 12px", background: "rgba(200,60,60,0.08)", border: "1px solid rgba(200,60,60,0.25)", borderRadius: 7 }}>
+              ⚠ {errorRender}
+            </div>
+          )}
           <GestorPrompts
             prompts={prompts}
             onUsar={(texto) => setPrompt(texto)}
