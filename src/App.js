@@ -66,30 +66,35 @@ function Header({ tabs, saveEst, tema, toggleTema }) {
 
       {/* Nav */}
       <nav className="rsp-nav" style={{ display: "flex", flex: 1, overflowX: "auto", scrollbarWidth: "none" }}>
-        {tabs.map(t => {
+        {tabs.map((t, idx) => {
           const active = nav.vista === t.id;
+          const isSeparatorBefore = idx === tabs.findIndex(x => x.id === "catalogo");
           return (
-            <button
-              key={t.id}
-              data-vista={t.id}
-              onClick={() => dispatch({ type: "CAMBIAR_VISTA", payload: { vista: t.id } })}
-              style={{
-                position: "relative",
-                background: "transparent", border: "none",
-                borderBottom: `2px solid ${active ? "var(--accent)" : "transparent"}`,
-                color: active ? "var(--accent)" : "var(--text-muted)",
-                padding: "18px 20px",
-                cursor: "pointer",
-                fontSize: 11, fontWeight: active ? 700 : 500,
-                letterSpacing: "0.12em", textTransform: "uppercase",
-                fontFamily: "'DM Mono',monospace",
-                transition: "all 0.2s", flexShrink: 0, whiteSpace: "nowrap",
-              }}
-              onMouseEnter={e => { if (!active) { e.currentTarget.style.color = "var(--text-secondary)"; e.currentTarget.style.borderBottomColor = "var(--accent-border)"; }}}
-              onMouseLeave={e => { if (!active) { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderBottomColor = "transparent"; }}}
-            >
-              {t.icon} {t.label}
-            </button>
+            <React.Fragment key={t.id}>
+              {isSeparatorBefore && (
+                <div style={{ width: 1, background: "var(--border)", margin: "12px 4px", flexShrink: 0, alignSelf: "stretch" }} />
+              )}
+              <button
+                data-vista={t.id}
+                onClick={() => dispatch({ type: "CAMBIAR_VISTA", payload: { vista: t.id } })}
+                style={{
+                  position: "relative",
+                  background: "transparent", border: "none",
+                  borderBottom: `2px solid ${active ? "var(--accent)" : "transparent"}`,
+                  color: active ? "var(--accent)" : "var(--text-secondary)",
+                  padding: "14px 14px",
+                  cursor: "pointer",
+                  fontSize: 11, fontWeight: active ? 700 : 400,
+                  letterSpacing: "0.10em", textTransform: "uppercase",
+                  fontFamily: "'DM Mono',monospace",
+                  transition: "all 0.2s", flexShrink: 0, whiteSpace: "nowrap",
+                }}
+                onMouseEnter={e => { if (!active) { e.currentTarget.style.color = "var(--text-primary)"; e.currentTarget.style.borderBottomColor = "var(--accent-border)"; }}}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.color = "var(--text-secondary)"; e.currentTarget.style.borderBottomColor = "transparent"; }}}
+              >
+                {t.icon} {t.label}
+              </button>
+            </React.Fragment>
           );
         })}
       </nav>

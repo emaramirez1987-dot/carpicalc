@@ -42,7 +42,7 @@ const chipSt = (activo) => ({
   fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.12s",
   background: activo ? "var(--accent-soft)"  : "transparent",
   border:     `1px solid ${activo ? "var(--accent-border)" : "var(--border)"}`,
-  color:      activo ? "var(--accent)"        : "var(--text-muted)",
+  color:      activo ? "var(--accent)"        : "var(--text-secondary)",
 });
 
 const numChipSt = (activo) => ({
@@ -91,8 +91,8 @@ export default function ComposicionEditor({ modBase, vistaConfigInicial, onGuard
   const handleGuardar = () => onGuardar(vistaPreview);
 
   const labelStyle = {
-    fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-    letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 6,
+    fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+    letterSpacing: "0.1em", color: "var(--text-secondary)", marginBottom: 6,
   };
 
   return (
@@ -103,7 +103,7 @@ export default function ComposicionEditor({ modBase, vistaConfigInicial, onGuard
         <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 900, color: "var(--accent)", marginBottom: 2 }}>
           ▣ Composición
         </div>
-        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+        <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>
           {modBase?.nombre} · {modBase?.dimensiones?.ancho} × {modBase?.dimensiones?.profundidad} × {modBase?.dimensiones?.alto} mm
         </div>
       </div>
@@ -121,7 +121,7 @@ export default function ComposicionEditor({ modBase, vistaConfigInicial, onGuard
 
       {/* Zócalo */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", flexShrink: 0 }}>Zócalo</span>
+        <span style={{ fontSize: 11, color: "var(--text-secondary)", fontFamily: "'DM Mono',monospace", flexShrink: 0 }}>Zócalo</span>
         <input
           type="number" min="0" max="200" value={zocalo}
           onChange={e => setZocalo(e.target.value)}
@@ -131,7 +131,7 @@ export default function ComposicionEditor({ modBase, vistaConfigInicial, onGuard
             borderRadius: 6, color: "var(--text-primary)", outline: "none", textAlign: "right",
           }}
         />
-        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>mm</span>
+        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>mm</span>
       </div>
 
       {/* Distribución */}
@@ -166,7 +166,7 @@ export default function ComposicionEditor({ modBase, vistaConfigInicial, onGuard
               </div>
               {tipo === "cajones" && (
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6 }}>
-                  <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Cantidad</span>
+                  <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>Cantidad</span>
                   {[1,2,3,4,5,6].map(n => (
                     <button key={n} onClick={() => setZonaExtra(id, "cantidad", n)}
                       style={numChipSt((zc.cantidad || 3) === n)}>{n}</button>
@@ -175,7 +175,7 @@ export default function ComposicionEditor({ modBase, vistaConfigInicial, onGuard
               )}
               {(tipo === "abierto" || tipo === "puerta_1" || tipo === "puerta_2") && (
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6 }}>
-                  <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Estantes</span>
+                  <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>Estantes</span>
                   {[0,1,2,3,4].map(n => (
                     <button key={n} onClick={() => setZonaExtra(id, "estantes", n)}
                       style={numChipSt((zc.estantes || 0) === n)}>{n}</button>
@@ -190,7 +190,7 @@ export default function ComposicionEditor({ modBase, vistaConfigInicial, onGuard
       {/* Acciones */}
       <div style={{ display: "flex", gap: 8, paddingTop: 4, borderTop: "1px solid var(--border)" }}>
         <button onClick={onCancelar}
-          style={{ flex: 1, padding: "8px 0", borderRadius: 7, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+          style={{ flex: 1, padding: "8px 0", borderRadius: 7, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
           Cancelar
         </button>
         <button onClick={handleGuardar}

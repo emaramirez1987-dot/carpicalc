@@ -2319,20 +2319,20 @@ function Presupuesto({
 
                 {/* Acordeón de edición por instancia */}
                 {estaEditando && modalEdicion && (
-                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px 12px", background: "rgba(0,0,0,0.10)" }}>
+                  <div style={{ borderTop: "1px solid var(--border)", padding: "10px 14px 12px", background: "var(--bg-subtle)" }}>
 
                     {/* Badge */}
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                       <span style={{
-                        fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                        textTransform: "uppercase", letterSpacing: "0.08em", borderRadius: 4, padding: "1px 6px",
+                        fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                        textTransform: "uppercase", letterSpacing: "0.08em", borderRadius: 4, padding: "2px 7px",
                         background: modalEdicion.item?.codigo?.startsWith("TEMP_") ? "var(--accent-soft)" : "rgba(120,180,100,0.12)",
                         border: `1px solid ${modalEdicion.item?.codigo?.startsWith("TEMP_") ? "var(--accent-border)" : "rgba(120,180,100,0.35)"}`,
-                        color: modalEdicion.item?.codigo?.startsWith("TEMP_") ? "var(--accent)" : "#7ecf8a",
+                        color: modalEdicion.item?.codigo?.startsWith("TEMP_") ? "var(--accent)" : "#4a9e5c",
                       }}>
                         {modalEdicion.item?.codigo?.startsWith("TEMP_") ? "VARIANTE" : "SOLO PRESUPUESTO"}
                       </span>
-                      <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                      <span style={{ fontSize: 11, color: "var(--text-secondary)", fontFamily: "'DM Mono',monospace" }}>
                         {modalEdicion.item?.codigo?.startsWith("TEMP_") ? "módulo temporal" : "catálogo sin cambios · ▲ aplica"}
                       </span>
                     </div>
@@ -2341,7 +2341,7 @@ function Presupuesto({
                     <div style={{ display: "flex", gap: 5, alignItems: "flex-end", marginBottom: 8 }}>
                       {[["A", "ancho"], ["P", "profundidad"], ["H", "alto"]].map(([label, key]) => (
                         <div key={key} style={{ flex: 1 }}>
-                          <div style={{ fontSize: 9, color: "var(--text-muted)", textAlign: "center", marginBottom: 3, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-secondary)", textAlign: "center", marginBottom: 3, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
                           <input type="number" min="1"
                             value={modalEdicion.dims[key]}
                             onChange={e => setModalEdicion(m => ({ ...m, dims: { ...m.dims, [key]: parseInt(e.target.value) || 0 } }))}
@@ -2351,7 +2351,7 @@ function Presupuesto({
                         </div>
                       ))}
                       <div style={{ flex: 1.8 }}>
-                        <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 3, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>Mat.</div>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 3, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>Mat.</div>
                         <select value={modalEdicion.material}
                           onChange={e => {
                             const newMat = e.target.value;
@@ -2365,7 +2365,7 @@ function Presupuesto({
                               setDimOverride(prev => { const n = { ...prev }; if (difiere) n[keyId] = { ...d, material: newMat }; else delete n[keyId]; return n; });
                             }
                           }}
-                          style={{ width: "100%", padding: "5px 3px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 10, outline: "none" }}>
+                          style={{ width: "100%", padding: "5px 4px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 11, outline: "none" }}>
                           {Object.entries(TIPO_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                         </select>
                       </div>
@@ -2374,7 +2374,7 @@ function Presupuesto({
                     {/* Acciones compactas */}
                     <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={aplicarDims}
-                        style={{ padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, background: "rgba(120,180,100,0.15)", border: "1px solid rgba(120,180,100,0.35)", color: "#7ecf8a" }}>
+                        style={{ padding: "5px 12px", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
                         ✓ Actualizar
                       </button>
                       <button
@@ -2383,11 +2383,11 @@ function Presupuesto({
                           if (!modInicial) return;
                           setModalModulo({ item, modInicial });
                         }}
-                        style={{ flex: 1, padding: "5px 0", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
+                        style={{ flex: 1, padding: "5px 0", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
                         ✏ Piezas/herrajes
                       </button>
                       <button onClick={() => setModalEdicion(null)}
-                        style={{ padding: "5px 12px", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070" }}>
+                        style={{ padding: "5px 14px", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, background: "transparent", border: "1px solid rgba(200,60,60,0.28)", color: "#e07070" }}>
                         ✕
                       </button>
                     </div>

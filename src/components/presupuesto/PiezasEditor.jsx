@@ -27,7 +27,7 @@ function computeDims(pieza, dimMap, esp) {
 }
 
 const st = {
-  label: { fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 },
+  label: { fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-secondary)", marginBottom: 8 },
   row: { display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 7, background: "var(--bg-subtle)", border: "1px solid var(--border)", marginBottom: 5 },
   numInput: { width: 52, fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: "4px 6px", textAlign: "center", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", outline: "none" },
   dimInput: { width: 68, fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "4px 6px", textAlign: "center", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", outline: "none" },
@@ -36,7 +36,7 @@ const st = {
     fontFamily: "'DM Mono',monospace", fontWeight: 700,
     background: variant === "danger" ? "rgba(200,60,60,0.10)" : "transparent",
     border: `1px solid ${variant === "danger" ? "rgba(200,60,60,0.35)" : "var(--border)"}`,
-    color: variant === "danger" ? "#e07070" : "var(--text-muted)",
+    color: variant === "danger" ? "#e07070" : "var(--text-secondary)",
   }),
 };
 
@@ -93,10 +93,10 @@ export default function PiezasEditor({ modulo, costos, onGuardar, onCancelar }) 
         <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 15, fontWeight: 900, color: "var(--accent)", marginBottom: 2 }}>
           ✏ Editar módulo
         </div>
-        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+        <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>
           {modulo.nombre} · {ancho}×{profundidad}×{alto} mm
         </div>
-        <div style={{ fontSize: 10, color: "rgba(120,180,100,0.9)", marginTop: 4, fontFamily: "'DM Mono',monospace" }}>
+        <div style={{ fontSize: 11, color: "#4a9e5c", marginTop: 4, fontFamily: "'DM Mono',monospace" }}>
           Solo en este presupuesto · catálogo sin cambios
         </div>
       </div>
@@ -116,13 +116,13 @@ export default function PiezasEditor({ modulo, costos, onGuardar, onCancelar }) 
                   <input style={st.dimInput} type="number" min="0" value={p.dimLibre1 || "0"}
                     onChange={e => setLibrePieza(idx, "dimLibre1", e.target.value)}
                     title="Dimensión 1 (mm)" />
-                  <span style={{ fontSize: 10, color: "var(--text-muted)" }}>×</span>
+                  <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>×</span>
                   <input style={st.dimInput} type="number" min="0" value={p.dimLibre2 || "0"}
                     onChange={e => setLibrePieza(idx, "dimLibre2", e.target.value)}
                     title="Dimensión 2 (mm)" />
                 </>
               ) : (
-                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
                   {Math.round(d1)}×{Math.round(d2)}
                 </span>
               )}
@@ -134,7 +134,7 @@ export default function PiezasEditor({ modulo, costos, onGuardar, onCancelar }) 
           );
         })}
         <button onClick={agregarPieza}
-          style={{ marginTop: 4, padding: "5px 12px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)", width: "100%" }}>
+          style={{ marginTop: 4, padding: "5px 12px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)", width: "100%" }}>
           + Agregar pieza libre
         </button>
       </div>
@@ -176,7 +176,7 @@ export default function PiezasEditor({ modulo, costos, onGuardar, onCancelar }) 
       {/* Acciones */}
       <div style={{ display: "flex", gap: 8, paddingTop: 4, borderTop: "1px solid var(--border)" }}>
         <button onClick={onCancelar}
-          style={{ flex: 1, padding: "8px 0", borderRadius: 7, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+          style={{ flex: 1, padding: "8px 0", borderRadius: 7, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
           Cancelar
         </button>
         <button onClick={handleGuardar}
