@@ -443,9 +443,11 @@ function AppInterna() {
       <div style={{ minHeight: "100vh", background: "var(--bg-base)", color: "var(--text-primary)", transition: "background 0.3s" }}>
         <Header tabs={tabs} saveEst={saveEst} tema={tema} toggleTema={toggleTema} />
         <main className="rsp-main" style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 20px" }}>
-          <div key={nav.vista} className="tab-view">
+          <div className="tab-view">
 
-            {nav.vista === "presupuesto" && (
+            {/* ── Vistas que permanecen montadas — display:none preserva estado local ── */}
+
+            <div style={{ display: nav.vista === "presupuesto" ? undefined : "none" }}>
               <Presupuesto
                 modulos={modulos}
                 costos={costos}
@@ -484,9 +486,9 @@ function AppInterna() {
                   return newId;
                 }}
               />
-            )}
+            </div>
 
-            {nav.vista === "preview" && (
+            <div style={{ display: nav.vista === "preview" ? undefined : "none" }}>
               <VistaPrevia
                 items={items}
                 modulos={modulos}
@@ -508,9 +510,9 @@ function AppInterna() {
                   dispatch({ type: "EDITAR_PRESUPUESTO", payload: { id, p } });
                 }}
               />
-            )}
+            </div>
 
-            {nav.vista === "corte" && (
+            <div style={{ display: nav.vista === "corte" ? undefined : "none" }}>
               <ListaCorte
                 items={items}
                 modulos={modulos}
@@ -520,39 +522,20 @@ function AppInterna() {
                 presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
                 onActualizarPresupuesto={handleActualizarPresupuesto}
               />
-            )}
+            </div>
 
-            {nav.vista === "plano" && (
-              <PlanoDos modulos={modulos} items={items} dimOverride={dimOverride} composicionOverride={composicionOverride} />
-            )}
-
-            {nav.vista === "trabajos" && (
-              <TableroKanban
-                presupuestos={presupuestos}
-                onCambiarEstado={handleCambiarEstado}
-                onEliminar={handleEliminarPresupuesto}
-                onCargar={(p) => {
-                  handleCargarPresupuesto(p);
-                  dispatch({ type: "CAMBIAR_VISTA", payload: { vista: "presupuesto" } });
-                }}
+            <div style={{ display: nav.vista === "plano" ? undefined : "none" }}>
+              <PlanoDos
                 modulos={modulos}
-                costos={costos}
-                onActualizarPresupuesto={handleActualizarPresupuesto}
+                items={items}
+                dimOverride={dimOverride}
+                composicionOverride={composicionOverride}
+                inlineModulos={inlineModulos}
+                presupuestoActivoId={presupuestoActivoId}
               />
-            )}
+            </div>
 
-            {nav.vista === "caja" && (
-              <PanelCaja
-                presupuestos={presupuestos}
-                onActualizar={handleActualizarPresupuesto}
-                modulos={modulos}
-                costos={costos}
-                cajaPresId={nav.cajaPresId}
-                onClearCajaPresId={() => dispatch({ type: "CAJA_PRES_ID_CONSUMIDO" })}
-              />
-            )}
-
-            {nav.vista === "catalogo" && (
+            <div style={{ display: nav.vista === "catalogo" ? undefined : "none" }}>
               <CatalogoModulos
                 modulos={modulos}
                 setModulos={setModulos}
@@ -581,6 +564,34 @@ function AppInterna() {
                     ? () => dispatch({ type: "VOLVER_A_PRESUPUESTO" })
                     : null)
                 }
+              />
+            </div>
+
+            {/* ── Vistas utilitarias — se montan solo cuando están activas ── */}
+
+            {nav.vista === "trabajos" && (
+              <TableroKanban
+                presupuestos={presupuestos}
+                onCambiarEstado={handleCambiarEstado}
+                onEliminar={handleEliminarPresupuesto}
+                onCargar={(p) => {
+                  handleCargarPresupuesto(p);
+                  dispatch({ type: "CAMBIAR_VISTA", payload: { vista: "presupuesto" } });
+                }}
+                modulos={modulos}
+                costos={costos}
+                onActualizarPresupuesto={handleActualizarPresupuesto}
+              />
+            )}
+
+            {nav.vista === "caja" && (
+              <PanelCaja
+                presupuestos={presupuestos}
+                onActualizar={handleActualizarPresupuesto}
+                modulos={modulos}
+                costos={costos}
+                cajaPresId={nav.cajaPresId}
+                onClearCajaPresId={() => dispatch({ type: "CAJA_PRES_ID_CONSUMIDO" })}
               />
             )}
 
