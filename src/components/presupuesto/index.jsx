@@ -1840,6 +1840,7 @@ function Presupuesto({
     setPresupuestoActivoId(null); setAlertaPrecios(null);
     setEditandoModuloIdx(null); setInputCod(""); setPreDim(null);
     setModalEdicion(null); setModalComposicion(null); setModalModulo(null);
+    setDialogoGuardar(false);
     onDismissBorrador && onDismissBorrador();
   };
 
