@@ -3,6 +3,7 @@ import { SectionTitle } from "../ui/index.jsx";
 import { leerPlano, leerPromptsRender, guardarPromptsRender } from "../../storage.js";
 import { PLANES_RENDER } from "../../constants.js";
 import { supabase } from "../../lib/supabase.js";
+import { svgABase64 } from "../plano/planoUtils.js";
 import SVGPlano from "../plano/SVGPlano.jsx";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -137,7 +138,7 @@ function PanelRender({ imagenUrl, generando, compact = false }) {
 
 // ── Panel SVG estático ────────────────────────────────────────────────────────
 
-function PanelSVG({ bloques, idsBajos, idsAltos, altoCielorraso, composicionOverride, modulos, compact = false }) {
+function PanelSVG({ bloques, idsBajos, idsAltos, altoCielorraso, composicionOverride, modulos, svgRef, compact = false }) {
   const bloquesAltos = bloques.filter(b => idsAltos.includes(b.id));
   const bloquesBajos = bloques.filter(b => idsBajos.includes(b.id));
   return (
@@ -155,6 +156,7 @@ function PanelSVG({ bloques, idsBajos, idsAltos, altoCielorraso, composicionOver
           bloquesAltos={bloquesAltos} bloquesBajos={bloquesBajos}
           altoCielorraso={altoCielorraso} modulos={modulos}
           composicionOverride={composicionOverride}
+          svgRef={svgRef}
           onSelect={null} selectedId={null}
         />
       </div>
@@ -361,6 +363,7 @@ export function RenderIA({
   const [imagenUrl, setImagenUrl]     = useState(null);
   const [errorRender, setErrorRender] = useState(null);
   const prevKeyRef                    = useRef(null);
+  const svgRef                        = useRef(null);
 
   useEffect(() => {
     supabase.from("workspaces").select("id").single().then(({ data }) => {
@@ -376,10 +379,14 @@ export function RenderIA({
     setErrorRender(null);
     setImagenUrl(null);
     try {
+      let imageBase64 = null;
+      if (svgRef.current) {
+        try { imageBase64 = await svgABase64(svgRef.current); } catch {}
+      }
       const res = await fetch("/api/generate-render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId: wsId, prompt: prompt.trim() }),
+        body: JSON.stringify({ workspaceId: wsId, prompt: prompt.trim(), imageBase64 }),
       });
       const data = await res.json();
       if (!res.ok) { setErrorRender(data.error || "Error al generar"); return; }
@@ -429,7 +436,7 @@ export function RenderIA({
   }, [presupuestoVistaPreviaId, presupuestoActivoId]);
 
   const sinDatos    = bloques.length === 0;
-  const svgProps    = { bloques, idsBajos, idsAltos, altoCielorraso: alto, composicionOverride, modulos };
+  const svgProps    = { bloques, idsBajos, idsAltos, altoCielorraso: alto, composicionOverride, modulos, svgRef };
   const creditos    = calcularCreditos(suscripcion);
   const renderProps = { imagenUrl, generando };
 

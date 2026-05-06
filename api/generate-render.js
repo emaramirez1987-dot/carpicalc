@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { workspaceId, prompt } = req.body || {};
+  const { workspaceId, prompt, imageBase64 } = req.body || {};
   if (!workspaceId || !prompt) {
     return res.status(400).json({ error: "workspaceId y prompt requeridos" });
   }
@@ -73,25 +73,38 @@ module.exports = async function handler(req, res) {
   try {
     const fullPrompt = `photorealistic interior design render, high quality professional photography, 8k resolution, ${prompt}, wooden furniture, cabinet making, soft lighting`;
 
-    const rpRes = await fetch(
-      "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
-          "Content-Type": "application/json",
-          Prefer: "wait",
-        },
-        body: JSON.stringify({
-          input: {
-            prompt: fullPrompt,
-            aspect_ratio: "4:3",
-            num_outputs: 1,
-            num_inference_steps: 4,
-          },
-        }),
-      }
-    );
+    // Con imagen de plano: flux-dev img2img (guiado por la composición 2D)
+    // Sin imagen: flux-schnell text2img (fallback)
+    const usaImg2img = !!imageBase64;
+    const endpoint   = usaImg2img
+      ? "https://api.replicate.com/v1/models/black-forest-labs/flux-dev/predictions"
+      : "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions";
+
+    const input = usaImg2img
+      ? {
+          prompt:               fullPrompt,
+          image:                `data:image/png;base64,${imageBase64}`,
+          strength:             0.85,
+          num_inference_steps:  28,
+          guidance_scale:       3.5,
+          num_outputs:          1,
+        }
+      : {
+          prompt:               fullPrompt,
+          aspect_ratio:         "4:3",
+          num_outputs:          1,
+          num_inference_steps:  4,
+        };
+
+    const rpRes = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
+        "Content-Type": "application/json",
+        Prefer: "wait",
+      },
+      body: JSON.stringify({ input }),
+    });
 
     const data = await rpRes.json();
 

@@ -32,6 +32,33 @@ export function exportarSVG(svgEl, nombre) {
   URL.revokeObjectURL(url);
 }
 
+// ── SVG → base64 PNG (para img2img en Render IA) ─────────────────────────
+export function svgABase64(svgEl) {
+  return new Promise((resolve, reject) => {
+    if (!svgEl) { reject(new Error("Sin elemento SVG")); return; }
+    const w   = parseFloat(svgEl.getAttribute("width") || "820");
+    const h   = parseFloat(svgEl.getAttribute("height") || "360");
+    const src = new XMLSerializer().serializeToString(svgEl);
+    const blob = new Blob([src], { type: "image/svg+xml;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+    const img  = new Image();
+    img.onload = () => {
+      const canvas  = document.createElement("canvas");
+      canvas.width  = w * 2;
+      canvas.height = h * 2;
+      const ctx     = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(2, 2);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/png").split(",")[1]);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Error cargando SVG")); };
+    img.src = url;
+  });
+}
+
 // ── Exportar PNG (retina 2×) ──────────────────────────────────────────────
 export function exportarPNG(svgEl, nombre) {
   if (!svgEl) return;
