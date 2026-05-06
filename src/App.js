@@ -454,31 +454,8 @@ function AppInterna() {
                 borradorRecuperado={borradorRecuperado}
                 onDismissBorrador={() => setBorradorRecuperado(false)}
                 onGuardarExtraFrecuente={handleGuardarExtraFrecuente}
-                onVerCatalogo={(codigo, contexto) => dispatch({
-                  type: "INICIAR_EDICION_NIVEL3",
-                  payload: { cod: codigo, contexto },
-                })}
-                onDeepLinkListo={(cod, contexto) => dispatch({
-                  type: "DEEPLINK_LISTO",
-                  payload: { cod, contexto },
-                })}
-                pendingDeepLink={nav.pendingDeepLink}
-                pendingDeepLinkCtx={nav.pendingDeepLinkCtx}
                 setModulos={setModulos}
                 hSaveModulos={hSaveM}
-                onLimpiarTemps={(itemsActuales) => {
-                  const codsTemp = itemsActuales.filter(it => it.codigo?.startsWith("TEMP_")).map(it => it.codigo);
-                  if (codsTemp.length === 0) return;
-                  // No borrar TEMPs que ya quedaron guardados en algún presupuesto
-                  const codsEnPresupuestos = new Set(
-                    Object.values(presupuestos).flatMap(p => (p.items || []).map(it => it.codigo))
-                  );
-                  const codsABorrar = codsTemp.filter(c => !codsEnPresupuestos.has(c));
-                  if (codsABorrar.length === 0) return;
-                  const nuevos = Object.fromEntries(Object.entries(modulos).filter(([c]) => !codsABorrar.includes(c)));
-                  setModulos(nuevos);
-                  hSaveM(nuevos);
-                }}
                 onAbrirEditorVista={(cod) => dispatch({ type: "ABRIR_EDITOR_VISTA", payload: { cod } })}
                 onGuardarModuloCatalogo={(nuevoMod, nombreFinal, tempCod, presupuestoId) => {
                   const newId = `MC${String(Date.now()).slice(-6)}`;

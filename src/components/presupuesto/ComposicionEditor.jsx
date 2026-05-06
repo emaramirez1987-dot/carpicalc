@@ -10,7 +10,7 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import React, { useState, useMemo } from "react";
-import { VistaModuloSVG } from "../ui/index.jsx";
+import VistaModuloSVG from "../vista-svg/index.js";
 import { useTema } from "../../hooks/useTema.js";
 
 // ── Constantes de dominio ─────────────────────────────────────────────────

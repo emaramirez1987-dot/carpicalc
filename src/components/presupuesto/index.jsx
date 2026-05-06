@@ -12,6 +12,7 @@ import { leerPerfil } from '../../storage.js';
 import { usePresupuesto } from '../../state/PresupuestoContext.jsx';
 import VistaModuloSVG from '../vista-svg/index.js';
 import { TIPO_MAT, ESTADOS_TRABAJO } from '../../constants.js';
+import ComposicionEditor from './ComposicionEditor.jsx';
 
 function imprimirPresupuesto(
   items,
@@ -1628,14 +1629,8 @@ function Presupuesto({
   presupuestoParaEditar = null,
   onPresupuestoEditarConsumed,
   onGuardarExtraFrecuente,
-  // Nivel 3: integración con catálogo
-  onVerCatalogo,
-  onDeepLinkListo,     // (cod, contexto) → dispatch DEEPLINK_LISTO en NavContext
-  pendingDeepLink,     // desde nav.pendingDeepLink — observado por el useEffect
-  pendingDeepLinkCtx,  // desde nav.pendingDeepLinkCtx
   setModulos,
   hSaveModulos,
-  onLimpiarTemps,   // limpia TEMP activos al cancelar el presupuesto
   onGuardarModuloCatalogo,
   onAbrirEditorVista,
   borradorRecuperado = false,
@@ -1681,20 +1676,12 @@ function Presupuesto({
   const [confirmDelModulo, setConfirmDelModulo] = useState(null);
   // Modal Nivel 2 de edición
   const [modalEdicion, setModalEdicion] = useState(null);
+  // Drawer de composición visual por instancia
+  const [modalComposicion, setModalComposicion] = useState(null); // { item, idx } | null
   const [pestañaActiva, setPestañaActiva] = useState("modulos");
   const [mostrarExtras, setMostrarExtras] = useState(true);
   const [mostrarCostosDirectos, setMostrarCostosDirectos] = useState(true);
 
-  // Nivel 3: detectar cuando el TEMP fue creado en modulos y está listo para navegar.
-  // El estado pending vive en NavContext — este efecto solo lo observa y dispara DEEPLINK_LISTO.
-  useEffect(() => {
-    if (!pendingDeepLink) return;
-    if (modulos && modulos[pendingDeepLink]) {
-      // Disparar la acción — el reducer limpia el pending y navega al catálogo
-      onDeepLinkListo && onDeepLinkListo(pendingDeepLink, pendingDeepLinkCtx);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingDeepLink, modulos]);
   // Edición inline de extras frecuentes
   const [editandoExtraId, setEditandoExtraId] = useState(null);
   const [editandoExtraForm, setEditandoExtraForm] = useState(null);
@@ -1833,7 +1820,6 @@ function Presupuesto({
 
   /** Limpia completamente el editor: ítems, adicionales, CDs, cliente, estado. */
   const limpiarEditor = () => {
-    onLimpiarTemps && onLimpiarTemps(items);
     setItems([]); setDimOverride({}); setComposicionOverride({}); setAdicionales([]); setCostosDirectos([]);
     setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" });
     setPresupuestoActivoId(null); setAlertaPrecios(null);
@@ -2350,36 +2336,11 @@ function Presupuesto({
                           <button onClick={() => setModalEdicion(null)}
                             style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>Cancelar</button>
                           <button onClick={() => {
-                            // Nivel 3: crear TEMP aquí si no existe, luego abrir catálogo
-                            const yaEsTemp = modalEdicion.item.codigo.startsWith("TEMP_");
-                            const tempCod = yaEsTemp ? modalEdicion.item.codigo : `TEMP_${Date.now()}`;
-                            if (!yaEsTemp) {
-                              const modOrig = modulos[modalEdicion.item.codigo];
-                              const varianteN = Object.values(modulos).filter(m => m.origenCodigo === modalEdicion.item.codigo && m.temporal).length + 1;
-                              const copiaInicial = {
-                                ...modOrig,
-                                nombre: `${modOrig?.nombre || modalEdicion.item.codigo} - Variante ${varianteN}`,
-                                dimensiones: modalEdicion.dims,
-                                material: modalEdicion.material,
-                                temporal: true, origenCodigo: modalEdicion.item.codigo,
-                                presupuestoId: presupuestoActivoId || null,
-                                piezas:   (modOrig?.piezas   || []).map(p => ({ ...p })),
-                                herrajes: (modOrig?.herrajes  || []).map(h => ({ ...h })),
-                              };
-                              setModulos && setModulos(prev => ({ ...prev, [tempCod]: copiaInicial }));
-                              setItems(its => its.map((it, i) => i === modalEdicion.idx ? { ...it, codigo: tempCod } : it));
-                            } else {
-                              setModulos && setModulos(prev => ({
-                                ...prev, [tempCod]: { ...prev[tempCod], dimensiones: modalEdicion.dims, material: modalEdicion.material }
-                              }));
-                            }
-                            onVerCatalogo && onVerCatalogo(tempCod, {
-                              tipo: "presupuesto", presupuestoId: presupuestoActivoId, itemIdx: modalEdicion.idx, tempCod,
-                            });
+                            setModalComposicion({ item: modalEdicion.item, idx: modalEdicion.idx });
                             setModalEdicion(null);
                           }}
-                            style={{ width: "100%", padding: "8px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
-                            🔧 Editar piezas en Catálogo (Nivel 3)
+                            style={{ width: "100%", padding: "8px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+                            🎨 Modificar composición
                           </button>
                         </div>
                       </>
@@ -2688,6 +2649,44 @@ function Presupuesto({
 
       <ToastContainer />
 
+      {/* ── Drawer de composición visual ──────────────────────────── */}
+      {modalComposicion && (() => {
+        const { item } = modalComposicion;
+        const modBase = modulos[item.codigo];
+        const vistaConfigInicial = composicionOverride[item.id]?.vistaConfig ?? modBase?.vistaConfig ?? null;
+        return (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 1100,
+            display: "flex", alignItems: "flex-end", justifyContent: "flex-end",
+          }}
+            onClick={() => setModalComposicion(null)}
+          >
+            <div style={{
+              width: "min(360px, 100vw)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "16px 0 0 16px",
+              padding: 20,
+              boxShadow: "-6px 0 32px rgba(0,0,0,0.40)",
+              animation: "slideInRight 0.2s ease",
+            }}
+              onClick={e => e.stopPropagation()}
+            >
+              <ComposicionEditor
+                modBase={modBase}
+                vistaConfigInicial={vistaConfigInicial}
+                onGuardar={(vistaConfig) => {
+                  setComposicionOverride(prev => ({ ...prev, [item.id]: { vistaConfig } }));
+                  setModalComposicion(null);
+                }}
+                onCancelar={() => setModalComposicion(null)}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
