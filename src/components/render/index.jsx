@@ -358,7 +358,7 @@ export function RenderIA({
       if (bloques.length > 0) {
         const bloquesAltosRef = bloques.filter(b => idsAltos.includes(b.id));
         const bloquesBajosRef = bloques.filter(b => idsBajos.includes(b.id));
-        try { imageBase64 = await generarImagenReferencia({ bloquesAltos: bloquesAltosRef, bloquesBajos: bloquesBajosRef }); } catch {}
+        try { imageBase64 = await generarImagenReferencia({ bloquesAltos: bloquesAltosRef, bloquesBajos: bloquesBajosRef, composicionOverride, modulos }); } catch {}
       }
       const res = await fetch("/api/generate-render", {
         method: "POST",
@@ -381,7 +381,7 @@ export function RenderIA({
     const bloquesAltosRef = bloques.filter(b => idsAltos.includes(b.id));
     const bloquesBajosRef = bloques.filter(b => idsBajos.includes(b.id));
     try {
-      const b64 = await generarImagenReferencia({ bloquesAltos: bloquesAltosRef, bloquesBajos: bloquesBajosRef });
+      const b64 = await generarImagenReferencia({ bloquesAltos: bloquesAltosRef, bloquesBajos: bloquesBajosRef, composicionOverride, modulos });
       setRefPreview(`data:image/jpeg;base64,${b64}`);
     } catch (e) {
       setErrorRender("Error generando preview: " + e.message);
