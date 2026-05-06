@@ -3,7 +3,7 @@
 const { createClient } = require("@supabase/supabase-js");
 
 const RENDERS_POR_PLAN = {
-  trialing: 4,
+  trialing: null, // TODO: volver a 4 tras pruebas
   bronce:   5,
   plata:    20,
   oro:      null,
