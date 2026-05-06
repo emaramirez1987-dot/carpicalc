@@ -2041,7 +2041,7 @@ function Presupuesto({
 
         const btnBase = { padding: "8px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer" };
         return (
-          <div style={{ padding: "14px 16px", borderRadius: 10, background: "#0a0c12", border: "1px solid var(--accent-border)", boxShadow: "0 6px 24px rgba(0,0,0,0.45)" }}>
+          <div style={{ padding: "14px 16px", borderRadius: 10, background: "var(--bg-overlay)", border: "1px solid var(--accent-border)", boxShadow: "0 6px 24px rgba(0,0,0,0.35)" }}>
             <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>💾 ¿Cómo querés guardar?</div>
             <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginBottom: 12 }}>
               "{nombreTrabajo || "Sin nombre"}"
