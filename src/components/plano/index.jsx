@@ -119,6 +119,17 @@ export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOve
   useEffect(() => {
     if (prevPresIdRef.current === presupuestoActivoId) return;
     prevPresIdRef.current = presupuestoActivoId;
+    // Sin presupuesto activo → limpiar plano
+    if (!presupuestoActivoId) {
+      setBloques([]);
+      setIdsBajos([]);
+      setIdsAltos([]);
+      setAlto(2400);
+      setOffsetBajos(0);
+      setOffsetAltos(0);
+      setColgado(200);
+      return;
+    }
     const fresh = leerPlano();
     const freshBloques = fresh?.bloques || [];
     const { bloques: synced } = sincronizarDimensiones(freshBloques, items, dimOverride, modulos, inlineModulos);
