@@ -172,10 +172,10 @@ export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOve
 
   // Cuando se selecciona un presupuesto en Vista Previa, generar bloques desde sus items.
   // No toca localStorage para no sobreescribir el plano del editor activo.
-  const prevVPIdRef = useRef(presupuestoVistaPreviaId);
+  // vpPres como dep explícita garantiza re-ejecución cuando los datos cargan o cambian
+  // aunque presupuestoVistaPreviaId sea el mismo.
+  const vpPres = presupuestoVistaPreviaId ? (presupuestos[presupuestoVistaPreviaId] ?? null) : null;
   useEffect(() => {
-    if (prevVPIdRef.current === presupuestoVistaPreviaId) return;
-    prevVPIdRef.current = presupuestoVistaPreviaId;
     if (!presupuestoVistaPreviaId) {
       // VP limpiado: restaurar plano del editor si hay uno activo
       if (presupuestoActivoId) {
@@ -196,18 +196,17 @@ export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOve
       }
       return;
     }
-    const p = presupuestos[presupuestoVistaPreviaId];
-    if (!p) {
+    if (!vpPres) {
       setBloques([]); setIdsBajos([]); setIdsAltos([]);
       setAlto(2400); setOffsetBajos(0); setOffsetAltos(0); setColgado(200);
       return;
     }
-    const bs = bloquesDesdePresupuesto(p, modulos);
+    const bs = bloquesDesdePresupuesto(vpPres, modulos);
     const { idsBajos: fb, idsAltos: fa } = derivarSecuencias(bs);
     setBloques(bs); setIdsBajos(fb); setIdsAltos(fa);
     setAlto(2400); setOffsetBajos(0); setOffsetAltos(0); setColgado(200);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presupuestoVistaPreviaId]);
+  }, [presupuestoVistaPreviaId, vpPres]);
 
   // Sincronizar dimensiones de bloques existentes cuando el usuario edita dims/piezas
   // en Presupuesto (mismo presupuesto activo). No reinicia el layout, solo actualiza medidas.
