@@ -2194,7 +2194,7 @@ function Presupuesto({
                     <button
                       onClick={() => {
                         if (estaEditando) {
-                          // LEGACY COMPAT: revertir TEMP si el item venía con uno de presupuesto viejo
+                          // LEGACY COMPAT: revertir TEMP (cierra sin aplicar)
                           if (modalEdicion?.tempCod && modalEdicion?.origenCodigo) {
                             const nuevosModulos = { ...modulos };
                             delete nuevosModulos[modalEdicion.tempCod];
@@ -2203,6 +2203,24 @@ function Presupuesto({
                             setItems(its => its.map((it, i) =>
                               i === idx ? { ...it, codigo: modalEdicion.origenCodigo } : it
                             ));
+                          } else if (modalEdicion) {
+                            // Aplicar dims/material al cerrar el acordeón con ▲
+                            const esTemp = modalEdicion.item.codigo.startsWith("TEMP_");
+                            if (esTemp) {
+                              const tempCod = modalEdicion.item.codigo;
+                              const nuevosModulos = { ...modulos, [tempCod]: { ...modulos[tempCod], dimensiones: modalEdicion.dims, material: modalEdicion.material } };
+                              setModulos && setModulos(nuevosModulos);
+                              hSaveModulos && hSaveModulos(nuevosModulos);
+                            } else {
+                              const keyId = modalEdicion.item.id || modalEdicion.item.codigo;
+                              const base = modulos[modalEdicion.origenCodigo];
+                              const bd = base?.dimensiones || {};
+                              const difiere = modalEdicion.dims.ancho !== bd.ancho || modalEdicion.dims.profundidad !== bd.profundidad || modalEdicion.dims.alto !== bd.alto || modalEdicion.material !== (base?.material ?? "melamina");
+                              const nuevoOverride = { ...dimOverride };
+                              if (difiere) nuevoOverride[keyId] = { ...modalEdicion.dims, material: modalEdicion.material };
+                              else delete nuevoOverride[keyId];
+                              setDimOverride(nuevoOverride);
+                            }
                           }
                           setModalEdicion(null);
                           return;
@@ -2251,100 +2269,63 @@ function Presupuesto({
                   </div>
                 </div>
 
-                {/* Acordeón nuevo flujo — copia automática, nunca toca el original */}
+                {/* Acordeón de edición por instancia */}
                 {estaEditando && modalEdicion && (
-                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 16px", background: "rgba(0,0,0,0.12)" }}>
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px 12px", background: "rgba(0,0,0,0.10)" }}>
 
-                    {/* Edición de dimensiones */}
-                    <>
-                        <div style={{ fontSize: 11, color: "var(--accent)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                          {modalEdicion.item?.codigo?.startsWith("TEMP_")
-                            ? <><span style={{ background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 6px", fontSize: 10 }}>VARIANTE</span> Editando módulo temporal</>
-                            : <><span style={{ background: "rgba(120,180,100,0.12)", border: "1px solid rgba(120,180,100,0.35)", borderRadius: 4, padding: "1px 6px", fontSize: 10, color: "#7ecf8a" }}>SOLO ESTE PRESUPUESTO</span> Las dims del catálogo no cambian</>
-                          }
+                    {/* Badge */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <span style={{
+                        fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                        textTransform: "uppercase", letterSpacing: "0.08em", borderRadius: 4, padding: "1px 6px",
+                        background: modalEdicion.item?.codigo?.startsWith("TEMP_") ? "var(--accent-soft)" : "rgba(120,180,100,0.12)",
+                        border: `1px solid ${modalEdicion.item?.codigo?.startsWith("TEMP_") ? "var(--accent-border)" : "rgba(120,180,100,0.35)"}`,
+                        color: modalEdicion.item?.codigo?.startsWith("TEMP_") ? "var(--accent)" : "#7ecf8a",
+                      }}>
+                        {modalEdicion.item?.codigo?.startsWith("TEMP_") ? "VARIANTE" : "SOLO PRESUPUESTO"}
+                      </span>
+                      <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                        {modalEdicion.item?.codigo?.startsWith("TEMP_") ? "módulo temporal" : "catálogo sin cambios · ▲ aplica"}
+                      </span>
+                    </div>
+
+                    {/* Dims + Material compactos */}
+                    <div style={{ display: "flex", gap: 5, alignItems: "flex-end", marginBottom: 8 }}>
+                      {[["A", "ancho"], ["P", "profundidad"], ["H", "alto"]].map(([label, key]) => (
+                        <div key={key} style={{ flex: 1 }}>
+                          <div style={{ fontSize: 9, color: "var(--text-muted)", textAlign: "center", marginBottom: 3, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
+                          <input type="number" min="1"
+                            value={modalEdicion.dims[key]}
+                            onChange={e => setModalEdicion(m => ({ ...m, dims: { ...m.dims, [key]: parseInt(e.target.value) || 0 } }))}
+                            style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: "5px 4px", textAlign: "center", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", outline: "none" }}
+                            onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
+                            onBlur={e => e.target.style.borderColor = "var(--border)"} />
                         </div>
-                        <div style={{ marginBottom: 12 }}>
-                          <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>Dimensiones (mm)</div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                            {[["Ancho", "ancho"], ["Prof.", "profundidad"], ["Alto", "alto"]].map(([label, key]) => (
-                              <div key={key}>
-                                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, textAlign: "center" }}>{label}</div>
-                                <input type="number" min="1"
-                                  value={modalEdicion.dims[key]}
-                                  onChange={e => setModalEdicion(m => ({ ...m, dims: { ...m.dims, [key]: parseInt(e.target.value) || 0 } }))}
-                                  style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "7px 8px", textAlign: "center", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-primary)", outline: "none" }}
-                                  onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                                  onBlur={e => e.target.style.borderColor = "var(--border)"} />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        <div style={{ marginBottom: 12 }}>
-                          <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>Material</div>
-                          <select value={modalEdicion.material}
-                            onChange={e => setModalEdicion(m => ({ ...m, material: e.target.value }))}
-                            style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 12, outline: "none" }}>
-                            {Object.entries(TIPO_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                          </select>
-                        </div>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <button onClick={() => {
-                            // LEGACY COMPAT: presupuestos guardados antes de Etapa 5 pueden tener
-                            // items con codigo TEMP_*. No se crean nuevos TEMPs — solo se actualiza
-                            // si el item ya viene con uno de presupuestos viejos.
-                            const esTemp = modalEdicion.item.codigo.startsWith("TEMP_");
-                            if (esTemp) {
-                              // Actualizar dims en el módulo TEMP preexistente (solo ruta de compatibilidad)
-                              const tempCod = modalEdicion.item.codigo;
-                              const nuevosModulos = {
-                                ...modulos,
-                                [tempCod]: { ...modulos[tempCod], dimensiones: modalEdicion.dims, material: modalEdicion.material }
-                              };
-                              setModulos && setModulos(nuevosModulos);
-                              hSaveModulos && hSaveModulos(nuevosModulos);
-                              if (presupuestoActivoId) {
-                                const nuevoItems = items.map((it, i) => i === modalEdicion.idx ? modalEdicion.item : it);
-                                const totalNuevo = nuevoItems.reduce((acc, it) => {
-                                  const base = nuevosModulos[it.codigo]; if (!base) return acc;
-                                  const calc = calcularModulo(base, costos);
-                                  return acc + (calc ? calc.total * it.cantidad : 0);
-                                }, 0);
-                                onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { items: nuevoItems, total: Math.round(totalNuevo) });
-                              }
-                            } else {
-                              // Normal: escribir dims/material en dimOverride (sin crear TEMP)
-                              const keyId = modalEdicion.item.id || modalEdicion.item.codigo;
-                              const base = modulos[modalEdicion.origenCodigo];
-                              const bd = base?.dimensiones || {};
-                              const difiere =
-                                modalEdicion.dims.ancho !== bd.ancho ||
-                                modalEdicion.dims.profundidad !== bd.profundidad ||
-                                modalEdicion.dims.alto !== bd.alto ||
-                                modalEdicion.material !== (base?.material ?? "melamina");
-                              const nuevoOverride = { ...dimOverride };
-                              if (difiere) nuevoOverride[keyId] = { ...modalEdicion.dims, material: modalEdicion.material };
-                              else delete nuevoOverride[keyId];
-                              setDimOverride(nuevoOverride);
-                            }
-                            setModalEdicion(null);
-                          }}
-                            style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 3px 10px rgba(180,100,20,0.25)" }}>
-                            ✓ Confirmar cambio
-                          </button>
-                          <button onClick={() => setModalEdicion(null)}
-                            style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>Cancelar</button>
-                        </div>
-                      </>
-                    )}
-                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      ))}
+                      <div style={{ flex: 1.8 }}>
+                        <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 3, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>Mat.</div>
+                        <select value={modalEdicion.material}
+                          onChange={e => setModalEdicion(m => ({ ...m, material: e.target.value }))}
+                          style={{ width: "100%", padding: "5px 3px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 10, outline: "none" }}>
+                          {Object.entries(TIPO_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Acciones compactas */}
+                    <div style={{ display: "flex", gap: 6 }}>
                       <button
                         onClick={() => {
                           const modInicial = getModUsado(item) || modulos[item.codigo];
                           if (!modInicial) return;
                           setModalModulo({ item, modInicial });
                         }}
-                        style={{ width: "100%", padding: "8px 0", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
-                        ✏ Editar piezas y herrajes
+                        style={{ flex: 1, padding: "5px 0", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
+                        ✏ Piezas/herrajes
+                      </button>
+                      <button onClick={() => setModalEdicion(null)}
+                        style={{ padding: "5px 12px", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070" }}>
+                        Cancelar
                       </button>
                     </div>
 
