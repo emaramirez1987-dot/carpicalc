@@ -133,6 +133,7 @@ function AppInterna() {
   const [saveEst,        setSaveEst]        = useState(null);
   const [items,              setItems]              = useState([]);
   const [dimOverride,        setDimOverride]        = useState({});
+  const [composicionOverride, setComposicionOverride] = useState({});
   const [adicionales,        setAdicionales]        = useState([]);
   const [costosDirectos,     setCostosDirectos]     = useState([]);
   const [costosVersion,      setCostosVersion]      = useState(leerVersionCostos);
@@ -176,10 +177,11 @@ function AppInterna() {
       try {
         const borrador = localStorage.getItem("carpicalc:borrador");
         if (borrador) {
-          const { items: bItems, dimOverride: bDim, presupuestoActivoId: bPresId } = JSON.parse(borrador);
+          const { items: bItems, dimOverride: bDim, composicionOverride: bComp, presupuestoActivoId: bPresId } = JSON.parse(borrador);
           if (bItems?.length > 0) {
             setItems(bItems);
             setDimOverride(bDim || {});
+            setComposicionOverride(bComp || {});
             if (bPresId) setPresupuestoActivoId(bPresId);
             setBorradorRecuperado(true);
           }
@@ -194,7 +196,7 @@ function AppInterna() {
     if (items.length > 0) {
       try {
         localStorage.setItem("carpicalc:borrador", JSON.stringify({
-          items, dimOverride,
+          items, dimOverride, composicionOverride,
           ...(presupuestoActivoId ? { presupuestoActivoId } : {}),
         }));
       }
@@ -202,7 +204,7 @@ function AppInterna() {
     } else {
       localStorage.removeItem("carpicalc:borrador");
     }
-  }, [items, dimOverride, presupuestoActivoId]);
+  }, [items, dimOverride, composicionOverride, presupuestoActivoId]);
 
   // ── Aviso antes de cerrar con datos sin guardar ───────────────────────────
   useEffect(() => {
@@ -256,6 +258,7 @@ function AppInterna() {
     const base  = modulos[cod];
     if (!base) return null;
     const over  = dimOverride[keyId] || {};
+    const comp  = composicionOverride[keyId];
     return {
       ...base,
       material: over.material ?? base.material,
@@ -264,8 +267,9 @@ function AppInterna() {
         profundidad: over.profundidad ?? base.dimensiones.profundidad,
         alto:        over.alto        ?? base.dimensiones.alto,
       },
+      vistaConfig: comp?.vistaConfig ?? base.vistaConfig,
     };
-  }, [modulos, dimOverride]);
+  }, [modulos, dimOverride, composicionOverride]);
 
   // ── Total del presupuesto activo ──────────────────────────────────────────
   const totalModulos = !costos ? 0 : items.reduce((acc, it) => {
@@ -283,7 +287,7 @@ function AppInterna() {
   const handleGuardarPresupuesto = (nombre, cliente, nota, presupuestoCompleto) => {
     const { id, presupuestos: nuevo } = crearPresupuesto({
       presupuestos, nombre, cliente, nota,
-      items, dimOverride, adicionales, costosDirectos,
+      items, dimOverride, composicionOverride, adicionales, costosDirectos,
       total: totalGeneral,
       costosVersionAl: leerVersionCostos() || Date.now(),
       presupuestoCompleto,
@@ -312,6 +316,7 @@ function AppInterna() {
     });
     setItems(migratedItems);
     setDimOverride(migratedDim);
+    setComposicionOverride(p.composicionOverride && typeof p.composicionOverride === "object" ? { ...p.composicionOverride } : {});
     setAdicionales(Array.isArray(p.adicionales) ? [...p.adicionales] : []);
     setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
     if (id) setPresupuestoActivoId(id);
@@ -322,6 +327,7 @@ function AppInterna() {
       const over = migratedDim[item.id || item.codigo] || {};
       return Array.from({ length: item.cantidad }, () => ({
         id: crypto.randomUUID(),
+        itemId: item.id,          // identity anchor for composicionOverride lookup
         codigo: item.codigo,
         nombre: mod.nombre,
         tipoVisual: mod.tipoVisual || null,
@@ -388,10 +394,11 @@ function AppInterna() {
   const presupuestoCtxValue = useMemo(() => ({
     items, setItems,
     dimOverride, setDimOverride,
+    composicionOverride, setComposicionOverride,
     adicionales, setAdicionales,
     costosDirectos, setCostosDirectos,
     presupuestoActivoId, setPresupuestoActivoId,
-  }), [items, dimOverride, adicionales, costosDirectos, presupuestoActivoId]);
+  }), [items, dimOverride, composicionOverride, adicionales, costosDirectos, presupuestoActivoId]);
 
   if (cargando)
     return (
@@ -530,7 +537,7 @@ function AppInterna() {
             )}
 
             {nav.vista === "plano" && (
-              <PlanoDos modulos={modulos} items={items} dimOverride={dimOverride} />
+              <PlanoDos modulos={modulos} items={items} dimOverride={dimOverride} composicionOverride={composicionOverride} />
             )}
 
             {nav.vista === "trabajos" && (

@@ -74,7 +74,7 @@ function sincronizarDimensiones(bloquesPrev, items, dimOverride, modulos) {
   return { bloques: nuevos, cambio };
 }
 
-export function PlanoDos({ modulos, items = [], dimOverride = {} }) {
+export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOverride = {} }) {
   const saved = leerPlano();
   const bloquesSaved = saved?.bloques || [];
   // Sincronizar al montar (sin flicker): aplicar dimOverride antes del primer render
@@ -294,6 +294,7 @@ export function PlanoDos({ modulos, items = [], dimOverride = {} }) {
           onSelect={setSelectedId}
           selectedId={selectedId}
           modulos={modulos}
+          composicionOverride={composicionOverride}
           temaClaro={temaClaro}
           offsetBajos={offsetBajos}
           offsetAltos={offsetAltos}

@@ -1646,6 +1646,7 @@ function Presupuesto({
   const {
     items, setItems,
     dimOverride, setDimOverride,
+    composicionOverride, setComposicionOverride,
     adicionales, setAdicionales,
     costosDirectos, setCostosDirectos,
     presupuestoActivoId, setPresupuestoActivoId,
@@ -1795,8 +1796,7 @@ function Presupuesto({
           (!i.nota || i.nota.trim() === "")
       );
       if (idx >= 0) {
-        const n = [...items];
-        n[idx].cantidad += cant;
+        const n = items.map((it, i) => i === idx ? { ...it, cantidad: it.cantidad + cant } : it);
         setItems(n);
         setInputCod("");
         setInputCant(1);
@@ -1834,7 +1834,7 @@ function Presupuesto({
   /** Limpia completamente el editor: ítems, adicionales, CDs, cliente, estado. */
   const limpiarEditor = () => {
     onLimpiarTemps && onLimpiarTemps(items);
-    setItems([]); setDimOverride({}); setAdicionales([]); setCostosDirectos([]);
+    setItems([]); setDimOverride({}); setComposicionOverride({}); setAdicionales([]); setCostosDirectos([]);
     setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" });
     setPresupuestoActivoId(null); setAlertaPrecios(null);
     setEditandoModuloIdx(null); setInputCod(""); setPreDim(null);
@@ -1982,10 +1982,17 @@ function Presupuesto({
           }
           setItems(newItems);
           setDimOverride(newDim);
+          // composicionOverride: remove entries for items whose codigo changed to a permanent variant
+          const newComp = Object.fromEntries(
+            Object.entries(composicionOverride).filter(([key]) =>
+              newItems.some(it => (it.id || it.codigo) === key)
+            )
+          );
+          setComposicionOverride(newComp);
           if (esNuevo) {
             onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
           } else {
-            onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: newItems, dimOverride: newDim, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
+            onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: newItems, dimOverride: newDim, composicionOverride: newComp, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
           }
           setDialogoGuardar(false);
           limpiarEditor();
@@ -2008,7 +2015,7 @@ function Presupuesto({
             )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button onClick={() => {
-                onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
+                onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, composicionOverride: { ...composicionOverride }, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
                 setDialogoGuardar(false);
                 limpiarEditor();
               }} style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
