@@ -1632,7 +1632,6 @@ function Presupuesto({
   setModulos,
   hSaveModulos,
   onGuardarModuloCatalogo,
-  onAbrirEditorVista,    // abre EditorVistaSVG al clickear el thumbnail del módulo
   borradorRecuperado = false,
   onDismissBorrador
 }) {
@@ -2132,10 +2131,10 @@ function Presupuesto({
                 {/* Fila principal — mismo layout que FilaModuloLista */}
                 <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 14px", flexWrap: "wrap" }}>
 
-                  {/* Thumbnail SVG → Editor Visual */}
+                  {/* Thumbnail SVG → Composición visual por instancia */}
                   <div
-                    onClick={() => onAbrirEditorVista?.(item.codigo)}
-                    title="Abrir Editor Visual"
+                    onClick={() => setModalComposicion({ item, idx })}
+                    title="Modificar composición visual"
                     style={{
                       width: 48, height: 48, flexShrink: 0, cursor: "pointer",
                       border: "1px solid var(--border)", borderRadius: 7, overflow: "hidden",
@@ -2339,13 +2338,6 @@ function Presupuesto({
                           </button>
                           <button onClick={() => setModalEdicion(null)}
                             style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>Cancelar</button>
-                          <button onClick={() => {
-                            setModalComposicion({ item: modalEdicion.item, idx: modalEdicion.idx });
-                            setModalEdicion(null);
-                          }}
-                            style={{ width: "100%", padding: "8px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
-                            🎨 Modificar composición
-                          </button>
                         </div>
                       </>
                     )}
