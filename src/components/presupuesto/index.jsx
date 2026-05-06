@@ -1632,7 +1632,7 @@ function Presupuesto({
   setModulos,
   hSaveModulos,
   onGuardarModuloCatalogo,
-  onAbrirEditorVista,
+  onAbrirEditorVista,    // abre EditorVistaSVG al clickear el thumbnail del módulo
   borradorRecuperado = false,
   onDismissBorrador
 }) {
@@ -2200,6 +2200,7 @@ function Presupuesto({
                     <button
                       onClick={() => {
                         if (estaEditando) {
+                          // LEGACY COMPAT: revertir TEMP si el item venía con uno de presupuesto viejo
                           if (modalEdicion?.tempCod && modalEdicion?.origenCodigo) {
                             const nuevosModulos = { ...modulos };
                             delete nuevosModulos[modalEdicion.tempCod];
@@ -2294,9 +2295,12 @@ function Presupuesto({
                         </div>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <button onClick={() => {
+                            // LEGACY COMPAT: presupuestos guardados antes de Etapa 5 pueden tener
+                            // items con codigo TEMP_*. No se crean nuevos TEMPs — solo se actualiza
+                            // si el item ya viene con uno de presupuestos viejos.
                             const esTemp = modalEdicion.item.codigo.startsWith("TEMP_");
                             if (esTemp) {
-                              // TEMP (Nivel 3): actualizar dims en el módulo TEMP directo
+                              // Actualizar dims en el módulo TEMP preexistente (solo ruta de compatibilidad)
                               const tempCod = modalEdicion.item.codigo;
                               const nuevosModulos = {
                                 ...modulos,

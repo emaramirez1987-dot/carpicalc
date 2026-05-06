@@ -593,7 +593,7 @@ function VistaPrevia({
                       <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: P.accent, marginBottom: 12, paddingBottom: 6, borderBottom: `1.5px solid ${P.accent}` }}>
                         Plano 2D
                       </div>
-                      <SVGPlano bloques={planoData?.bloques || []} altoCielorraso={planoData?.altoCielorraso || 2400} onSelect={() => {}} modulos={modulos} temaClaro={true} />
+                      <SVGPlano bloques={planoData?.bloques || []} altoCielorraso={planoData?.altoCielorraso || 2400} onSelect={() => {}} modulos={modulos} composicionOverride={presSel?.composicionOverride || {}} temaClaro={true} />
                     </div>
                   );
                 }
