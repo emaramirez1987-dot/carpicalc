@@ -10,7 +10,7 @@ import { fmtPeso, fmtNum, fmtFecha, fmtFechaLarga,
          generarVistaSVG } from '../../utils.js';
 import { leerPerfil } from '../../storage.js';
 import { usePresupuesto } from '../../state/PresupuestoContext.jsx';
-import { useNav } from '../../state/NavContext.jsx';
+
 import VistaModuloSVG from '../vista-svg/index.js';
 import { TIPO_MAT, ESTADOS_TRABAJO } from '../../constants.js';
 import ComposicionEditor from './ComposicionEditor.jsx';
@@ -1613,7 +1613,7 @@ function Presupuesto({
     costosDirectos, setCostosDirectos,
     presupuestoActivoId, setPresupuestoActivoId,
   } = usePresupuesto();
-  const { dispatch: navDispatch } = useNav();
+
 
   // LOGICA - Edición de Presupuestos Existentes
   // Cuando llega un presupuesto desde Vista Previa vía "Editar módulos",
