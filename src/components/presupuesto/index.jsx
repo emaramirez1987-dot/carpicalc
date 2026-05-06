@@ -1723,6 +1723,14 @@ function Presupuesto({
       hSaveModulos && hSaveModulos(nuevosModulos);
     } else {
       const keyId = modalEdicion.item.id || modalEdicion.item.codigo;
+      // Si hay un inline module, las dims deben vivir dentro de él (dimOverride es ignorado por getModUsado)
+      if (inlineModulos[keyId]) {
+        setInlineModulos(prev => ({
+          ...prev,
+          [keyId]: { ...prev[keyId], dimensiones: { ...modalEdicion.dims }, material: modalEdicion.material },
+        }));
+        return;
+      }
       const base = modulos[modalEdicion.origenCodigo];
       const bd = base?.dimensiones || {};
       const difiere = modalEdicion.dims.ancho !== bd.ancho || modalEdicion.dims.profundidad !== bd.profundidad || modalEdicion.dims.alto !== bd.alto || modalEdicion.material !== (base?.material ?? "melamina");
@@ -1949,6 +1957,7 @@ function Presupuesto({
       {dialogoGuardar && (() => {
         const itemsConOverride = items.filter(item => {
           const key = item.id || item.codigo;
+          if (inlineModulos[key]) return true;
           const over = dimOverride?.[key];
           if (!over) return false;
           const base = modulos[item.codigo];
@@ -1962,30 +1971,38 @@ function Presupuesto({
         const crearVariantesYGuardar = (esNuevo) => {
           let newItems = [...items];
           let newDim = { ...dimOverride };
+          let newInline = { ...inlineModulos };
           for (const item of itemsConOverride) {
             const key = item.id || item.codigo;
-            const over = newDim[key];
             const base = modulos[item.codigo];
-            if (!base || !over) continue;
-            const newMod = {
-              ...base,
-              dimensiones: {
-                ...base.dimensiones,
-                ancho: over.ancho ?? base.dimensiones?.ancho,
-                alto: over.alto ?? base.dimensiones?.alto,
-                profundidad: over.profundidad ?? base.dimensiones?.profundidad,
-              },
-              material: over.material ?? base.material,
-            };
+            if (!base) continue;
+            let newMod;
+            if (newInline[key]) {
+              newMod = { ...newInline[key] };
+            } else {
+              const over = newDim[key];
+              if (!over) continue;
+              newMod = {
+                ...base,
+                dimensiones: {
+                  ...base.dimensiones,
+                  ancho: over.ancho ?? base.dimensiones?.ancho,
+                  alto: over.alto ?? base.dimensiones?.alto,
+                  profundidad: over.profundidad ?? base.dimensiones?.profundidad,
+                },
+                material: over.material ?? base.material,
+              };
+            }
             const newId = onGuardarModuloCatalogo && onGuardarModuloCatalogo(newMod, `${base.nombre || item.codigo} (variante)`);
             if (newId) {
               newItems = newItems.map(it => (it.id || it.codigo) === key ? { ...it, codigo: newId } : it);
               delete newDim[key];
+              delete newInline[key];
             }
           }
           setItems(newItems);
           setDimOverride(newDim);
-          // composicionOverride: remove entries for items whose codigo changed to a permanent variant
+          setInlineModulos(newInline);
           const newComp = Object.fromEntries(
             Object.entries(composicionOverride).filter(([key]) =>
               newItems.some(it => (it.id || it.codigo) === key)
@@ -1995,7 +2012,7 @@ function Presupuesto({
           if (esNuevo) {
             onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
           } else {
-            onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: newItems, dimOverride: newDim, composicionOverride: newComp, inlineModulos: { ...inlineModulos }, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
+            onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: newItems, dimOverride: newDim, composicionOverride: newComp, inlineModulos: newInline, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
           }
           setDialogoGuardar(false);
           limpiarEditor();
@@ -2008,7 +2025,7 @@ function Presupuesto({
             {itemsConOverride.length > 0 && (
               <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(100,140,220,0.08)", border: "1px solid rgba(100,140,220,0.20)" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
-                  {itemsConOverride.length} módulo{itemsConOverride.length > 1 ? "s tienen" : " tiene"} dimensiones personalizadas
+                  {itemsConOverride.length} módulo{itemsConOverride.length > 1 ? "s tienen" : " tiene"} personalización (medidas o piezas)
                 </div>
                 <button onClick={() => crearVariantesYGuardar(!presupuestoActivoId)}
                   style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(100,140,220,0.15)", border: "1px solid rgba(100,140,220,0.35)", color: "#7090d8", width: "100%" }}>
