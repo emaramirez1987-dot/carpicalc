@@ -25,7 +25,7 @@ function DimRow({ titulo, dimKey, espKey, mmKey, divKey, resultado, fp, setFp, e
   const divVal = parseInt(fp[divKey]) || 1;
   return (
     <div style={{ background: "rgba(0,0,0,0.18)", borderRadius: 8, padding: 10 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-secondary)", marginBottom: 8 }}>
         {titulo}
       </div>
       <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -131,17 +131,17 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
         </div>
 
         <div style={{ textAlign: "right", minWidth: 0, overflow: "hidden" }}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", whiteSpace: "nowrap" }}>medidas reales</div>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>medidas reales</div>
           <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#c8d098", whiteSpace: "nowrap" }}>{Math.round(d1)}×{Math.round(d2)} mm</div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>área</div>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>área</div>
           <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#7ecf8a" }}>{fmtNum(area)} m²</div>
         </div>
         <div style={{ textAlign: "right" }}>
           {tcDef ? (
             <>
-              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>tapacanto</div>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>tapacanto</div>
               <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "var(--accent)" }}>{fmtNum(mTc, 2)} m</div>
             </>
           ) : (
@@ -278,7 +278,7 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
             )}
           </div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>Cantidad</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>Cantidad</div>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <button onClick={() => setFp(p => ({ ...p, cantidad: Math.max(1, (parseInt(p.cantidad) || 1) - 1) }))}
                 style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
@@ -295,7 +295,7 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
           <>
             {/* Selector de roles */}
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 7 }}>Rol de pieza</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", marginBottom: 7 }}>Rol de pieza</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                 {todosRoles.map(rol => {
                   const isActive = fp.formula1 === rol.formula1 && fp.formula2 === rol.formula2;
@@ -327,7 +327,7 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
                 { label: "D2 — Ancho",  key: "formula2", valida: f2Valida, resultado: d2 },
               ].map(({ label, key, valida, resultado }) => (
                 <div key={key} style={{ background: "rgba(0,0,0,0.18)", borderRadius: 8, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", marginBottom: 6 }}>{label}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", marginBottom: 6 }}>{label}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <input
                       value={fp[key] || ""}
@@ -1182,7 +1182,7 @@ function FormModulo({
                   ["Tapacanto", `${fmtNum(preview.metrosTapacanto, 2)} m`],
                 ].map(([k, v]) => (
                   <div key={k} style={{ textAlign: "center", background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: "8px 4px" }}>
-                    <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5a7040" }}>{k}</div>
+                    <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>{k}</div>
                     <div style={{ fontSize: 14, fontFamily: "'DM Mono',monospace", fontWeight: 700, marginTop: 2, color: "#7ecf8a" }}>{v}</div>
                   </div>
                 ))}

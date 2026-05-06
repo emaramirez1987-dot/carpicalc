@@ -48,14 +48,18 @@ function derivarSecuencias(bloques) {
 }
 
 // Aplica dimensiones del editor activo a los bloques existentes (FIFO por código).
+// Prioridad: inlineModulos[itemId].dimensiones → dimOverride → modulos base.dimensiones
 // Devuelve { bloques, cambio } — preserva IDs, orden y tipoVisual.
-function sincronizarDimensiones(bloquesPrev, items, dimOverride, modulos) {
+function sincronizarDimensiones(bloquesPrev, items, dimOverride, modulos, inlineModulos = {}) {
   if (!modulos || !items.length || !bloquesPrev.length) return { bloques: bloquesPrev, cambio: false };
   const dimsPorCodigo = {};
   items.forEach(it => {
+    const keyId = it.id || it.codigo;
     const mod = modulos[it.codigo];
     if (!mod) return;
-    const dim = (dimOverride && dimOverride[it.id || it.codigo]) || mod.dimensiones;
+    // Prioridad: inline (fuente única completa) → dimOverride → base
+    const inline = inlineModulos[keyId];
+    const dim = inline?.dimensiones || (dimOverride && dimOverride[keyId]) || mod.dimensiones;
     if (!dimsPorCodigo[it.codigo]) dimsPorCodigo[it.codigo] = [];
     for (let i = 0; i < (it.cantidad || 1); i++) dimsPorCodigo[it.codigo].push(dim);
   });
@@ -74,16 +78,16 @@ function sincronizarDimensiones(bloquesPrev, items, dimOverride, modulos) {
   return { bloques: nuevos, cambio };
 }
 
-export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOverride = {} }) {
+export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOverride = {}, inlineModulos = {}, presupuestoActivoId = null }) {
   const saved = leerPlano();
   const bloquesSaved = saved?.bloques || [];
-  // Sincronizar al montar (sin flicker): aplicar dimOverride antes del primer render
-  const { bloques: bloquesInit, cambio: bloquesSincronizados } = sincronizarDimensiones(bloquesSaved, items, dimOverride, modulos);
+  // Sincronizar al montar (sin flicker): aplicar dimOverride + inlineModulos antes del primer render
+  const { bloques: bloquesInit, cambio: bloquesSincronizados } = sincronizarDimensiones(bloquesSaved, items, dimOverride, modulos, inlineModulos);
   const { idsBajos: defB, idsAltos: defA } = derivarSecuencias(bloquesInit);
 
   const [bloques, setBloques]         = useState(bloquesInit);
 
-  // Persistir la sincronización si hubo cambios
+  // Persistir la sincronización de montaje si hubo cambios
   useEffect(() => {
     if (!bloquesSincronizados) return;
     guardarPlano({
@@ -107,6 +111,39 @@ export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOve
   const [selectedId, setSelectedId]   = useState(null);
   const [temaClaro, setTemaClaro]     = useState(false);
   const svgRef = useRef(null);
+
+  // Cuando se carga un presupuesto diferente, re-leer todo desde localStorage.
+  // guardarPlano() ya fue llamado en App.js (handleCargarPresupuesto / handleGuardarPresupuesto)
+  // con los bloques del nuevo presupuesto, antes de que este efecto se ejecute.
+  const prevPresIdRef = useRef(presupuestoActivoId);
+  useEffect(() => {
+    if (prevPresIdRef.current === presupuestoActivoId) return;
+    prevPresIdRef.current = presupuestoActivoId;
+    const fresh = leerPlano();
+    const freshBloques = fresh?.bloques || [];
+    const { bloques: synced } = sincronizarDimensiones(freshBloques, items, dimOverride, modulos, inlineModulos);
+    const { idsBajos: fb, idsAltos: fa } = derivarSecuencias(synced);
+    setBloques(synced);
+    setIdsBajos(fresh?.idsBajos ?? fb);
+    setIdsAltos(fresh?.idsAltos ?? fa);
+    setAlto(fresh?.altoCielorraso || 2400);
+    setOffsetBajos(fresh?.offsetBajos ?? 0);
+    setOffsetAltos(fresh?.offsetAltos ?? 0);
+    setColgado(fresh?.colgadoAereos ?? 200);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presupuestoActivoId]);
+
+  // Sincronizar dimensiones de bloques existentes cuando el usuario edita dims/piezas
+  // en Presupuesto (mismo presupuesto activo). No reinicia el layout, solo actualiza medidas.
+  useEffect(() => {
+    if (!modulos || !items.length) return;
+    const { bloques: synced, cambio } = sincronizarDimensiones(bloques, items, dimOverride, modulos, inlineModulos);
+    if (!cambio) return;
+    setBloques(synced);
+    const currentSaved = leerPlano();
+    if (currentSaved) guardarPlano({ ...currentSaved, bloques: synced });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, dimOverride, inlineModulos]);
 
   // Persist always using latest state values; pass overrides explicitly
   const guardarTodo = ({ nb = bloques, niB = idsBajos, niA = idsAltos, alto = altoCielorraso, offB = offsetBajos, offA = offsetAltos, colgado = colgadoAereos } = {}) => {

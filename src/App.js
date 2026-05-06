@@ -66,30 +66,35 @@ function Header({ tabs, saveEst, tema, toggleTema }) {
 
       {/* Nav */}
       <nav className="rsp-nav" style={{ display: "flex", flex: 1, overflowX: "auto", scrollbarWidth: "none" }}>
-        {tabs.map(t => {
+        {tabs.map((t, idx) => {
           const active = nav.vista === t.id;
+          const isSeparatorBefore = idx === tabs.findIndex(x => x.id === "catalogo");
           return (
-            <button
-              key={t.id}
-              data-vista={t.id}
-              onClick={() => dispatch({ type: "CAMBIAR_VISTA", payload: { vista: t.id } })}
-              style={{
-                position: "relative",
-                background: "transparent", border: "none",
-                borderBottom: `2px solid ${active ? "var(--accent)" : "transparent"}`,
-                color: active ? "var(--accent)" : "var(--text-muted)",
-                padding: "18px 20px",
-                cursor: "pointer",
-                fontSize: 11, fontWeight: active ? 700 : 500,
-                letterSpacing: "0.12em", textTransform: "uppercase",
-                fontFamily: "'DM Mono',monospace",
-                transition: "all 0.2s", flexShrink: 0, whiteSpace: "nowrap",
-              }}
-              onMouseEnter={e => { if (!active) { e.currentTarget.style.color = "var(--text-secondary)"; e.currentTarget.style.borderBottomColor = "var(--accent-border)"; }}}
-              onMouseLeave={e => { if (!active) { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderBottomColor = "transparent"; }}}
-            >
-              {t.icon} {t.label}
-            </button>
+            <React.Fragment key={t.id}>
+              {isSeparatorBefore && (
+                <div style={{ width: 1, background: "var(--border)", margin: "12px 4px", flexShrink: 0, alignSelf: "stretch" }} />
+              )}
+              <button
+                data-vista={t.id}
+                onClick={() => dispatch({ type: "CAMBIAR_VISTA", payload: { vista: t.id } })}
+                style={{
+                  position: "relative",
+                  background: "transparent", border: "none",
+                  borderBottom: `2px solid ${active ? "var(--accent)" : "transparent"}`,
+                  color: active ? "var(--accent)" : "var(--text-secondary)",
+                  padding: "14px 14px",
+                  cursor: "pointer",
+                  fontSize: 11, fontWeight: active ? 700 : 400,
+                  letterSpacing: "0.10em", textTransform: "uppercase",
+                  fontFamily: "'DM Mono',monospace",
+                  transition: "all 0.2s", flexShrink: 0, whiteSpace: "nowrap",
+                }}
+                onMouseEnter={e => { if (!active) { e.currentTarget.style.color = "var(--text-primary)"; e.currentTarget.style.borderBottomColor = "var(--accent-border)"; }}}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.color = "var(--text-secondary)"; e.currentTarget.style.borderBottomColor = "transparent"; }}}
+              >
+                {t.icon} {t.label}
+              </button>
+            </React.Fragment>
           );
         })}
       </nav>
@@ -443,9 +448,11 @@ function AppInterna() {
       <div style={{ minHeight: "100vh", background: "var(--bg-base)", color: "var(--text-primary)", transition: "background 0.3s" }}>
         <Header tabs={tabs} saveEst={saveEst} tema={tema} toggleTema={toggleTema} />
         <main className="rsp-main" style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 20px" }}>
-          <div key={nav.vista} className="tab-view">
+          <div className="tab-view">
 
-            {nav.vista === "presupuesto" && (
+            {/* ── Vistas que permanecen montadas — display:none preserva estado local ── */}
+
+            <div style={{ display: nav.vista === "presupuesto" ? undefined : "none" }}>
               <Presupuesto
                 modulos={modulos}
                 costos={costos}
@@ -484,9 +491,9 @@ function AppInterna() {
                   return newId;
                 }}
               />
-            )}
+            </div>
 
-            {nav.vista === "preview" && (
+            <div style={{ display: nav.vista === "preview" ? undefined : "none" }}>
               <VistaPrevia
                 items={items}
                 modulos={modulos}
@@ -508,9 +515,9 @@ function AppInterna() {
                   dispatch({ type: "EDITAR_PRESUPUESTO", payload: { id, p } });
                 }}
               />
-            )}
+            </div>
 
-            {nav.vista === "corte" && (
+            <div style={{ display: nav.vista === "corte" ? undefined : "none" }}>
               <ListaCorte
                 items={items}
                 modulos={modulos}
@@ -520,39 +527,20 @@ function AppInterna() {
                 presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
                 onActualizarPresupuesto={handleActualizarPresupuesto}
               />
-            )}
+            </div>
 
-            {nav.vista === "plano" && (
-              <PlanoDos modulos={modulos} items={items} dimOverride={dimOverride} composicionOverride={composicionOverride} />
-            )}
-
-            {nav.vista === "trabajos" && (
-              <TableroKanban
-                presupuestos={presupuestos}
-                onCambiarEstado={handleCambiarEstado}
-                onEliminar={handleEliminarPresupuesto}
-                onCargar={(p) => {
-                  handleCargarPresupuesto(p);
-                  dispatch({ type: "CAMBIAR_VISTA", payload: { vista: "presupuesto" } });
-                }}
+            <div style={{ display: nav.vista === "plano" ? undefined : "none" }}>
+              <PlanoDos
                 modulos={modulos}
-                costos={costos}
-                onActualizarPresupuesto={handleActualizarPresupuesto}
+                items={items}
+                dimOverride={dimOverride}
+                composicionOverride={composicionOverride}
+                inlineModulos={inlineModulos}
+                presupuestoActivoId={presupuestoActivoId}
               />
-            )}
+            </div>
 
-            {nav.vista === "caja" && (
-              <PanelCaja
-                presupuestos={presupuestos}
-                onActualizar={handleActualizarPresupuesto}
-                modulos={modulos}
-                costos={costos}
-                cajaPresId={nav.cajaPresId}
-                onClearCajaPresId={() => dispatch({ type: "CAJA_PRES_ID_CONSUMIDO" })}
-              />
-            )}
-
-            {nav.vista === "catalogo" && (
+            <div style={{ display: nav.vista === "catalogo" ? undefined : "none" }}>
               <CatalogoModulos
                 modulos={modulos}
                 setModulos={setModulos}
@@ -581,6 +569,34 @@ function AppInterna() {
                     ? () => dispatch({ type: "VOLVER_A_PRESUPUESTO" })
                     : null)
                 }
+              />
+            </div>
+
+            {/* ── Vistas utilitarias — se montan solo cuando están activas ── */}
+
+            {nav.vista === "trabajos" && (
+              <TableroKanban
+                presupuestos={presupuestos}
+                onCambiarEstado={handleCambiarEstado}
+                onEliminar={handleEliminarPresupuesto}
+                onCargar={(p) => {
+                  handleCargarPresupuesto(p);
+                  dispatch({ type: "CAMBIAR_VISTA", payload: { vista: "presupuesto" } });
+                }}
+                modulos={modulos}
+                costos={costos}
+                onActualizarPresupuesto={handleActualizarPresupuesto}
+              />
+            )}
+
+            {nav.vista === "caja" && (
+              <PanelCaja
+                presupuestos={presupuestos}
+                onActualizar={handleActualizarPresupuesto}
+                modulos={modulos}
+                costos={costos}
+                cajaPresId={nav.cajaPresId}
+                onClearCajaPresId={() => dispatch({ type: "CAJA_PRES_ID_CONSUMIDO" })}
               />
             )}
 

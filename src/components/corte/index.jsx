@@ -460,7 +460,8 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
     return () => document.removeEventListener('mousedown', handler);
   }, [menuAbierto]);
 
-  // Si hay un presupuesto seleccionado en Vista Previa, usarlo en lugar del activo
+  // Si hay un presupuesto seleccionado en Vista Previa, resolver módulos desde sus datos guardados.
+  // Para el editor activo, getModUsado ya incorpora inlineModulos + dimOverride + composicionOverride.
   const presVP = presupuestoVistaPreviaId ? presupuestos[presupuestoVistaPreviaId] : null;
   const itemsEfectivos = presVP ? (presVP.items || []) : items;
   const getModUsadoEfectivo = presVP
@@ -468,6 +469,9 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
         const base = modulos[item.codigo];
         if (!base) return null;
         const key = item.id || item.codigo;
+        // inlineModulos tiene prioridad: contiene la copia completa del módulo con piezas editadas
+        const inline = presVP.inlineModulos?.[key];
+        if (inline) return inline;
         const dims = (presVP.dimOverride && presVP.dimOverride[key]) || base.dimensiones;
         const comp = presVP.composicionOverride?.[key];
         return { ...base, dimensiones: dims, vistaConfig: comp?.vistaConfig ?? base.vistaConfig };
