@@ -223,25 +223,9 @@ function VistaPrevia({
       setGananciaExtraVP(p.gananciaExtra ?? "");
       setItemsOcultos(p.itemsOcultos || []);
       setSelectorAbierto(false);
-      const bloques = (p.items || []).flatMap(item => {
-        const mod = modulos[item.codigo];
-        if (!mod) return [];
-        const over = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || {};
-        return Array.from({ length: item.cantidad }, () => ({
-          id: crypto.randomUUID(),
-          itemId: item.id,
-          codigo: item.codigo,
-          nombre: mod.nombre,
-          tipoVisual: mod.tipoVisual || null,
-          ancho: over.ancho || mod.dimensiones.ancho,
-          alto: over.alto || mod.dimensiones.alto,
-          profundidad: over.profundidad || mod.dimensiones.profundidad,
-        }));
-      });
-      guardarPlano({ bloques, altoCielorraso: 2400 });
-    } else {
-      guardarPlano({ bloques: [], altoCielorraso: 2400 });
     }
+    // El plano es gestionado por PlanoDos y por handleCargarPresupuesto en App.js.
+    // Vista Previa no debe sobreescribirlo o se pierden los arreglos del usuario.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presSelId]);
 
@@ -808,7 +792,7 @@ function VistaPrevia({
                     rows={4}
                     style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 12, padding: "8px 10px", background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 7, outline: "none", resize: "vertical", lineHeight: 1.6, boxSizing: "border-box" }}
                     onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                    onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    onBlur={e => { e.target.style.borderColor = "var(--border)"; guardarTextos(); }}
                   />
                 </SeccionColapsable>
 
@@ -819,7 +803,7 @@ function VistaPrevia({
                     rows={4}
                     style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 12, padding: "8px 10px", background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 7, outline: "none", resize: "vertical", lineHeight: 1.6, boxSizing: "border-box" }}
                     onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                    onBlur={e => e.target.style.borderColor = "var(--border)"}
+                    onBlur={e => { e.target.style.borderColor = "var(--border)"; guardarTextos(); }}
                   />
                 </SeccionColapsable>
 
