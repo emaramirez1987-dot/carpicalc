@@ -5,10 +5,8 @@ import React, { createContext, useContext, useReducer } from 'react';
 // ─────────────────────────────────────────────────────────────────────────────
 const estadoInicial = {
   vista:                    "presupuesto", // pestaña activa
-  catalogoDeepLink:         null,          // código del módulo a abrir en catálogo
-  origenEdicion:            null,          // contexto de retorno Nivel 3 { tipo, presupuestoId, itemIdx, tempCod }
-  pendingDeepLink:          null,          // TEMP creado, esperando que modulos lo registre
-  pendingDeepLinkCtx:       null,          // contexto asociado al pending
+  catalogoDeepLink:         null,          // código del módulo a abrir en catálogo (usado por DEEPLINK_CONSUMIDO)
+  origenEdicion:            null,          // contexto del catálogo: tipo, presupuestoId (lectura en App.js)
   presupuestoVistaPreviaId: null,          // presupuesto seleccionado en Vista Previa
   presupuestoParaEditar:    null,          // { id, p } — puente para cargar presupuesto en editor
   cajaPresId:               null,          // presupuesto a abrir automáticamente en Caja
@@ -39,29 +37,6 @@ function navReducer(estado, accion) {
         origenEdicion:     null,
       };
 
-    // Usuario toca "Editar piezas en Catálogo" desde un ítem del presupuesto.
-    // El TEMP ya fue creado en modulos (React state), pero puede no estar
-    // persistido todavía. Seteamos el pending; la navegación real ocurre
-    // cuando DEEPLINK_LISTO se dispara desde el useEffect que verifica modulos.
-    case "INICIAR_EDICION_NIVEL3":
-      return {
-        ...estado,
-        pendingDeepLink:    accion.payload.cod,
-        pendingDeepLinkCtx: accion.payload.contexto,
-      };
-
-    // El módulo TEMP ya existe en modulos (confirmado por el useEffect en Presupuesto).
-    // Ahora sí navegamos al catálogo con el deep link activo.
-    case "DEEPLINK_LISTO":
-      return {
-        ...estado,
-        vista:             "catalogo",
-        catalogoDeepLink:  accion.payload.cod,
-        origenEdicion:     accion.payload.contexto,
-        pendingDeepLink:   null,
-        pendingDeepLinkCtx: null,
-      };
-
     // CatalogoModulos consumió el deep link — abrió el formulario.
     // Limpiamos para que no se re-dispare en re-renders.
     case "DEEPLINK_CONSUMIDO":
@@ -72,11 +47,9 @@ function navReducer(estado, accion) {
     case "VOLVER_A_PRESUPUESTO":
       return {
         ...estado,
-        vista:              "presupuesto",
-        catalogoDeepLink:   null,
-        origenEdicion:      null,
-        pendingDeepLink:    null,
-        pendingDeepLinkCtx: null,
+        vista:            "presupuesto",
+        catalogoDeepLink: null,
+        origenEdicion:    null,
       };
 
     // Abrir un presupuesto específico en Vista Previa
