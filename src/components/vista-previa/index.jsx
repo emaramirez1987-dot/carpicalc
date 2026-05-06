@@ -168,7 +168,7 @@ function VistaPrevia({
   onActualizarPresupuesto, onCambiarEstado,
   // eslint-disable-next-line no-unused-vars
   onCargarPresupuesto,
-  presupuestoSelId, onSeleccionarPresupuesto,
+  presupuestoSelId,
   costosVersion = 0,
   onVerRentabilidad,
   onEditarModulos,
@@ -177,10 +177,7 @@ function VistaPrevia({
 
   const [presSelIdLocal, setPresSelIdLocal] = useState(presupuestoSelId || null);
   const presSelId = presupuestoSelId !== undefined ? presupuestoSelId : presSelIdLocal;
-  const setPresSelId = (id) => {
-    setPresSelIdLocal(id);
-    if (onSeleccionarPresupuesto) onSeleccionarPresupuesto(id);
-  };
+  const setPresSelId = (id) => setPresSelIdLocal(id);
 
   const [selectorAbierto, setSelectorAbierto]   = useState(!presupuestoSelId);
   const [busqueda, setBusqueda]                 = useState("");
@@ -295,7 +292,6 @@ function VistaPrevia({
     setPresSelId(null);
     setSelectorAbierto(true);
     setBusqueda("");
-    if (onSeleccionarPresupuesto) onSeleccionarPresupuesto(null);
   };
 
   // ── btn styles helpers ────────────────────────────────────────────

@@ -78,33 +78,7 @@ function sincronizarDimensiones(bloquesPrev, items, dimOverride, modulos, inline
   return { bloques: nuevos, cambio };
 }
 
-// Genera bloques para el plano desde los items de un presupuesto guardado
-function bloquesDesdePresupuesto(p, modulos) {
-  const pItems  = p.items || [];
-  const pInline = p.inlineModulos || {};
-  const pDim    = p.dimOverride || {};
-  return pItems.flatMap(item => {
-    const keyId  = item.id || item.codigo;
-    const inline = pInline[keyId];
-    const mod    = inline ?? modulos[item.codigo];
-    if (!mod) return [];
-    const dims = inline
-      ? inline.dimensiones
-      : (pDim[keyId] ? { ...mod.dimensiones, ...pDim[keyId] } : mod.dimensiones);
-    return Array.from({ length: item.cantidad }, () => ({
-      id:         crypto.randomUUID(),
-      itemId:     item.id,
-      codigo:     item.codigo,
-      nombre:     mod.nombre,
-      tipoVisual: mod.tipoVisual || null,
-      ancho:      dims.ancho,
-      alto:       dims.alto,
-      profundidad: dims.profundidad,
-    }));
-  });
-}
-
-export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOverride = {}, inlineModulos = {}, presupuestoActivoId = null, presupuestoVistaPreviaId = null, presupuestos = {} }) {
+export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOverride = {}, inlineModulos = {}, presupuestoActivoId = null }) {
   const saved = leerPlano();
   const bloquesSaved = saved?.bloques || [];
   // Sincronizar al montar (sin flicker): aplicar dimOverride + inlineModulos antes del primer render
@@ -170,49 +144,10 @@ export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOve
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presupuestoActivoId]);
 
-  // Cuando se selecciona un presupuesto en Vista Previa, generar bloques desde sus items.
-  // No toca localStorage para no sobreescribir el plano del editor activo.
-  // vpPres como dep explícita garantiza re-ejecución cuando los datos cargan o cambian
-  // aunque presupuestoVistaPreviaId sea el mismo.
-  const vpPres = presupuestoVistaPreviaId ? (presupuestos[presupuestoVistaPreviaId] ?? null) : null;
-  const composicionActiva = presupuestoVistaPreviaId ? (vpPres?.composicionOverride || {}) : composicionOverride;
-  useEffect(() => {
-    if (!presupuestoVistaPreviaId) {
-      // VP limpiado: restaurar plano del editor si hay uno activo
-      if (presupuestoActivoId) {
-        const fresh = leerPlano();
-        const freshBloques = fresh?.bloques || [];
-        const { bloques: synced } = sincronizarDimensiones(freshBloques, items, dimOverride, modulos, inlineModulos);
-        const { idsBajos: fb, idsAltos: fa } = derivarSecuencias(synced);
-        setBloques(synced);
-        setIdsBajos(fresh?.idsBajos ?? fb);
-        setIdsAltos(fresh?.idsAltos ?? fa);
-        setAlto(fresh?.altoCielorraso || 2400);
-        setOffsetBajos(fresh?.offsetBajos ?? 0);
-        setOffsetAltos(fresh?.offsetAltos ?? 0);
-        setColgado(fresh?.colgadoAereos ?? 200);
-      } else {
-        setBloques([]); setIdsBajos([]); setIdsAltos([]);
-        setAlto(2400); setOffsetBajos(0); setOffsetAltos(0); setColgado(200);
-      }
-      return;
-    }
-    if (!vpPres) {
-      setBloques([]); setIdsBajos([]); setIdsAltos([]);
-      setAlto(2400); setOffsetBajos(0); setOffsetAltos(0); setColgado(200);
-      return;
-    }
-    const bs = bloquesDesdePresupuesto(vpPres, modulos);
-    const { idsBajos: fb, idsAltos: fa } = derivarSecuencias(bs);
-    setBloques(bs); setIdsBajos(fb); setIdsAltos(fa);
-    setAlto(2400); setOffsetBajos(0); setOffsetAltos(0); setColgado(200);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presupuestoVistaPreviaId, vpPres]);
-
   // Sincronizar dimensiones de bloques existentes cuando el usuario edita dims/piezas
   // en Presupuesto (mismo presupuesto activo). No reinicia el layout, solo actualiza medidas.
   useEffect(() => {
-    if (!modulos || !items.length || presupuestoVistaPreviaId) return;
+    if (!modulos || !items.length) return;
     const { bloques: synced, cambio } = sincronizarDimensiones(bloques, items, dimOverride, modulos, inlineModulos);
     if (!cambio) return;
     setBloques(synced);
@@ -224,7 +159,6 @@ export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOve
   // Persist always using latest state values; pass overrides explicitly
   // En modo VP no persistir para no sobreescribir el plano del editor
   const guardarTodo = ({ nb = bloques, niB = idsBajos, niA = idsAltos, alto = altoCielorraso, offB = offsetBajos, offA = offsetAltos, colgado = colgadoAereos } = {}) => {
-    if (presupuestoVistaPreviaId) return;
     guardarPlano({ bloques: nb, idsBajos: niB, idsAltos: niA, altoCielorraso: alto, offsetBajos: offB, offsetAltos: offA, colgadoAereos: colgado });
   };
 
@@ -409,7 +343,7 @@ export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOve
           onSelect={setSelectedId}
           selectedId={selectedId}
           modulos={modulos}
-          composicionOverride={composicionActiva}
+          composicionOverride={composicionOverride}
           temaClaro={temaClaro}
           offsetBajos={offsetBajos}
           offsetAltos={offsetAltos}

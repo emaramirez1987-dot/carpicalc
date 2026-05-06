@@ -444,7 +444,7 @@ function TablaGrupoCorte({ nombreMat, piezas, rotadas, onToggleRotar, onOptimiza
   );
 }
 
-function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupuestoVistaPreviaId, onActualizarPresupuesto }) {
+function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupuestoActivoId, onActualizarPresupuesto }) {
   const [copiadoOk, setCopiadoOk] = useState(false);
   const [layoutOptimizado, setLayoutOptimizado] = useState(null);
   const [bannerDesc, setBannerDesc] = useState(false);
@@ -460,35 +460,20 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
     return () => document.removeEventListener('mousedown', handler);
   }, [menuAbierto]);
 
-  // Limpiar layout optimizado al cambiar de presupuesto fuente
+  // Limpiar layout optimizado al cambiar de presupuesto activo
   useEffect(() => {
     setLayoutOptimizado(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presupuestoVistaPreviaId]);
+  }, [presupuestoActivoId]);
 
-  // Si hay un presupuesto seleccionado en Vista Previa, resolver módulos desde sus datos guardados.
-  // Para el editor activo, getModUsado ya incorpora inlineModulos + dimOverride + composicionOverride.
-  const presVP = presupuestoVistaPreviaId ? presupuestos[presupuestoVistaPreviaId] : null;
-  const itemsEfectivos = presVP ? (presVP.items || []) : items;
-  const getModUsadoEfectivo = presVP
-    ? (item) => {
-        const base = modulos[item.codigo];
-        if (!base) return null;
-        const key = item.id || item.codigo;
-        // inlineModulos tiene prioridad: contiene la copia completa del módulo con piezas editadas
-        const inline = presVP.inlineModulos?.[key];
-        if (inline) return inline;
-        const dims = (presVP.dimOverride && presVP.dimOverride[key]) || base.dimensiones;
-        const comp = presVP.composicionOverride?.[key];
-        return { ...base, dimensiones: dims, vistaConfig: comp?.vistaConfig ?? base.vistaConfig };
-      }
-    : getModUsado;
+  const itemsEfectivos = items;
+  const getModUsadoEfectivo = getModUsado;
 
   if (itemsEfectivos.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <SectionTitle sub="Lista detallada agrupada por material con medidas listas para la escuadradora">
-          Lista de Corte{presVP ? ` — ${presVP.nombre}` : ""}
+          Lista de Corte
         </SectionTitle>
         <div style={{ textAlign: "center", padding: "60px 0", borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>🪚</div>
@@ -503,14 +488,7 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
     );
 
   }
-  const nombreActivo = presVP ? presVP.nombre : (() => {
-    const entries = Object.entries(presupuestos || {});
-    const codsActuales = itemsEfectivos.map((i) => i.codigo).join(",");
-    const match = entries.find(
-      ([, p]) => p.items.map((i) => i.codigo).join(",") === codsActuales
-    );
-    return match ? match[1].nombre : null;
-  })();
+  const nombreActivo = presupuestoActivoId ? (presupuestos[presupuestoActivoId]?.nombre ?? null) : null;
   const grupos = {};
   itemsEfectivos.forEach((item) => {
     const modBase = modulos[item.codigo];
@@ -737,10 +715,7 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
               const conf = costos.desperdicioPct || 20;
               if (Math.abs(real - conf) < 2) return null;
 
-              const presIdActivo = presupuestoVistaPreviaId ||
-                Object.entries(presupuestos || {}).find(([, p]) =>
-                  p.items?.map(i => i.codigo).join(',') === itemsEfectivos.map(i => i.codigo).join(',')
-                )?.[0] || null;
+              const presIdActivo = presupuestoActivoId || null;
               const presActivo = presIdActivo ? presupuestos[presIdActivo] : null;
               if (!presActivo) return null;
 

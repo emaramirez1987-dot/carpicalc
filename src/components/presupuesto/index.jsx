@@ -1385,8 +1385,6 @@ function GestorPresupuestos({
   itemsActual,
   nombreInicial = "",
   clienteInicial = { nombre: "", tel: "", dir: "" },
-  onVer,
-  itemsActivos = [],
   costosVersion = 0,
   onActualizarPresupuesto,
   modulos,
@@ -1395,7 +1393,6 @@ function GestorPresupuestos({
   const [abierto, setAbierto] = useState(false);
   const [confirmDelId, setConfirmDelId] = useState(null);
   const [busquedaPres, setBusquedaPres] = useState("");
-  const [avisoVerId, setAvisoVerId] = useState(null);
   // Feedback visual post-actualización — muestra "✓ Actualizado" brevemente
   const [actualizadoId, setActualizadoId] = useState(null);
 
@@ -1511,32 +1508,10 @@ function GestorPresupuestos({
 
                     {/* Acciones */}
                     <div style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center", flexWrap: "wrap", position: "relative" }}>
-                      {avisoVerId === id && (
-                        <div style={{ position: "absolute", right: 14, top: "100%", zIndex: 100, background: "var(--bg-surface)", border: "1px solid rgba(200,160,42,0.40)", borderRadius: 8, padding: "10px 14px", boxShadow: "0 6px 20px rgba(0,0,0,0.40)", minWidth: 240 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#c8a02a", marginBottom: 6 }}>⚠ Tenés un presupuesto activo sin guardar</div>
-                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>¿Querés ir a Vista Previa de todas formas?</div>
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button onClick={() => { onVer(id); setAbierto(false); setAvisoVerId(null); }}
-                              style={{ padding: "5px 12px", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a", borderRadius: 5 }}>
-                              Ir a Vista Previa
-                            </button>
-                            <button onClick={() => setAvisoVerId(null)}
-                              style={{ padding: "5px 10px", fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 5 }}>
-                              Cancelar
-                            </button>
-                          </div>
-                        </div>
-                      )}
                       <button onClick={() => { onCargar(p, id); setAbierto(false); }}
                         style={{ padding: "4px 10px", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
                         ✎ Editar
                       </button>
-                      {onVer && (
-                        <button onClick={() => itemsActivos.length > 0 ? setAvisoVerId(id) : (onVer(id), setAbierto(false))}
-                          style={{ padding: "4px 10px", background: "rgba(112,144,176,0.12)", border: "1px solid rgba(112,144,176,0.30)", color: "#7090b0", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700 }}>
-                          👁 Ver
-                        </button>
-                      )}
                       {confirmDelId === id ? (
                       <>
                         <button onClick={() => { onEliminar(id); setConfirmDelId(null); }}
@@ -1617,7 +1592,6 @@ function Presupuesto({
   onEliminarPresupuesto,
   onCambiarEstado,
   onActualizarPresupuesto,
-  onVerPresupuesto,
   costosVersion = 0,
   presupuestoParaEditar = null,
   onPresupuestoEditarConsumed,
@@ -1773,7 +1747,6 @@ function Presupuesto({
     setPresupuestoActivoId(null);
     setAlertaPrecios(null);
     setModalEdicion(null); setModalComposicion(null); setModalModulo(null);
-    navDispatch({ type: "SELECCIONAR_PRESUPUESTO_PREVIEW", payload: { presupuestoId: null } });
   };
 
   const handleCodChange = (val) => {
@@ -1852,7 +1825,6 @@ function Presupuesto({
     setEditandoModuloIdx(null); setInputCod(""); setPreDim(null);
     setModalEdicion(null); setModalComposicion(null); setModalModulo(null);
     setDialogoGuardar(false);
-    navDispatch({ type: "SELECCIONAR_PRESUPUESTO_PREVIEW", payload: { presupuestoId: null } });
     onDismissBorrador && onDismissBorrador();
   };
 
@@ -1874,8 +1846,6 @@ function Presupuesto({
           itemsActual={items}
           nombreInicial={nombreTrabajo}
           clienteInicial={clienteActivo}
-          onVer={onVerPresupuesto}
-          itemsActivos={items}
           costosVersion={costosVersion}
           onActualizarPresupuesto={onActualizarPresupuesto}
           modulos={modulos}

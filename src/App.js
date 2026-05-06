@@ -466,7 +466,6 @@ function AppInterna() {
                 onEliminarPresupuesto={handleEliminarPresupuesto}
                 onCambiarEstado={handleCambiarEstado}
                 onActualizarPresupuesto={handleActualizarPresupuesto}
-                onVerPresupuesto={(id) => dispatch({ type: "ABRIR_VISTA_PREVIA", payload: { presupuestoId: id } })}
                 costosVersion={costosVersion}
                 presupuestoParaEditar={nav.presupuestoParaEditar}
                 onPresupuestoEditarConsumed={() => dispatch({ type: "PRESUPUESTO_PARA_EDITAR_CONSUMIDO" })}
@@ -508,8 +507,7 @@ function AppInterna() {
                 onActualizarPresupuesto={handleActualizarPresupuesto}
                 onCambiarEstado={handleCambiarEstado}
                 onCargarPresupuesto={handleCargarPresupuesto}
-                presupuestoSelId={nav.presupuestoVistaPreviaId}
-                onSeleccionarPresupuesto={(id) => dispatch({ type: "SELECCIONAR_PRESUPUESTO_PREVIEW", payload: { presupuestoId: id } })}
+                presupuestoSelId={presupuestoActivoId}
                 costosVersion={costosVersion}
                 onVerRentabilidad={(id) => dispatch({ type: "ABRIR_CAJA", payload: { presupuestoId: id } })}
                 onEditarModulos={(id, p) => {
@@ -526,7 +524,7 @@ function AppInterna() {
                 costos={costos}
                 getModUsado={getModUsado}
                 presupuestos={presupuestos}
-                presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
+                presupuestoActivoId={presupuestoActivoId}
                 onActualizarPresupuesto={handleActualizarPresupuesto}
               />
             </div>
@@ -539,8 +537,6 @@ function AppInterna() {
                 dimOverride={dimOverride}
                 inlineModulos={inlineModulos}
                 presupuestoActivoId={presupuestoActivoId}
-                presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
-                presupuestos={presupuestos}
                 suscripcion={suscripcion}
                 onRenderGenerado={() => cargarSuscripcion().then(setSuscripcion)}
               />
@@ -554,8 +550,6 @@ function AppInterna() {
                 composicionOverride={composicionOverride}
                 inlineModulos={inlineModulos}
                 presupuestoActivoId={presupuestoActivoId}
-                presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
-                presupuestos={presupuestos}
               />
             </div>
 
