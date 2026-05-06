@@ -336,6 +336,7 @@ export function RenderIA({
   const [generando, setGenerando]     = useState(false);
   const [imagenUrl, setImagenUrl]     = useState(null);
   const [errorRender, setErrorRender] = useState(null);
+  const [refPreview, setRefPreview]   = useState(null); // debug: imagen de referencia
   const prevKeyRef                    = useRef(null);
 
   useEffect(() => {
@@ -373,6 +374,17 @@ export function RenderIA({
       setErrorRender(e.message);
     } finally {
       setGenerando(false);
+    }
+  };
+
+  const handleVerReferencia = async () => {
+    const bloquesAltosRef = bloques.filter(b => idsAltos.includes(b.id));
+    const bloquesBajosRef = bloques.filter(b => idsBajos.includes(b.id));
+    try {
+      const b64 = await generarImagenReferencia({ bloquesAltos: bloquesAltosRef, bloquesBajos: bloquesBajosRef });
+      setRefPreview(`data:image/jpeg;base64,${b64}`);
+    } catch (e) {
+      setErrorRender("Error generando preview: " + e.message);
     }
   };
 
@@ -460,6 +472,23 @@ export function RenderIA({
           {errorRender && (
             <div style={{ fontSize: 12, color: "#e07070", fontFamily: "'DM Mono',monospace", padding: "8px 12px", background: "rgba(200,60,60,0.08)", border: "1px solid rgba(200,60,60,0.25)", borderRadius: 7 }}>
               ⚠ {errorRender}
+            </div>
+          )}
+          {/* Debug: imagen de referencia que se envía a Replicate */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button onClick={handleVerReferencia} style={{ ...btnSm(), fontSize: 11 }}>
+              🔍 Ver imagen de referencia
+            </button>
+            {refPreview && (
+              <button onClick={() => setRefPreview(null)} style={{ ...btnSm("danger"), fontSize: 11 }}>✕ cerrar</button>
+            )}
+          </div>
+          {refPreview && (
+            <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>
+                Imagen de referencia → Replicate
+              </div>
+              <img src={refPreview} alt="referencia" style={{ width: "100%", height: "auto", display: "block" }} />
             </div>
           )}
           <GestorPrompts
