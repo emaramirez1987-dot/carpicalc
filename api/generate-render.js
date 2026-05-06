@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
   if (!deduct.ok) return res.status(403).json({ error: deduct.error });
 
   try {
-    const fullPrompt = `photorealistic interior design render, professional architectural photography, 8k resolution, centered composition, furniture filling the frame, ${prompt}, custom cabinet making, soft warm lighting, clean background wall`;
+    const fullPrompt = `render fotorrealista de diseño de interiores, fotografia arquitectonica profesional, alta resolucion, composicion centrada, mueble ocupando el encuadre, ${prompt}, carpinteria a medida, iluminacion calida suave, pared de fondo neutra`;
 
     // flux-schnell text2img — rápido y confiable desde el prompt
     // TODO: img2img con plano recortado al bounding box de módulos (mejora futura)
