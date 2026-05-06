@@ -84,7 +84,7 @@ module.exports = async function handler(req, res) {
       ? {
           prompt:               fullPrompt,
           image:                `data:image/png;base64,${imageBase64}`,
-          strength:             0.85,
+          strength:             0.5,
           num_inference_steps:  28,
           guidance_scale:       3.5,
           num_outputs:          1,
