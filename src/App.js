@@ -134,6 +134,7 @@ function AppInterna() {
   const [items,              setItems]              = useState([]);
   const [dimOverride,        setDimOverride]        = useState({});
   const [composicionOverride, setComposicionOverride] = useState({});
+  const [inlineModulos,      setInlineModulos]      = useState({});
   const [adicionales,        setAdicionales]        = useState([]);
   const [costosDirectos,     setCostosDirectos]     = useState([]);
   const [costosVersion,      setCostosVersion]      = useState(leerVersionCostos);
@@ -177,11 +178,12 @@ function AppInterna() {
       try {
         const borrador = localStorage.getItem("carpicalc:borrador");
         if (borrador) {
-          const { items: bItems, dimOverride: bDim, composicionOverride: bComp, presupuestoActivoId: bPresId } = JSON.parse(borrador);
+          const { items: bItems, dimOverride: bDim, composicionOverride: bComp, inlineModulos: bInline, presupuestoActivoId: bPresId } = JSON.parse(borrador);
           if (bItems?.length > 0) {
             setItems(bItems);
             setDimOverride(bDim || {});
             setComposicionOverride(bComp || {});
+            setInlineModulos(bInline || {});
             if (bPresId) setPresupuestoActivoId(bPresId);
             setBorradorRecuperado(true);
           }
@@ -196,7 +198,7 @@ function AppInterna() {
     if (items.length > 0) {
       try {
         localStorage.setItem("carpicalc:borrador", JSON.stringify({
-          items, dimOverride, composicionOverride,
+          items, dimOverride, composicionOverride, inlineModulos,
           ...(presupuestoActivoId ? { presupuestoActivoId } : {}),
         }));
       }
@@ -204,7 +206,7 @@ function AppInterna() {
     } else {
       localStorage.removeItem("carpicalc:borrador");
     }
-  }, [items, dimOverride, composicionOverride, presupuestoActivoId]);
+  }, [items, dimOverride, composicionOverride, inlineModulos, presupuestoActivoId]);
 
   // ── Aviso antes de cerrar con datos sin guardar ───────────────────────────
   useEffect(() => {
@@ -250,11 +252,14 @@ function AppInterna() {
     return withSave(() => guardarCostos(data));
   };
 
-  // ── getModUsado — resuelve módulo con dimOverride del presupuesto activo ──
+  // ── getModUsado — resuelve módulo con overrides del presupuesto activo ─────
+  // Prioridad: inlineModulos (fuente única completa) → base + dimOverride + composicionOverride
   const getModUsado = useCallback((item) => {
     if (!modulos || !item) return null;
     const cod   = typeof item === "string" ? item : item.codigo;
     const keyId = typeof item === "string" ? item : item.id || item.codigo;
+    const inline = inlineModulos[keyId];
+    if (inline) return inline;
     const base  = modulos[cod];
     if (!base) return null;
     const over  = dimOverride[keyId] || {};
@@ -269,7 +274,7 @@ function AppInterna() {
       },
       vistaConfig: comp?.vistaConfig ?? base.vistaConfig,
     };
-  }, [modulos, dimOverride, composicionOverride]);
+  }, [modulos, dimOverride, composicionOverride, inlineModulos]);
 
   // ── Total del presupuesto activo ──────────────────────────────────────────
   const totalModulos = !costos ? 0 : items.reduce((acc, it) => {
@@ -287,7 +292,7 @@ function AppInterna() {
   const handleGuardarPresupuesto = (nombre, cliente, nota, presupuestoCompleto) => {
     const { id, presupuestos: nuevo } = crearPresupuesto({
       presupuestos, nombre, cliente, nota,
-      items, dimOverride, composicionOverride, adicionales, costosDirectos,
+      items, dimOverride, composicionOverride, inlineModulos, adicionales, costosDirectos,
       total: totalGeneral,
       costosVersionAl: leerVersionCostos() || Date.now(),
       presupuestoCompleto,
@@ -317,23 +322,27 @@ function AppInterna() {
     setItems(migratedItems);
     setDimOverride(migratedDim);
     setComposicionOverride(p.composicionOverride && typeof p.composicionOverride === "object" ? { ...p.composicionOverride } : {});
+    setInlineModulos(p.inlineModulos && typeof p.inlineModulos === "object" ? { ...p.inlineModulos } : {});
     setAdicionales(Array.isArray(p.adicionales) ? [...p.adicionales] : []);
     setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
     if (id) setPresupuestoActivoId(id);
     localStorage.removeItem("carpicalc:borrador");
+    const inlineM = p.inlineModulos && typeof p.inlineModulos === "object" ? p.inlineModulos : {};
     const bloques = migratedItems.flatMap(item => {
-      const mod = modulos[item.codigo];
+      const keyId  = item.id || item.codigo;
+      const inline = inlineM[keyId];
+      const mod    = inline ?? modulos[item.codigo];
       if (!mod) return [];
-      const over = migratedDim[item.id || item.codigo] || {};
+      const dims   = inline ? inline.dimensiones : (migratedDim[keyId] ? { ...mod.dimensiones, ...migratedDim[keyId] } : mod.dimensiones);
       return Array.from({ length: item.cantidad }, () => ({
         id: crypto.randomUUID(),
-        itemId: item.id,          // identity anchor for composicionOverride lookup
+        itemId: item.id,
         codigo: item.codigo,
         nombre: mod.nombre,
         tipoVisual: mod.tipoVisual || null,
-        ancho: over.ancho || mod.dimensiones.ancho,
-        alto: over.alto || mod.dimensiones.alto,
-        profundidad: over.profundidad || mod.dimensiones.profundidad,
+        ancho: dims.ancho,
+        alto: dims.alto,
+        profundidad: dims.profundidad,
       }));
     });
     guardarPlano({ bloques, altoCielorraso: 2400 });
@@ -395,10 +404,11 @@ function AppInterna() {
     items, setItems,
     dimOverride, setDimOverride,
     composicionOverride, setComposicionOverride,
+    inlineModulos, setInlineModulos,
     adicionales, setAdicionales,
     costosDirectos, setCostosDirectos,
     presupuestoActivoId, setPresupuestoActivoId,
-  }), [items, dimOverride, composicionOverride, adicionales, costosDirectos, presupuestoActivoId]);
+  }), [items, dimOverride, composicionOverride, inlineModulos, adicionales, costosDirectos, presupuestoActivoId]);
 
   if (cargando)
     return (
