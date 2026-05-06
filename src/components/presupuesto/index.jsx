@@ -1711,6 +1711,25 @@ function Presupuesto({
     setInputCod(""); setInputCant(1); setPreDim(null); setError("");
   };
 
+  // Aplica dims/material del acordeón abierto a dimOverride (sin cerrar el acordeón).
+  // Llamado desde onBlur de inputs, onChange del select y botón "✓ Actualizar".
+  const aplicarDims = () => {
+    if (!modalEdicion) return;
+    const esTemp = modalEdicion.item.codigo.startsWith("TEMP_");
+    if (esTemp) {
+      const tempCod = modalEdicion.item.codigo;
+      const nuevosModulos = { ...modulos, [tempCod]: { ...modulos[tempCod], dimensiones: modalEdicion.dims, material: modalEdicion.material } };
+      setModulos && setModulos(nuevosModulos);
+      hSaveModulos && hSaveModulos(nuevosModulos);
+    } else {
+      const keyId = modalEdicion.item.id || modalEdicion.item.codigo;
+      const base = modulos[modalEdicion.origenCodigo];
+      const bd = base?.dimensiones || {};
+      const difiere = modalEdicion.dims.ancho !== bd.ancho || modalEdicion.dims.profundidad !== bd.profundidad || modalEdicion.dims.alto !== bd.alto || modalEdicion.material !== (base?.material ?? "melamina");
+      setDimOverride(prev => { const n = { ...prev }; if (difiere) n[keyId] = { ...modalEdicion.dims, material: modalEdicion.material }; else delete n[keyId]; return n; });
+    }
+  };
+
   // Detectar presupuesto desactualizado cuando se carga uno guardado
   const [alertaPrecios, setAlertaPrecios] = useState(null); // { idPres, totalOriginal, totalRecalculado }
 
@@ -2203,24 +2222,8 @@ function Presupuesto({
                             setItems(its => its.map((it, i) =>
                               i === idx ? { ...it, codigo: modalEdicion.origenCodigo } : it
                             ));
-                          } else if (modalEdicion) {
-                            // Aplicar dims/material al cerrar el acordeón con ▲
-                            const esTemp = modalEdicion.item.codigo.startsWith("TEMP_");
-                            if (esTemp) {
-                              const tempCod = modalEdicion.item.codigo;
-                              const nuevosModulos = { ...modulos, [tempCod]: { ...modulos[tempCod], dimensiones: modalEdicion.dims, material: modalEdicion.material } };
-                              setModulos && setModulos(nuevosModulos);
-                              hSaveModulos && hSaveModulos(nuevosModulos);
-                            } else {
-                              const keyId = modalEdicion.item.id || modalEdicion.item.codigo;
-                              const base = modulos[modalEdicion.origenCodigo];
-                              const bd = base?.dimensiones || {};
-                              const difiere = modalEdicion.dims.ancho !== bd.ancho || modalEdicion.dims.profundidad !== bd.profundidad || modalEdicion.dims.alto !== bd.alto || modalEdicion.material !== (base?.material ?? "melamina");
-                              const nuevoOverride = { ...dimOverride };
-                              if (difiere) nuevoOverride[keyId] = { ...modalEdicion.dims, material: modalEdicion.material };
-                              else delete nuevoOverride[keyId];
-                              setDimOverride(nuevoOverride);
-                            }
+                          } else {
+                            aplicarDims();
                           }
                           setModalEdicion(null);
                           return;
@@ -2299,13 +2302,24 @@ function Presupuesto({
                             onChange={e => setModalEdicion(m => ({ ...m, dims: { ...m.dims, [key]: parseInt(e.target.value) || 0 } }))}
                             style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: "5px 4px", textAlign: "center", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", outline: "none" }}
                             onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                            onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                            onBlur={e => { e.target.style.borderColor = "var(--border)"; aplicarDims(); }} />
                         </div>
                       ))}
                       <div style={{ flex: 1.8 }}>
                         <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 3, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>Mat.</div>
                         <select value={modalEdicion.material}
-                          onChange={e => setModalEdicion(m => ({ ...m, material: e.target.value }))}
+                          onChange={e => {
+                            const newMat = e.target.value;
+                            setModalEdicion(m => ({ ...m, material: newMat }));
+                            if (modalEdicion && !modalEdicion.item.codigo.startsWith("TEMP_")) {
+                              const keyId = modalEdicion.item.id || modalEdicion.item.codigo;
+                              const base = modulos[modalEdicion.origenCodigo];
+                              const bd = base?.dimensiones || {};
+                              const d = modalEdicion.dims;
+                              const difiere = d.ancho !== bd.ancho || d.profundidad !== bd.profundidad || d.alto !== bd.alto || newMat !== (base?.material ?? "melamina");
+                              setDimOverride(prev => { const n = { ...prev }; if (difiere) n[keyId] = { ...d, material: newMat }; else delete n[keyId]; return n; });
+                            }
+                          }}
                           style={{ width: "100%", padding: "5px 3px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 10, outline: "none" }}>
                           {Object.entries(TIPO_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                         </select>
@@ -2314,6 +2328,10 @@ function Presupuesto({
 
                     {/* Acciones compactas */}
                     <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={aplicarDims}
+                        style={{ padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, background: "rgba(120,180,100,0.15)", border: "1px solid rgba(120,180,100,0.35)", color: "#7ecf8a" }}>
+                        ✓ Actualizar
+                      </button>
                       <button
                         onClick={() => {
                           const modInicial = getModUsado(item) || modulos[item.codigo];
@@ -2325,7 +2343,7 @@ function Presupuesto({
                       </button>
                       <button onClick={() => setModalEdicion(null)}
                         style={{ padding: "5px 12px", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, background: "transparent", border: "1px solid rgba(200,60,60,0.22)", color: "#e07070" }}>
-                        Cancelar
+                        ✕
                       </button>
                     </div>
 
