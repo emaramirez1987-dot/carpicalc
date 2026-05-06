@@ -460,6 +460,12 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
     return () => document.removeEventListener('mousedown', handler);
   }, [menuAbierto]);
 
+  // Limpiar layout optimizado al cambiar de presupuesto fuente
+  useEffect(() => {
+    setLayoutOptimizado(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presupuestoVistaPreviaId]);
+
   // Si hay un presupuesto seleccionado en Vista Previa, resolver módulos desde sus datos guardados.
   // Para el editor activo, getModUsado ya incorpora inlineModulos + dimOverride + composicionOverride.
   const presVP = presupuestoVistaPreviaId ? presupuestos[presupuestoVistaPreviaId] : null;
