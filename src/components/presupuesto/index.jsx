@@ -1936,10 +1936,22 @@ function Presupuesto({
                     </button>
                   ) : null;
                 })()}
-                <button onClick={() => presupuestoActivoId ? setDialogoGuardar(true) : (() => {
-                  onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
-                  limpiarEditor();
-                })()}
+                <button onClick={() => {
+                  const hayOverrides = items.some(item => {
+                    const key = item.id || item.codigo;
+                    if (inlineModulos[key]) return true;
+                    const over = dimOverride?.[key];
+                    if (!over) return false;
+                    const base = modulos[item.codigo];
+                    if (!base) return false;
+                    return (over.ancho != null && over.ancho !== base.dimensiones?.ancho)
+                      || (over.alto != null && over.alto !== base.dimensiones?.alto)
+                      || (over.profundidad != null && over.profundidad !== base.dimensiones?.profundidad)
+                      || (over.material != null && over.material !== (base.material ?? "melamina"));
+                  });
+                  if (presupuestoActivoId || hayOverrides) { setDialogoGuardar(true); }
+                  else { onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, ""); limpiarEditor(); }
+                }}
                   style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", boxShadow: "0 2px 8px rgba(180,100,20,0.25)" }}>
                   💾 Guardar
                 </button>
@@ -2027,39 +2039,51 @@ function Presupuesto({
           limpiarEditor();
         };
 
+        const btnBase = { padding: "8px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer" };
         return (
-          <div style={{ padding: "16px 20px", borderRadius: 10, background: "var(--bg-surface)", border: "1px solid var(--accent-border)" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>💾 ¿Cómo querés guardar?</div>
-            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14 }}>"{nombreTrabajo || "Sin nombre"}"</div>
-            {itemsConOverride.length > 0 && (
-              <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(100,140,220,0.08)", border: "1px solid rgba(100,140,220,0.20)" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
-                  {itemsConOverride.length} módulo{itemsConOverride.length > 1 ? "s tienen" : " tiene"} personalización (medidas o piezas)
-                </div>
-                <button onClick={() => crearVariantesYGuardar(!presupuestoActivoId)}
-                  style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "rgba(100,140,220,0.15)", border: "1px solid rgba(100,140,220,0.35)", color: "#7090d8", width: "100%" }}>
-                  📚 Crear variantes en catálogo y guardar
-                </button>
-              </div>
-            )}
+          <div style={{ padding: "14px 16px", borderRadius: 10, background: "#0a0c12", border: "1px solid var(--accent-border)", boxShadow: "0 6px 24px rgba(0,0,0,0.45)" }}>
+            <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>💾 ¿Cómo querés guardar?</div>
+            <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginBottom: 12 }}>
+              "{nombreTrabajo || "Sin nombre"}"
+              {itemsConOverride.length > 0 && (
+                <span style={{ marginLeft: 8, color: "#7090d8" }}>· {itemsConOverride.length} módulo{itemsConOverride.length > 1 ? "s" : ""} con personalización</span>
+              )}
+            </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={() => {
-                onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, composicionOverride: { ...composicionOverride }, inlineModulos: { ...inlineModulos }, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
-                setDialogoGuardar(false);
-                limpiarEditor();
-              }} style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
-                ✓ Actualizar original
-              </button>
-              <button onClick={() => {
-                onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
-                setDialogoGuardar(false);
-                limpiarEditor();
-              }}
-                style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                + Guardar como copia
-              </button>
+              {itemsConOverride.length > 0 && (
+                <button onClick={() => crearVariantesYGuardar(!presupuestoActivoId)}
+                  style={{ ...btnBase, background: "rgba(100,140,220,0.15)", border: "1px solid rgba(100,140,220,0.35)", color: "#7090d8" }}>
+                  📚 Crear variantes
+                </button>
+              )}
+              {presupuestoActivoId ? (
+                <>
+                  <button onClick={() => {
+                    onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, composicionOverride: { ...composicionOverride }, inlineModulos: { ...inlineModulos }, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
+                    setDialogoGuardar(false);
+                    limpiarEditor();
+                  }} style={{ ...btnBase, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+                    ✓ Actualizar
+                  </button>
+                  <button onClick={() => {
+                    onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
+                    setDialogoGuardar(false);
+                    limpiarEditor();
+                  }} style={{ ...btnBase, background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                    + Copia
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => {
+                  onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
+                  setDialogoGuardar(false);
+                  limpiarEditor();
+                }} style={{ ...btnBase, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+                  💾 Guardar
+                </button>
+              )}
               <button onClick={() => setDialogoGuardar(false)}
-                style={{ padding: "8px 14px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                style={{ ...btnBase, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
                 Cancelar
               </button>
             </div>
