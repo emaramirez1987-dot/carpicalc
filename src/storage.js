@@ -317,6 +317,16 @@ export function guardarPlano(data) {
   return _save("carpicalc:plano2d", data);
 }
 
+// ── Prompts de Render IA ──────────────────────────────────────────────────
+export function leerPromptsRender() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:prompts_render")) || []; }
+  catch { return []; }
+}
+
+export function guardarPromptsRender(prompts) {
+  return _save("carpicalc:prompts_render", prompts);
+}
+
 // ── Borrador de módulo en creación ────────────────────────────────────────
 export function cargarBorradorModulo() {
   try { return JSON.parse(localStorage.getItem("carpicalc:borrador_modulo")) || null; }
