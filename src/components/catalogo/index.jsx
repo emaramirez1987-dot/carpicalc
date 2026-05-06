@@ -41,7 +41,7 @@ function DimRow({ titulo, dimKey, espKey, mmKey, divKey, resultado, fp, setFp, e
       </div>
       <div style={{ fontSize: 11, marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span style={{ color: "var(--text-muted)" }}>→</span>
-        <span style={{ fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--color-positive)" }}>
           {Math.round(resultado)} mm
         </span>
         {(parseInt(fp[espKey]) || 0) !== 0 && (
@@ -66,7 +66,7 @@ function DimRowLibre({ titulo, valKey, fp, setFp }) {
       </div>
       <TextInput label="Medida exacta (mm)" type="number" value={fp[valKey]} placeholder="0" suffix="mm" small
         onChange={(v) => setFp((p) => ({ ...p, [valKey]: parseInt(v) || 0 }))} />
-      <div style={{ fontSize: 11, marginTop: 6, fontFamily: "'DM Mono',monospace", color: "#7ecf8a" }}>
+      <div style={{ fontSize: 11, marginTop: 6, fontFamily: "'DM Mono',monospace", color: "var(--color-positive)" }}>
         → {parseInt(fp[valKey]) || 0} mm
       </div>
     </div>
@@ -99,20 +99,23 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
     return p.length ? `(${p.join(", ")})` : "";
   };
 
-  const btnSt = { background: "transparent", border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", color: "var(--text-muted)", fontSize: 11, padding: "3px 7px", fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.15s" };
+  const btnSt = { background: "transparent", border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", color: "var(--text-secondary)", fontSize: 11, padding: "4px 9px", fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.15s" };
 
   return (
-    <div style={{ padding: "10px 12px", background: "var(--accent-soft)", border: "1px solid var(--border)", borderRadius: 8, marginBottom: 6 }}>
-      {/* Fila principal */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 130px 90px 90px", gap: 8, alignItems: "center" }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+    <div style={{ padding: "12px 14px", background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 8, marginBottom: 6 }}>
+
+      {/* Fila principal: nombre + métricas + cantidad */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+
+        {/* Nombre + fórmula */}
+        <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
             {pieza.nombre}
             {pieza.especial && (
               <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(212,175,55,0.18)", color: "var(--accent)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>✦ ESP</span>
             )}
           </div>
-          <div style={{ fontSize: 11, marginTop: 2, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 10, marginTop: 3, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
             {pieza.especial
               ? `libre: ${pieza.dimLibre1 || 0} × ${pieza.dimLibre2 || 0} mm`
               : pieza.formula1 != null
@@ -121,56 +124,57 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
           </div>
         </div>
 
-        {/* Cantidad con +/- */}
-        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-          <button onClick={() => onChangeCantidad(Math.max(1, pieza.cantidad - 1))}
-            style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--accent)", minWidth: 22, textAlign: "center" }}>×{pieza.cantidad}</span>
-          <button onClick={() => onChangeCantidad(pieza.cantidad + 1)}
-            style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+        {/* Métricas inline */}
+        <div style={{ display: "flex", gap: 16, alignItems: "center", flexShrink: 0 }}>
+          <div>
+            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 2 }}>Medidas</div>
+            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>
+              {Math.round(d1)}×{Math.round(d2)}<span style={{ fontSize: 10, color: "var(--text-muted)", marginLeft: 2 }}>mm</span>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 2 }}>Área</div>
+            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>
+              {fmtNum(area)}<span style={{ fontSize: 10, color: "var(--text-muted)", marginLeft: 2 }}>m²</span>
+            </div>
+          </div>
+          {tcDef && (
+            <div>
+              <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 2 }}>Tapac.</div>
+              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>
+                {fmtNum(mTc, 2)}<span style={{ fontSize: 10, color: "var(--text-muted)", marginLeft: 2 }}>m</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div style={{ textAlign: "right", minWidth: 0, overflow: "hidden" }}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>medidas reales</div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#c8d098", whiteSpace: "nowrap" }}>{Math.round(d1)}×{Math.round(d2)} mm</div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>área</div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "#7ecf8a" }}>{fmtNum(area)} m²</div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          {tcDef ? (
-            <>
-              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>tapacanto</div>
-              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "var(--accent)" }}>{fmtNum(mTc, 2)} m</div>
-            </>
-          ) : (
-            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>sin tapac.</div>
-          )}
+        {/* Cantidad */}
+        <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+          <button onClick={() => onChangeCantidad(Math.max(1, pieza.cantidad - 1))}
+            style={{ width: 24, height: 24, borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--accent)", minWidth: 28, textAlign: "center" }}>×{pieza.cantidad}</span>
+          <button onClick={() => onChangeCantidad(pieza.cantidad + 1)}
+            style={{ width: 24, height: 24, borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
         </div>
       </div>
 
       {/* Barra de acciones */}
-      <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 5, marginTop: 10, alignItems: "center", borderTop: "1px solid var(--separator)", paddingTop: 8 }}>
         <button onClick={() => onEdit(idx)} style={{ ...btnSt, color: "var(--accent)", borderColor: "var(--accent-border)", background: "var(--accent-soft)" }}>✎ editar</button>
-        <button onClick={() => onDuplicate(idx)} style={{ ...btnSt }}>⧉ duplicar</button>
-        <button onClick={() => onMoveUp(idx)} disabled={isFirst}
-          style={{ ...btnSt, opacity: isFirst ? 0.3 : 1 }}>↑</button>
-        <button onClick={() => onMoveDown(idx)} disabled={isLast}
-          style={{ ...btnSt, opacity: isLast ? 0.3 : 1 }}>↓</button>
+        <button onClick={() => onDuplicate(idx)} style={btnSt}>⧉ duplicar</button>
+        <button onClick={() => onMoveUp(idx)} disabled={isFirst} style={{ ...btnSt, opacity: isFirst ? 0.3 : 1 }}>↑</button>
+        <button onClick={() => onMoveDown(idx)} disabled={isLast} style={{ ...btnSt, opacity: isLast ? 0.3 : 1 }}>↓</button>
         <div style={{ flex: 1 }} />
         {confirmDelete ? (
           <>
             <button onClick={() => { onDelete(idx); setConfirmDelete(false); }}
-              style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
+              style={{ padding: "4px 9px", borderRadius: 5, cursor: "pointer", fontSize: 11, fontWeight: 700, background: "rgba(200,60,60,0.12)", border: "1px solid rgba(200,60,60,0.35)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓ confirmar</button>
             <button onClick={() => setConfirmDelete(false)}
-              style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
+              style={{ ...btnSt }}>✕</button>
           </>
         ) : (
           <button onClick={() => setConfirmDelete(true)}
-            style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 18, lineHeight: 1, opacity: 0.6, transition: "opacity 0.15s" }}
-            onMouseEnter={e => e.target.style.opacity = 1}
-            onMouseLeave={e => e.target.style.opacity = 0.6}>×</button>
+            style={{ ...btnSt, color: "#e07070", borderColor: "rgba(200,60,60,0.25)" }}>× eliminar</button>
         )}
       </div>
     </div>
@@ -342,7 +346,7 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
                     />
                     <div style={{ textAlign: "right", minWidth: 70 }}>
                       {valida ? (
-                        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 18, fontWeight: 900, color: "#7ecf8a", letterSpacing: "-0.02em" }}>
+                        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 18, fontWeight: 900, color: "var(--color-positive)", letterSpacing: "-0.02em" }}>
                           {Math.round(resultado)}
                           <span style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginLeft: 3 }}>mm</span>
                         </span>
@@ -365,8 +369,8 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
             {/* Preview resultado prominente */}
             {(d1 > 0 || d2 > 0) && (
               <div style={{ padding: "10px 14px", background: "rgba(126,207,138,0.07)", border: "1px solid rgba(126,207,138,0.18)", borderRadius: 8, display: "flex", gap: 20, alignItems: "center" }}>
-                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: "#9ab080" }}>
-                  Medida real: <strong style={{ color: "#7ecf8a", fontSize: 15 }}>{Math.round(d1)} × {Math.round(d2)} mm</strong>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: "var(--color-positive-muted)" }}>
+                  Medida real: <strong style={{ color: "var(--color-positive)", fontSize: 15 }}>{Math.round(d1)} × {Math.round(d2)} mm</strong>
                 </span>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)" }}>
                   Área: <strong>{fmtNum((d1 * d2 * (parseInt(fp.cantidad) || 1)) / 1_000_000)} m²</strong>
@@ -426,8 +430,8 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
             <DimRowLibre titulo="Dim 2 (ancho)" valKey="dimLibre2" fp={fp} setFp={setFp} />
             {(parseInt(fp.dimLibre1) || 0) > 0 && (parseInt(fp.dimLibre2) || 0) > 0 && (
               <div style={{ padding: "8px 12px", background: "rgba(126,207,138,0.07)", border: "1px solid rgba(126,207,138,0.18)", borderRadius: 8 }}>
-                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: "#9ab080" }}>
-                  Medida: <strong style={{ color: "#7ecf8a" }}>{parseInt(fp.dimLibre1) || 0} × {parseInt(fp.dimLibre2) || 0} mm</strong>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: "var(--color-positive-muted)" }}>
+                  Medida: <strong style={{ color: "var(--color-positive)" }}>{parseInt(fp.dimLibre1) || 0} × {parseInt(fp.dimLibre2) || 0} mm</strong>
                 </span>
               </div>
             )}
@@ -993,7 +997,7 @@ function FormModulo({
                 { id: null,    label: "Sin definir", icon: "—",  color: "#606880" },
                 { id: "bajo",  label: "Bajo",        icon: "⬇",  color: "#7090c8" },
                 { id: "aereo", label: "Aéreo",        icon: "⬆",  color: "#a070c8" },
-                { id: "torre", label: "Torre",        icon: "⬛", color: "#7ecf8a" },
+                { id: "torre", label: "Torre",        icon: "⬛", color: "var(--color-positive)" },
               ].map((tipo) => {
                 const activo = datos.tipoVisual === tipo.id;
                 return (
@@ -1145,7 +1149,7 @@ function FormModulo({
               Sin piezas todavía.
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {piezas.map((p, i) => (
                 <FilaPieza
                   key={i}
@@ -1181,9 +1185,9 @@ function FormModulo({
                   [`Desp.(${preview.pctDesp}%)`, `${fmtNum(preview.m2Total - preview.m2Neto)} m²`],
                   ["Tapacanto", `${fmtNum(preview.metrosTapacanto, 2)} m`],
                 ].map(([k, v]) => (
-                  <div key={k} style={{ textAlign: "center", background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: "8px 4px" }}>
-                    <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>{k}</div>
-                    <div style={{ fontSize: 14, fontFamily: "'DM Mono',monospace", fontWeight: 700, marginTop: 2, color: "#7ecf8a" }}>{v}</div>
+                  <div key={k} style={{ textAlign: "center", background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px" }}>
+                    <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 3 }}>{k}</div>
+                    <div style={{ fontSize: 14, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-primary)" }}>{v}</div>
                   </div>
                 ))}
               </div>
@@ -1450,7 +1454,7 @@ function FormModulo({
                         fontSize: 10,
                         textTransform: "uppercase",
                         letterSpacing: "0.1em",
-                        color: "#7ecf8a",
+                        color: "var(--color-positive)",
                         marginBottom: 12
                       }}
                     >
@@ -1535,7 +1539,7 @@ function FormModulo({
                           fontFamily: "'DM Mono',monospace",
                           fontSize: 18,
                           fontWeight: 700,
-                          color: "#7ecf8a"
+                          color: "var(--color-positive)"
                         }}
                       >
                         {fmtPeso(c.total)}
@@ -1644,7 +1648,7 @@ function FormModulo({
                             }}
                             style={{ accentColor: "var(--accent)", width: 14, height: 14, cursor: "pointer" }} />
                           <span style={{ flex: 1 }}>{p.nombre || "Sin nombre"}</span>
-                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--color-positive)" }}>{fmtPeso(p.total)}</span>
                         </label>
                       );
                     })}
@@ -2018,7 +2022,7 @@ function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAb
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10, fontSize: 11 }}>
               <div>
                 <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>m² neto</div>
-                <div style={{ fontFamily: "'DM Mono',monospace", color: "#9ab080" }}>{fmtNum(c.m2Neto)} m²</div>
+                <div style={{ fontFamily: "'DM Mono',monospace", color: "var(--color-positive-muted)" }}>{fmtNum(c.m2Neto)} m²</div>
               </div>
               <div>
                 <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>Tapacanto</div>
@@ -2027,7 +2031,7 @@ function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAb
             </div>
             <div>
               <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>Precio de venta</div>
-              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 17, fontWeight: 700, marginTop: 2, color: "#7ecf8a" }}>{fmtPeso(c.total)}</div>
+              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 17, fontWeight: 700, marginTop: 2, color: "var(--color-positive)" }}>{fmtPeso(c.total)}</div>
             </div>
           </div>
           {/* Botones — columna derecha */}
@@ -2113,7 +2117,7 @@ function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbri
           <Badge>{TIPO_MAT[mod.material]}</Badge>
           <Badge>{c.espesor}mm</Badge>
         </div>
-        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a", flexShrink: 0 }}>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--color-positive)", flexShrink: 0 }}>
           {fmtPeso(c.total)}
         </span>
         <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} presupuestosAfectados={presupuestosAfectados} />
@@ -2165,7 +2169,7 @@ function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbri
             <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)" }}>
               {mod.dimensiones.ancho}×{mod.dimensiones.profundidad}×{mod.dimensiones.alto}mm
             </span>
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", marginLeft: "auto" }}>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--color-positive)", marginLeft: "auto" }}>
               {fmtPeso(c.total)}
             </span>
           </div>

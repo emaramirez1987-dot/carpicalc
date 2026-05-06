@@ -141,7 +141,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
             </span>
           </div>
           <div style={{ height: 5, background: "var(--bg-subtle)", borderRadius: 999, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${pctCobrado}%`, background: pctCobrado >= 100 ? "#7ecf8a" : "var(--accent)", borderRadius: 999, transition: "width 0.4s" }} />
+            <div style={{ height: "100%", width: `${pctCobrado}%`, background: "var(--accent)", borderRadius: 999, transition: "width 0.4s" }} />
           </div>
         </div>
 
@@ -205,7 +205,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                   </span>
                 </span>
                 <div style={{ width: 72, height: 3, background: "var(--bg-subtle)", borderRadius: 999 }}>
-                  <div style={{ height: "100%", width: `${pctCobrado}%`, background: pctCobrado >= 100 ? "#7ecf8a" : "var(--accent)", borderRadius: 999, transition: "width 0.4s" }} />
+                  <div style={{ height: "100%", width: `${pctCobrado}%`, background: "var(--accent)", borderRadius: 999, transition: "width 0.4s" }} />
                 </div>
               </div>
               <span style={{ fontSize: 10, color: "var(--text-muted)", display: "inline-block", transition: "transform 0.2s", transform: abiertoCobros ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
@@ -230,7 +230,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                           <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>{fmtFecha(c.fecha)}</div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(c.monto)}</span>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--color-positive)" }}>{fmtPeso(c.monto)}</span>
                           <button onClick={() => eliminarCobro(i)}
                             style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: 0 }}>×</button>
                         </div>
@@ -308,13 +308,13 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                       {tv.hayDescuento && (
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: "#e07070" }}>🏷 Con descuento</span>
-                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(tv.totalFinal)}</span>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "var(--color-positive)" }}>{fmtPeso(tv.totalFinal)}</span>
                         </div>
                       )}
                       {tv.hayGanancia && !tv.hayDescuento && (
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: "#7ecf8a" }}>💵 Total final</span>
-                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(tv.totalFinal)}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-positive)" }}>💵 Total final</span>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 900, color: "var(--color-positive)" }}>{fmtPeso(tv.totalFinal)}</span>
                         </div>
                       )}
                     </>
@@ -353,13 +353,13 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                   }}>
                     <span style={{ fontSize: 13, flexShrink: 0 }}>💵</span>
                     <span style={{ fontSize: 12, color: "var(--text-secondary)", flex: 1, fontWeight: 600 }}>Ganancia extra</span>
-                    <span style={{ fontSize: 13, color: "#7ecf8a", fontFamily: "'DM Mono',monospace", fontWeight: 900 }}>+</span>
+                    <span style={{ fontSize: 13, color: "var(--color-positive)", fontFamily: "'DM Mono',monospace", fontWeight: 900 }}>+</span>
                     <input
                       type="number" min="0" value={gananciaExtra} placeholder="0"
                       onChange={e => setGananciaExtra(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") { onActualizar(id, { descuento: parseFloat(descuento) || 0, gananciaExtra: parseFloat(gananciaExtra) || 0 }); e.target.blur(); } }}
-                      style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "4px 8px", width: 100, textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "#7ecf8a", outline: "none" }}
-                      onFocus={e => e.target.style.borderColor = "#7ecf8a"}
+                      style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "4px 8px", width: 100, textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--color-positive)", outline: "none" }}
+                      onFocus={e => e.target.style.borderColor = "var(--color-positive)"}
                       onBlur={e => e.target.style.borderColor = "var(--border)"}
                     />
                     <button
@@ -369,7 +369,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                         width: 26, height: 26, borderRadius: 6, cursor: "pointer", flexShrink: 0,
                         background: parseFloat(gananciaExtra) !== gananciaExtraVal ? "rgba(126,207,138,0.2)" : "var(--bg-base)",
                         border: `1px solid ${parseFloat(gananciaExtra) !== gananciaExtraVal ? "#7ecf8a" : "var(--border)"}`,
-                        color: "#7ecf8a", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s",
+                        color: "var(--color-positive)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s",
                       }}>✓</button>
                   </div>
                 </div>
@@ -385,7 +385,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     Costo real (manual)
-                    {p.costoReal > 0 && <span style={{ fontSize: 10, color: "#7ecf8a", marginLeft: 6 }}>● activo</span>}
+                    {p.costoReal > 0 && <span style={{ fontSize: 10, color: "var(--color-positive)", marginLeft: 6 }}>● activo</span>}
                   </span>
                   {editandoCosto ? (
                     <div style={{ display: "flex", gap: 4 }}>
@@ -587,7 +587,7 @@ function ResumenMensual({ entries }) {
                     <div style={{ height: "100%", width: `${pct}%`, background: pctColor, borderRadius: 999, transition: "width 0.4s" }} />
                   </div>
                 </div>
-                <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(d.cobrado)}</div>
+                <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--color-positive)" }}>{fmtPeso(d.cobrado)}</div>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: pctColor, textAlign: "center" }}>{pct}%</span>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "var(--text-muted)", textAlign: "center" }}>{d.trabajos}</span>
               </div>
@@ -675,7 +675,7 @@ function PanelCaja({ presupuestos, onActualizar, modulos, costos, cajaPresId, on
             </div>
             <div className="anim-fadeup stagger-2" style={{ ...metricaStyle, borderTop: "3px solid #7ecf8a" }}>
               <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: 6 }}>Total cobrado</div>
-              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(totalCobrado)}</div>
+              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: "var(--color-positive)" }}>{fmtPeso(totalCobrado)}</div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3, fontWeight: 300 }}>
                 {totalPresupuestado !== 0 ? Math.round((totalCobrado / Math.abs(totalPresupuestado)) * 100) : 0}% del total
               </div>

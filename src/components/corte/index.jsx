@@ -342,7 +342,7 @@ function TablaGrupoCorte({ nombreMat, piezas, rotadas, onToggleRotar, onOptimiza
                           onMouseEnter={e => { e.currentTarget.style.background = "var(--accent-soft)"; }}
                           onMouseLeave={e => { e.currentTarget.style.background = expanded ? "rgba(212,175,55,0.06)" : "transparent"; }}
                         >
-                          <td style={{ ...tdStyle, textAlign: "center", fontFamily: "'DM Mono',monospace", color: "#c8d098", fontSize: 14, fontWeight: 700 }}>
+                          <td style={{ ...tdStyle, textAlign: "center", fontFamily: "'DM Mono',monospace", color: "var(--color-positive-muted)", fontSize: 14, fontWeight: 700 }}>
                             {grupo.d1} × {grupo.d2} mm
                           </td>
                           <td style={{ ...tdStyle, fontWeight: 600 }}>
@@ -750,13 +750,13 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
                   borderRadius: 8, marginBottom: 16, flexWrap: 'wrap',
                 }}>
                   <span style={{ fontSize: 13 }}>✓</span>
-                  <span style={{ fontSize: 12, color: '#7ecf8a', fontWeight: 700, flex: 1 }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-positive)', fontWeight: 700, flex: 1 }}>
                     Desperdicio real ({presActivo.desperdicioOverride}%) aplicado · El total se actualizará la próxima vez que recalculés el presupuesto.
                   </span>
                   {onActualizarPresupuesto && (
                     <button
                       onClick={() => onActualizarPresupuesto(presIdActivo, { desperdicioOverride: null })}
-                      style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: '4px 10px', borderRadius: 5, cursor: 'pointer', background: 'none', border: '1px solid rgba(126,207,138,0.4)', color: '#7ecf8a' }}
+                      style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: '4px 10px', borderRadius: 5, cursor: 'pointer', background: 'none', border: '1px solid rgba(126,207,138,0.4)', color: 'var(--color-positive)' }}
                     >Revertir</button>
                   )}
                 </div>

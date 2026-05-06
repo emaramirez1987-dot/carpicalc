@@ -837,7 +837,7 @@ function ResumenPresupuesto({
                     fontFamily: "'DM Mono',monospace",
                     fontSize: 15,
                     fontWeight: 700,
-                    color: "#7ecf8a"
+                    color: "var(--color-positive)"
                   }}
                 >
                   {fmtPeso(calc.total * item.cantidad)}
@@ -892,7 +892,7 @@ function ResumenPresupuesto({
                       {fmtPeso(mostrarIVA ? totalConIVA : totalGeneral)}
                     </div>
                   )}
-                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 30, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1, color: "#7ecf8a", transition: "all 0.2s" }}>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 30, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1, color: "var(--color-positive)", transition: "all 0.2s" }}>
                     {fmtPeso(mostrarIVA ? totalAjustadoConIVA : tv.totalFinal)}
                   </div>
                   {tv.hayDescuento && (
@@ -911,7 +911,7 @@ function ResumenPresupuesto({
                   <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 4, color: "var(--text-muted)" }}>
                     {mostrarIVA ? "Total + IVA 21%" : "Total sin IVA"}
                   </div>
-                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 30, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1, color: "#7ecf8a", transition: "all 0.2s" }}>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 30, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1, color: "var(--color-positive)", transition: "all 0.2s" }}>
                     {fmtPeso(mostrarIVA ? totalConIVA : totalGeneral)}
                   </div>
                   {mostrarIVA && (
@@ -980,7 +980,7 @@ function BarraTotal({ items, modulos, costos, getModUsado, totalGeneral, nombreP
             </span>
           )}
           {/* Total final — verde destacado */}
-          <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 900, color: "#7ecf8a", letterSpacing: -0.5 }}>
+          <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 900, color: "var(--color-positive)", letterSpacing: -0.5 }}>
             {fmtPeso(mostrarIVA ? (hayAjuste ? totalFinalConIVA : totalConIVA) : (hayAjuste ? tv.totalFinal : totalGeneral))}
           </span>
           {mostrarIVA && !hayAjuste && (
@@ -1096,7 +1096,7 @@ function SeccionCostosDirectos({ costosDirectos, setCostosDirectos, costos, sinC
                     </span>
                     <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)", fontWeight: 500 }}>{x.nombre}</span>
                     <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>{x.cantidad} {x.unidad} × {fmtPeso(x.precioUnit)}</span>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.subtotal)}</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--color-positive)" }}>{fmtPeso(x.subtotal)}</span>
                     {hayCambio && (
                       <button onClick={() => actualizarPrecio(x.id)} title={`Precio actual en Costos: ${fmtPeso(precActual)}`}
                         style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, cursor: "pointer", background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.35)", color: "#c8a02a", fontFamily: "'DM Mono',monospace", fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
@@ -1200,7 +1200,7 @@ function SeccionCostosDirectos({ costosDirectos, setCostosDirectos, costos, sinC
         <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-muted)" }}>
           🔩 Costos directos del taller
         </span>
-        {costosDirectos.length > 0 && <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(totalSeccion)}</span>}
+        {costosDirectos.length > 0 && <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--color-positive)" }}>{fmtPeso(totalSeccion)}</span>}
       </div>
       {inner}
     </div>
@@ -1268,7 +1268,7 @@ function SeccionAdicionales({ adicionales, setAdicionales, costos, onGuardarFrec
             {adicionales.map(x => (
               <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--bg-subtle)", borderRadius: 8, border: "1px solid var(--border)" }}>
                 <span style={{ fontSize: 13, flex: 1, color: "var(--text-primary)" }}>{x.nombre}</span>
-                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(x.monto)}</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--color-positive)" }}>{fmtPeso(x.monto)}</span>
                 {confirmDelExtra === x.id ? (
                   <div style={{ display: "flex", gap: 4 }}>
                     <button onClick={() => { setAdicionales(prev => prev.filter(a => a.id !== x.id)); setConfirmDelExtra(null); }}
@@ -1360,7 +1360,7 @@ function SeccionAdicionales({ adicionales, setAdicionales, costos, onGuardarFrec
           🧾 Gastos Extras / Adicionales
         </span>
         {adicionales.length > 0 && (
-          <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>
+          <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--color-positive)" }}>
             {fmtPeso(adicionales.reduce((a, x) => a + x.monto, 0))}
           </span>
         )}
@@ -1504,7 +1504,7 @@ function GestorPresupuestos({
                       <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, fontFamily: "'DM Mono',monospace" }}>
                         {fmtFecha(parseInt(id))} · {p.items?.length || 0} mód.
                         {p.cliente?.nombre && <span> · 👤 {p.cliente.nombre}</span>}
-                        <span style={{ color: "#7ecf8a", fontWeight: 700, marginLeft: 8 }}>{fmtPeso(p.total)}</span>
+                        <span style={{ color: "var(--color-positive)", fontWeight: 700, marginLeft: 8 }}>{fmtPeso(p.total)}</span>
                       </div>
                     </div>
 
@@ -1559,7 +1559,7 @@ function GestorPresupuestos({
                 {/* Aviso compacto de precio desactualizado */}
                 {actualizadoId === id ? (
                   <div style={{ padding: "5px 14px 8px", display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>
+                    <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--color-positive)" }}>
                       ✓ Actualizado
                     </span>
                   </div>
@@ -1907,7 +1907,7 @@ function Presupuesto({
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {tieneContenidoEditor && (
-              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>
+              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "var(--color-positive)" }}>
                 {fmtPeso(totalGeneral)}
               </span>
             )}
@@ -2249,8 +2249,8 @@ function Presupuesto({
 
                   {/* Precio — mismo estilo que catálogo */}
                   <div style={{ display: "flex", gap: 16, flexShrink: 0, fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
-                    <span style={{ color: "#9ab080" }}>{fmtNum(calc.m2Neto)} m²</span>
-                    <span style={{ color: "#7ecf8a", fontWeight: 700 }}>{fmtPeso(calc.total * item.cantidad)}</span>
+                    <span style={{ color: "var(--color-positive-muted)" }}>{fmtNum(calc.m2Neto)} m²</span>
+                    <span style={{ color: "var(--color-positive)", fontWeight: 700 }}>{fmtPeso(calc.total * item.cantidad)}</span>
                   </div>
 
                   {/* Acciones: ✎ y × */}
@@ -2383,7 +2383,9 @@ function Presupuesto({
                           if (!modInicial) return;
                           setModalModulo({ item, modInicial });
                         }}
-                        style={{ flex: 1, padding: "5px 0", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                        style={{ flex: 1, padding: "6px 0", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "var(--bg-subtle)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", transition: "all 0.15s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "var(--accent-soft)"; e.currentTarget.style.borderColor = "var(--accent-border)"; e.currentTarget.style.color = "var(--accent)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-subtle)"; e.currentTarget.style.borderColor = "var(--border-strong)"; e.currentTarget.style.color = "var(--text-primary)"; }}>
                         ✏ Piezas/herrajes
                       </button>
                       <button onClick={() => setModalEdicion(null)}
@@ -2421,7 +2423,7 @@ function Presupuesto({
                       Extra
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.nombre}</span>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", whiteSpace: "nowrap" }}>{fmtPeso(x.monto)}</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--color-positive)", whiteSpace: "nowrap" }}>{fmtPeso(x.monto)}</span>
                     <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
                       <button onClick={() => {
                         if (editandoEste) { setEditandoExtraId(null); setEditandoExtraForm(null); }
@@ -2452,8 +2454,8 @@ function Presupuesto({
                         onBlur={e => e.target.style.borderColor = "var(--border)"} />
                       <input type="number" min="0" value={editandoExtraForm.monto}
                         onChange={e => setEditandoExtraForm(f => ({ ...f, monto: e.target.value }))}
-                        style={{ width: 100, fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: "6px 10px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "#7ecf8a", outline: "none" }}
-                        onFocus={e => e.target.style.borderColor = "#7ecf8a"}
+                        style={{ width: 100, fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: "6px 10px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--color-positive)", outline: "none" }}
+                        onFocus={e => e.target.style.borderColor = "var(--color-positive)"}
                         onBlur={e => e.target.style.borderColor = "var(--border)"} />
                       <button onClick={() => {
                         const nuevoNombre = editandoExtraForm.nombre.trim();
@@ -2514,7 +2516,7 @@ function Presupuesto({
                         {x.cantidad} {x.unidad}
                       </div>
                     </div>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a", whiteSpace: "nowrap" }}>{fmtPeso(x.subtotal)}</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--color-positive)", whiteSpace: "nowrap" }}>{fmtPeso(x.subtotal)}</span>
                     <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
                       {confirmDelModulo === `cd-${x.id}` ? (
                         <>

@@ -63,7 +63,7 @@ export const ESTADOS_TRABAJO = [
   { id: "enviado",    label: "Enviado",         color: "#c8a030", icon: "📤" },
   { id: "aceptado",   label: "Aceptado",        color: "#60a870", icon: "✅" },
   { id: "produccion", label: "En producción",   color: "#c85030", icon: "🪚" },
-  { id: "entregado",  label: "Entregado",       color: "#7ecf8a", icon: "📦" },
+  { id: "entregado",  label: "Entregado",       color: "var(--color-positive)", icon: "📦" },
 ];
 
 // ════════════════════════════════════════════════════════════════════════════

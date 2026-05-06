@@ -53,7 +53,7 @@ function HcBtnOk({ onClick }) {
         ...hcBb,
         background: "rgba(100,180,80,0.12)",
         borderColor: "rgba(100,180,80,0.35)",
-        color: "#7ecf8a",
+        color: "var(--color-positive)",
       }}
     >
       ✓ guardar
@@ -444,7 +444,7 @@ function SeccionGastosFijos({ costos, save }) {
           {[
             { label: "Total mensual", valor: fmtPeso(totalMensual), sub: "gastos fijos del taller", color: "var(--accent)", icon: "📅" },
             { label: "Costo diario", valor: fmtPeso(Math.round(costoDiario)), sub: "÷ 22 días laborales", color: "#7090c0", icon: "📆" },
-            { label: "Costo por hora", valor: fmtPeso(Math.round(costoHora)), sub: `÷ ${gf.horasProductivasMes} hs productivas`, color: "#7ecf8a", icon: "⏱" },
+            { label: "Costo por hora", valor: fmtPeso(Math.round(costoHora)), sub: `÷ ${gf.horasProductivasMes} hs productivas`, color: "var(--color-positive)", icon: "⏱" },
           ].map(({ label, valor, sub, color, icon }) => (
             <div key={label} style={{
               background: "var(--bg-surface)", border: `1px solid ${color}30`,
@@ -670,7 +670,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
             ) : (
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={aplicarInflacion}
-                  style={{ padding: "9px 16px", background: "rgba(100,180,80,0.15)", border: "1px solid rgba(100,180,80,0.4)", color: "#7ecf8a", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontWeight: 700, fontSize: 12 }}>
+                  style={{ padding: "9px 16px", background: "rgba(100,180,80,0.15)", border: "1px solid rgba(100,180,80,0.4)", color: "var(--color-positive)", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontWeight: 700, fontSize: 12 }}>
                   ✓ Confirmar
                 </button>
                 <button onClick={() => setConfirmInflacion(false)}

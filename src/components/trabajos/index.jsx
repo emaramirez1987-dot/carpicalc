@@ -86,7 +86,7 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, 
         {fmtFecha(parseInt(id))} · {p.items.length} mód.
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "var(--color-positive)" }}>{fmtPeso(p.total)}</span>
         <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }}>
           {esProduccion && modulos && costos && (
             <button onClick={() => generarFichaObra(id, p, modulos, costos, leerPerfil())}
@@ -146,7 +146,7 @@ function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, cost
           </div>
           {/* Mobile row */}
           <div className="lista-mobile-row" style={{ display: "none", marginTop: 8, alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--color-positive)" }}>{fmtPeso(p.total)}</span>
             <select value={p.estado || "nuevo"} onChange={e => { e.stopPropagation(); onCambiarEstado(id, e.target.value); }}
               onClick={e => e.stopPropagation()}
               style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "4px 6px", background: `${est.color}18`, border: `1px solid ${est.color}44`, color: est.color, borderRadius: 6, cursor: "pointer", outline: "none", fontWeight: 700 }}>
@@ -154,7 +154,7 @@ function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, cost
             </select>
           </div>
         </div>
-        <div className="lista-desktop-col" style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "#7ecf8a", textAlign: "right" }}>
+        <div className="lista-desktop-col" style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--color-positive)", textAlign: "right" }}>
           {fmtPeso(p.total)}
         </div>
         <select className="lista-desktop-col" value={p.estado || "nuevo"}
@@ -248,12 +248,12 @@ function TabPresupuestoTrabajo({ p, modulos, costos }) {
                 {dims.ancho}×{dims.profundidad}×{dims.alto} mm · ×{item.cantidad}
               </div>
             </div>
-            {calc && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#7ecf8a", flexShrink: 0 }}>{fmtPeso(calc.total * item.cantidad)}</span>}
+            {calc && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--color-positive)", flexShrink: 0 }}>{fmtPeso(calc.total * item.cantidad)}</span>}
           </div>
         );
       })}
       <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid var(--separator)" }}>
-        <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 900, color: "#7ecf8a" }}>{fmtPeso(p.total)}</span>
+        <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 900, color: "var(--color-positive)" }}>{fmtPeso(p.total)}</span>
       </div>
     </div>
   );
@@ -291,8 +291,8 @@ function TabCorteTrabajo({ p, modulos, costos }) {
             <tr key={i} style={{ borderBottom: "1px solid var(--separator)" }}>
               <td style={{ padding: "6px 10px", fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>{pz.modulo}</td>
               <td style={{ padding: "6px 10px", fontWeight: 600, color: "var(--text-primary)" }}>{pz.nombre}</td>
-              <td style={{ padding: "6px 10px", fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>{pz.d1}</td>
-              <td style={{ padding: "6px 10px", fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "#7ecf8a" }}>{pz.d2}</td>
+              <td style={{ padding: "6px 10px", fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--color-positive)" }}>{pz.d1}</td>
+              <td style={{ padding: "6px 10px", fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--color-positive)" }}>{pz.d2}</td>
               <td style={{ padding: "6px 10px", fontFamily: "'DM Mono',monospace", fontWeight: 900, color: "var(--accent)" }}>×{pz.cant}</td>
             </tr>
           ))}
@@ -436,7 +436,7 @@ function TabNotas({ id, p, onActualizar }) {
           ✓ Guardar nota
         </button>
         {guardado && (
-          <span style={{ fontSize: 11, color: "#7ecf8a", fontFamily: "'DM Mono',monospace" }}>✓ Guardado</span>
+          <span style={{ fontSize: 11, color: "var(--color-positive)", fontFamily: "'DM Mono',monospace" }}>✓ Guardado</span>
         )}
       </div>
     </div>

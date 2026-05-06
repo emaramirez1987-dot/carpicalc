@@ -303,7 +303,7 @@ export function PanelPerfil({ perfil, onGuardar, suscripcion }) {
             </button>
           </div>
           {passError && <div style={{ fontSize: 11, color: "#e07070", fontFamily: "'DM Mono',monospace" }}>⚠ {passError}</div>}
-          {passOk    && <div style={{ fontSize: 11, color: "#7ecf8a", fontFamily: "'DM Mono',monospace" }}>✓ Contraseña actualizada correctamente</div>}
+          {passOk    && <div style={{ fontSize: 11, color: "var(--color-positive)", fontFamily: "'DM Mono',monospace" }}>✓ Contraseña actualizada correctamente</div>}
           <button onClick={handleCambiarPass}
             style={{ padding: "10px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-secondary)", transition: "all 0.2s" }}>
             Actualizar contraseña

@@ -131,7 +131,7 @@ function ListaItemsVP({ items, modulos, costos, dimOverride, composicionOverride
           <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 7, background: esOculto ? "rgba(200,60,60,0.05)" : "var(--bg-subtle)", border: `1px solid ${esOculto ? "rgba(200,60,60,0.20)" : "var(--border)"}`, opacity: esOculto ? 0.6 : 1 }}>
             <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: COLOR_CD[x.tipo] || "var(--text-secondary)", minWidth: 54 }}>{LABEL_CD[x.tipo] || x.tipo}</span>
             <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.nombre}</span>
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "#7ecf8a", flexShrink: 0 }}>{fmtPeso(x.subtotal)}</span>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--color-positive)", flexShrink: 0 }}>{fmtPeso(x.subtotal)}</span>
             <BtnOjo keyId={keyId} itemsOcultos={itemsOcultos} onToggleOculto={onToggleOculto} />
           </div>
         );
@@ -144,7 +144,7 @@ function ListaItemsVP({ items, modulos, costos, dimOverride, composicionOverride
           <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 7, background: esOculto ? "rgba(200,60,60,0.05)" : "var(--bg-subtle)", border: `1px solid ${esOculto ? "rgba(200,60,60,0.20)" : "var(--border)"}`, opacity: esOculto ? 0.6 : 1 }}>
             <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-muted)", minWidth: 54 }}>EXTRA</span>
             <span style={{ flex: 1, fontSize: 12, fontStyle: "italic", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.nombre}</span>
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "#7ecf8a", flexShrink: 0 }}>{fmtPeso(x.monto)}</span>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--color-positive)", flexShrink: 0 }}>{fmtPeso(x.monto)}</span>
             <BtnOjo keyId={keyId} itemsOcultos={itemsOcultos} onToggleOculto={onToggleOculto} />
           </div>
         );
@@ -359,7 +359,7 @@ function VistaPrevia({
           </button>
         )}
         {actualizadoVP && (
-          <span style={{ padding: "6px 10px", borderRadius: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(126,207,138,0.15)", border: "1px solid rgba(126,207,138,0.40)", color: "#7ecf8a", whiteSpace: "nowrap" }}>✓ Actualizado</span>
+          <span style={{ padding: "6px 10px", borderRadius: 6, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(126,207,138,0.15)", border: "1px solid rgba(126,207,138,0.40)", color: "var(--color-positive)", whiteSpace: "nowrap" }}>✓ Actualizado</span>
         )}
 
         {/* WA */}
@@ -456,7 +456,7 @@ function VistaPrevia({
                         <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: tv.hayDescuento ? "var(--text-muted)" : "#7ecf8a", textDecoration: tv.hayDescuento ? "line-through" : "none", opacity: tv.hayDescuento ? 0.55 : 1 }}>
                           {fmtPeso(p.total)}
                         </div>
-                        {tv.hayDescuento && <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "#7ecf8a" }}>{fmtPeso(tv.totalFinal)}</div>}
+                        {tv.hayDescuento && <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--color-positive)" }}>{fmtPeso(tv.totalFinal)}</div>}
                       </div>
                       <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                         {onVerRentabilidad && (
@@ -713,7 +713,7 @@ function VistaPrevia({
                     Total del presupuesto
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: "#7ecf8a" }}>
+                    <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: "var(--color-positive)" }}>
                       {fmtPeso(hayAjustes ? totalAjustado : presSel.total)}
                     </span>
                     {hayAjustes && (
@@ -771,12 +771,12 @@ function VistaPrevia({
                           />
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: "#7ecf8a", marginBottom: 5 }}>💵 Extra +</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--color-positive)", marginBottom: 5 }}>💵 Extra +</div>
                           <input type="number" min="0" value={gananciaExtraVP} placeholder="0"
                             onChange={e => setGananciaExtraVP(e.target.value)}
                             onKeyDown={e => e.key === "Enter" && guardarAjuste(descuentoVP, gananciaExtraVP)}
-                            style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "6px 8px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "#7ecf8a", outline: "none", boxSizing: "border-box" }}
-                            onFocus={e => e.target.style.borderColor = "#7ecf8a"}
+                            style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "6px 8px", textAlign: "right", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--color-positive)", outline: "none", boxSizing: "border-box" }}
+                            onFocus={e => e.target.style.borderColor = "var(--color-positive)"}
                             onBlur={e => { e.target.style.borderColor = "var(--border)"; guardarAjuste(descuentoVP, gananciaExtraVP); }}
                           />
                         </div>

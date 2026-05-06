@@ -7,7 +7,7 @@ import { exportarSVG, exportarPNG } from "./planoUtils.js";
 const TIPO_META = {
   bajo:  { label: "Bajo",  color: "#7090c8" },
   aereo: { label: "Aéreo", color: "#a070c8" },
-  torre: { label: "Torre", color: "#7ecf8a" },
+  torre: { label: "Torre", color: "var(--color-positive)" },
 };
 
 function btnStyle({ primary = false, disabled = false } = {}) {

@@ -69,6 +69,8 @@ const GlobalStyles = () => (
       --separator:rgba(255,255,255,0.05);
       --grain-opacity:0.032;
       --bg-nav:rgba(8,10,13,0.92);
+      --color-positive:#7ecf8a;
+      --color-positive-muted:#9ab080;
     }
 
     /* ── Modo claro ─────────────────────────────────────────────── */
@@ -94,6 +96,8 @@ const GlobalStyles = () => (
       --separator:rgba(0,0,0,0.05);
       --grain-opacity:0.018;
       --bg-nav:rgba(236,234,227,0.92);
+      --color-positive:#1C1A16;
+      --color-positive-muted:#6B5E45;
     }
 
     /* ── Grain texture — profundidad sin peso visual ─────────────── */
@@ -643,7 +647,7 @@ function SaveIndicator({ estado }) {
       icon: "⟳",
       label: "Guardando..."
     },
-    guardado: { color: "#7ecf8a", icon: "✓", label: "Guardado" },
+    guardado: { color: "var(--color-positive)", icon: "✓", label: "Guardado" },
     error: { color: "#e07070", icon: "✗", label: "Error" }
   }[estado];
   if (!cfg) return null;
