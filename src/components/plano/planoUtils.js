@@ -1,3 +1,5 @@
+import { generarVistaSVG } from "../../utils.js";
+
 // ── Cálculo de layout SVG ─────────────────────────────────────────────────
 // gapPx: separación visual fija en píxeles entre bloques (no representa mm reales)
 export function calcularLayout(bloques, plotW, plotH, altoCielorraso = 2400, gapPx = 0) {
@@ -97,8 +99,20 @@ export function svgABase64(svgEl) {
 
 // ── Imagen de referencia para img2img (solo módulos, ampliados) ──────────────
 // Genera un JPEG base64 con los módulos centrados sobre fondo blanco.
-// Sin decoraciones de sala — el AI solo ve la estructura del mueble.
-export async function generarImagenReferencia({ bloquesAltos = [], bloquesBajos = [] }) {
+// Usa generarVistaSVG para renderizar la composición visual de cada módulo.
+// Si el módulo no tiene vistaConfig, dibuja un rectángulo con borde.
+function cargarImagenSVG(svgStr, w, h) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" }));
+    const img = new Image();
+    img.onload  = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.width = w; img.height = h;
+    img.src = url;
+  });
+}
+
+export async function generarImagenReferencia({ bloquesAltos = [], bloquesBajos = [], composicionOverride = {}, modulos = {} }) {
   const W = 800, H = 600;
   const PAD_X = 50, PAD_Y = 40;
   const plotW = W - 2 * PAD_X;
@@ -123,50 +137,68 @@ export async function generarImagenReferencia({ bloquesAltos = [], bloquesBajos 
   const altosStartX = PAD_X + (plotW - altosW) / 2;
   const floorY     = PAD_Y + plotH;
 
-  const rects = [];
+  // Construir lista de bloques con sus posiciones canvas
+  const tareas = [];
 
   let x = bajosStartX;
   bloquesBajos.forEach(b => {
-    const w = b.ancho * scale, h = b.alto * scale;
-    const y = floorY - h;
-    rects.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#D4E0F5" stroke="#6884C8" stroke-width="1.5" rx="2"/>`);
-    x += w;
+    const pw = b.ancho * scale, ph = b.alto * scale;
+    tareas.push({ b, cx: x, cy: floorY - ph, pw, ph });
+    x += pw;
   });
 
   x = altosStartX;
   bloquesAltos.forEach(b => {
-    const w = b.ancho * scale, h = b.alto * scale;
-    const y = floorY - totalAltoMM * scale;
-    rects.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#E5D4F5" stroke="#A064C8" stroke-width="1.5" rx="2"/>`);
-    x += w;
+    const pw = b.ancho * scale, ph = b.alto * scale;
+    tareas.push({ b, cx: x, cy: floorY - totalAltoMM * scale, pw, ph });
+    x += pw;
   });
 
-  const svgStr = [
-    `<?xml version="1.0" encoding="UTF-8"?>`,
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
-    `<rect width="${W}" height="${H}" fill="#FAFAF7"/>`,
-    ...rects,
-    `<line x1="${PAD_X}" y1="${floorY.toFixed(1)}" x2="${W - PAD_X}" y2="${floorY.toFixed(1)}" stroke="#9A8060" stroke-width="2" opacity="0.6"/>`,
-    `</svg>`,
-  ].join("");
+  // Pre-renderizar vistaConfig de cada bloque como Image
+  const imagenes = await Promise.all(tareas.map(async ({ b, pw, ph }) => {
+    const mod = modulos[b.codigo];
+    if (!mod) return null;
+    const compOverride = b.itemId ? composicionOverride[b.itemId] : undefined;
+    const vistaConfig  = compOverride?.vistaConfig ?? mod.vistaConfig;
+    if (!vistaConfig) return null;
+    const modConDims = { ...mod, dimensiones: { ...mod.dimensiones, ancho: b.ancho, alto: b.alto }, vistaConfig };
+    const svgStr = generarVistaSVG(modConDims, { width: Math.ceil(pw), height: Math.ceil(ph), theme: "light", plano: true });
+    return cargarImagenSVG(svgStr, Math.ceil(pw), Math.ceil(ph));
+  }));
 
-  return new Promise((resolve, reject) => {
-    const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
-    const url  = URL.createObjectURL(blob);
-    const img  = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = W; canvas.height = H;
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#FAFAF7";
-      ctx.fillRect(0, 0, W, H);
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.90).split(",")[1]);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Error generando imagen referencia")); };
-    img.src = url;
+  // Dibujar todo en canvas
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, W, H);
+
+  tareas.forEach(({ b, cx, cy, pw, ph }, idx) => {
+    const img = imagenes[idx];
+    if (img) {
+      ctx.drawImage(img, cx, cy, pw, ph);
+    } else {
+      // Fallback: rectángulo con borde negro
+      ctx.fillStyle   = b.tipoVisual === "aereo" ? "#F0E8FF" : "#EAF0FF";
+      ctx.strokeStyle = "#333333";
+      ctx.lineWidth   = 1.5;
+      ctx.fillRect(cx, cy, pw, ph);
+      ctx.strokeRect(cx, cy, pw, ph);
+    }
   });
+
+  // Línea de piso
+  ctx.strokeStyle = "#888888";
+  ctx.lineWidth   = 2;
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(PAD_X, floorY);
+  ctx.lineTo(W - PAD_X, floorY);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  return canvas.toDataURL("image/jpeg", 0.92).split(",")[1];
 }
 
 // ── Exportar PNG (retina 2×) ──────────────────────────────────────────────
