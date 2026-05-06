@@ -214,7 +214,7 @@ export async function cargarSuscripcion() {
     if (!wsId) return null;
     const { data } = await supabase
       .from("subscriptions")
-      .select("estado, trial_ends_at, current_period_end, plan_id, mp_preapproval_id")
+      .select("estado, trial_ends_at, current_period_end, plan_id, mp_preapproval_id, renders_usados, renders_reset_at")
       .eq("workspace_id", wsId)
       .single();
     return data || null;

@@ -541,6 +541,7 @@ function AppInterna() {
                 presupuestoActivoId={presupuestoActivoId}
                 presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
                 presupuestos={presupuestos}
+                suscripcion={suscripcion}
               />
             </div>
 

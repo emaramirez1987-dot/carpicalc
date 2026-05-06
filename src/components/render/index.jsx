@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { SectionTitle } from "../ui/index.jsx";
 import { leerPlano, leerPromptsRender, guardarPromptsRender } from "../../storage.js";
+import { PLANES_RENDER } from "../../constants.js";
 import SVGPlano from "../plano/SVGPlano.jsx";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -218,9 +219,25 @@ function GestorPrompts({ prompts, onEliminar, onActualizar, onUsar }) {
   );
 }
 
+// ── Helpers de créditos ───────────────────────────────────────────────────────
+
+function calcularCreditos(suscripcion) {
+  if (!suscripcion) return { usados: 0, limite: 0, restantes: 0, bloqueado: true };
+  const { estado, plan_id, renders_usados } = suscripcion;
+  if (!["trialing", "active"].includes(estado)) {
+    return { usados: 0, limite: 0, restantes: 0, bloqueado: true };
+  }
+  const planKey  = estado === "trialing" ? "trialing" : (plan_id || "plata");
+  const plan     = PLANES_RENDER[planKey] ?? PLANES_RENDER.plata;
+  const usados   = renders_usados || 0;
+  const limite   = plan.renders;
+  const restantes = limite === null ? Infinity : Math.max(0, limite - usados);
+  return { usados, limite, restantes, bloqueado: restantes === 0 };
+}
+
 // ── Panel de prompt activo ────────────────────────────────────────────────────
 
-function PanelPrompt({ prompt, onPromptChange, onGuardar }) {
+function PanelPrompt({ prompt, onPromptChange, onGuardar, creditos }) {
   const [nombre, setNombre]         = useState("");
   const [guardadoOk, setGuardadoOk] = useState(false);
 
@@ -260,9 +277,18 @@ function PanelPrompt({ prompt, onPromptChange, onGuardar }) {
         >
           {guardadoOk ? "✓ Guardado" : "Guardar prompt"}
         </button>
-        <button disabled title="Disponible en Fase 3" style={{ ...btnSm("accent"), opacity: 0.4, cursor: "default" }}>
+        <button disabled title="Disponible próximamente" style={{ ...btnSm("accent"), opacity: 0.4, cursor: "default" }}>
           ▶ Generar render
         </button>
+        {creditos && (
+          <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: creditos.bloqueado ? "#e07070" : "var(--text-muted)", whiteSpace: "nowrap" }}>
+            {creditos.bloqueado
+              ? "Sin renders este mes"
+              : creditos.limite === null
+                ? `${creditos.usados} usados · ∞`
+                : `${creditos.restantes} render${creditos.restantes !== 1 ? "s" : ""} disponible${creditos.restantes !== 1 ? "s" : ""}`}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -279,6 +305,7 @@ export function RenderIA({
   presupuestoActivoId = null,
   presupuestoVistaPreviaId = null,
   presupuestos = {},
+  suscripcion = null,
 }) {
   const [modo, setModo]         = useState("svg");
   const [bloques, setBloques]   = useState([]);
@@ -328,6 +355,7 @@ export function RenderIA({
 
   const sinDatos  = bloques.length === 0;
   const svgProps  = { bloques, idsBajos, idsAltos, altoCielorraso: alto, composicionOverride, modulos };
+  const creditos  = calcularCreditos(suscripcion);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -376,6 +404,7 @@ export function RenderIA({
             prompt={prompt}
             onPromptChange={setPrompt}
             onGuardar={handleGuardarPrompt}
+            creditos={creditos}
           />
           <GestorPrompts
             prompts={prompts}

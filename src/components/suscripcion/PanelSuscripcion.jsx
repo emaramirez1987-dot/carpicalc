@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Card } from "../ui/index.jsx";
 import { supabase } from "../../lib/supabase.js";
+import { PLANES_RENDER } from "../../constants.js";
 
 export function PanelSuscripcion({ suscripcion }) {
   const [loading,         setLoading]         = useState(false);
@@ -9,7 +10,13 @@ export function PanelSuscripcion({ suscripcion }) {
 
   if (!suscripcion) return null;
 
-  const { estado, trial_ends_at, current_period_end, mp_preapproval_id } = suscripcion;
+  const { estado, trial_ends_at, current_period_end, plan_id, mp_preapproval_id, renders_usados } = suscripcion;
+
+  const planKey    = estado === "trialing" ? "trialing" : (plan_id || "plata");
+  const planInfo   = PLANES_RENDER[planKey] ?? PLANES_RENDER.plata;
+  const usados     = renders_usados || 0;
+  const limite     = planInfo.renders;
+  const sinCreditos = limite !== null && usados >= limite;
 
   const diasTrial = trial_ends_at
     ? Math.ceil((new Date(trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24))
@@ -147,6 +154,27 @@ export function PanelSuscripcion({ suscripcion }) {
       )}
 
       {error && <div style={{ fontSize: 11, color: "#e07070", fontFamily: "'DM Mono',monospace", marginTop: 8 }}>⚠ {error}</div>}
+      {["trialing", "active"].includes(estado) && (
+        <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 8, background: "var(--bg-base)", border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 6 }}>
+            Renders IA — {planInfo.nombre}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ flex: 1, height: 4, borderRadius: 2, background: "var(--border)", overflow: "hidden" }}>
+              {limite !== null && (
+                <div style={{ height: "100%", width: `${Math.min(100, (usados / limite) * 100)}%`, background: sinCreditos ? "#e07070" : "var(--accent)", borderRadius: 2, transition: "width 0.3s" }} />
+              )}
+            </div>
+            <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: sinCreditos ? "#e07070" : "var(--text-secondary)", whiteSpace: "nowrap" }}>
+              {limite === null ? `${usados} usados · ∞` : `${usados}/${limite} este mes`}
+            </span>
+          </div>
+          {sinCreditos && limite !== null && (
+            <div style={{ fontSize: 11, color: "#e07070", marginTop: 6 }}>Sin renders disponibles hasta el próximo mes</div>
+          )}
+        </div>
+      )}
+
       {mp_preapproval_id && (
         <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginTop: 8 }}>
           ID: {mp_preapproval_id}

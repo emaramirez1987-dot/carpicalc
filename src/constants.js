@@ -187,3 +187,12 @@ export const modulosIniciales = {
     moDeObra: { tipo: "por_modulo", horas: 0 },
   },
 };
+
+// ── Planes de suscripción — límites de renders ────────────────────────────
+// renders: null = ilimitado. Modificar aquí para ajustar límites por plan.
+export const PLANES_RENDER = {
+  trialing: { nombre: "Período de prueba", renders: 4  },
+  bronce:   { nombre: "Bronce",            renders: 5  },
+  plata:    { nombre: "Plata",             renders: 20 },
+  oro:      { nombre: "Oro",               renders: null },
+};
