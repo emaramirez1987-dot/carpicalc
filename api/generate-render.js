@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
   if (!deduct.ok) return res.status(403).json({ error: deduct.error });
 
   try {
-    const fullPrompt = `photorealistic interior design render, high quality professional photography, 8k resolution, ${prompt}, wooden furniture, cabinet making, soft lighting`;
+    const fullPrompt = `photorealistic interior design render, professional architectural photography, 8k resolution, centered composition, furniture filling the frame, ${prompt}, custom cabinet making, soft warm lighting, clean background wall`;
 
     // Con imagen de plano: flux-dev img2img (guiado por la composición 2D)
     // Sin imagen: flux-schnell text2img (fallback)
@@ -84,7 +84,7 @@ module.exports = async function handler(req, res) {
       ? {
           prompt:               fullPrompt,
           image:                `data:image/png;base64,${imageBase64}`,
-          strength:             0.5,
+          strength:             0.35,
           num_inference_steps:  28,
           guidance_scale:       3.5,
           num_outputs:          1,
