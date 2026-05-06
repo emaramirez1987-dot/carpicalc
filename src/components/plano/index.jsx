@@ -175,6 +175,7 @@ export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOve
   // vpPres como dep explícita garantiza re-ejecución cuando los datos cargan o cambian
   // aunque presupuestoVistaPreviaId sea el mismo.
   const vpPres = presupuestoVistaPreviaId ? (presupuestos[presupuestoVistaPreviaId] ?? null) : null;
+  const composicionActiva = presupuestoVistaPreviaId ? (vpPres?.composicionOverride || {}) : composicionOverride;
   useEffect(() => {
     if (!presupuestoVistaPreviaId) {
       // VP limpiado: restaurar plano del editor si hay uno activo
@@ -408,7 +409,7 @@ export function PlanoDos({ modulos, items = [], dimOverride = {}, composicionOve
           onSelect={setSelectedId}
           selectedId={selectedId}
           modulos={modulos}
-          composicionOverride={composicionOverride}
+          composicionOverride={composicionActiva}
           temaClaro={temaClaro}
           offsetBajos={offsetBajos}
           offsetAltos={offsetAltos}
