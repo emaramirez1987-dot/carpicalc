@@ -115,7 +115,7 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
             <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(212,175,55,0.18)", color: "var(--accent)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 4px", flexShrink: 0 }}>ESP</span>
           )}
         </div>
-        <div style={{ fontSize: 9, marginTop: 1, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div style={{ fontSize: 10, marginTop: 1, fontFamily: "'DM Mono',monospace", color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {pieza.especial
             ? `libre: ${pieza.dimLibre1 || 0}×${pieza.dimLibre2 || 0}mm`
             : pieza.formula1 != null
@@ -130,20 +130,20 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
       {/* Medidas */}
       <div style={metSt}>
         <div style={metLabel}>Medidas</div>
-        <div style={metVal}>{Math.round(d1)}×{Math.round(d2)}<span style={{ fontSize: 9, color: "var(--text-muted)", marginLeft: 1 }}>mm</span></div>
+        <div style={metVal}>{Math.round(d1)}×{Math.round(d2)}<span style={{ fontSize: 10, color: "var(--text-secondary)", marginLeft: 2 }}>mm</span></div>
       </div>
 
       {/* Área */}
       <div style={metSt}>
         <div style={metLabel}>Área</div>
-        <div style={metVal}>{fmtNum(area)}<span style={{ fontSize: 9, color: "var(--text-muted)", marginLeft: 1 }}>m²</span></div>
+        <div style={metVal}>{fmtNum(area)}<span style={{ fontSize: 10, color: "var(--text-secondary)", marginLeft: 2 }}>m²</span></div>
       </div>
 
       {/* Tapacanto */}
       {tcDef && (
         <div style={metSt}>
           <div style={metLabel}>Tapac.</div>
-          <div style={{ ...metVal, color: "var(--accent)" }}>{fmtNum(mTc, 2)}<span style={{ fontSize: 9, color: "var(--text-muted)", marginLeft: 1 }}>m</span></div>
+          <div style={{ ...metVal, color: "var(--accent)" }}>{fmtNum(mTc, 2)}<span style={{ fontSize: 10, color: "var(--text-secondary)", marginLeft: 2 }}>m</span></div>
         </div>
       )}
 
