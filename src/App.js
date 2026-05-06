@@ -537,6 +537,8 @@ function AppInterna() {
                 composicionOverride={composicionOverride}
                 inlineModulos={inlineModulos}
                 presupuestoActivoId={presupuestoActivoId}
+                presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
+                presupuestos={presupuestos}
               />
             </div>
 
