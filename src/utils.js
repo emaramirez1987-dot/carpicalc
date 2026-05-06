@@ -327,9 +327,11 @@ export function getPrecioRefActual(tipo, refId, costos) {
 export function resolverModuloDesdePresupuesto(p, item, modulos) {
   if (!modulos || !item || !p) return null;
   const cod   = item.codigo;
+  const keyId = item.id || cod;
+  // inlineModulo es la fuente de verdad cuando existe (piezas/herrajes editados)
+  if (p.inlineModulos && p.inlineModulos[keyId]) return p.inlineModulos[keyId];
   const base  = modulos[cod];
   if (!base) return null;
-  const keyId = item.id || cod;
   const over  = (p.dimOverride && p.dimOverride[keyId]) || {};
   return {
     ...base,
