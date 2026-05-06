@@ -122,9 +122,15 @@ function PanelSVG({ bloques, idsBajos, idsAltos, altoCielorraso, composicionOver
       flex: 1, background: "var(--bg-surface)", border: "1px solid var(--border)",
       borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column",
     }}>
-      <div style={{ padding: compact ? "8px 12px" : "10px 14px", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ padding: compact ? "8px 12px" : "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>
           📐 Plano técnico
+        </span>
+        <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: "2px 7px", borderRadius: 4,
+          background: bloques.length > 0 ? "rgba(80,180,100,0.12)" : "rgba(150,150,150,0.10)",
+          border: `1px solid ${bloques.length > 0 ? "rgba(80,180,100,0.35)" : "rgba(150,150,150,0.25)"}`,
+          color: bloques.length > 0 ? "#4ab870" : "var(--text-muted)" }}>
+          {bloques.length > 0 ? `✓ ${bloques.length} mód. — se usará como referencia` : "sin módulos — solo texto"}
         </span>
       </div>
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
@@ -351,8 +357,9 @@ export function RenderIA({
     setErrorRender(null);
     setImagenUrl(null);
     try {
+      // Solo usar img2img si hay bloques reales en el plano — imagen vacía confunde al modelo
       let imageBase64 = null;
-      if (svgRef.current) {
+      if (svgRef.current && bloques.length > 0) {
         try { imageBase64 = await svgABase64(svgRef.current); } catch {}
       }
       const res = await fetch("/api/generate-render", {
