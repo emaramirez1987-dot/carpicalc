@@ -76,7 +76,7 @@ function SeccionColapsable({ titulo, resumen, children, defaultOpen = false }) {
 }
 
 // ── ListaItemsVP (sidebar visibility panel) ───────────────────────────────
-function ListaItemsVP({ items, modulos, costos, dimOverride, costosDirectos = [], adicionales = [], itemsOcultos, onToggleOculto, mostrarPrecioUnitario }) {
+function ListaItemsVP({ items, modulos, costos, dimOverride, composicionOverride, costosDirectos = [], adicionales = [], itemsOcultos, onToggleOculto, mostrarPrecioUnitario }) {
   const { tema } = useTema();
   const validos = (items || []).filter(item => modulos[item.codigo]);
   const hayCDs  = costosDirectos.length > 0;
@@ -93,8 +93,9 @@ function ListaItemsVP({ items, modulos, costos, dimOverride, costosDirectos = []
       {validos.map((item) => {
         const keyId  = item.id || item.codigo;
         const base   = modulos[item.codigo];
-        const dims   = (dimOverride && dimOverride[item.id || item.codigo]) || base?.dimensiones;
-        const modUsado = { ...base, dimensiones: dims };
+        const dims   = (dimOverride && dimOverride[keyId]) || base?.dimensiones;
+        const comp   = composicionOverride?.[keyId];
+        const modUsado = { ...base, dimensiones: dims, vistaConfig: comp?.vistaConfig ?? base?.vistaConfig };
         const calc   = calcularModulo(modUsado, costos);
         if (!calc) return null;
         const esOculto = itemsOcultos.includes(keyId);
@@ -228,6 +229,7 @@ function VistaPrevia({
         const over = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || {};
         return Array.from({ length: item.cantidad }, () => ({
           id: crypto.randomUUID(),
+          itemId: item.id,
           codigo: item.codigo,
           nombre: mod.nombre,
           tipoVisual: mod.tipoVisual || null,
@@ -267,8 +269,10 @@ function VistaPrevia({
     if (!presSel) return;
     const getModUsadoLocal = (item) => {
       const base = modulos[item.codigo];
-      const dims = (presSel.dimOverride?.[item.id || item.codigo]) || base?.dimensiones;
-      return { ...base, dimensiones: dims };
+      const key = item.id || item.codigo;
+      const dims = presSel.dimOverride?.[key] || base?.dimensiones;
+      const comp = presSel.composicionOverride?.[key];
+      return { ...base, dimensiones: dims, vistaConfig: comp?.vistaConfig ?? base?.vistaConfig };
     };
     const txt = generarTextoWhatsApp(itemsVisibles, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, presSel.cliente);
     navigator.clipboard.writeText(txt).then(() => { setWhatsappCopiado(true); setTimeout(() => setWhatsappCopiado(false), 2500); });
@@ -278,8 +282,10 @@ function VistaPrevia({
     if (!presSel) return;
     const getModUsadoLocal = (item) => {
       const base = modulos[item.codigo];
-      const dims = (presSel.dimOverride?.[item.id || item.codigo]) || base?.dimensiones;
-      return { ...base, dimensiones: dims };
+      const key = item.id || item.codigo;
+      const dims = presSel.dimOverride?.[key] || base?.dimensiones;
+      const comp = presSel.composicionOverride?.[key];
+      return { ...base, dimensiones: dims, vistaConfig: comp?.vistaConfig ?? base?.vistaConfig };
     };
     const adicionalesVisibles   = (presSel.adicionales   || []).filter(x => !itemsOcultos.includes(`ad-${x.id}`));
     const costosDirectosVisibles = (presSel.costosDirectos || []).filter(x => !itemsOcultos.includes(`cd-${x.id}`));
@@ -613,8 +619,10 @@ function VistaPrevia({
                   {/* Module rows */}
                   {itemsVisiblesPaper.map((item, rowIdx) => {
                     const base = modulos[item.codigo];
-                    const dims = presSel.dimOverride?.[item.id || item.codigo] || base?.dimensiones;
-                    const modUsado = { ...base, dimensiones: dims };
+                    const keyVP = item.id || item.codigo;
+                    const dims = presSel.dimOverride?.[keyVP] || base?.dimensiones;
+                    const compVP = presSel.composicionOverride?.[keyVP];
+                    const modUsado = { ...base, dimensiones: dims, vistaConfig: compVP?.vistaConfig ?? base?.vistaConfig };
                     const calc = calcularModulo(modUsado, costos);
                     if (!calc) return null;
                     return (
@@ -751,6 +759,7 @@ function VistaPrevia({
                     modulos={modulos}
                     costos={costos}
                     dimOverride={presSel.dimOverride}
+                    composicionOverride={presSel.composicionOverride}
                     costosDirectos={presSel.costosDirectos || []}
                     adicionales={presSel.adicionales || []}
                     itemsOcultos={itemsOcultos}

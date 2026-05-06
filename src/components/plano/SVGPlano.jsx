@@ -37,6 +37,7 @@ export default function SVGPlano({
   onSelect,
   selectedId,
   modulos,
+  composicionOverride = {},
   temaClaro = false,
   offsetBajos = 0,
   offsetAltos = 0,
@@ -83,10 +84,14 @@ export default function SVGPlano({
     const result = {};
     allBloques.forEach(b => {
       const mod = modulos[b.codigo];
-      if (!mod?.vistaConfig) return;
+      if (!mod) return;
+      // vistaConfig: override por instancia (itemId) → override del catálogo → null (fallback rect)
+      const compOverride = b.itemId ? composicionOverride[b.itemId] : undefined;
+      const vistaConfig = compOverride?.vistaConfig ?? mod.vistaConfig;
+      if (!vistaConfig) return;
       try {
-        // Usar las dims del bloque (pueden venir de dimOverride), no las del catálogo
-        const modConDims = { ...mod, dimensiones: { ...mod.dimensiones, ancho: b.ancho, alto: b.alto, profundidad: b.profundidad } };
+        // Usar dims del bloque (pueden venir de dimOverride) y vistaConfig por instancia
+        const modConDims = { ...mod, dimensiones: { ...mod.dimensiones, ancho: b.ancho, alto: b.alto, profundidad: b.profundidad }, vistaConfig };
         const h   = Math.max(40, Math.round(200 * b.alto / Math.max(1, b.ancho)));
         const str = generarVistaSVG(modConDims, { width: 200, height: h, theme: temaClaro ? "light" : "dark", plano: true });
         result[b.id] = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(str)}`;
@@ -94,7 +99,7 @@ export default function SVGPlano({
     });
     return result;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bloquesAltos, bloquesBajos, modulos, temaClaro]);
+  }, [bloquesAltos, bloquesBajos, modulos, composicionOverride, temaClaro]);
 
   const renderBloque = (b, pos, rectX, rectY, globalIdx) => {
     const colors  = TC[b.tipoVisual] || CNul;

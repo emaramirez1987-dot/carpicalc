@@ -149,6 +149,10 @@ const GlobalStyles = () => (
       from { opacity: 0; transform: translateX(-10px); }
       to   { opacity: 1; transform: translateX(0); }
     }
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(40px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
     @keyframes counterPulse {
       0%   { transform: scale(1); }
       40%  { transform: scale(1.12); }

@@ -15,6 +15,7 @@
 // Campos expuestos vía contexto:
 //   items / setItems
 //   dimOverride / setDimOverride
+//   composicionOverride / setComposicionOverride
 //   adicionales / setAdicionales
 //   costosDirectos / setCostosDirectos
 //   presupuestoActivoId / setPresupuestoActivoId
