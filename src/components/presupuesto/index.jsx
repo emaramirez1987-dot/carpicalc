@@ -1752,6 +1752,7 @@ function Presupuesto({
     setNombreTrabajo(p.nombre || "");
     setPresupuestoActivoId(id || null);
     setAlertaPrecios(null);
+    setModalEdicion(null); setModalComposicion(null); setModalModulo(null);
     verificarPrecios(p, id);
   };
 
@@ -1761,6 +1762,7 @@ function Presupuesto({
     setNombreTrabajo("");
     setPresupuestoActivoId(null);
     setAlertaPrecios(null);
+    setModalEdicion(null); setModalComposicion(null); setModalModulo(null);
   };
 
   const handleCodChange = (val) => {
@@ -1837,6 +1839,7 @@ function Presupuesto({
     setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" });
     setPresupuestoActivoId(null); setAlertaPrecios(null);
     setEditandoModuloIdx(null); setInputCod(""); setPreDim(null);
+    setModalEdicion(null); setModalComposicion(null); setModalModulo(null);
     onDismissBorrador && onDismissBorrador();
   };
 
