@@ -14,6 +14,7 @@ import { PresupuestoContext } from "./state/PresupuestoContext.jsx";
 import { LoginScreen } from "./components/auth/LoginScreen.jsx";
 import { PanelPerfil } from "./components/perfil/PanelPerfil.jsx";
 import { PlanoDos } from "./components/plano/index.jsx";
+import { RenderIA } from "./components/render/index.jsx";
 
 import { PERFIL_VACIO } from "./constants.js";
 import { supabase } from "./lib/supabase.js";
@@ -391,6 +392,7 @@ function AppInterna() {
     { id: "preview",     label: "Vista previa", icon: "📄" },
     { id: "corte",       label: "Corte",        icon: "🪚" },
     { id: "plano",       label: "Plano 2D",     icon: "📐" },
+    { id: "render",      label: "Render IA",    icon: "✨" },
     { id: "trabajos",    label: "Trabajos",     icon: "📊" },
     { id: "caja",        label: "Caja",         icon: "💵" },
     { id: "catalogo",    label: "Catálogo",     icon: "🗂" },
@@ -526,6 +528,19 @@ function AppInterna() {
                 presupuestos={presupuestos}
                 presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
                 onActualizarPresupuesto={handleActualizarPresupuesto}
+              />
+            </div>
+
+            <div style={{ display: nav.vista === "render" ? undefined : "none" }}>
+              <RenderIA
+                modulos={modulos}
+                composicionOverride={composicionOverride}
+                items={items}
+                dimOverride={dimOverride}
+                inlineModulos={inlineModulos}
+                presupuestoActivoId={presupuestoActivoId}
+                presupuestoVistaPreviaId={nav.presupuestoVistaPreviaId}
+                presupuestos={presupuestos}
               />
             </div>
 
