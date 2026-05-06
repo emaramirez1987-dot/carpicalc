@@ -8,31 +8,6 @@ import SVGPlano from "../plano/SVGPlano.jsx";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function bloquesDesdePresupuesto(p, modulos) {
-  const pItems  = p.items || [];
-  const pInline = p.inlineModulos || {};
-  const pDim    = p.dimOverride || {};
-  return pItems.flatMap(item => {
-    const keyId  = item.id || item.codigo;
-    const inline = pInline[keyId];
-    const mod    = inline ?? modulos[item.codigo];
-    if (!mod) return [];
-    const dims = inline
-      ? inline.dimensiones
-      : (pDim[keyId] ? { ...mod.dimensiones, ...pDim[keyId] } : mod.dimensiones);
-    return Array.from({ length: item.cantidad }, () => ({
-      id:          crypto.randomUUID(),
-      itemId:      item.id,
-      codigo:      item.codigo,
-      nombre:      mod.nombre,
-      tipoVisual:  mod.tipoVisual || null,
-      ancho:       dims.ancho,
-      alto:        dims.alto,
-      profundidad: dims.profundidad,
-    }));
-  });
-}
-
 function derivarSecuencias(bloques) {
   return {
     idsBajos: bloques.filter(b => b.tipoVisual !== "aereo").map(b => b.id),
@@ -141,6 +116,7 @@ function PanelRender({ imagenUrl, generando, compact = false }) {
 function PanelSVG({ bloques, idsBajos, idsAltos, altoCielorraso, composicionOverride, modulos, svgRef, compact = false }) {
   const bloquesAltos = bloques.filter(b => idsAltos.includes(b.id));
   const bloquesBajos = bloques.filter(b => idsBajos.includes(b.id));
+  const svgProps = { bloquesAltos, bloquesBajos, altoCielorraso, modulos, composicionOverride, onSelect: null, selectedId: null };
   return (
     <div style={{
       flex: 1, background: "var(--bg-surface)", border: "1px solid var(--border)",
@@ -152,13 +128,11 @@ function PanelSVG({ bloques, idsBajos, idsAltos, altoCielorraso, composicionOver
         </span>
       </div>
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
-        <SVGPlano
-          bloquesAltos={bloquesAltos} bloquesBajos={bloquesBajos}
-          altoCielorraso={altoCielorraso} modulos={modulos}
-          composicionOverride={composicionOverride}
-          svgRef={svgRef}
-          onSelect={null} selectedId={null}
-        />
+        <SVGPlano {...svgProps} />
+      </div>
+      {/* SVG oculto en tema claro — usado solo para captura img2img (mejor contraste) */}
+      <div style={{ position: "absolute", left: -9999, top: -9999, pointerEvents: "none", opacity: 0 }}>
+        <SVGPlano {...svgProps} svgRef={svgRef} temaClaro={true} />
       </div>
     </div>
   );
@@ -346,8 +320,6 @@ export function RenderIA({
   dimOverride = {},
   inlineModulos = {},
   presupuestoActivoId = null,
-  presupuestoVistaPreviaId = null,
-  presupuestos = {},
   suscripcion = null,
   onRenderGenerado = null,
 }) {
@@ -410,20 +382,10 @@ export function RenderIA({
     persistirPrompts(prompts.map(p => p.id === id ? { ...p, ...cambios } : p));
 
   useEffect(() => {
-    const key = presupuestoVistaPreviaId || presupuestoActivoId || null;
-    if (prevKeyRef.current === key) return;
-    prevKeyRef.current = key;
+    if (prevKeyRef.current === presupuestoActivoId) return;
+    prevKeyRef.current = presupuestoActivoId;
 
-    if (!key) { setBloques([]); setIdsBajos([]); setIdsAltos([]); return; }
-
-    if (presupuestoVistaPreviaId) {
-      const p = presupuestos[presupuestoVistaPreviaId];
-      if (!p) { setBloques([]); setIdsBajos([]); setIdsAltos([]); return; }
-      const bs = bloquesDesdePresupuesto(p, modulos);
-      const { idsBajos: fb, idsAltos: fa } = derivarSecuencias(bs);
-      setBloques(bs); setIdsBajos(fb); setIdsAltos(fa);
-      return;
-    }
+    if (!presupuestoActivoId) { setBloques([]); setIdsBajos([]); setIdsAltos([]); return; }
 
     const saved = leerPlano();
     const bs = saved?.bloques || [];
@@ -433,7 +395,7 @@ export function RenderIA({
     setIdsAltos(saved?.idsAltos ?? fa);
     setAlto(saved?.altoCielorraso || 2400);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presupuestoVistaPreviaId, presupuestoActivoId]);
+  }, [presupuestoActivoId]);
 
   const sinDatos    = bloques.length === 0;
   const svgProps    = { bloques, idsBajos, idsAltos, altoCielorraso: alto, composicionOverride, modulos, svgRef };

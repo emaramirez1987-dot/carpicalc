@@ -7,7 +7,6 @@ const estadoInicial = {
   vista:                    "presupuesto", // pestaña activa
   catalogoDeepLink:         null,          // código del módulo a abrir en catálogo (usado por DEEPLINK_CONSUMIDO)
   origenEdicion:            null,          // contexto del catálogo: tipo, presupuestoId (lectura en App.js)
-  presupuestoVistaPreviaId: null,          // presupuesto seleccionado en Vista Previa
   presupuestoParaEditar:    null,          // { id, p } — puente para cargar presupuesto en editor
   cajaPresId:               null,          // presupuesto a abrir automáticamente en Caja
   editorVistaCod:           null,          // código del módulo abierto en EditorVistaSVG
@@ -51,18 +50,6 @@ function navReducer(estado, accion) {
         catalogoDeepLink: null,
         origenEdicion:    null,
       };
-
-    // Abrir un presupuesto específico en Vista Previa
-    case "ABRIR_VISTA_PREVIA":
-      return {
-        ...estado,
-        vista:                    "preview",
-        presupuestoVistaPreviaId: accion.payload.presupuestoId,
-      };
-
-    // Seleccionar qué presupuesto mostrar dentro de Vista Previa (sin cambiar vista)
-    case "SELECCIONAR_PRESUPUESTO_PREVIEW":
-      return { ...estado, presupuestoVistaPreviaId: accion.payload.presupuestoId };
 
     // Cargar un presupuesto en el editor y navegar a la pestaña Presupuesto.
     // presupuestoParaEditar actúa como puente — Presupuesto lo consume y lo limpia.
