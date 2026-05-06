@@ -16,6 +16,7 @@
 //   items / setItems
 //   dimOverride / setDimOverride
 //   composicionOverride / setComposicionOverride
+//   inlineModulos / setInlineModulos
 //   adicionales / setAdicionales
 //   costosDirectos / setCostosDirectos
 //   presupuestoActivoId / setPresupuestoActivoId

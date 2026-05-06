@@ -13,6 +13,7 @@ import { usePresupuesto } from '../../state/PresupuestoContext.jsx';
 import VistaModuloSVG from '../vista-svg/index.js';
 import { TIPO_MAT, ESTADOS_TRABAJO } from '../../constants.js';
 import ComposicionEditor from './ComposicionEditor.jsx';
+import PiezasEditor from './PiezasEditor.jsx';
 
 function imprimirPresupuesto(
   items,
@@ -1641,6 +1642,7 @@ function Presupuesto({
     items, setItems,
     dimOverride, setDimOverride,
     composicionOverride, setComposicionOverride,
+    inlineModulos, setInlineModulos,
     adicionales, setAdicionales,
     costosDirectos, setCostosDirectos,
     presupuestoActivoId, setPresupuestoActivoId,
@@ -1677,6 +1679,8 @@ function Presupuesto({
   const [modalEdicion, setModalEdicion] = useState(null);
   // Drawer de composición visual por instancia
   const [modalComposicion, setModalComposicion] = useState(null); // { item, idx } | null
+  // Drawer de edición de piezas/herrajes por instancia
+  const [modalModulo, setModalModulo] = useState(null); // { item, modInicial } | null
   const [pestañaActiva, setPestañaActiva] = useState("modulos");
   const [mostrarExtras, setMostrarExtras] = useState(true);
   const [mostrarCostosDirectos, setMostrarCostosDirectos] = useState(true);
@@ -1819,7 +1823,7 @@ function Presupuesto({
 
   /** Limpia completamente el editor: ítems, adicionales, CDs, cliente, estado. */
   const limpiarEditor = () => {
-    setItems([]); setDimOverride({}); setComposicionOverride({}); setAdicionales([]); setCostosDirectos([]);
+    setItems([]); setDimOverride({}); setComposicionOverride({}); setInlineModulos({}); setAdicionales([]); setCostosDirectos([]);
     setNombreTrabajo(""); setClienteActivo({ nombre: "", tel: "", dir: "" });
     setPresupuestoActivoId(null); setAlertaPrecios(null);
     setEditandoModuloIdx(null); setInputCod(""); setPreDim(null);
@@ -1977,7 +1981,7 @@ function Presupuesto({
           if (esNuevo) {
             onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
           } else {
-            onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: newItems, dimOverride: newDim, composicionOverride: newComp, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
+            onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: newItems, dimOverride: newDim, composicionOverride: newComp, inlineModulos: { ...inlineModulos }, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
           }
           setDialogoGuardar(false);
           limpiarEditor();
@@ -2000,7 +2004,7 @@ function Presupuesto({
             )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button onClick={() => {
-                onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, composicionOverride: { ...composicionOverride }, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
+                onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, composicionOverride: { ...composicionOverride }, inlineModulos: { ...inlineModulos }, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
                 setDialogoGuardar(false);
                 limpiarEditor();
               }} style={{ padding: "8px 18px", borderRadius: 7, fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, cursor: "pointer", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
@@ -2341,6 +2345,17 @@ function Presupuesto({
                         </div>
                       </>
                     )}
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      <button
+                        onClick={() => {
+                          const modInicial = getModUsado(item) || modulos[item.codigo];
+                          if (!modInicial) return;
+                          setModalModulo({ item, modInicial });
+                        }}
+                        style={{ width: "100%", padding: "8px 0", borderRadius: 7, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
+                        ✏ Editar piezas y herrajes
+                      </button>
+                    </div>
 
                   </div>
                 )}
@@ -2644,6 +2659,46 @@ function Presupuesto({
       </>)}{/* fin secciones de carga */}
 
       <ToastContainer />
+
+      {/* ── Drawer de edición de piezas/herrajes ─────────────────── */}
+      {modalModulo && (() => {
+        const { item, modInicial } = modalModulo;
+        return (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 1100,
+            display: "flex", alignItems: "flex-end", justifyContent: "flex-end",
+          }}
+            onClick={() => setModalModulo(null)}
+          >
+            <div style={{
+              width: "min(380px, 100vw)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "16px 0 0 16px",
+              padding: 20,
+              boxShadow: "-6px 0 32px rgba(0,0,0,0.40)",
+              animation: "slideInRight 0.2s ease",
+            }}
+              onClick={e => e.stopPropagation()}
+            >
+              <PiezasEditor
+                modulo={modInicial}
+                costos={costos}
+                onGuardar={(moduloModificado) => {
+                  const keyId = item.id || item.codigo;
+                  setInlineModulos(prev => ({ ...prev, [keyId]: moduloModificado }));
+                  setDimOverride(prev => { const n = { ...prev }; delete n[keyId]; return n; });
+                  setComposicionOverride(prev => { const n = { ...prev }; delete n[keyId]; return n; });
+                  setModalModulo(null);
+                }}
+                onCancelar={() => setModalModulo(null)}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Drawer de composición visual ──────────────────────────── */}
       {modalComposicion && (() => {
