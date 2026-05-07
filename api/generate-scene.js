@@ -163,7 +163,7 @@ module.exports = async function handler(req, res) {
       prompt,
       guidance:         parseInt(guidance, 10),
       steps:            28,
-      output_format:    "webp",
+      output_format:    "jpg",
       output_quality:   90,
       safety_tolerance: 2,
     };
