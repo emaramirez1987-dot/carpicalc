@@ -589,7 +589,7 @@ export function RenderIA({
   // Variables dinámicas (persistidas)
   const [variables, setVariables]         = useState(savedCfg.variables ?? {});
   // Config avanzada (persistida)
-  const [promptStrength, setPromptStrength] = useState(savedCfg.promptStrength ?? 0.80);
+  const [promptStrength, setPromptStrength] = useState(savedCfg.promptStrength ?? 0.45);
 
   // Prompts guardados
   const [prompts, setPrompts]         = useState(() => leerPromptsRender());
