@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { workspaceId, prompt, imageBase64, imagePromptStrength = 0.70 } = req.body || {};
+  const { workspaceId, prompt, imageBase64, imagePromptStrength = 0.70, seed } = req.body || {};
   if (!workspaceId || !prompt || !imageBase64) {
     return res.status(400).json({ error: "workspaceId, prompt e imageBase64 requeridos" });
   }
@@ -79,6 +79,7 @@ module.exports = async function handler(req, res) {
       aspect_ratio:          "4:3",
       output_format:         "webp",
       output_quality:        90,
+      ...(seed != null ? { seed: parseInt(seed, 10) } : {}),
     };
 
     console.log(`[scene] imagePromptStrength=${imagePromptStrength}`);

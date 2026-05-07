@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { workspaceId, prompt, imageBase64, guidance = 30, controlStrength = 0.55 } = req.body || {};
+  const { workspaceId, prompt, imageBase64, guidance = 30, controlStrength = 0.55, seed } = req.body || {};
   if (!workspaceId || !prompt) {
     return res.status(400).json({ error: "workspaceId y prompt requeridos" });
   }
@@ -85,6 +85,7 @@ module.exports = async function handler(req, res) {
         output_format:    "jpg",
         output_quality:   90,
         safety_tolerance: 2,
+        ...(seed != null ? { seed: parseInt(seed, 10) } : {}),
       };
     } else {
       input = {
@@ -93,6 +94,7 @@ module.exports = async function handler(req, res) {
         output_format: "jpg",
         output_quality: 90,
         safety_tolerance: 2,
+        ...(seed != null ? { seed: parseInt(seed, 10) } : {}),
       };
     }
 
