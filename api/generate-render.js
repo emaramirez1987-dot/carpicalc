@@ -91,7 +91,7 @@ module.exports = async function handler(req, res) {
           control_strength: parseFloat((1 - promptStrength).toFixed(2)),
           guidance:         30,
           num_outputs:      1,
-          output_format:    "webp",
+          output_format:    "jpg",
           output_quality:   90,
           safety_tolerance: 2,
         };
