@@ -9,109 +9,91 @@ import SVGPlano from "../plano/SVGPlano.jsx";
 // ── Prompt base por defecto ───────────────────────────────────────────────────
 
 const DEFAULT_PROMPT_BASE =
-`Usa la imagen de referencia enviada estrictamente como base estructural del mueble.
+`Render fotorrealista de alta calidad de [TIPO_DE_MUEBLE], manteniendo la estructura y proporciones principales de la imagen de referencia.
 
-No modifiques la distribución, proporciones, dimensiones ni posiciones de ningún elemento.
+Material principal: [MATERIAL]
+Color: [COLOR]
+Acabado: [ACABADO]
 
-Mantén exactamente igual:
-- módulos
-- puertas
-- frentes de cajones
-- estantes
-- paneles
-- divisiones
-- zócalos
-- herrajes visibles
-- espacios vacíos
-- geometría general
+Iluminación: [ILUMINACION]
+Fondo/Ambiente: [FONDO]
+Accesorios decorativos: [ACCESORIOS]
 
-No agregues ni elimines piezas del mueble.
+Perspectiva: [PERSPECTIVA]
+Tipo de cámara: [CAMARA]
 
-Transforma la imagen de referencia en un render hiperrealista y fotográfico, manteniendo fielmente el diseño original.
+Estilo visual: [ESTILO]
+Nivel de detalle: [DETALLE]
 
-La imagen final debe parecer una fotografía profesional real del mueble ya fabricado.
-
-Materiales ultra realistas, sombras naturales, reflejos coherentes, iluminación cinematográfica profesional, profundidad realista, detalles de alta calidad, visualización arquitectónica premium, estética moderna y minimalista.`;
+Materiales ultra realistas, texturas naturales, sombras suaves, reflejos coherentes, profundidad realista, iluminación cinematográfica, visualización arquitectónica premium, fotografía profesional de interiores, ultra detallado, render hiperrealista, alta resolución.`;
 
 // ── Variables dinámicas ───────────────────────────────────────────────────────
 
 const VARIABLES_CONFIG = [
   {
-    id: "materiales", label: "Materiales", icon: "🪵", prefix: "Materiales:",
-    opciones: [
-      "melamina blanca mate",
-      "melamina blanca brillante",
-      "madera nogal y melamina negra mate",
-      "roble natural y acero inoxidable",
-      "MDF lacado blanco brillante",
-      "madera pino natural",
-    ],
+    id: "tipo_mueble", label: "Tipo de mueble", icon: "🪑", placeholder: "[TIPO_DE_MUEBLE]",
+    default: "mueble de cocina",
+    opciones: ["mueble de cocina", "placard", "bajo mesada", "alacena", "cajonera", "rack de living", "mueble de baño", "biblioteca"],
   },
   {
-    id: "iluminacion", label: "Iluminación", icon: "💡", prefix: "Iluminación:",
-    opciones: [
-      "luz natural cálida entrando desde la izquierda",
-      "luz natural neutra cenital",
-      "iluminación de estudio difusa y pareja",
-      "luz cálida ambiental nocturna",
-      "iluminación cinematográfica dramática",
-    ],
+    id: "material", label: "Material", icon: "🪵", placeholder: "[MATERIAL]",
+    default: "melamina",
+    opciones: ["melamina blanca", "madera nogal", "roble natural", "MDF lacado blanco", "madera de pino", "madera nogal y melamina negra"],
   },
   {
-    id: "fondo", label: "Fondo / Ambiente", icon: "🏠", prefix: "Fondo:",
-    opciones: [
-      "fondo neutro liso gris claro",
-      "espacio vacío blanco infinito",
-      "cocina moderna minimalista",
-      "living contemporáneo",
-      "dormitorio escandinavo",
-    ],
+    id: "color", label: "Color", icon: "🎨", placeholder: "[COLOR]",
+    default: "blanco",
+    opciones: ["blanco", "negro mate", "gris cemento", "nogal oscuro", "roble claro", "verde oliva", "natural madera"],
   },
   {
-    id: "accesorios", label: "Accesorios", icon: "🌿", prefix: "Accesorios:",
-    opciones: [
-      "sin accesorios",
-      "plantas y objetos decorativos minimalistas",
-      "cafetera, plantas y objetos decorativos",
-      "vajilla y accesorios de cocina",
-      "libros y elementos decorativos",
-    ],
+    id: "acabado", label: "Acabado", icon: "✨", placeholder: "[ACABADO]",
+    default: "mate",
+    opciones: ["mate", "brillante", "satinado", "textura madera natural", "lacado liso"],
   },
   {
-    id: "perspectiva", label: "Perspectiva", icon: "📐", prefix: "Perspectiva:",
-    opciones: [
-      "vista frontal directa",
-      "vista frontal en 3/4",
-      "vista lateral derecha",
-      "vista isométrica",
-    ],
+    id: "iluminacion", label: "Iluminación", icon: "💡", placeholder: "[ILUMINACION]",
+    default: "luz natural cálida",
+    opciones: ["luz natural cálida desde la izquierda", "iluminación difusa de estudio", "luz cenital neutra", "luz cálida ambiental nocturna", "iluminación cinematográfica dramática"],
   },
   {
-    id: "camara", label: "Cámara", icon: "📷", prefix: "Cámara:",
-    opciones: [
-      "lente 35mm",
-      "lente 50mm",
-      "lente gran angular 24mm",
-      "teleobjetivo 85mm",
-    ],
+    id: "fondo", label: "Fondo / Ambiente", icon: "🏠", placeholder: "[FONDO]",
+    default: "fondo neutro gris claro",
+    opciones: ["fondo neutro liso gris claro", "espacio blanco infinito", "cocina moderna minimalista", "living contemporáneo", "dormitorio escandinavo"],
   },
   {
-    id: "estilo", label: "Estilo", icon: "✨", prefix: "Estilo:",
-    opciones: [
-      "interior contemporáneo premium",
-      "escandinavo minimalista",
-      "industrial moderno",
-      "clásico refinado",
-      "ultra detallado",
-    ],
+    id: "accesorios", label: "Accesorios", icon: "🌿", placeholder: "[ACCESORIOS]",
+    default: "sin accesorios",
+    opciones: ["sin accesorios", "plantas y objetos decorativos minimalistas", "cafetera y utensilios de cocina", "vajilla y accesorios", "libros y elementos decorativos"],
+  },
+  {
+    id: "perspectiva", label: "Perspectiva", icon: "📐", placeholder: "[PERSPECTIVA]",
+    default: "vista frontal directa",
+    opciones: ["vista frontal directa", "vista frontal en 3/4", "vista lateral derecha", "vista isométrica"],
+  },
+  {
+    id: "camara", label: "Cámara", icon: "📷", placeholder: "[CAMARA]",
+    default: "lente 35mm",
+    opciones: ["lente 35mm", "lente 50mm", "lente gran angular 24mm", "teleobjetivo 85mm"],
+  },
+  {
+    id: "estilo", label: "Estilo visual", icon: "🎭", placeholder: "[ESTILO]",
+    default: "contemporáneo premium",
+    opciones: ["contemporáneo premium", "escandinavo minimalista", "industrial moderno", "clásico refinado"],
+  },
+  {
+    id: "detalle", label: "Nivel de detalle", icon: "🔬", placeholder: "[DETALLE]",
+    default: "ultra detallado",
+    opciones: ["ultra detallado", "detalle normal", "simplificado"],
   },
 ];
 
+// Reemplaza cada placeholder por el valor elegido (o el default si no hay selección)
 function ensamblarPrompt(base, variables) {
-  const varLines = VARIABLES_CONFIG
-    .filter(v => variables[v.id])
-    .map(v => `${v.prefix} ${variables[v.id]}`);
-  return [base.trim(), ...varLines].filter(Boolean).join("\n");
+  let resultado = base;
+  VARIABLES_CONFIG.forEach(v => {
+    resultado = resultado.replace(v.placeholder, variables[v.id] || v.default);
+  });
+  return resultado;
 }
 
 // ── Estilos compartidos ───────────────────────────────────────────────────────
@@ -430,7 +412,9 @@ function VariableItem({ config, value, onChange }) {
             <button onClick={limpiar} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13, padding: "0 2px", lineHeight: 1 }}>×</button>
           </>
         ) : (
-          <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>sin especificar</span>
+          <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontStyle: "italic" }}>
+            default: {config.default}
+          </span>
         )}
         <span style={{ fontSize: 9, color: "var(--text-muted)", transition: "transform 0.15s", display: "inline-block", transform: abierto ? "rotate(180deg)" : "none" }}>▼</span>
       </div>
