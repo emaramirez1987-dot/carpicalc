@@ -76,24 +76,36 @@ module.exports = async function handler(req, res) {
     const ENDPOINTS = {
       "flux-dev":        "https://api.replicate.com/v1/models/black-forest-labs/flux-dev/predictions",
       "flux-1.1-pro":    "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
+      "flux-canny-pro":  "https://api.replicate.com/v1/models/black-forest-labs/flux-canny-pro/predictions",
       "flux-controlnet": "https://api.replicate.com/v1/models/xlabs-ai/flux-dev-controlnet/predictions",
     };
 
     if (imageBase64) {
       endpoint = ENDPOINTS[modelo] || ENDPOINTS["flux-dev"];
 
-      if (modelo === "flux-controlnet") {
-        // ControlNet: condition scale inversamente proporcional al slider
-        // slider bajo (respeta estructura) → condition scale alto
+      if (modelo === "flux-canny-pro") {
+        // FLUX Canny Pro oficial — control_strength inversamente proporcional al slider
         input = {
-          prompt:                        prompt,
-          control_image:                 `data:image/png;base64,${imageBase64}`,
-          control_type:                  "canny",
-          controlnet_conditioning_scale: parseFloat((1 - promptStrength).toFixed(2)),
-          num_inference_steps:           28,
-          guidance_scale:                3.5,
-          num_outputs:                   1,
-          output_format:                 "webp",
+          prompt:           prompt,
+          control_image:    `data:image/png;base64,${imageBase64}`,
+          control_strength: parseFloat((1 - promptStrength).toFixed(2)),
+          guidance:         30,
+          num_outputs:      1,
+          output_format:    "webp",
+          output_quality:   90,
+          safety_tolerance: 2,
+        };
+      } else if (modelo === "flux-controlnet") {
+        // xlabs-ai ControlNet — parámetros propios del modelo
+        input = {
+          prompt:             prompt,
+          control_image:      `data:image/png;base64,${imageBase64}`,
+          control_type:       "canny",
+          conditioning_scale: parseFloat((1 - promptStrength).toFixed(2)),
+          num_steps:          28,
+          true_gs:            3.5,
+          num_outputs:        1,
+          output_format:      "webp",
         };
       } else if (modelo === "flux-1.1-pro") {
         // image_prompt_strength es inverso a prompt_strength
