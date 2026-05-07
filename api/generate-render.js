@@ -74,17 +74,29 @@ module.exports = async function handler(req, res) {
     let endpoint, input;
 
     const ENDPOINTS = {
-      "flux-dev":     "https://api.replicate.com/v1/models/black-forest-labs/flux-dev/predictions",
-      "flux-1.1-pro": "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
+      "flux-dev":        "https://api.replicate.com/v1/models/black-forest-labs/flux-dev/predictions",
+      "flux-1.1-pro":    "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
+      "flux-controlnet": "https://api.replicate.com/v1/models/xlabs-ai/flux-dev-controlnet/predictions",
     };
 
     if (imageBase64) {
-      // img2img — parámetros difieren por modelo
       endpoint = ENDPOINTS[modelo] || ENDPOINTS["flux-dev"];
-      if (modelo === "flux-1.1-pro") {
-        // image_prompt_strength es inverso a prompt_strength:
-        // alto = más imagen (al revés que flux-dev donde alto = más prompt)
-        // Se invierte para que el slider tenga la misma semántica en ambos modelos
+
+      if (modelo === "flux-controlnet") {
+        // ControlNet: condition scale inversamente proporcional al slider
+        // slider bajo (respeta estructura) → condition scale alto
+        input = {
+          prompt:                        prompt,
+          control_image:                 `data:image/png;base64,${imageBase64}`,
+          control_type:                  "canny",
+          controlnet_conditioning_scale: parseFloat((1 - promptStrength).toFixed(2)),
+          num_inference_steps:           28,
+          guidance_scale:                3.5,
+          num_outputs:                   1,
+          output_format:                 "webp",
+        };
+      } else if (modelo === "flux-1.1-pro") {
+        // image_prompt_strength es inverso a prompt_strength
         input = {
           prompt:                prompt,
           image_prompt:          `data:image/png;base64,${imageBase64}`,
