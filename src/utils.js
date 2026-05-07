@@ -516,10 +516,13 @@ function _drawZona(els, tipo, zc, bounds, paleta, stroke, zonaId) {
   if (tipo === "cajones") {
     const count = Math.max(1, Math.min(8, zc.cantidad || 3));
     const ch = h / count;
+    // Líneas divisorias entre cajones (sin borde individual por cajón)
+    for (let i = 1; i < count; i++) {
+      const ey = _f(y + i * ch);
+      els.push(`<line x1="${_f(x)}" y1="${ey}" x2="${_f(x + w)}" y2="${ey}" stroke="${stroke}" stroke-width="0.7" data-zona-id="${zonaId}" data-drawer="${i}"/>`);
+    }
+    // Manija centrada en cada cajón
     for (let i = 0; i < count; i++) {
-      const cy = _f(y + i * ch);
-      const accentAlpha = paleta.theme === "dark" ? "rgba(212,175,55,0.07)" : "rgba(184,150,42,0.08)";
-      els.push(`<rect x="${_f(x)}" y="${cy}" width="${_f(w)}" height="${_f(ch)}" fill="${accentAlpha}" stroke="${stroke}" stroke-width="0.7" data-zona-id="${zonaId}" data-drawer="${i}"/>`);
       const hW = w * 0.38, hX = _f(x + (w - hW) / 2), hY = _f(y + i * ch + ch / 2);
       els.push(`<line x1="${hX}" y1="${hY}" x2="${_f(x + (w - hW) / 2 + hW)}" y2="${hY}" stroke="${accent}" stroke-width="1.5" stroke-linecap="round" opacity="0.55"/>`);
     }
