@@ -79,17 +79,29 @@ module.exports = async function handler(req, res) {
     };
 
     if (imageBase64) {
-      // img2img — usa el modelo elegido
+      // img2img — parámetros difieren por modelo
       endpoint = ENDPOINTS[modelo] || ENDPOINTS["flux-dev"];
-      input = {
-        prompt:              prompt,
-        image:               `data:image/jpeg;base64,${imageBase64}`,
-        prompt_strength:     promptStrength,
-        num_inference_steps: 28,
-        aspect_ratio:        "4:3",
-        num_outputs:         1,
-        output_format:       "webp",
-      };
+      if (modelo === "flux-1.1-pro") {
+        input = {
+          prompt:               prompt,
+          image_prompt:         `data:image/jpeg;base64,${imageBase64}`,
+          image_prompt_strength: promptStrength,
+          aspect_ratio:         "4:3",
+          output_format:        "webp",
+          output_quality:       90,
+        };
+      } else {
+        // flux-dev (default)
+        input = {
+          prompt:              prompt,
+          image:               `data:image/jpeg;base64,${imageBase64}`,
+          prompt_strength:     promptStrength,
+          num_inference_steps: 28,
+          aspect_ratio:        "4:3",
+          num_outputs:         1,
+          output_format:       "webp",
+        };
+      }
     } else {
       // text2img — flux-schnell siempre (más rápido y barato sin referencia)
       endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions";
