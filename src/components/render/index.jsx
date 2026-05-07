@@ -15,19 +15,10 @@ Reinterpretar detalles constructivos, espesores, terminaciones y refinamientos v
 
 Generar una fotografía arquitectónica hiperrealista del mueble terminado, con apariencia de producto real fabricado profesionalmente.
 
-Material: [MATERIAL]
-Color: [COLOR]
-Acabado: [ACABADO]
+Material: [MATERIAL] / Color: [COLOR] / Acabado: [ACABADO]
+Cámara: [CAMARA] / Estilo: [ESTILO]
 
-Ambiente: [FONDO]
-Iluminación: [ILUMINACION]
-Accesorios: [ACCESORIOS]
-
-Perspectiva: [PERSPECTIVA]
-Cámara: [CAMARA]
-Estilo: [ESTILO]
-
-Texturas naturales, sombras suaves, reflejos realistas, profundidad cinematográfica, detalles precisos de carpintería, fotografía profesional de interiores, visualización arquitectónica premium.`;
+Fondo neutro liso, luz difusa de estudio. Texturas naturales, sombras suaves, reflejos realistas, detalles precisos de carpintería, fotografía profesional de producto.`;
 
 // ── Variables dinámicas ───────────────────────────────────────────────────────
 
@@ -528,14 +519,27 @@ function GestorPrompts({ prompts, onEliminar, onActualizar, onUsar }) {
 // ── PanelPaso2 ────────────────────────────────────────────────────────────
 
 function PanelPaso2({ imagenUrl, onGenerar, generando, variables, onVariable, imagePromptStrength, onStrength }) {
-  const [abierto, setAbierto] = useState(false);
+  const [abierto,       setAbierto]       = useState(false);
+  const [promptAbierto, setPromptAbierto] = useState(false);
+  const [editando,      setEditando]      = useState(false);
+  const [promptOverride, setPromptOverride] = useState(null); // null = auto
+
   useEffect(() => { if (imagenUrl) setAbierto(true); }, [imagenUrl]);
   if (!imagenUrl) return null;
 
-  const escenaVars = VARIABLES_CONFIG.filter(v => ESCENA_IDS.includes(v.id));
-  const etiqueta   = imagePromptStrength >= 0.75 ? "muy fiel al mueble"
-                   : imagePromptStrength >= 0.50 ? "balance mueble / escena"
-                   : "más libertad de escena";
+  const escenaVars  = VARIABLES_CONFIG.filter(v => ESCENA_IDS.includes(v.id));
+  const promptAuto  = buildScenePrompt(variables);
+  const promptFinal = promptOverride ?? promptAuto;
+  const esPersonalizado = promptOverride !== null;
+
+  const etiqueta = imagePromptStrength >= 0.75 ? "muy fiel al mueble"
+                 : imagePromptStrength >= 0.50 ? "balance mueble / escena"
+                 : "más libertad de escena";
+
+  const handleVariableChange = (id, val) => {
+    onVariable(id, val);
+    // si no hay override, el prompt auto se actualiza solo
+  };
 
   return (
     <div style={{ background: "var(--bg-surface)", border: "1px solid var(--accent-border)", borderRadius: 10, overflow: "hidden" }}>
@@ -549,11 +553,64 @@ function PanelPaso2({ imagenUrl, onGenerar, generando, variables, onVariable, im
 
       {abierto && (
         <div style={{ borderTop: "1px solid var(--border)", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+
           {/* Variables de escena */}
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
             {escenaVars.map(vc => (
-              <VariableItem key={vc.id} config={vc} value={variables[vc.id] ?? null} onChange={val => onVariable(vc.id, val)} />
+              <VariableItem key={vc.id} config={vc} value={variables[vc.id] ?? null} onChange={val => handleVariableChange(vc.id, val)} />
             ))}
+          </div>
+
+          {/* Prompt de escena — acordeón */}
+          <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+            <div
+              onClick={() => { if (!editando) setPromptAbierto(a => !a); }}
+              style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: 8, cursor: editando ? "default" : "pointer", userSelect: "none" }}
+            >
+              <span style={{ fontSize: 9, color: "var(--text-muted)", transition: "transform 0.15s", display: "inline-block", transform: promptAbierto ? "rotate(90deg)" : "none" }}>▶</span>
+              <span style={{ flex: 1, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-secondary)" }}>
+                Prompt de escena
+              </span>
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: esPersonalizado ? "var(--accent)" : "var(--text-muted)" }}>
+                {esPersonalizado ? "personalizado" : "auto"}
+              </span>
+            </div>
+            {promptAbierto && (
+              <div style={{ padding: "0 12px 12px", borderTop: "1px solid var(--border)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                {editando ? (
+                  <>
+                    <textarea
+                      value={promptFinal}
+                      onChange={e => setPromptOverride(e.target.value)}
+                      rows={5}
+                      style={{ ...inp, resize: "vertical", fontSize: 11, lineHeight: 1.5 }}
+                      autoFocus
+                    />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => setEditando(false)} style={btnSm("accent")}>Guardar</button>
+                      {esPersonalizado && (
+                        <button onClick={() => { setPromptOverride(null); setEditando(false); }} style={btnSm("danger")}>
+                          Restaurar auto
+                        </button>
+                      )}
+                      <button onClick={() => { setPromptOverride(null); setEditando(false); }} style={btnSm()}>Cancelar</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <pre style={{ margin: 0, fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.55, whiteSpace: "pre-wrap", fontFamily: "'Bricolage Grotesque',sans-serif" }}>
+                      {promptFinal}
+                    </pre>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => { setPromptOverride(promptFinal); setEditando(true); }} style={btnSm()}>✎ Editar</button>
+                      {esPersonalizado && (
+                        <button onClick={() => setPromptOverride(null)} style={btnSm("danger")}>Restaurar auto</button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Slider fidelidad */}
@@ -578,7 +635,7 @@ function PanelPaso2({ imagenUrl, onGenerar, generando, variables, onVariable, im
             </div>
           </div>
 
-          <button onClick={onGenerar} disabled={generando} style={{ ...btnSm("accent"), padding: "8px 18px", fontSize: 12, opacity: generando ? 0.4 : 1, cursor: generando ? "default" : "pointer" }}>
+          <button onClick={() => onGenerar(promptFinal)} disabled={generando} style={{ ...btnSm("accent"), padding: "8px 18px", fontSize: 12, opacity: generando ? 0.4 : 1, cursor: generando ? "default" : "pointer" }}>
             {generando ? "⏳ Generando escena…" : "▶ Generar escena"}
           </button>
         </div>
@@ -589,9 +646,12 @@ function PanelPaso2({ imagenUrl, onGenerar, generando, variables, onVariable, im
 
 // ── PanelVariables ────────────────────────────────────────────────────────
 
+// Variables del Paso 1 (excluye las de escena que van al Paso 2)
+const VARS_PASO1 = VARIABLES_CONFIG.filter(v => !ESCENA_IDS.includes(v.id));
+
 function PanelVariables({ variables, onCambio }) {
   const [abierto, setAbierto] = useState(false);
-  const activas = VARIABLES_CONFIG.filter(v => variables[v.id]).length;
+  const activas = VARS_PASO1.filter(v => variables[v.id]).length;
 
   return (
     <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
@@ -601,7 +661,7 @@ function PanelVariables({ variables, onCambio }) {
       >
         <span style={{ fontSize: 10, color: "var(--text-muted)", transition: "transform 0.15s", display: "inline-block", transform: abierto ? "rotate(90deg)" : "none" }}>▶</span>
         <span style={{ flex: 1, fontSize: 12, fontWeight: 700, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-secondary)" }}>
-          Variables del render
+          Variables del mueble
         </span>
         {activas > 0 && (
           <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--accent)", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 7px" }}>
@@ -611,7 +671,7 @@ function PanelVariables({ variables, onCambio }) {
       </div>
       {abierto && (
         <div style={{ borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 1 }}>
-          {VARIABLES_CONFIG.map(vc => (
+          {VARS_PASO1.map(vc => (
             <VariableItem
               key={vc.id}
               config={vc}
@@ -757,14 +817,13 @@ export function RenderIA({
     }
   };
 
-  const handleGenerarEscena = async () => {
+  const handleGenerarEscena = async (prompt) => {
     if (!wsId || !imagenUrl) return;
     setGenerandoEscena(true);
     setErrorRender(null);
     try {
-      const b64    = await urlToBase64(imagenUrl);
-      const prompt = buildScenePrompt(variablesEscena);
-      const res    = await fetch("/api/generate-scene", {
+      const b64 = await urlToBase64(imagenUrl);
+      const res = await fetch("/api/generate-scene", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workspaceId: wsId, prompt, imageBase64: b64, imagePromptStrength }),
