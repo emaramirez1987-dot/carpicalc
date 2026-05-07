@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ToggleSwitch } from '../ui/index.jsx';
+import useIsMobile from '../../hooks/useIsMobile.js';
 import VistaModuloSVG from '../vista-svg/index.js';
 import { useTema } from '../../hooks/useTema.js';
 import { fmtPeso, fmtNum, fmtFecha,
@@ -173,6 +174,7 @@ function VistaPrevia({
   onVerRentabilidad,
   onEditarModulos,
 }) {
+  const isMobile = useIsMobile();
   const entries = Object.entries(presupuestos).sort((a, b) => (b[1].creadoEn || 0) - (a[1].creadoEn || 0));
 
   const [presSelIdLocal, setPresSelIdLocal] = useState(presupuestoSelId || null);
@@ -305,7 +307,7 @@ function VistaPrevia({
     <div style={{ margin: "0 -20px", display: "flex", flexDirection: "column", position: "relative" }}>
 
       {/* ── TOP TOOLBAR ─────────────────────────────────────────────── */}
-      <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", flexWrap: "nowrap", boxShadow: "0 1px 0 var(--separator)", position: "relative", zIndex: 101 }}>
+      <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, padding: isMobile ? "8px 12px" : "10px 20px", flexWrap: isMobile ? "wrap" : "nowrap", boxShadow: "0 1px 0 var(--separator)", position: "relative", zIndex: 101 }}>
 
         {/* Selector button */}
         <button
@@ -487,10 +489,10 @@ function VistaPrevia({
           </div>
         </div>
       ) : (
-        <div style={{ display: "flex", height: "calc(100vh - 130px)" }}>
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", height: isMobile ? "auto" : "calc(100vh - 130px)" }}>
 
           {/* ── DOCUMENT CANVAS ───────────────────────────────────── */}
-          <div style={{ flex: 1, background: "#fff", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ flex: 1, background: "#fff", display: "flex", flexDirection: "column", overflow: "hidden", order: isMobile ? 2 : 1, minHeight: isMobile ? 420 : "auto" }}>
 
             {/* ── Tab bar ──────────────────────────────────────────── */}
             {presSel && (
@@ -695,7 +697,7 @@ function VistaPrevia({
           </div>
 
           {/* ── RIGHT SIDEBAR ─────────────────────────────────────── */}
-          <div style={{ width: 308, borderLeft: "1px solid var(--border)", background: "var(--bg-surface)", overflowY: "auto", flexShrink: 0, display: "flex", flexDirection: "column" }}>
+          <div style={{ width: isMobile ? "100%" : 308, borderLeft: isMobile ? "none" : "1px solid var(--border)", borderBottom: isMobile ? "1px solid var(--border)" : "none", background: "var(--bg-surface)", overflowY: "auto", flexShrink: 0, display: "flex", flexDirection: "column", order: isMobile ? 1 : 2 }}>
             {!presSel ? (
               <div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 13, marginTop: 40 }}>
                 <div style={{ fontSize: 24, marginBottom: 10, opacity: 0.4 }}>⚙</div>

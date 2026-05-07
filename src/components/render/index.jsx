@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { SectionTitle } from "../ui/index.jsx";
+import useIsMobile from "../../hooks/useIsMobile.js";
+import { EGGER_MATERIALES } from "../../data/egger_prompts.js";
 import { leerPlano, leerPromptsRender, guardarPromptsRender, leerConfigRender, guardarConfigRender } from "../../storage.js";
 import { PLANES_RENDER } from "../../constants.js";
 import { supabase } from "../../lib/supabase.js";
@@ -289,8 +291,14 @@ function PresetsSection({ presets, promptBase, onGuardar, onCargar, onEliminar }
 
 // ── StepCard ──────────────────────────────────────────────────────────────────
 
-function StepCard({ numero, titulo, subtitulo, listo, generando, onGenerar, onPreview, bloqueado, creditos, children, defaultOpen = true, disabled = false }) {
+function StepCard({ numero, titulo, subtitulo, listo, generando, onGenerar, onPreview, bloqueado, creditos, children, defaultOpen = true, disabled = false, autoClose = false }) {
   const [abierto, setAbierto] = useState(defaultOpen);
+  const prevListoRef = React.useRef(listo);
+
+  React.useEffect(() => {
+    if (autoClose && !prevListoRef.current && listo) setAbierto(false);
+    prevListoRef.current = listo;
+  }, [listo, autoClose]);
 
   const toggleAbierto = () => { if (!disabled) setAbierto(a => !a); };
 
@@ -363,6 +371,62 @@ function StepCard({ numero, titulo, subtitulo, listo, generando, onGenerar, onPr
 
       {/* Body */}
       {abierto && <div style={{ borderTop: "1px solid var(--border)" }}>{children}</div>}
+    </div>
+  );
+}
+
+// ── SelectorMaterialEgger ─────────────────────────────────────────────────────
+
+const EGGER_CATS = [
+  { id: "blancos",  label: "Blancos",           icon: "⬜" },
+  { id: "grises",   label: "Grises",            icon: "🩶" },
+  { id: "negros",   label: "Negros",            icon: "⬛" },
+  { id: "lisos",    label: "Lisos / Color",     icon: "🎨" },
+  { id: "piedra",   label: "Piedra y Cemento",  icon: "🪨" },
+  { id: "feelwood", label: "Feelwood",          icon: "🌿" },
+  { id: "maderas",  label: "Maderas",           icon: "🪵" },
+];
+
+function SelectorMaterialEgger({ codigoSeleccionado, onSeleccionar }) {
+  const [abiertos, setAbiertos] = useState({});
+  const toggle = (id) => setAbiertos(p => ({ ...p, [id]: !p[id] }));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {EGGER_CATS.map(cat => {
+        const mats = EGGER_MATERIALES.filter(m => m.renderCat === cat.id);
+        if (!mats.length) return null;
+        const abierto = !!abiertos[cat.id];
+        const selEnCat = mats.find(m => m.codigo === codigoSeleccionado);
+        return (
+          <div key={cat.id} style={{ border: "1px solid var(--border)", borderRadius: 7, overflow: "hidden" }}>
+            <div onClick={() => toggle(cat.id)} style={{ padding: "7px 12px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none", background: "var(--bg-surface)" }}>
+              <span style={{ fontSize: 13 }}>{cat.icon}</span>
+              <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{cat.label}</span>
+              {selEnCat && (
+                <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--accent)", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 6px", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {selEnCat.nombre}
+                </span>
+              )}
+              <span style={{ fontSize: 9, color: "var(--text-muted)", display: "inline-block", transform: abierto ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>▼</span>
+            </div>
+            {abierto && (
+              <div style={{ padding: "6px 12px 10px", borderTop: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 5, background: "var(--bg-subtle)" }}>
+                {mats.map(m => (
+                  <button
+                    key={m.codigo}
+                    onClick={() => onSeleccionar(codigoSeleccionado === m.codigo ? null : m)}
+                    title={m.codigo}
+                    style={{ ...btnSm(codigoSeleccionado === m.codigo ? "accent" : "default"), fontSize: 10, padding: "4px 9px" }}
+                  >
+                    {m.nombre}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -456,9 +520,10 @@ export function RenderIA({
   onRenderGenerado = null,
 }) {
   const savedCfg = leerConfigRender();
+  const isMobile = useIsMobile();
 
   // Visualización
-  const [modo,     setModo]     = useState("split");
+  const [modo,     setModo]     = useState(isMobile ? "render" : "split");
   const [bloques,  setBloques]  = useState([]);
   const [idsBajos, setIdsBajos] = useState([]);
   const [idsAltos, setIdsAltos] = useState([]);
@@ -466,6 +531,7 @@ export function RenderIA({
   const [wsId,     setWsId]     = useState(null);
 
   // Paso 1
+  const [selectedEggerCode, setSelectedEggerCode] = useState(null);
   const [generando,    setGenerando]    = useState(false);
   const [imagenUrl,    setImagenUrl]    = useState(null);
   const [errorRender,  setErrorRender]  = useState(null);
@@ -607,7 +673,7 @@ export function RenderIA({
       {/* Cabecera */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <SectionTitle sub="Genera renders realistas en dos etapas">Render IA</SectionTitle>
-        {!sinDatos && (
+        {!sinDatos && !isMobile && (
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={() => setModo("svg")}    style={btnSm(modo === "svg"    ? "accent" : "default")}>📐 Plano</button>
             <button onClick={() => setModo("render")} style={btnSm(modo === "render" ? "accent" : "default")}>✨ Render</button>
@@ -631,7 +697,7 @@ export function RenderIA({
       {!sinDatos && modo === "svg"    && <PanelSVG {...svgProps} />}
       {!sinDatos && modo === "render" && <PanelRender imagenUrl={imagenUrl} imagenEscenaUrl={imagenEscenaUrl} generando={generando} generandoEscena={generandoEscena} />}
       {!sinDatos && modo === "split"  && (
-        <div style={{ display: "flex", gap: 12, alignItems: "stretch", minHeight: 360 }}>
+        <div className="rsp-render-split" style={{ display: "flex", gap: 12, alignItems: "stretch", minHeight: isMobile ? "auto" : 360 }}>
           <PanelSVG {...svgProps} compact />
           <PanelRender imagenUrl={imagenUrl} imagenEscenaUrl={imagenEscenaUrl} generando={generando} generandoEscena={generandoEscena} compact />
         </div>
@@ -651,7 +717,7 @@ export function RenderIA({
           subtitulo="Genera el mueble con material y terminación"
           listo={!!imagenUrl} generando={generando}
           onGenerar={handleGenerar} onPreview={handleVerReferencia}
-          bloqueado={!puedeGenerar} creditos={creditos}
+          bloqueado={!puedeGenerar} creditos={creditos} autoClose
         >
           <InnerSection label="Prompt base" icon="📝" badge={promptBase !== DEFAULT_PROMPT_BASE ? "personalizado" : null}>
             <PromptSection value={promptBase} onChange={actualizarPromptBase} defaultValue={DEFAULT_PROMPT_BASE} />
@@ -663,6 +729,21 @@ export function RenderIA({
                 <VariableItem key={vc.id} config={vc} value={variables[vc.id] ?? null} onChange={val => actualizarVariable(vc.id, val)} />
               ))}
             </div>
+          </InnerSection>
+
+          <InnerSection label="Materiales EGGER" icon="🪵" badge={selectedEggerCode ? (EGGER_MATERIALES.find(m => m.codigo === selectedEggerCode)?.nombre ?? null) : null}>
+            <SelectorMaterialEgger
+              codigoSeleccionado={selectedEggerCode}
+              onSeleccionar={(mat) => {
+                if (!mat) {
+                  setSelectedEggerCode(null);
+                  actualizarVariable("material", null);
+                } else {
+                  setSelectedEggerCode(mat.codigo);
+                  actualizarVariable("material", mat.prompt);
+                }
+              }}
+            />
           </InnerSection>
 
           <InnerSection label="Configuración avanzada" icon="⚙️" defaultOpen={false}>

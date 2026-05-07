@@ -103,20 +103,11 @@ module.exports = async function handler(req, res) {
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "wait" };
 
   try {
-    // ── Paso 1: obtener versión y eliminar fondo con BRIA-RMBG ───────────────
-    console.log("[scene] paso 1: obteniendo versión de BRIA-RMBG");
-    const modelRes  = await fetch(
-      "https://api.replicate.com/v1/models/851-labs/bria-rmbg",
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    const modelData = await modelRes.json();
-    const brgVersion = modelData?.latest_version?.id;
-    if (!brgVersion) {
-      console.error("[scene] BRIA-RMBG model lookup:", JSON.stringify(modelData));
-      return res.status(500).json({ error: "No se encontró el modelo de remoción de fondo" });
-    }
-
-    console.log(`[scene] BRIA-RMBG version=${brgVersion}`);
+    // ── Paso 1: eliminar fondo ────────────────────────────────────────────────
+    // Busca la versión más reciente entre los candidatos conocidos
+    // 851-labs/background-remover — versión fija, evita lookup dinámico
+    const brgVersion = "a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc";
+    console.log(`[scene] usando rembg version=${brgVersion}`);
     const rmRes = await fetch("https://api.replicate.com/v1/predictions", {
       method:  "POST",
       headers,
@@ -127,12 +118,36 @@ module.exports = async function handler(req, res) {
     });
     const rmData = await rmRes.json();
     if (!rmRes.ok || rmData.error) {
-      const msg = rmData.detail || rmData.error || `BRIA-RMBG HTTP ${rmRes.status}`;
-      console.error("[scene] BRIA-RMBG error:", msg);
+      const msg = rmData.detail || rmData.error || `rembg HTTP ${rmRes.status}`;
+      console.error("[scene] rembg error:", msg);
       return res.status(500).json({ error: `Remoción de fondo: ${msg}` });
     }
-    const transparentUrl = Array.isArray(rmData.output) ? rmData.output[0] : rmData.output;
-    if (!transparentUrl) return res.status(500).json({ error: "BRIA-RMBG no devolvió imagen" });
+
+    console.log(`[scene] rembg prediction id=${rmData.id} status=${rmData.status} output=${JSON.stringify(rmData.output)}`);
+
+    // Prefer:wait devuelve output directo si termina en <60s; si no, hay que hacer polling
+    let transparentUrl = Array.isArray(rmData.output) ? rmData.output[0] : rmData.output;
+
+    if (!transparentUrl && rmData.id && ["starting", "processing"].includes(rmData.status)) {
+      console.log(`[scene] rembg polling ${rmData.id}...`);
+      for (let i = 0; i < 40; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const pollRes  = await fetch(`https://api.replicate.com/v1/predictions/${rmData.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const pollData = await pollRes.json();
+        console.log(`[scene] rembg poll ${i + 1}: status=${pollData.status}`);
+        if (pollData.status === "succeeded") {
+          transparentUrl = Array.isArray(pollData.output) ? pollData.output[0] : pollData.output;
+          break;
+        }
+        if (["failed", "canceled"].includes(pollData.status)) {
+          return res.status(500).json({ error: `rembg falló: ${pollData.error || "sin detalle"}` });
+        }
+      }
+    }
+
+    if (!transparentUrl) return res.status(500).json({ error: "rembg no devolvió imagen tras 2 min de espera" });
 
     // ── Paso 2: generar máscara B&N desde el alpha ────────────────────────────
     console.log("[scene] paso 2: generando máscara desde alpha");
@@ -148,19 +163,15 @@ module.exports = async function handler(req, res) {
       prompt,
       guidance:         parseInt(guidance, 10),
       steps:            28,
-      output_format:    "webp",
+      output_format:    "jpg",
       output_quality:   90,
       safety_tolerance: 2,
     };
     if (seed != null) fillInput.seed = parseInt(seed, 10);
 
-    const fillRes = await fetch(
+    const fillRes  = await fetch(
       "https://api.replicate.com/v1/models/black-forest-labs/flux-fill-pro/predictions",
-      {
-        method:  "POST",
-        headers,
-        body: JSON.stringify({ input: fillInput }),
-      }
+      { method: "POST", headers, body: JSON.stringify({ input: fillInput }) }
     );
     const fillData = await fillRes.json();
     if (!fillRes.ok || fillData.error) {
