@@ -76,12 +76,14 @@ module.exports = async function handler(req, res) {
 
     if (imageBase64) {
       const controlStrength = parseFloat((1 - promptStrength).toFixed(2));
-      console.log(`[render] promptStrength=${promptStrength} → control_strength=${controlStrength}`);
+      // guidance varía con el slider: estructura → bajo (5), libre → alto (28)
+      const guidance = Math.round(5 + promptStrength * 23);
+      console.log(`[render] promptStrength=${promptStrength} → control_strength=${controlStrength} guidance=${guidance}`);
       input = {
         prompt:           prompt,
         control_image:    `data:image/png;base64,${imageBase64}`,
         control_strength: controlStrength,
-        guidance:         30,
+        guidance:         guidance,
         num_outputs:      1,
         output_format:    "jpg",
         output_quality:   90,
