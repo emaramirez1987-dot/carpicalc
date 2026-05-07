@@ -198,7 +198,7 @@ export async function generarImagenReferencia({ bloquesAltos = [], bloquesBajos 
   ctx.stroke();
   ctx.globalAlpha = 1;
 
-  return canvas.toDataURL("image/jpeg", 0.92).split(",")[1];
+  return canvas.toDataURL("image/png").split(",")[1];
 }
 
 // ── Exportar PNG (retina 2×) ──────────────────────────────────────────────
