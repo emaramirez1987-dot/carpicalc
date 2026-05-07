@@ -2,7 +2,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": "build",
   "functions": {
-    "api/generate-render.js": { "maxDuration": 60 }
+    "api/generate-render.js": { "maxDuration": 60 },
+    "api/generate-scene.js":  { "maxDuration": 300 }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },

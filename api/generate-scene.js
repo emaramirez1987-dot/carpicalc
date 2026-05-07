@@ -153,8 +153,32 @@ module.exports = async function handler(req, res) {
       console.error("[scene] rembg error:", msg);
       return res.status(500).json({ error: `Remoción de fondo: ${msg}` });
     }
-    const transparentUrl = Array.isArray(rmData.output) ? rmData.output[0] : rmData.output;
-    if (!transparentUrl) return res.status(500).json({ error: "rembg no devolvió imagen" });
+
+    console.log(`[scene] rembg prediction id=${rmData.id} status=${rmData.status} output=${JSON.stringify(rmData.output)}`);
+
+    // Prefer:wait devuelve output directo si termina en <60s; si no, hay que hacer polling
+    let transparentUrl = Array.isArray(rmData.output) ? rmData.output[0] : rmData.output;
+
+    if (!transparentUrl && rmData.id && ["starting", "processing"].includes(rmData.status)) {
+      console.log(`[scene] rembg polling ${rmData.id}...`);
+      for (let i = 0; i < 40; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const pollRes  = await fetch(`https://api.replicate.com/v1/predictions/${rmData.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const pollData = await pollRes.json();
+        console.log(`[scene] rembg poll ${i + 1}: status=${pollData.status}`);
+        if (pollData.status === "succeeded") {
+          transparentUrl = Array.isArray(pollData.output) ? pollData.output[0] : pollData.output;
+          break;
+        }
+        if (["failed", "canceled"].includes(pollData.status)) {
+          return res.status(500).json({ error: `rembg falló: ${pollData.error || "sin detalle"}` });
+        }
+      }
+    }
+
+    if (!transparentUrl) return res.status(500).json({ error: "rembg no devolvió imagen tras 2 min de espera" });
 
     // ── Paso 2: generar máscara B&N desde el alpha ────────────────────────────
     console.log("[scene] paso 2: generando máscara desde alpha");
