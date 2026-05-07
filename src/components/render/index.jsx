@@ -79,6 +79,28 @@ const VARIABLES_CONFIG = [
   },
 ];
 
+// IDs de variables que pertenecen al Paso 2 (escena)
+const ESCENA_IDS = ["fondo", "iluminacion", "perspectiva", "accesorios"];
+
+// Construye el prompt de escena a partir de las variables seleccionadas
+function buildScenePrompt(variables) {
+  const cfg = VARIABLES_CONFIG.reduce((acc, v) => ({ ...acc, [v.id]: v }), {});
+  const get  = (id) => variables[id] || cfg[id]?.default || "";
+  return `Fotografía arquitectónica de interiores, premium. ${get("fondo")}. ${get("iluminacion")}. ${get("perspectiva")}. ${get("accesorios")}. Fotografía profesional de interiores, alta resolución, visualización arquitectónica.`;
+}
+
+// Descarga una URL como base64 (para pasar el render a la API)
+async function urlToBase64(url) {
+  const res  = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(",")[1]);
+    reader.onerror  = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 // Reemplaza cada placeholder por el valor elegido (o el default si no hay selección)
 function ensamblarPrompt(base, variables) {
   let resultado = base;
@@ -130,8 +152,16 @@ function BtnModo({ activo, onClick, children }) {
 
 // ── PanelRender ───────────────────────────────────────────────────────────────
 
-function PanelRender({ imagenUrl, generando, compact = false }) {
-  if (generando) {
+function PanelRender({ imagenUrl, imagenEscenaUrl, generando, generandoEscena, compact = false }) {
+  const [tab, setTab] = useState("paso1");
+
+  useEffect(() => { if (imagenEscenaUrl) setTab("paso2"); }, [imagenEscenaUrl]);
+
+  const mostrarUrl    = tab === "paso2" ? imagenEscenaUrl : imagenUrl;
+  const enGenerando   = tab === "paso2" ? generandoEscena : generando;
+  const showTabs      = imagenUrl && (imagenEscenaUrl || generandoEscena);
+
+  if (enGenerando) {
     return (
       <div style={{
         flex: 1, display: "flex", flexDirection: "column",
@@ -147,22 +177,30 @@ function PanelRender({ imagenUrl, generando, compact = false }) {
       </div>
     );
   }
-  if (imagenUrl) {
+  if (mostrarUrl) {
     return (
       <div style={{
         flex: 1, background: "var(--bg-surface)", border: "1px solid var(--border)",
         borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column",
       }}>
         <div style={{ padding: compact ? "8px 12px" : "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", flex: 1 }}>
-            ✨ Render IA
-          </span>
-          <a href={imagenUrl} download="render.webp" target="_blank" rel="noopener noreferrer"
+          {showTabs ? (
+            <>
+              <button onClick={() => setTab("paso1")} style={{ ...btnSm(tab === "paso1" ? "accent" : "default"), fontSize: 10 }}>Paso 1 · Mueble</button>
+              <button onClick={() => setTab("paso2")} style={{ ...btnSm(tab === "paso2" ? "accent" : "default"), fontSize: 10 }}>Paso 2 · Escena</button>
+            </>
+          ) : (
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>
+              ✨ Render IA
+            </span>
+          )}
+          <div style={{ flex: 1 }} />
+          <a href={mostrarUrl} download="render.webp" target="_blank" rel="noopener noreferrer"
             style={{ ...btnSm("accent"), textDecoration: "none", display: "inline-block" }}>
             ⬇ Descargar
           </a>
         </div>
-        <img src={imagenUrl} alt="render IA" style={{ width: "100%", height: "auto", display: "block" }} />
+        <img src={mostrarUrl} alt="render IA" style={{ width: "100%", height: "auto", display: "block" }} />
       </div>
     );
   }
@@ -488,6 +526,68 @@ function GestorPrompts({ prompts, onEliminar, onActualizar, onUsar }) {
   );
 }
 
+// ── PanelPaso2 ────────────────────────────────────────────────────────────
+
+function PanelPaso2({ imagenUrl, onGenerar, generando, variables, onVariable, imagePromptStrength, onStrength }) {
+  const [abierto, setAbierto] = useState(false);
+  useEffect(() => { if (imagenUrl) setAbierto(true); }, [imagenUrl]);
+  if (!imagenUrl) return null;
+
+  const escenaVars = VARIABLES_CONFIG.filter(v => ESCENA_IDS.includes(v.id));
+  const etiqueta   = imagePromptStrength >= 0.75 ? "muy fiel al mueble"
+                   : imagePromptStrength >= 0.50 ? "balance mueble / escena"
+                   : "más libertad de escena";
+
+  return (
+    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--accent-border)", borderRadius: 10, overflow: "hidden" }}>
+      <div onClick={() => setAbierto(a => !a)} style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
+        <span style={{ fontSize: 10, color: "var(--text-muted)", transition: "transform 0.15s", display: "inline-block", transform: abierto ? "rotate(90deg)" : "none" }}>▶</span>
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 700, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--accent)" }}>
+          Paso 2 — Colocar en escena
+        </span>
+        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>flux-1.1-pro · IP-Adapter</span>
+      </div>
+
+      {abierto && (
+        <div style={{ borderTop: "1px solid var(--border)", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Variables de escena */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            {escenaVars.map(vc => (
+              <VariableItem key={vc.id} config={vc} value={variables[vc.id] ?? null} onChange={val => onVariable(vc.id, val)} />
+            ))}
+          </div>
+
+          {/* Slider fidelidad */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Fidelidad al mueble
+              </span>
+              <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--accent)", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 7px" }}>
+                {imagePromptStrength}
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>{etiqueta}</span>
+            </div>
+            <input type="range" min="0.30" max="0.95" step="0.05" value={imagePromptStrength}
+              onChange={e => onStrength(parseFloat(e.target.value))}
+              style={{ width: "100%", accentColor: "var(--accent)" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+              <span>0.30 — más libertad</span>
+              <span>0.60 — balance</span>
+              <span>0.95 — muy fiel</span>
+            </div>
+          </div>
+
+          <button onClick={onGenerar} disabled={generando} style={{ ...btnSm("accent"), padding: "8px 18px", fontSize: 12, opacity: generando ? 0.4 : 1, cursor: generando ? "default" : "pointer" }}>
+            {generando ? "⏳ Generando escena…" : "▶ Generar escena"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── PanelVariables ────────────────────────────────────────────────────────
 
 function PanelVariables({ variables, onCambio }) {
@@ -570,12 +670,16 @@ export function RenderIA({
   const [idsAltos, setIdsAltos]       = useState([]);
   const [alto, setAlto]               = useState(2400);
   const [wsId, setWsId]               = useState(null);
-  const [generando, setGenerando]     = useState(false);
-  const [imagenUrl, setImagenUrl]     = useState(null);
-  const [errorRender, setErrorRender] = useState(null);
-  const [renderListo, setRenderListo] = useState(false);
+  const [generando, setGenerando]         = useState(false);
+  const [imagenUrl, setImagenUrl]         = useState(null);
+  const [errorRender, setErrorRender]     = useState(null);
+  const [renderListo, setRenderListo]     = useState(false);
   // eslint-disable-next-line no-unused-vars
-  const [debugInfo, setDebugInfo]     = useState(null);
+  const [debugInfo, setDebugInfo]         = useState(null);
+  const [imagenEscenaUrl, setImagenEscenaUrl] = useState(null);
+  const [generandoEscena, setGenerandoEscena] = useState(false);
+  const [variablesEscena, setVariablesEscena] = useState({});
+  const [imagePromptStrength, setImagePromptStrength] = useState(0.70);
   const [refPreview, setRefPreview]   = useState(null);
 
   // Prompt base (persistido)
@@ -654,6 +758,28 @@ export function RenderIA({
     }
   };
 
+  const handleGenerarEscena = async () => {
+    if (!wsId || !imagenUrl) return;
+    setGenerandoEscena(true);
+    setErrorRender(null);
+    try {
+      const b64    = await urlToBase64(imagenUrl);
+      const prompt = buildScenePrompt(variablesEscena);
+      const res    = await fetch("/api/generate-scene", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: wsId, prompt, imageBase64: b64, imagePromptStrength }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setErrorRender(data.error || "Error al generar escena"); return; }
+      setImagenEscenaUrl(data.imageUrl);
+    } catch (e) {
+      setErrorRender(e.message);
+    } finally {
+      setGenerandoEscena(false);
+    }
+  };
+
   const handleVerReferencia = async () => {
     const bloquesAltosRef = bloques.filter(b => idsAltos.includes(b.id));
     const bloquesBajosRef = bloques.filter(b => idsBajos.includes(b.id));
@@ -726,11 +852,11 @@ export function RenderIA({
 
       {/* Visualización */}
       {!sinDatos && modo === "svg"    && <PanelSVG {...svgProps} />}
-      {!sinDatos && modo === "render" && <PanelRender imagenUrl={imagenUrl} generando={generando} />}
+      {!sinDatos && modo === "render" && <PanelRender imagenUrl={imagenUrl} imagenEscenaUrl={imagenEscenaUrl} generando={generando} generandoEscena={generandoEscena} />}
       {!sinDatos && modo === "split"  && (
         <div style={{ display: "flex", gap: 12, alignItems: "stretch", minHeight: 360 }}>
           <PanelSVG {...svgProps} compact />
-          <PanelRender imagenUrl={imagenUrl} generando={generando} compact />
+          <PanelRender imagenUrl={imagenUrl} imagenEscenaUrl={imagenEscenaUrl} generando={generando} generandoEscena={generandoEscena} compact />
         </div>
       )}
 
@@ -743,6 +869,17 @@ export function RenderIA({
             promptStrength={promptStrength}
             onPromptStrength={actualizarPromptStrength}
             tieneImagen={bloques.length > 0}
+          />
+
+          {/* Paso 2 — escena */}
+          <PanelPaso2
+            imagenUrl={imagenUrl}
+            onGenerar={handleGenerarEscena}
+            generando={generandoEscena}
+            variables={variablesEscena}
+            onVariable={(id, val) => setVariablesEscena(prev => ({ ...prev, [id]: val }))}
+            imagePromptStrength={imagePromptStrength}
+            onStrength={setImagePromptStrength}
           />
 
           {/* Prompt base */}
