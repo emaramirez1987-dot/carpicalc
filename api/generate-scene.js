@@ -103,18 +103,28 @@ module.exports = async function handler(req, res) {
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "wait" };
 
   try {
-    // ── Paso 1: eliminar fondo con BRIA-RMBG ──────────────────────────────────
-    console.log("[scene] paso 1: BRIA-RMBG remoción de fondo");
-    const rmRes = await fetch(
-      "https://api.replicate.com/v1/models/851-labs/BRIA-RMBG/predictions",
-      {
-        method:  "POST",
-        headers,
-        body: JSON.stringify({
-          input: { image: `data:image/jpeg;base64,${imageBase64}` },
-        }),
-      }
+    // ── Paso 1: obtener versión y eliminar fondo con BRIA-RMBG ───────────────
+    console.log("[scene] paso 1: obteniendo versión de BRIA-RMBG");
+    const modelRes  = await fetch(
+      "https://api.replicate.com/v1/models/851-labs/bria-rmbg",
+      { headers: { Authorization: `Bearer ${token}` } }
     );
+    const modelData = await modelRes.json();
+    const brgVersion = modelData?.latest_version?.id;
+    if (!brgVersion) {
+      console.error("[scene] BRIA-RMBG model lookup:", JSON.stringify(modelData));
+      return res.status(500).json({ error: "No se encontró el modelo de remoción de fondo" });
+    }
+
+    console.log(`[scene] BRIA-RMBG version=${brgVersion}`);
+    const rmRes = await fetch("https://api.replicate.com/v1/predictions", {
+      method:  "POST",
+      headers,
+      body: JSON.stringify({
+        version: brgVersion,
+        input:   { image: `data:image/jpeg;base64,${imageBase64}` },
+      }),
+    });
     const rmData = await rmRes.json();
     if (!rmRes.ok || rmData.error) {
       const msg = rmData.detail || rmData.error || `BRIA-RMBG HTTP ${rmRes.status}`;
