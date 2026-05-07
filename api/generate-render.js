@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { workspaceId, prompt, imageBase64, promptStrength = 0.80 } = req.body || {};
+  const { workspaceId, prompt, imageBase64, promptStrength = 0.45 } = req.body || {};
   if (!workspaceId || !prompt) {
     return res.status(400).json({ error: "workspaceId y prompt requeridos" });
   }
@@ -75,10 +75,12 @@ module.exports = async function handler(req, res) {
     let input;
 
     if (imageBase64) {
+      const controlStrength = parseFloat((1 - promptStrength).toFixed(2));
+      console.log(`[render] promptStrength=${promptStrength} → control_strength=${controlStrength}`);
       input = {
         prompt:           prompt,
         control_image:    `data:image/png;base64,${imageBase64}`,
-        control_strength: parseFloat((1 - promptStrength).toFixed(2)),
+        control_strength: controlStrength,
         guidance:         30,
         num_outputs:      1,
         output_format:    "jpg",
