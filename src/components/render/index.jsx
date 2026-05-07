@@ -582,6 +582,8 @@ export function RenderIA({
   const [imagenUrl, setImagenUrl]     = useState(null);
   const [errorRender, setErrorRender] = useState(null);
   const [renderListo, setRenderListo] = useState(false);
+  // eslint-disable-next-line no-unused-vars
+  const [debugInfo, setDebugInfo]     = useState(null);
   const [refPreview, setRefPreview]   = useState(null);
 
   // Prompt base (persistido)
@@ -630,8 +632,18 @@ export function RenderIA({
       if (bloques.length > 0) {
         const bloquesAltosRef = bloques.filter(b => idsAltos.includes(b.id));
         const bloquesBajosRef = bloques.filter(b => idsBajos.includes(b.id));
-        try { imageBase64 = await generarImagenReferencia({ bloquesAltos: bloquesAltosRef, bloquesBajos: bloquesBajosRef, composicionOverride, modulos }); } catch {}
+        try {
+          imageBase64 = await generarImagenReferencia({ bloquesAltos: bloquesAltosRef, bloquesBajos: bloquesBajosRef, composicionOverride, modulos });
+        } catch (imgErr) {
+          setErrorRender(`Error generando imagen de referencia: ${imgErr.message}`);
+          return;
+        }
       }
+      const controlStrength = parseFloat((1 - promptStrength).toFixed(2));
+      setDebugInfo(imageBase64
+        ? `img2img · control_strength=${controlStrength}`
+        : "text2img · sin imagen de referencia"
+      );
       const res = await fetch("/api/generate-render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -796,6 +808,13 @@ export function RenderIA({
               )}
             </div>
           </div>
+
+          {/* Debug info */}
+          {debugInfo && (
+            <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", padding: "4px 0" }}>
+              {debugInfo}
+            </div>
+          )}
 
           {/* Error */}
           {errorRender && (
