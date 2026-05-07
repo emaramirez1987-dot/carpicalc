@@ -42,6 +42,7 @@ export default function SVGPlano({
   offsetBajos = 0,
   offsetAltos = 0,
   colgadoAereos = 200,
+  fitToModules = false,
 }) {
   const plotW = SVG_W - PAD.left - PAD.right;
   const plotH = SVG_H - PAD.top  - PAD.bottom;
@@ -138,6 +139,29 @@ export default function SVGPlano({
 
   const hasBloques = bloquesAltos.length > 0 || bloquesBajos.length > 0;
 
+  // ViewBox: zoom a módulos cuando fitToModules=true
+  let viewBox = `0 0 ${SVG_W} ${SVG_H}`;
+  if (fitToModules && hasBloques) {
+    const M = 24;
+    const allX = [
+      ...posBajos.map(p => PAD.left + p.x + offBPx),
+      ...posAltos.map(p => PAD.left + p.x + offAPx),
+    ];
+    const allXR = [
+      ...posBajos.map(p => PAD.left + p.x + offBPx + p.widthPx),
+      ...posAltos.map(p => PAD.left + p.x + offAPx + p.widthPx),
+    ];
+    const allTopY = [
+      ...bloquesBajos.map((b, i) => absFloor - (b.tipoVisual === "torre" ? plotH : posBajos[i].heightPx)),
+      ...bloquesAltos.map((_, i) => absCeiling + colgadoPx),
+    ];
+    const vbX = Math.min(...allX) - M;
+    const vbY = Math.min(...allTopY) - M;
+    const vbW = Math.max(...allXR) - Math.min(...allX) + M * 2;
+    const vbH = absFloor - Math.min(...allTopY) + M * 2;
+    viewBox = `${vbX} ${vbY} ${vbW} ${vbH}`;
+  }
+
   // Posiciones de juntas por zona
   const juntasBajos = posBajos.slice(1).map((pos, i) => PAD.left + pos.x + offBPx);
   const juntasAltos = posAltos.slice(1).map((pos, i) => PAD.left + pos.x + offAPx);
@@ -146,7 +170,7 @@ export default function SVGPlano({
     <svg
       ref={svgRef}
       width={SVG_W} height={SVG_H}
-      viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+      viewBox={viewBox}
       style={{ width: "100%", height: "auto", display: "block" }}
       xmlns="http://www.w3.org/2000/svg"
     >
