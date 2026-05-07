@@ -76,8 +76,8 @@ module.exports = async function handler(req, res) {
 
     if (imageBase64) {
       const controlStrength = parseFloat((1 - promptStrength).toFixed(2));
-      // guidance varía con el slider: estructura → bajo (5), libre → alto (28)
-      const guidance = Math.round(5 + promptStrength * 23);
+      // guidance varía con el slider: estructura → bajo (5), libre → alto (70)
+      const guidance = Math.round(5 + promptStrength * 65);
       console.log(`[render] promptStrength=${promptStrength} → control_strength=${controlStrength} guidance=${guidance}`);
       input = {
         prompt:           prompt,
