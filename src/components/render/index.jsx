@@ -197,26 +197,13 @@ function PanelRender({ imagenUrl, generando, compact = false }) {
 function PanelSVG({ bloques, idsBajos, idsAltos, altoCielorraso, composicionOverride, modulos, compact = false }) {
   const bloquesAltos = bloques.filter(b => idsAltos.includes(b.id));
   const bloquesBajos = bloques.filter(b => idsBajos.includes(b.id));
-  const svgProps = { bloquesAltos, bloquesBajos, altoCielorraso, modulos, composicionOverride, onSelect: null, selectedId: null };
+  const svgProps = { bloquesAltos, bloquesBajos, altoCielorraso, modulos, composicionOverride, onSelect: null, selectedId: null, temaClaro: true, fitToModules: true };
   return (
     <div style={{
-      flex: 1, background: "var(--bg-surface)", border: "1px solid var(--border)",
-      borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column",
+      flex: 1, background: "#FAFAF7", border: "1px solid var(--border)",
+      borderRadius: 12, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", padding: 8,
     }}>
-      <div style={{ padding: compact ? "8px 12px" : "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>
-          📐 Plano técnico
-        </span>
-        <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, padding: "2px 7px", borderRadius: 4,
-          background: bloques.length > 0 ? "rgba(80,180,100,0.12)" : "rgba(150,150,150,0.10)",
-          border: `1px solid ${bloques.length > 0 ? "rgba(80,180,100,0.35)" : "rgba(150,150,150,0.25)"}`,
-          color: bloques.length > 0 ? "#4ab870" : "var(--text-muted)" }}>
-          {bloques.length > 0 ? `✓ ${bloques.length} mód. — se usará como referencia` : "sin módulos — solo texto"}
-        </span>
-      </div>
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
-        <SVGPlano {...svgProps} />
-      </div>
+      <SVGPlano {...svgProps} />
     </div>
   );
 }
@@ -509,6 +496,44 @@ function GestorPrompts({ prompts, onEliminar, onActualizar, onUsar }) {
   );
 }
 
+// ── PanelVariables ────────────────────────────────────────────────────────
+
+function PanelVariables({ variables, onCambio }) {
+  const [abierto, setAbierto] = useState(false);
+  const activas = VARIABLES_CONFIG.filter(v => variables[v.id]).length;
+
+  return (
+    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+      <div
+        onClick={() => setAbierto(a => !a)}
+        style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}
+      >
+        <span style={{ fontSize: 10, color: "var(--text-muted)", transition: "transform 0.15s", display: "inline-block", transform: abierto ? "rotate(90deg)" : "none" }}>▶</span>
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 700, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-secondary)" }}>
+          Variables del render
+        </span>
+        {activas > 0 && (
+          <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--accent)", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 7px" }}>
+            {activas} personalizada{activas !== 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+      {abierto && (
+        <div style={{ borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 1 }}>
+          {VARIABLES_CONFIG.map(vc => (
+            <VariableItem
+              key={vc.id}
+              config={vc}
+              value={variables[vc.id] ?? null}
+              onChange={val => onCambio(vc.id, val)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Helpers de créditos ───────────────────────────────────────────────────────
 
 function calcularCreditos(suscripcion) {
@@ -547,7 +572,7 @@ export function RenderIA({
   // Config persistida
   const savedCfg = leerConfigRender();
 
-  const [modo, setModo]               = useState("svg");
+  const [modo, setModo]               = useState("split");
   const [bloques, setBloques]         = useState([]);
   const [idsBajos, setIdsBajos]       = useState([]);
   const [idsAltos, setIdsAltos]       = useState([]);
@@ -556,6 +581,7 @@ export function RenderIA({
   const [generando, setGenerando]     = useState(false);
   const [imagenUrl, setImagenUrl]     = useState(null);
   const [errorRender, setErrorRender] = useState(null);
+  const [renderListo, setRenderListo] = useState(false);
   const [refPreview, setRefPreview]   = useState(null);
 
   // Prompt base (persistido)
@@ -614,7 +640,7 @@ export function RenderIA({
       const data = await res.json();
       if (!res.ok) { setErrorRender(data.error || "Error al generar"); return; }
       setImagenUrl(data.imageUrl);
-      setModo("render");
+      setRenderListo(true);
       if (onRenderGenerado) onRenderGenerado();
     } catch (e) {
       setErrorRender(e.message);
@@ -672,7 +698,9 @@ export function RenderIA({
         {!sinDatos && (
           <div style={{ display: "flex", gap: 6 }}>
             <BtnModo activo={modo === "svg"}    onClick={() => setModo("svg")}>📐 Plano</BtnModo>
-            <BtnModo activo={modo === "render"} onClick={() => setModo("render")}>✨ Render</BtnModo>
+            <BtnModo activo={modo === "render"} onClick={() => { setModo("render"); setRenderListo(false); }}>
+              ✨ Render{renderListo && modo !== "render" ? " ●" : ""}
+            </BtnModo>
             <BtnModo activo={modo === "split"}  onClick={() => setModo("split")}>⊞ Dividido</BtnModo>
           </div>
         )}
@@ -718,24 +746,8 @@ export function RenderIA({
             onChange={actualizarPromptBase}
           />
 
-          {/* Variables dinámicas */}
-          <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)" }}>
-              <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>
-                Variables del render
-              </span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              {VARIABLES_CONFIG.map(vc => (
-                <VariableItem
-                  key={vc.id}
-                  config={vc}
-                  value={variables[vc.id] ?? null}
-                  onChange={val => actualizarVariable(vc.id, val)}
-                />
-              ))}
-            </div>
-          </div>
+          {/* Variables dinámicas — acordeón */}
+          <PanelVariables variables={variables} onCambio={actualizarVariable} />
 
           {/* Acciones: generar */}
           <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
