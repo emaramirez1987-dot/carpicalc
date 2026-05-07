@@ -9,32 +9,29 @@ import SVGPlano from "../plano/SVGPlano.jsx";
 // ── Prompt base por defecto ───────────────────────────────────────────────────
 
 const DEFAULT_PROMPT_BASE =
-`Render fotorrealista de alta calidad de [TIPO_DE_MUEBLE], manteniendo la estructura y proporciones principales de la imagen de referencia.
+`Usar la imagen de referencia como guía estructural principal, conservando la composición general, proporciones y distribución base del mueble.
 
-Material principal: [MATERIAL]
+Reinterpretar detalles constructivos, espesores, terminaciones y refinamientos visuales para transformarlo en una versión realista, funcional y de alta gama.
+
+Generar una fotografía arquitectónica hiperrealista del mueble terminado, con apariencia de producto real fabricado profesionalmente.
+
+Material: [MATERIAL]
 Color: [COLOR]
 Acabado: [ACABADO]
 
+Ambiente: [FONDO]
 Iluminación: [ILUMINACION]
-Fondo/Ambiente: [FONDO]
-Accesorios decorativos: [ACCESORIOS]
+Accesorios: [ACCESORIOS]
 
 Perspectiva: [PERSPECTIVA]
-Tipo de cámara: [CAMARA]
+Cámara: [CAMARA]
+Estilo: [ESTILO]
 
-Estilo visual: [ESTILO]
-Nivel de detalle: [DETALLE]
-
-Materiales ultra realistas, texturas naturales, sombras suaves, reflejos coherentes, profundidad realista, iluminación cinematográfica, visualización arquitectónica premium, fotografía profesional de interiores, ultra detallado, render hiperrealista, alta resolución.`;
+Texturas naturales, sombras suaves, reflejos realistas, profundidad cinematográfica, detalles precisos de carpintería, fotografía profesional de interiores, visualización arquitectónica premium.`;
 
 // ── Variables dinámicas ───────────────────────────────────────────────────────
 
 const VARIABLES_CONFIG = [
-  {
-    id: "tipo_mueble", label: "Tipo de mueble", icon: "🪑", placeholder: "[TIPO_DE_MUEBLE]",
-    default: "mueble de cocina",
-    opciones: ["mueble de cocina", "placard", "bajo mesada", "alacena", "cajonera", "rack de living", "mueble de baño", "biblioteca"],
-  },
   {
     id: "material", label: "Material", icon: "🪵", placeholder: "[MATERIAL]",
     default: "melamina",
@@ -79,11 +76,6 @@ const VARIABLES_CONFIG = [
     id: "estilo", label: "Estilo visual", icon: "🎭", placeholder: "[ESTILO]",
     default: "contemporáneo premium",
     opciones: ["contemporáneo premium", "escandinavo minimalista", "industrial moderno", "clásico refinado"],
-  },
-  {
-    id: "detalle", label: "Nivel de detalle", icon: "🔬", placeholder: "[DETALLE]",
-    default: "ultra detallado",
-    opciones: ["ultra detallado", "detalle normal", "simplificado"],
   },
 ];
 
