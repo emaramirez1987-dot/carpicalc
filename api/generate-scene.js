@@ -176,9 +176,11 @@ module.exports = async function handler(req, res) {
         { method: "POST", headers, body: JSON.stringify({ input: fillInput }) }
       );
       fillData = await fillRes.json();
-      if (fillRes.status === 429) {
-        console.log(`[scene] flux-fill-pro throttled (intento ${attempt}), esperando 12s...`);
-        await new Promise(r => setTimeout(r, 12000));
+      const isThrottled = fillRes.status === 429 ||
+        (fillData?.detail || fillData?.error || "").toLowerCase().includes("throttled");
+      if (isThrottled) {
+        console.log(`[scene] flux-fill-pro throttled (intento ${attempt}), esperando 15s...`);
+        await new Promise(r => setTimeout(r, 15000));
         continue;
       }
       break;
