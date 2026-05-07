@@ -176,7 +176,7 @@ function VariableItem({ config, value, onChange }) {
 
 // ── InnerSection ──────────────────────────────────────────────────────────────
 
-function InnerSection({ label, icon, badge, children, defaultOpen = true }) {
+function InnerSection({ label, icon, badge, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div style={{ borderTop: "1px solid var(--border)" }}>
@@ -289,22 +289,30 @@ function PresetsSection({ presets, promptBase, onGuardar, onCargar, onEliminar }
 
 // ── StepCard ──────────────────────────────────────────────────────────────────
 
-function StepCard({ numero, titulo, subtitulo, listo, generando, onGenerar, onPreview, bloqueado, creditos, children, defaultOpen = true }) {
+function StepCard({ numero, titulo, subtitulo, listo, generando, onGenerar, onPreview, bloqueado, creditos, children, defaultOpen = true, disabled = false }) {
   const [abierto, setAbierto] = useState(defaultOpen);
+
+  const toggleAbierto = () => { if (!disabled) setAbierto(a => !a); };
+
+  // Dorado cuando colapsado, normal cuando expandido
+  const borderColor = !abierto ? "var(--accent-border)" : "var(--border)";
+  const headerBg    = !abierto ? "var(--accent-soft)"   : "transparent";
 
   return (
     <div style={{
       background: "var(--bg-surface)",
-      border: `1px solid ${listo ? "var(--accent-border)" : "var(--border)"}`,
+      border: `1px solid ${borderColor}`,
       borderRadius: 12,
       overflow: "hidden",
       transition: "border-color 0.2s",
+      opacity: disabled ? 0.5 : 1,
     }}>
       {/* Header */}
       <div style={{
         padding: "14px 16px",
         display: "flex", alignItems: "center", gap: 12,
-        background: listo ? "var(--accent-soft)" : "transparent",
+        background: headerBg,
+        transition: "background 0.2s",
       }}>
         {/* Badge */}
         <div style={{
@@ -319,9 +327,11 @@ function StepCard({ numero, titulo, subtitulo, listo, generando, onGenerar, onPr
         </div>
 
         {/* Título */}
-        <div onClick={() => setAbierto(a => !a)} style={{ flex: 1, cursor: "pointer", userSelect: "none" }}>
+        <div onClick={toggleAbierto} style={{ flex: 1, cursor: disabled ? "default" : "pointer", userSelect: "none" }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{titulo}</div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>{subtitulo}</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>
+            {disabled ? "Completá el Paso 1 primero" : subtitulo}
+          </div>
         </div>
 
         {/* Acciones */}
@@ -336,17 +346,17 @@ function StepCard({ numero, titulo, subtitulo, listo, generando, onGenerar, onPr
             </span>
           )}
           {onPreview && (
-            <button onClick={onPreview} title="Vista previa" style={{ ...btnSm(), padding: "6px 9px", fontSize: 13 }}>🔍</button>
+            <button onClick={onPreview} disabled={disabled} title="Vista previa" style={{ ...btnSm(), padding: "6px 9px", fontSize: 13, opacity: disabled ? 0.4 : 1, cursor: disabled ? "default" : "pointer" }}>🔍</button>
           )}
-          <button onClick={onGenerar} disabled={bloqueado || generando}
-            style={{ ...btnSm("accent"), padding: "7px 14px", fontSize: 12, opacity: (bloqueado || generando) ? 0.4 : 1, cursor: (bloqueado || generando) ? "default" : "pointer" }}>
+          <button onClick={onGenerar} disabled={bloqueado || generando || disabled}
+            style={{ ...btnSm("accent"), padding: "7px 14px", fontSize: 12, opacity: (bloqueado || generando || disabled) ? 0.4 : 1, cursor: (bloqueado || generando || disabled) ? "default" : "pointer" }}>
             {generando ? "⏳ Generando…" : "▶ Renderizar"}
           </button>
         </div>
 
         {/* Chevron */}
-        <button onClick={() => setAbierto(a => !a)}
-          style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 2px", color: "var(--text-muted)", fontSize: 10, transition: "transform 0.2s", transform: abierto ? "rotate(180deg)" : "none", flexShrink: 0 }}>
+        <button onClick={toggleAbierto}
+          style={{ background: "none", border: "none", cursor: disabled ? "default" : "pointer", padding: "4px 2px", color: "var(--text-muted)", fontSize: 10, transition: "transform 0.2s", transform: abierto ? "rotate(180deg)" : "none", flexShrink: 0 }}>
           ▼
         </button>
       </div>
@@ -690,7 +700,7 @@ export function RenderIA({
       )}
 
       {/* ── Paso 2 · Render de Escena ────────────────────────────────────────── */}
-      {!sinDatos && imagenUrl && (
+      {!sinDatos && (
         <StepCard
           numero="02" titulo="Render de Escena"
           subtitulo="Ambienta el mueble en su contexto final"
@@ -698,6 +708,8 @@ export function RenderIA({
           onGenerar={handleGenerarEscena}
           onPreview={() => setRefPreview2(imagenUrl)}
           bloqueado={generandoEscena || creditos.bloqueado}
+          disabled={!imagenUrl}
+          defaultOpen={false}
         >
           <InnerSection label="Prompt de escena" icon="🎬" badge={promptBaseEscena !== DEFAULT_SCENE_PROMPT_BASE ? "personalizado" : null}>
             <PromptSection value={promptBaseEscena} onChange={actualizarPromptBaseEscena} defaultValue={DEFAULT_SCENE_PROMPT_BASE} />
