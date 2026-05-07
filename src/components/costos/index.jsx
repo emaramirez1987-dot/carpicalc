@@ -488,6 +488,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
     precioM2: "",
     placaLargo: 2750,
     placaAncho: 1830,
+    codigoEgger: "",
   });
   const [nuevaMO, setNuevaMO] = useState({
     nombre: "",
@@ -793,7 +794,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
                     className="rsp-grid-1"
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "1fr 1fr 2fr",
+                      gridTemplateColumns: "1fr 1fr 1fr 1fr",
                       gap: 10,
                       paddingTop: 6,
                       borderTop: "1px solid var(--border)",
@@ -813,6 +814,14 @@ function HojaCostos({ costos, setCostos, onSave }) {
                         value={editando.data.placaAncho ?? 1830}
                         onChange={(v) => updE("placaAncho", v)}
                         type="number"
+                      />
+                    </div>
+                    <div>
+                      <label style={hcLc}>Código EGGER</label>
+                      <HcII
+                        value={editando.data.codigoEgger ?? ""}
+                        onChange={(v) => updE("codigoEgger", v)}
+                        placeholder="ej: W1100 ST9"
                       />
                     </div>
                     <div
@@ -855,9 +864,14 @@ function HojaCostos({ costos, setCostos, onSave }) {
                   <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {mat.nombre}
                   </span>
-                  <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", flexShrink: 0, marginRight: 16 }}>
+                  <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", flexShrink: 0, marginRight: 10 }}>
                     {mat.espesor}mm · {mat.placaLargo ?? 2750}×{mat.placaAncho ?? 1830}
                   </span>
+                  {mat.codigoEgger && (
+                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--accent)", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 6px", flexShrink: 0, marginRight: 10 }}>
+                      {mat.codigoEgger}
+                    </span>
+                  )}
                   <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "var(--accent)", flexShrink: 0, marginRight: 14 }}>
                     {fmtPeso(mat.precioM2)}/m²
                   </span>
@@ -914,7 +928,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
             className="rsp-grid-1"
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr auto",
+              gridTemplateColumns: "1fr 1fr 1fr auto",
               gap: 8,
               alignItems: "end",
             }}
@@ -934,6 +948,13 @@ function HojaCostos({ costos, setCostos, onSave }) {
               onChange={(v) => setNuevoMat((p) => ({ ...p, placaAncho: v }))}
               small
               suffix="mm"
+            />
+            <TextInput
+              label="Código EGGER"
+              placeholder="ej: W1100 ST9"
+              value={nuevoMat.codigoEgger}
+              onChange={(v) => setNuevoMat((p) => ({ ...p, codigoEgger: v }))}
+              small
             />
             <div>
               <Btn
@@ -961,6 +982,7 @@ function HojaCostos({ costos, setCostos, onSave }) {
                     precioM2: "",
                     placaLargo: 2750,
                     placaAncho: 1830,
+                    codigoEgger: "",
                   });
                 }}
               >
