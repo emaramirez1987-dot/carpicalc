@@ -188,15 +188,6 @@ export async function generarImagenReferencia({ bloquesAltos = [], bloquesBajos 
     }
   });
 
-  // Línea de piso
-  ctx.strokeStyle = "#888888";
-  ctx.lineWidth   = 2;
-  ctx.globalAlpha = 0.7;
-  ctx.beginPath();
-  ctx.moveTo(PAD_X, floorY);
-  ctx.lineTo(W - PAD_X, floorY);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
 
   return canvas.toDataURL("image/png").split(",")[1];
 }
