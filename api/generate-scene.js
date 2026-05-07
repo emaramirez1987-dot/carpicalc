@@ -106,12 +106,10 @@ module.exports = async function handler(req, res) {
     // ── Paso 1: eliminar fondo ────────────────────────────────────────────────
     // Busca la versión más reciente entre los candidatos conocidos
     const RMBG_CANDIDATES = [
-      "851-labs/background-remover",   // BRIA 2.0 — slug correcto
-      "851-labs/bria-rmbg",
-      "851-labs/BRIA-RMBG",
+      "alexgenovese/remove-background-bria-2", // confirmado en Replicate
+      "851-labs/background-remover",
       "bria-ai/rmbg-2.0",
       "cjwbw/rembg",
-      "lucataco/remove-bg",
     ];
 
     let brgVersion = null;
