@@ -640,8 +640,9 @@ export function RenderIA({
         }
       }
       const controlStrength = parseFloat((1 - promptStrength).toFixed(2));
+      const guidanceVal     = Math.round(5 + promptStrength * 23);
       setDebugInfo(imageBase64
-        ? `img2img · control_strength=${controlStrength}`
+        ? `img2img · control_strength=${controlStrength} · guidance=${guidanceVal}`
         : "text2img · sin imagen de referencia"
       );
       const res = await fetch("/api/generate-render", {
