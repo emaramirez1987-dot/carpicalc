@@ -169,22 +169,11 @@ module.exports = async function handler(req, res) {
     };
     if (seed != null) fillInput.seed = parseInt(seed, 10);
 
-    let fillRes, fillData;
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      fillRes  = await fetch(
-        "https://api.replicate.com/v1/models/black-forest-labs/flux-fill-pro/predictions",
-        { method: "POST", headers, body: JSON.stringify({ input: fillInput }) }
-      );
-      fillData = await fillRes.json();
-      const isThrottled = fillRes.status === 429 ||
-        (fillData?.detail || fillData?.error || "").toLowerCase().includes("throttled");
-      if (isThrottled) {
-        console.log(`[scene] flux-fill-pro throttled (intento ${attempt}), esperando 15s...`);
-        await new Promise(r => setTimeout(r, 15000));
-        continue;
-      }
-      break;
-    }
+    const fillRes  = await fetch(
+      "https://api.replicate.com/v1/models/black-forest-labs/flux-fill-pro/predictions",
+      { method: "POST", headers, body: JSON.stringify({ input: fillInput }) }
+    );
+    const fillData = await fillRes.json();
     if (!fillRes.ok || fillData.error) {
       const msg = fillData.detail || fillData.error || `flux-fill-pro HTTP ${fillRes.status}`;
       console.error("[scene] flux-fill-pro error:", msg);
