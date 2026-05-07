@@ -327,6 +327,14 @@ export function guardarPromptsRender(prompts) {
   return _save("carpicalc:prompts_render", prompts);
 }
 
+export function leerConfigRender() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:render_config")) || {}; }
+  catch { return {}; }
+}
+export function guardarConfigRender(cfg) {
+  return _save("carpicalc:render_config", cfg);
+}
+
 // ── Borrador de módulo en creación ────────────────────────────────────────
 export function cargarBorradorModulo() {
   try { return JSON.parse(localStorage.getItem("carpicalc:borrador_modulo")) || null; }

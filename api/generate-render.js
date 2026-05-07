@@ -74,12 +74,10 @@ module.exports = async function handler(req, res) {
     let endpoint, input;
 
     if (imageBase64) {
-      // flux-dev img2img — usa el plano de módulos como referencia estructural
+      // flux-dev img2img — el prompt base estructural viene del frontend
       endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-dev/predictions";
-      const basePrompt = "render fotorrealista del mismo mueble, misma cantidad de módulos, misma distribución de puertas y cajones, melamina blanca, fondo neutro liso, iluminación suave y pareja";
-      const fullPrompt = prompt.trim() ? `${basePrompt}, ${prompt.trim()}` : basePrompt;
       input = {
-        prompt:              fullPrompt,
+        prompt:              prompt,
         image:               `data:image/jpeg;base64,${imageBase64}`,
         prompt_strength:     0.80,
         num_inference_steps: 28,
@@ -91,7 +89,7 @@ module.exports = async function handler(req, res) {
       // flux-schnell text2img — sin plano de referencia
       endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions";
       input = {
-        prompt:               prompt.trim(),
+        prompt:               prompt,
         aspect_ratio:         "4:3",
         num_outputs:          1,
         num_inference_steps:  4,
