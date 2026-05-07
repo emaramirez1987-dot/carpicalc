@@ -96,16 +96,15 @@ module.exports = async function handler(req, res) {
           safety_tolerance: 2,
         };
       } else if (modelo === "flux-controlnet") {
-        // xlabs-ai ControlNet — parámetros propios del modelo
+        // xlabs-ai/flux-dev-controlnet — parámetros verificados
         input = {
-          prompt:             prompt,
-          control_image:      `data:image/png;base64,${imageBase64}`,
-          control_type:       "canny",
-          conditioning_scale: parseFloat((1 - promptStrength).toFixed(2)),
-          num_steps:          28,
-          true_gs:            3.5,
-          num_outputs:        1,
-          output_format:      "webp",
+          prompt:           prompt,
+          control_image:    `data:image/png;base64,${imageBase64}`,
+          control_type:     "canny",
+          control_strength: parseFloat((1 - promptStrength).toFixed(2)),
+          steps:            28,
+          guidance_scale:   3.5,
+          output_format:    "webp",
         };
       } else if (modelo === "flux-1.1-pro") {
         // image_prompt_strength es inverso a prompt_strength
