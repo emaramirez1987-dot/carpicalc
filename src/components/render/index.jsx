@@ -304,6 +304,98 @@ function PanelPromptBase({ value, onChange, onReset }) {
   );
 }
 
+// ── Modelos disponibles ───────────────────────────────────────────────────────
+
+const MODELOS_CONFIG = [
+  { id: "flux-dev",     label: "flux-dev",     desc: "Balanceado · img2img",     precio: "$0.025/img" },
+  { id: "flux-1.1-pro", label: "flux-1.1-pro", desc: "Máxima calidad · img2img", precio: "$0.040/img" },
+];
+
+// ── PanelConfigAvanzada ───────────────────────────────────────────────────────
+
+function PanelConfigAvanzada({ modelo, onModelo, promptStrength, onPromptStrength, tieneImagen }) {
+  const [abierto, setAbierto] = useState(false);
+
+  const etiquetaFuerza = promptStrength <= 0.40 ? "respeta mucho la estructura"
+    : promptStrength <= 0.60 ? "balance estructura / estilo"
+    : promptStrength <= 0.75 ? "más libertad creativa"
+    : "casi ignora la estructura";
+
+  return (
+    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+      <div
+        onClick={() => setAbierto(a => !a)}
+        style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}
+      >
+        <span style={{ fontSize: 10, color: "var(--text-muted)", transition: "transform 0.15s", display: "inline-block", transform: abierto ? "rotate(90deg)" : "none" }}>▶</span>
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 700, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-secondary)" }}>
+          Configuración avanzada
+        </span>
+        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+          {modelo}{tieneImagen ? ` · fuerza ${promptStrength}` : " · text2img"}
+        </span>
+      </div>
+
+      {abierto && (
+        <div style={{ padding: "0 14px 14px", borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* Selector de modelo */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Modelo
+            </span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {MODELOS_CONFIG.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => onModelo(m.id)}
+                  style={{ ...btnSm(modelo === m.id ? "accent" : "default"), padding: "6px 12px", display: "flex", flexDirection: "column", gap: 2, height: "auto", alignItems: "flex-start" }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 700 }}>{m.label}</span>
+                  <span style={{ fontSize: 10, opacity: 0.7 }}>{m.desc} · {m.precio}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Slider prompt_strength — solo cuando hay imagen de referencia */}
+          {tieneImagen && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Fuerza del prompt
+                </span>
+                <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--accent)", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 7px" }}>
+                  {promptStrength}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
+                  {etiquetaFuerza}
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", whiteSpace: "nowrap" }}>↔ estructura</span>
+                <input
+                  type="range" min="0.10" max="0.95" step="0.05"
+                  value={promptStrength}
+                  onChange={e => onPromptStrength(parseFloat(e.target.value))}
+                  style={{ flex: 1, accentColor: "var(--accent)" }}
+                />
+                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", whiteSpace: "nowrap" }}>texto ↔</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                <span>0.10 — copia la imagen</span>
+                <span>0.50 — balance</span>
+                <span>0.95 — ignora imagen</span>
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── VariableItem ──────────────────────────────────────────────────────────────
 
 function VariableItem({ config, value, onChange }) {
@@ -507,9 +599,12 @@ export function RenderIA({
   const [refPreview, setRefPreview]   = useState(null);
 
   // Prompt base (persistido)
-  const [promptBase, setPromptBase]   = useState(savedCfg.promptBase ?? DEFAULT_PROMPT_BASE);
+  const [promptBase, setPromptBase]       = useState(savedCfg.promptBase ?? DEFAULT_PROMPT_BASE);
   // Variables dinámicas (persistidas)
-  const [variables, setVariables]     = useState(savedCfg.variables ?? {});
+  const [variables, setVariables]         = useState(savedCfg.variables ?? {});
+  // Config avanzada (persistida)
+  const [modelo, setModelo]               = useState(savedCfg.modelo ?? "flux-dev");
+  const [promptStrength, setPromptStrength] = useState(savedCfg.promptStrength ?? 0.80);
 
   // Prompts guardados
   const [prompts, setPrompts]         = useState(() => leerPromptsRender());
@@ -524,16 +619,18 @@ export function RenderIA({
     });
   }, []);
 
-  // Persistir config cuando cambia
-  const actualizarPromptBase = (val) => {
-    setPromptBase(val);
-    guardarConfigRender({ promptBase: val, variables });
-  };
+  // Helper para persistir config completa
+  const persistirConfig = (patch) =>
+    guardarConfigRender({ promptBase, variables, modelo, promptStrength, ...patch });
+
+  const actualizarPromptBase = (val) => { setPromptBase(val); persistirConfig({ promptBase: val }); };
   const actualizarVariable = (id, val) => {
     const nuevas = { ...variables, [id]: val };
     setVariables(nuevas);
-    guardarConfigRender({ promptBase, variables: nuevas });
+    persistirConfig({ variables: nuevas });
   };
+  const actualizarModelo = (val) => { setModelo(val); persistirConfig({ modelo: val }); };
+  const actualizarPromptStrength = (val) => { setPromptStrength(val); persistirConfig({ promptStrength: val }); };
 
   const persistirPrompts = (nuevo) => { setPrompts(nuevo); guardarPromptsRender(nuevo); };
 
@@ -554,7 +651,7 @@ export function RenderIA({
       const res = await fetch("/api/generate-render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId: wsId, prompt: promptCompleto, imageBase64 }),
+        body: JSON.stringify({ workspaceId: wsId, prompt: promptCompleto, imageBase64, modelo, promptStrength }),
       });
       const data = await res.json();
       if (!res.ok) { setErrorRender(data.error || "Error al generar"); return; }
@@ -649,6 +746,15 @@ export function RenderIA({
       {/* Panel de configuración — visible si hay plano */}
       {!sinDatos && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+          {/* Config avanzada */}
+          <PanelConfigAvanzada
+            modelo={modelo}
+            onModelo={actualizarModelo}
+            promptStrength={promptStrength}
+            onPromptStrength={actualizarPromptStrength}
+            tieneImagen={bloques.length > 0}
+          />
 
           {/* Prompt base */}
           <PanelPromptBase

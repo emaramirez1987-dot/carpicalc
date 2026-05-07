@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { workspaceId, prompt, imageBase64 } = req.body || {};
+  const { workspaceId, prompt, imageBase64, modelo = "flux-dev", promptStrength = 0.80 } = req.body || {};
   if (!workspaceId || !prompt) {
     return res.status(400).json({ error: "workspaceId y prompt requeridos" });
   }
@@ -73,20 +73,25 @@ module.exports = async function handler(req, res) {
   try {
     let endpoint, input;
 
+    const ENDPOINTS = {
+      "flux-dev":     "https://api.replicate.com/v1/models/black-forest-labs/flux-dev/predictions",
+      "flux-1.1-pro": "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
+    };
+
     if (imageBase64) {
-      // flux-dev img2img — el prompt base estructural viene del frontend
-      endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-dev/predictions";
+      // img2img — usa el modelo elegido
+      endpoint = ENDPOINTS[modelo] || ENDPOINTS["flux-dev"];
       input = {
         prompt:              prompt,
         image:               `data:image/jpeg;base64,${imageBase64}`,
-        prompt_strength:     0.80,
+        prompt_strength:     promptStrength,
         num_inference_steps: 28,
         aspect_ratio:        "4:3",
         num_outputs:         1,
         output_format:       "webp",
       };
     } else {
-      // flux-schnell text2img — sin plano de referencia
+      // text2img — flux-schnell siempre (más rápido y barato sin referencia)
       endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions";
       input = {
         prompt:               prompt,
