@@ -403,6 +403,50 @@ const GlobalStyles = () => (
         transform: none !important;
         box-shadow: none !important;
       }
+
+      /* Render: split mode apilado */
+      .rsp-render-split {
+        flex-direction: column !important;
+        min-height: auto !important;
+      }
+      .rsp-render-split > * {
+        flex: none !important;
+        width: 100% !important;
+        min-height: 220px !important;
+      }
+
+      /* Render: controles de paso */
+      .rsp-render-controls {
+        flex-direction: column !important;
+        gap: 8px !important;
+      }
+      .rsp-render-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+      }
+      .rsp-render-row > input[type="range"] {
+        width: 100% !important;
+      }
+
+      /* Costos: tablas con scroll */
+      .rsp-costos-table {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .rsp-costos-table table {
+        min-width: 480px;
+      }
+
+      /* Presupuesto: acciones de item */
+      .rsp-pres-item-row {
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+      }
+
+      /* Ocultar textos secundarios en mobile */
+      .rsp-hide-mobile { display: none !important; }
+      .rsp-show-mobile { display: flex !important; }
     }
   `}</style>
 );

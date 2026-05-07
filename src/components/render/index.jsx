@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { SectionTitle } from "../ui/index.jsx";
+import useIsMobile from "../../hooks/useIsMobile.js";
 import { leerPlano, leerPromptsRender, guardarPromptsRender, leerConfigRender, guardarConfigRender } from "../../storage.js";
 import { PLANES_RENDER } from "../../constants.js";
 import { supabase } from "../../lib/supabase.js";
@@ -462,9 +463,10 @@ export function RenderIA({
   onRenderGenerado = null,
 }) {
   const savedCfg = leerConfigRender();
+  const isMobile = useIsMobile();
 
   // Visualización
-  const [modo,     setModo]     = useState("split");
+  const [modo,     setModo]     = useState(isMobile ? "render" : "split");
   const [bloques,  setBloques]  = useState([]);
   const [idsBajos, setIdsBajos] = useState([]);
   const [idsAltos, setIdsAltos] = useState([]);
@@ -613,7 +615,7 @@ export function RenderIA({
       {/* Cabecera */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <SectionTitle sub="Genera renders realistas en dos etapas">Render IA</SectionTitle>
-        {!sinDatos && (
+        {!sinDatos && !isMobile && (
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={() => setModo("svg")}    style={btnSm(modo === "svg"    ? "accent" : "default")}>📐 Plano</button>
             <button onClick={() => setModo("render")} style={btnSm(modo === "render" ? "accent" : "default")}>✨ Render</button>
@@ -637,7 +639,7 @@ export function RenderIA({
       {!sinDatos && modo === "svg"    && <PanelSVG {...svgProps} />}
       {!sinDatos && modo === "render" && <PanelRender imagenUrl={imagenUrl} imagenEscenaUrl={imagenEscenaUrl} generando={generando} generandoEscena={generandoEscena} />}
       {!sinDatos && modo === "split"  && (
-        <div style={{ display: "flex", gap: 12, alignItems: "stretch", minHeight: 360 }}>
+        <div className="rsp-render-split" style={{ display: "flex", gap: 12, alignItems: "stretch", minHeight: isMobile ? "auto" : 360 }}>
           <PanelSVG {...svgProps} compact />
           <PanelRender imagenUrl={imagenUrl} imagenEscenaUrl={imagenEscenaUrl} generando={generando} generandoEscena={generandoEscena} compact />
         </div>
