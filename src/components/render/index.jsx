@@ -289,8 +289,14 @@ function PresetsSection({ presets, promptBase, onGuardar, onCargar, onEliminar }
 
 // ── StepCard ──────────────────────────────────────────────────────────────────
 
-function StepCard({ numero, titulo, subtitulo, listo, generando, onGenerar, onPreview, bloqueado, creditos, children, defaultOpen = true, disabled = false }) {
+function StepCard({ numero, titulo, subtitulo, listo, generando, onGenerar, onPreview, bloqueado, creditos, children, defaultOpen = true, disabled = false, autoClose = false }) {
   const [abierto, setAbierto] = useState(defaultOpen);
+  const prevListoRef = React.useRef(listo);
+
+  React.useEffect(() => {
+    if (autoClose && !prevListoRef.current && listo) setAbierto(false);
+    prevListoRef.current = listo;
+  }, [listo, autoClose]);
 
   const toggleAbierto = () => { if (!disabled) setAbierto(a => !a); };
 
@@ -651,7 +657,7 @@ export function RenderIA({
           subtitulo="Genera el mueble con material y terminación"
           listo={!!imagenUrl} generando={generando}
           onGenerar={handleGenerar} onPreview={handleVerReferencia}
-          bloqueado={!puedeGenerar} creditos={creditos}
+          bloqueado={!puedeGenerar} creditos={creditos} autoClose
         >
           <InnerSection label="Prompt base" icon="📝" badge={promptBase !== DEFAULT_PROMPT_BASE ? "personalizado" : null}>
             <PromptSection value={promptBase} onChange={actualizarPromptBase} defaultValue={DEFAULT_PROMPT_BASE} />
