@@ -307,8 +307,9 @@ function PanelPromptBase({ value, onChange, onReset }) {
 // ── Modelos disponibles ───────────────────────────────────────────────────────
 
 const MODELOS_CONFIG = [
-  { id: "flux-dev",     label: "flux-dev",     desc: "Balanceado · img2img",     precio: "$0.025/img" },
-  { id: "flux-1.1-pro", label: "flux-1.1-pro", desc: "Máxima calidad · img2img", precio: "$0.040/img" },
+  { id: "flux-dev",         label: "flux-dev",         desc: "Balanceado · img2img",          precio: "$0.025/img" },
+  { id: "flux-1.1-pro",     label: "flux-1.1-pro",     desc: "Máxima calidad · img2img",      precio: "$0.040/img" },
+  { id: "flux-controlnet",  label: "FLUX + ControlNet", desc: "Respeta geometría · recomendado", precio: "$0.035/img" },
 ];
 
 // ── PanelConfigAvanzada ───────────────────────────────────────────────────────
