@@ -87,7 +87,7 @@ module.exports = async function handler(req, res) {
         // Se invierte para que el slider tenga la misma semántica en ambos modelos
         input = {
           prompt:                prompt,
-          image_prompt:          `data:image/jpeg;base64,${imageBase64}`,
+          image_prompt:          `data:image/png;base64,${imageBase64}`,
           image_prompt_strength: parseFloat((1 - promptStrength).toFixed(2)),
           aspect_ratio:          "4:3",
           output_format:         "webp",
@@ -97,7 +97,7 @@ module.exports = async function handler(req, res) {
         // flux-dev (default)
         input = {
           prompt:              prompt,
-          image:               `data:image/jpeg;base64,${imageBase64}`,
+          image:               `data:image/png;base64,${imageBase64}`,
           prompt_strength:     promptStrength,
           num_inference_steps: 28,
           aspect_ratio:        "4:3",
