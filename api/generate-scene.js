@@ -105,39 +105,8 @@ module.exports = async function handler(req, res) {
   try {
     // ── Paso 1: eliminar fondo ────────────────────────────────────────────────
     // Busca la versión más reciente entre los candidatos conocidos
-    const RMBG_CANDIDATES = [
-      "alexgenovese/remove-background-bria-2", // confirmado en Replicate
-      "851-labs/background-remover",
-      "bria-ai/rmbg-2.0",
-      "cjwbw/rembg",
-    ];
-
-    let brgVersion = null;
-    for (const candidate of RMBG_CANDIDATES) {
-      const r = await fetch(`https://api.replicate.com/v1/models/${candidate}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const d = await r.json();
-      let version = d?.latest_version?.id ?? null;
-
-      // Algunos modelos no exponen latest_version — buscar en el listado de versiones
-      if (!version && r.status === 200) {
-        const vr = await fetch(`https://api.replicate.com/v1/models/${candidate}/versions`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const vd = await vr.json();
-        version = vd?.results?.[0]?.id ?? null;
-        console.log(`[scene] versions list ${candidate}: vr.status=${vr.status} first_version=${version}`);
-      }
-
-      console.log(`[scene] model lookup ${candidate}: status=${r.status} version=${version} detail=${d?.detail}`);
-      if (version) { brgVersion = version; break; }
-    }
-
-    if (!brgVersion) {
-      return res.status(500).json({ error: "No se encontró un modelo de remoción de fondo disponible. Revisá los logs de Vercel para diagnóstico." });
-    }
-
+    // 851-labs/background-remover — versión fija, evita lookup dinámico
+    const brgVersion = "a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc";
     console.log(`[scene] usando rembg version=${brgVersion}`);
     const rmRes = await fetch("https://api.replicate.com/v1/predictions", {
       method:  "POST",
