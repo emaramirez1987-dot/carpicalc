@@ -294,7 +294,7 @@ const MODELOS_CONFIG = [
 
 // ── PanelConfigAvanzada ───────────────────────────────────────────────────────
 
-function PanelConfigAvanzada({ modelo, onModelo, promptStrength, onPromptStrength, tieneImagen }) {
+function PanelConfigAvanzada({ promptStrength, onPromptStrength, tieneImagen }) {
   const [abierto, setAbierto] = useState(false);
 
   const etiquetaFuerza = promptStrength <= 0.40 ? "respeta mucho la estructura"
@@ -313,31 +313,12 @@ function PanelConfigAvanzada({ modelo, onModelo, promptStrength, onPromptStrengt
           Configuración avanzada
         </span>
         <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
-          {modelo}{tieneImagen ? ` · fuerza ${promptStrength}` : " · text2img"}
+          flux-canny-pro{tieneImagen ? ` · fuerza ${promptStrength}` : ""}
         </span>
       </div>
 
       {abierto && (
         <div style={{ padding: "0 14px 14px", borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 14 }}>
-
-          {/* Selector de modelo */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Modelo
-            </span>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {MODELOS_CONFIG.map(m => (
-                <button
-                  key={m.id}
-                  onClick={() => onModelo(m.id)}
-                  style={{ ...btnSm(modelo === m.id ? "accent" : "default"), padding: "6px 12px", display: "flex", flexDirection: "column", gap: 2, height: "auto", alignItems: "flex-start" }}
-                >
-                  <span style={{ fontSize: 11, fontWeight: 700 }}>{m.label}</span>
-                  <span style={{ fontSize: 10, opacity: 0.7 }}>{m.desc} · {m.precio}</span>
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Slider prompt_strength — solo cuando hay imagen de referencia */}
           {tieneImagen && (
@@ -586,7 +567,6 @@ export function RenderIA({
   // Variables dinámicas (persistidas)
   const [variables, setVariables]         = useState(savedCfg.variables ?? {});
   // Config avanzada (persistida)
-  const [modelo, setModelo]               = useState(savedCfg.modelo ?? "flux-canny-pro");
   const [promptStrength, setPromptStrength] = useState(savedCfg.promptStrength ?? 0.80);
 
   // Prompts guardados
@@ -604,7 +584,7 @@ export function RenderIA({
 
   // Helper para persistir config completa
   const persistirConfig = (patch) =>
-    guardarConfigRender({ promptBase, variables, modelo, promptStrength, ...patch });
+    guardarConfigRender({ promptBase, variables, promptStrength, ...patch });
 
   const actualizarPromptBase = (val) => { setPromptBase(val); persistirConfig({ promptBase: val }); };
   const actualizarVariable = (id, val) => {
@@ -612,7 +592,6 @@ export function RenderIA({
     setVariables(nuevas);
     persistirConfig({ variables: nuevas });
   };
-  const actualizarModelo = (val) => { setModelo(val); persistirConfig({ modelo: val }); };
   const actualizarPromptStrength = (val) => { setPromptStrength(val); persistirConfig({ promptStrength: val }); };
 
   const persistirPrompts = (nuevo) => { setPrompts(nuevo); guardarPromptsRender(nuevo); };
@@ -634,7 +613,7 @@ export function RenderIA({
       const res = await fetch("/api/generate-render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId: wsId, prompt: promptCompleto, imageBase64, modelo, promptStrength }),
+        body: JSON.stringify({ workspaceId: wsId, prompt: promptCompleto, imageBase64, promptStrength }),
       });
       const data = await res.json();
       if (!res.ok) { setErrorRender(data.error || "Error al generar"); return; }
@@ -732,8 +711,6 @@ export function RenderIA({
 
           {/* Config avanzada */}
           <PanelConfigAvanzada
-            modelo={modelo}
-            onModelo={actualizarModelo}
             promptStrength={promptStrength}
             onPromptStrength={actualizarPromptStrength}
             tieneImagen={bloques.length > 0}
