@@ -307,64 +307,63 @@ function PanelPromptBase({ value, onChange, onReset }) {
 
 // ── PanelConfigAvanzada ───────────────────────────────────────────────────────
 
-function PanelConfigAvanzada({ promptStrength, onPromptStrength, tieneImagen }) {
+function SliderParam({ label, value, min, max, step, onChange, izq, der, hint }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          {label}
+        </span>
+        <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--accent)", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 7px" }}>
+          {value}
+        </span>
+        {hint && <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>{hint}</span>}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", whiteSpace: "nowrap" }}>{izq}</span>
+        <input type="range" min={min} max={max} step={step} value={value}
+          onChange={e => onChange(step < 1 ? parseFloat(e.target.value) : parseInt(e.target.value, 10))}
+          style={{ flex: 1, accentColor: "var(--accent)" }}
+        />
+        <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", whiteSpace: "nowrap" }}>{der}</span>
+      </div>
+    </div>
+  );
+}
+
+function PanelConfigAvanzada({ guidance, onGuidance, controlStrength, onControlStrength, tieneImagen }) {
   const [abierto, setAbierto] = useState(false);
 
-  const etiquetaFuerza = promptStrength <= 0.40 ? "respeta mucho la estructura"
-    : promptStrength <= 0.60 ? "balance estructura / estilo"
-    : promptStrength <= 0.75 ? "más libertad creativa"
-    : "casi ignora la estructura";
+  const hintGuidance = guidance <= 15 ? "muy libre" : guidance <= 40 ? "balance" : guidance <= 70 ? "literal" : "muy literal";
+  const hintControl  = controlStrength <= 0.25 ? "ignora estructura" : controlStrength <= 0.55 ? "balance" : "respeta estructura";
 
   return (
     <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-      <div
-        onClick={() => setAbierto(a => !a)}
-        style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}
-      >
+      <div onClick={() => setAbierto(a => !a)}
+        style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
         <span style={{ fontSize: 10, color: "var(--text-muted)", transition: "transform 0.15s", display: "inline-block", transform: abierto ? "rotate(90deg)" : "none" }}>▶</span>
         <span style={{ flex: 1, fontSize: 12, fontWeight: 700, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-secondary)" }}>
           Configuración avanzada
         </span>
         <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
-          flux-canny-pro{tieneImagen ? ` · fuerza ${promptStrength}` : ""}
+          guidance {guidance}{tieneImagen ? ` · strength ${controlStrength}` : ""}
         </span>
       </div>
 
       {abierto && (
         <div style={{ padding: "0 14px 14px", borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 14 }}>
-
-          {/* Slider prompt_strength — solo cuando hay imagen de referencia */}
+          <SliderParam
+            label="Guidance" value={guidance} min={1} max={100} step={1}
+            onChange={onGuidance} hint={hintGuidance}
+            izq="1 — libre" der="100 — literal"
+          />
           {tieneImagen && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Fuerza del prompt
-                </span>
-                <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--accent)", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 7px" }}>
-                  {promptStrength}
-                </span>
-                <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
-                  {etiquetaFuerza}
-                </span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", whiteSpace: "nowrap" }}>↔ estructura</span>
-                <input
-                  type="range" min="0.10" max="0.95" step="0.05"
-                  value={promptStrength}
-                  onChange={e => onPromptStrength(parseFloat(e.target.value))}
-                  style={{ flex: 1, accentColor: "var(--accent)" }}
-                />
-                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", whiteSpace: "nowrap" }}>texto ↔</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
-                <span>0.10 — copia la imagen</span>
-                <span>0.50 — balance</span>
-                <span>0.95 — ignora imagen</span>
-              </div>
-            </div>
+            <SliderParam
+              label="Control strength" value={controlStrength} min={0.05} max={0.95} step={0.05}
+              onChange={onControlStrength} hint={hintControl}
+              izq="0.05 — ignora" der="0.95 — estructura"
+            />
           )}
-
         </div>
       )}
     </div>
@@ -687,7 +686,8 @@ export function RenderIA({
   // Variables dinámicas (persistidas)
   const [variables, setVariables]         = useState(savedCfg.variables ?? {});
   // Config avanzada (persistida)
-  const [promptStrength, setPromptStrength] = useState(savedCfg.promptStrength ?? 0.45);
+  const [guidance, setGuidance]               = useState(savedCfg.guidance ?? 30);
+  const [controlStrength, setControlStrength] = useState(savedCfg.controlStrength ?? 0.55);
 
   // Prompts guardados
   const [prompts, setPrompts]         = useState(() => leerPromptsRender());
@@ -704,7 +704,7 @@ export function RenderIA({
 
   // Helper para persistir config completa
   const persistirConfig = (patch) =>
-    guardarConfigRender({ promptBase, variables, promptStrength, ...patch });
+    guardarConfigRender({ promptBase, variables, guidance, controlStrength, ...patch });
 
   const actualizarPromptBase = (val) => { setPromptBase(val); persistirConfig({ promptBase: val }); };
   const actualizarVariable = (id, val) => {
@@ -712,7 +712,8 @@ export function RenderIA({
     setVariables(nuevas);
     persistirConfig({ variables: nuevas });
   };
-  const actualizarPromptStrength = (val) => { setPromptStrength(val); persistirConfig({ promptStrength: val }); };
+  const actualizarGuidance       = (val) => { setGuidance(val);       persistirConfig({ guidance: val }); };
+  const actualizarControlStrength = (val) => { setControlStrength(val); persistirConfig({ controlStrength: val }); };
 
   const persistirPrompts = (nuevo) => { setPrompts(nuevo); guardarPromptsRender(nuevo); };
 
@@ -735,16 +736,14 @@ export function RenderIA({
           return;
         }
       }
-      const controlStrength = parseFloat((1 - promptStrength).toFixed(2));
-      const guidanceVal     = Math.round(5 + promptStrength * 95);
       setDebugInfo(imageBase64
-        ? `img2img · control_strength=${controlStrength} · guidance=${guidanceVal}`
+        ? `img2img · control_strength=${controlStrength} · guidance=${guidance}`
         : "text2img · sin imagen de referencia"
       );
       const res = await fetch("/api/generate-render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId: wsId, prompt: promptCompleto, imageBase64, promptStrength }),
+        body: JSON.stringify({ workspaceId: wsId, prompt: promptCompleto, imageBase64, guidance, controlStrength }),
       });
       const data = await res.json();
       if (!res.ok) { setErrorRender(data.error || "Error al generar"); return; }
@@ -866,8 +865,10 @@ export function RenderIA({
 
           {/* Config avanzada */}
           <PanelConfigAvanzada
-            promptStrength={promptStrength}
-            onPromptStrength={actualizarPromptStrength}
+            guidance={guidance}
+            onGuidance={actualizarGuidance}
+            controlStrength={controlStrength}
+            onControlStrength={actualizarControlStrength}
             tieneImagen={bloques.length > 0}
           />
 

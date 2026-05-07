@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { workspaceId, prompt, imageBase64, promptStrength = 0.45 } = req.body || {};
+  const { workspaceId, prompt, imageBase64, guidance = 30, controlStrength = 0.55 } = req.body || {};
   if (!workspaceId || !prompt) {
     return res.status(400).json({ error: "workspaceId y prompt requeridos" });
   }
@@ -75,15 +75,12 @@ module.exports = async function handler(req, res) {
     let input;
 
     if (imageBase64) {
-      const controlStrength = parseFloat((1 - promptStrength).toFixed(2));
-      // guidance varía con el slider: estructura → bajo (5), libre → alto (100)
-      const guidance = Math.round(5 + promptStrength * 95);
-      console.log(`[render] promptStrength=${promptStrength} → control_strength=${controlStrength} guidance=${guidance}`);
+      console.log(`[render] guidance=${guidance} control_strength=${controlStrength}`);
       input = {
         prompt:           prompt,
         control_image:    `data:image/png;base64,${imageBase64}`,
-        control_strength: controlStrength,
-        guidance:         guidance,
+        control_strength: parseFloat(controlStrength.toFixed(2)),
+        guidance:         parseInt(guidance, 10),
         num_outputs:      1,
         output_format:    "jpg",
         output_quality:   90,
