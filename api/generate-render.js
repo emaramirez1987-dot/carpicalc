@@ -82,13 +82,16 @@ module.exports = async function handler(req, res) {
       // img2img — parámetros difieren por modelo
       endpoint = ENDPOINTS[modelo] || ENDPOINTS["flux-dev"];
       if (modelo === "flux-1.1-pro") {
+        // image_prompt_strength es inverso a prompt_strength:
+        // alto = más imagen (al revés que flux-dev donde alto = más prompt)
+        // Se invierte para que el slider tenga la misma semántica en ambos modelos
         input = {
-          prompt:               prompt,
-          image_prompt:         `data:image/jpeg;base64,${imageBase64}`,
-          image_prompt_strength: promptStrength,
-          aspect_ratio:         "4:3",
-          output_format:        "webp",
-          output_quality:       90,
+          prompt:                prompt,
+          image_prompt:          `data:image/jpeg;base64,${imageBase64}`,
+          image_prompt_strength: parseFloat((1 - promptStrength).toFixed(2)),
+          aspect_ratio:          "4:3",
+          output_format:         "webp",
+          output_quality:        90,
         };
       } else {
         // flux-dev (default)
