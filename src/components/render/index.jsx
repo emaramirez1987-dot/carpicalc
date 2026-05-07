@@ -487,7 +487,7 @@ export function RenderIA({
   // Config persistida — Paso 2
   const [promptBaseEscena,     setPromptBaseEscena]     = useState(savedCfg.promptBaseEscena     ?? DEFAULT_SCENE_PROMPT_BASE);
   const [variablesEscena,      setVariablesEscena]      = useState(savedCfg.variablesEscena      ?? {});
-  const [imagePromptStrength,  setImagePromptStrength]  = useState(savedCfg.imagePromptStrength  ?? 0.60);
+  const [sceneGuidance,        setSceneGuidance]        = useState(savedCfg.sceneGuidance        ?? 30);
   const [seed2,                setSeed2]                = useState(savedCfg.seed2                ?? "");
   const [presets2,             setPresets2]             = useState(savedCfg.presetsEscena        ?? []);
 
@@ -502,7 +502,7 @@ export function RenderIA({
   const persistirConfig = (patch) =>
     guardarConfigRender({
       promptBase, variables, guidance, controlStrength, seed1,
-      promptBaseEscena, variablesEscena, imagePromptStrength, seed2,
+      promptBaseEscena, variablesEscena, sceneGuidance, seed2,
       presetsEscena: presets2,
       ...patch,
     });
@@ -520,7 +520,7 @@ export function RenderIA({
   // Updaters — Paso 2
   const actualizarPromptBaseEscena    = (val) => { setPromptBaseEscena(val);    persistirConfig({ promptBaseEscena: val }); };
   const actualizarVariableEscena      = (id, val) => { const v = { ...variablesEscena, [id]: val }; setVariablesEscena(v); persistirConfig({ variablesEscena: v }); };
-  const actualizarImagePromptStrength = (val) => { setImagePromptStrength(val); persistirConfig({ imagePromptStrength: val }); };
+  const actualizarSceneGuidance       = (val) => { setSceneGuidance(val);       persistirConfig({ sceneGuidance: val }); };
   const actualizarSeed2               = (val) => { setSeed2(val);               persistirConfig({ seed2: val }); };
 
   const guardarPreset2  = (p)  => { const n = [...presets2, p];               setPresets2(n); persistirConfig({ presetsEscena: n }); };
@@ -556,7 +556,7 @@ export function RenderIA({
     setGenerandoEscena(true); setErrorRender(null);
     try {
       const b64  = await urlToBase64(imagenUrl);
-      const body = { workspaceId: wsId, prompt: promptCompletoEscena, imageBase64: b64, imagePromptStrength };
+      const body = { workspaceId: wsId, prompt: promptCompletoEscena, imageBase64: b64, guidance: sceneGuidance };
       if (seed2 !== "") body.seed = parseInt(seed2, 10);
       const res  = await fetch("/api/generate-scene", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
@@ -596,7 +596,7 @@ export function RenderIA({
 
   const hintGuidance  = guidance <= 15 ? "muy libre" : guidance <= 40 ? "balance" : guidance <= 70 ? "literal" : "muy literal";
   const hintControl   = controlStrength <= 0.25 ? "ignora estructura" : controlStrength <= 0.55 ? "balance" : "respeta estructura";
-  const hintFidelidad = imagePromptStrength >= 0.75 ? "muy fiel al mueble" : imagePromptStrength >= 0.50 ? "balance" : "más libertad";
+  const hintSceneGuidance = sceneGuidance <= 15 ? "muy libre" : sceneGuidance <= 40 ? "balance" : sceneGuidance <= 70 ? "literal" : "muy literal";
 
   const activasP1 = VARS_PASO1.filter(v => variables[v.id]).length;
   const activasP2 = VARS_PASO2.filter(v => variablesEscena[v.id]).length;
@@ -725,8 +725,8 @@ export function RenderIA({
 
           <InnerSection label="Configuración avanzada" icon="⚙️" defaultOpen={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <SliderParam label="Fidelidad al mueble" value={imagePromptStrength} min={0.30} max={0.95} step={0.05}
-                onChange={actualizarImagePromptStrength} hint={hintFidelidad} izq="0.30 — libre" der="0.95 — fiel" />
+              <SliderParam label="Guidance" value={sceneGuidance} min={1} max={100} step={1}
+                onChange={actualizarSceneGuidance} hint={hintSceneGuidance} izq="1 — libre" der="100 — literal" />
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Seed</span>
                 <input type="number" value={seed2} onChange={e => actualizarSeed2(e.target.value)}
