@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { workspaceId, prompt, imageBase64, modelo = "flux-dev", promptStrength = 0.80 } = req.body || {};
+  const { workspaceId, prompt, imageBase64, promptStrength = 0.80 } = req.body || {};
   if (!workspaceId || !prompt) {
     return res.status(400).json({ error: "workspaceId y prompt requeridos" });
   }
@@ -71,71 +71,27 @@ module.exports = async function handler(req, res) {
   if (!deduct.ok) return res.status(403).json({ error: deduct.error });
 
   try {
-    let endpoint, input;
-
-    const ENDPOINTS = {
-      "flux-dev":        "https://api.replicate.com/v1/models/black-forest-labs/flux-dev/predictions",
-      "flux-1.1-pro":    "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
-      "flux-canny-pro":  "https://api.replicate.com/v1/models/black-forest-labs/flux-canny-pro/predictions",
-      "flux-controlnet": "https://api.replicate.com/v1/models/xlabs-ai/flux-dev-controlnet/predictions",
-    };
+    const endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-canny-pro/predictions";
+    let input;
 
     if (imageBase64) {
-      endpoint = ENDPOINTS[modelo] || ENDPOINTS["flux-dev"];
-
-      if (modelo === "flux-canny-pro") {
-        // FLUX Canny Pro oficial — control_strength inversamente proporcional al slider
-        input = {
-          prompt:           prompt,
-          control_image:    `data:image/png;base64,${imageBase64}`,
-          control_strength: parseFloat((1 - promptStrength).toFixed(2)),
-          guidance:         30,
-          num_outputs:      1,
-          output_format:    "jpg",
-          output_quality:   90,
-          safety_tolerance: 2,
-        };
-      } else if (modelo === "flux-controlnet") {
-        // xlabs-ai/flux-dev-controlnet — parámetros verificados
-        input = {
-          prompt:           prompt,
-          control_image:    `data:image/png;base64,${imageBase64}`,
-          control_type:     "canny",
-          control_strength: parseFloat((1 - promptStrength).toFixed(2)),
-          steps:            28,
-          guidance_scale:   3.5,
-          output_format:    "webp",
-        };
-      } else if (modelo === "flux-1.1-pro") {
-        // image_prompt_strength es inverso a prompt_strength
-        input = {
-          prompt:                prompt,
-          image_prompt:          `data:image/png;base64,${imageBase64}`,
-          image_prompt_strength: parseFloat((1 - promptStrength).toFixed(2)),
-          aspect_ratio:          "4:3",
-          output_format:         "webp",
-          output_quality:        90,
-        };
-      } else {
-        // flux-dev (default)
-        input = {
-          prompt:              prompt,
-          image:               `data:image/png;base64,${imageBase64}`,
-          prompt_strength:     promptStrength,
-          num_inference_steps: 28,
-          aspect_ratio:        "4:3",
-          num_outputs:         1,
-          output_format:       "webp",
-        };
-      }
-    } else {
-      // text2img — flux-schnell siempre (más rápido y barato sin referencia)
-      endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions";
       input = {
-        prompt:               prompt,
-        aspect_ratio:         "4:3",
-        num_outputs:          1,
-        num_inference_steps:  4,
+        prompt:           prompt,
+        control_image:    `data:image/png;base64,${imageBase64}`,
+        control_strength: parseFloat((1 - promptStrength).toFixed(2)),
+        guidance:         30,
+        num_outputs:      1,
+        output_format:    "jpg",
+        output_quality:   90,
+        safety_tolerance: 2,
+      };
+    } else {
+      input = {
+        prompt:      prompt,
+        num_outputs: 1,
+        output_format: "jpg",
+        output_quality: 90,
+        safety_tolerance: 2,
       };
     }
 
