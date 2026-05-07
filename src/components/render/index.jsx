@@ -288,10 +288,6 @@ function PanelPromptBase({ value, onChange, onReset }) {
 
 // ── Modelos disponibles ───────────────────────────────────────────────────────
 
-const MODELOS_CONFIG = [
-  { id: "flux-canny-pro", label: "FLUX Canny Pro", desc: "ControlNet oficial BFL", precio: "$0.050/img" },
-];
-
 // ── PanelConfigAvanzada ───────────────────────────────────────────────────────
 
 function PanelConfigAvanzada({ promptStrength, onPromptStrength, tieneImagen }) {
