@@ -311,8 +311,8 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
           <>
             {/* Selector de roles */}
             <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <div style={{ padding: "7px 12px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", borderLeft: "2px solid rgba(255,255,255,0.2)" }}>
-                <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)" }}>Rol de pieza</span>
+              <div style={{ padding: "7px 12px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "2px solid rgba(200,160,42,0.5)" }}>
+                <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#c8a02a" }}>Rol de pieza</span>
               </div>
               <div style={{ padding: "10px 12px" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
@@ -347,7 +347,7 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
                 { label: "D1 — Altura", key: "formula1", valida: f1Valida, resultado: d1 },
                 { label: "D2 — Ancho",  key: "formula2", valida: f2Valida, resultado: d2 },
               ].map(({ label, key, valida, resultado }) => (
-                <div key={key} style={{ background: "rgba(0,0,0,0.18)", borderRadius: 8, padding: "10px 12px" }}>
+                <div key={key} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(200,160,42,0.15)", borderRadius: 8, padding: "10px 12px" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", marginBottom: 6 }}>{label}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <input
@@ -457,8 +457,8 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
 
         {/* Tapacanto */}
         <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div style={{ padding: "7px 12px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", borderLeft: "2px solid rgba(199,160,80,0.5)" }}>
-            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(199,160,80,0.8)" }}>🎗 Tapacanto</span>
+          <div style={{ padding: "7px 12px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "2px solid rgba(200,160,42,0.5)" }}>
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#c8a02a" }}>🎗 Tapacanto</span>
           </div>
           <div style={{ padding: "10px 12px" }}>
           <div style={{ marginBottom: 8 }}>
@@ -482,13 +482,13 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
 
         {error && <p style={{ color: "#e07070", fontSize: 12 }}>⚠ {error}</p>}
         <button onClick={onAgregar} style={{
-          width: "100%", padding: "12px 0", borderRadius: 8, cursor: "pointer", fontWeight: 900,
-          fontFamily: "'DM Mono',monospace", fontSize: 13, letterSpacing: "0.06em",
+          width: "100%", padding: "9px 0", borderRadius: 8, cursor: "pointer", fontWeight: 700,
+          fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: "0.05em",
           transition: "all 0.2s",
-          background: "linear-gradient(135deg, var(--accent), #b8852a)",
-          border: "none",
-          color: "#0a0a0a",
-          boxShadow: "0 4px 18px rgba(212,175,55,0.4)",
+          background: "rgba(200,160,42,0.15)",
+          border: "1px solid rgba(200,160,42,0.45)",
+          color: "#c8a02a",
+          boxShadow: "none",
         }}>
           {editando ? "✓ ACTUALIZAR PIEZA" : "+ AGREGAR ESTA PIEZA"}
         </button>
@@ -1011,7 +1011,7 @@ function FormModulo({
         <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
           <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>⚡ Variables del módulo</span>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono',monospace" }}>usables en fórmulas de piezas</span>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>usables en fórmulas de piezas</span>
             <div style={{ flex: 1 }} />
             {!agregandoVar && (
               <button onClick={() => { setAgregandoVar(true); setNuevaVarNombre(""); }}
