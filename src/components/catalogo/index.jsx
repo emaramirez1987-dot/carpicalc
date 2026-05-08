@@ -1025,7 +1025,7 @@ function FormModulo({
 
           <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
           {Object.entries(datos.variables || {}).length === 0 && !agregandoVar && (
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontStyle: "italic", fontFamily: "'DM Mono',monospace" }}>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", fontFamily: "'DM Mono',monospace" }}>
               Sin variables — agregá una para usarla en fórmulas (ej: <span style={{ color: "var(--accent)" }}>luz</span>, <span style={{ color: "var(--accent)" }}>zocalo</span>).
             </div>
           )}
