@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { useNav } from '../../state/NavContext.jsx';
 import { useUndo } from '../../hooks/useUndo.js';
 import { useTema } from '../../hooks/useTema.js';
@@ -7,6 +7,8 @@ import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarF
 import VistaModuloSVG from '../vista-svg/index.js';
 import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT, ROLES_PIEZA_DEFAULT } from '../../constants.js';
 import { guardarPresupuestos, cargarRolesPieza, guardarRolesPieza, cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
+
+const VisorModulo3D = lazy(() => import('../visor3d/VisorModulo3D.jsx'));
 
 const DIMS = ["ancho", "alto", "profundidad"];
 
@@ -1375,7 +1377,7 @@ function FormModulo({
 }
 // ══════════════════════════════════════════════════════════════════
 // ── CatalogoModulos ───────────────────────────────────────────────
-function AccionesModulo({ onEditar, onEliminar, onDuplicar, onAbrirVista, presupuestosAfectados = [] }) {
+function AccionesModulo({ onEditar, onEliminar, onDuplicar, onAbrirVista, on3D, presupuestosAfectados = [] }) {
   const [confirmar, setConfirmar] = useState(false);
   const tieneAfectados = presupuestosAfectados.length > 0;
   const iconBtn = (color, bg, border) => ({
@@ -1395,6 +1397,10 @@ function AccionesModulo({ onEditar, onEliminar, onDuplicar, onAbrirVista, presup
         {onAbrirVista && (
           <button onClick={onAbrirVista} title="Editor visual"
             style={iconBtn("#8090c0", "rgba(128,144,192,0.12)", "1px solid rgba(128,144,192,0.30)")}>▣</button>
+        )}
+        {on3D && (
+          <button onClick={on3D} title="Vista 3D"
+            style={iconBtn("#70b090", "rgba(112,176,144,0.12)", "1px solid rgba(112,176,144,0.30)")}>◈</button>
         )}
         <button onClick={() => setConfirmar(v => !v)} title="Eliminar"
           style={iconBtn("#e07070", confirmar ? "rgba(200,60,60,0.15)" : "transparent", "1px solid rgba(200,60,60,0.30)")}>×</button>
@@ -1614,7 +1620,7 @@ function ModalImagen({ imagen, cod, onClose, onBorrar, onCambiar }) {
   );
 }
 
-function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbrirVista, onImagenChange, presupuestosAfectados = [] }) {
+function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbrirVista, on3D, onImagenChange, presupuestosAfectados = [] }) {
   return (
     <Card className="rsp-card">
       <ImagenModulo
@@ -1662,7 +1668,7 @@ function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAb
             </div>
           </div>
           {/* Botones — columna derecha */}
-          <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} presupuestosAfectados={presupuestosAfectados} />
+          <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} on3D={on3D} presupuestosAfectados={presupuestosAfectados} />
         </div>
       </div>
     </Card>
@@ -1670,7 +1676,7 @@ function TarjetaModuloGrid({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAb
 }
 
 // ── Botones de acción para vista móvil (4 en fila, ícono puro) ────
-function AccionesMobileMod({ onEditar, onEliminar, onDuplicar, onAbrirVista, presupuestosAfectados = [] }) {
+function AccionesMobileMod({ onEditar, onEliminar, onDuplicar, onAbrirVista, on3D, presupuestosAfectados = [] }) {
   const [confirmar, setConfirmar] = useState(false);
   const tieneAfectados = presupuestosAfectados.length > 0;
   const btnM = (onClick, icon, color, bg) => (
@@ -1697,6 +1703,7 @@ function AccionesMobileMod({ onEditar, onEliminar, onDuplicar, onAbrirVista, pre
         {btnM(onEditar,   "✎", "var(--accent)", "var(--accent-soft)")}
         {btnM(onDuplicar, "⧉", "#7090b0",       "rgba(112,144,176,0.08)")}
         {onAbrirVista && btnM(onAbrirVista, "▣", "#8090c0", "rgba(128,144,192,0.08)")}
+        {on3D && btnM(on3D, "◈", "#70b090", "rgba(112,176,144,0.08)")}
         <button
           onClick={() => { if (confirmar) { onEliminar(); setConfirmar(false); } else setConfirmar(true); }}
           style={{
@@ -1712,7 +1719,7 @@ function AccionesMobileMod({ onEditar, onEliminar, onDuplicar, onAbrirVista, pre
   );
 }
 
-function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbrirVista, onImagenChange, presupuestosAfectados = [] }) {
+function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbrirVista, on3D, onImagenChange, presupuestosAfectados = [] }) {
   const [expandido, setExpandido] = useState(false);
   return (
     <div
@@ -1747,7 +1754,7 @@ function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbri
         <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "var(--color-positive)", flexShrink: 0 }}>
           {fmtPeso(c.total)}
         </span>
-        <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} presupuestosAfectados={presupuestosAfectados} />
+        <AccionesModulo onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} on3D={on3D} presupuestosAfectados={presupuestosAfectados} />
       </div>
 
       {/* ── MÓVIL: vertical con imagen como toggle ── */}
@@ -1803,7 +1810,7 @@ function FilaModuloLista({ cod, mod, c, onEditar, onEliminar, onDuplicar, onAbri
         </div>
 
         {/* Botones móvil */}
-        <AccionesMobileMod onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} presupuestosAfectados={presupuestosAfectados} />
+        <AccionesMobileMod onEditar={onEditar} onEliminar={onEliminar} onDuplicar={onDuplicar} onAbrirVista={onAbrirVista} on3D={on3D} presupuestosAfectados={presupuestosAfectados} />
       </div>
     </div>
   );
@@ -1830,6 +1837,7 @@ function CatalogoModulos({
   onGuardarPresupuestoAfectado = null, // (id, cambios) recalcula presupuesto afectado
 }) {
   const { dispatch } = useNav();
+  const [visor3D, setVisor3D] = useState(null); // { cod, mod }
   const [modo, setModo] = useState(() => {
     // Si hay un borrador de módulo nuevo en progreso, reabrir el formulario automáticamente
     const draft = cargarBorradorModulo();
@@ -2239,6 +2247,7 @@ function CatalogoModulos({
                         onEliminar={() => eliminar(cod)}
                         onDuplicar={() => abrirModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
                         onAbrirVista={() => dispatch({ type: "ABRIR_EDITOR_VISTA", payload: { cod } })}
+                        on3D={() => setVisor3D({ cod, mod })}
                         onImagenChange={handleImagenChange}
                         presupuestosAfectados={presupuestosQueUsan(cod)} />;
                     })}
@@ -2253,6 +2262,7 @@ function CatalogoModulos({
                         onEliminar={() => eliminar(cod)}
                         onDuplicar={() => abrirModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
                         onAbrirVista={() => dispatch({ type: "ABRIR_EDITOR_VISTA", payload: { cod } })}
+                        on3D={() => setVisor3D({ cod, mod })}
                         onImagenChange={handleImagenChange}
                         presupuestosAfectados={presupuestosQueUsan(cod)} />;
                     })}
@@ -2275,6 +2285,17 @@ function CatalogoModulos({
         </div>
       )}
       <ToastContainer />
+
+      {/* ── Visor 3D ── */}
+      {visor3D && (
+        <Suspense fallback={null}>
+          <VisorModulo3D
+            modulo={visor3D.mod}
+            costos={costos}
+            onClose={() => setVisor3D(null)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
