@@ -347,7 +347,7 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
                 { label: "D1 — Altura", key: "formula1", valida: f1Valida, resultado: d1 },
                 { label: "D2 — Ancho",  key: "formula2", valida: f2Valida, resultado: d2 },
               ].map(({ label, key, valida, resultado }) => (
-                <div key={key} style={{ background: "var(--bg-subtle)", border: "1px solid rgba(200,160,42,0.15)", borderRadius: 8, padding: "10px 12px" }}>
+                <div key={key} style={{ background: "transparent", border: "1px solid rgba(200,160,42,0.15)", borderRadius: 8, padding: "10px 12px" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", marginBottom: 6 }}>{label}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <input
