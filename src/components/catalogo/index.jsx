@@ -505,75 +505,10 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
   );
 }
 
-// ── StepIndicator + FormModulo ────────────────────────────────────
-function StepIndicator({ paso }) {
-  const steps = [
-    ["1", "Datos"],
-    ["2", "Piezas"],
-    ["3", "Herrajes y MO"],
-  ];
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", marginBottom: 28,
-      padding: "14px 20px",
-      background: "var(--bg-surface)",
-      borderRadius: 12,
-      border: "1px solid var(--border)",
-      boxShadow: "0 2px 12px rgba(0,0,0,0.22)",
-    }}>
-      {steps.map(([n, label], i) => {
-        const done = paso > i + 1;
-        const active = paso === i + 1;
-        return (
-          <div key={n} style={{ display: "flex", alignItems: "center", flex: i < 2 ? 1 : "none" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: "50%",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 13, fontWeight: 900, fontFamily: "'DM Mono',monospace",
-                transition: "all 0.25s",
-                background: active
-                  ? "linear-gradient(135deg, var(--accent), #c8952a)"
-                  : done ? "rgba(200,160,42,0.15)" : "var(--bg-subtle)",
-                border: `2px solid ${active ? "var(--accent)" : done ? "rgba(200,160,42,0.5)" : "var(--border)"}`,
-                color: active ? "#0a0a0a" : done ? "#c8a02a" : "var(--text-muted)",
-                boxShadow: active ? "0 0 16px rgba(212,175,55,0.4), 0 2px 8px rgba(0,0,0,0.4)" : "none",
-              }}>
-                {done ? "✓" : n}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                <span style={{
-                  fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                  textTransform: "uppercase", letterSpacing: "0.10em",
-                  color: active ? "#c8a02a" : done ? "rgba(200,160,42,0.7)" : "var(--text-muted)",
-                  transition: "color 0.2s",
-                }}>
-                  {label}
-                </span>
-                {active && (
-                  <span style={{ fontSize: 9, color: "rgba(200,160,42,0.6)", fontFamily: "'DM Mono',monospace", letterSpacing: "0.06em" }}>
-                    EN CURSO
-                  </span>
-                )}
-              </div>
-            </div>
-            {i < 2 && (
-              <div style={{ flex: 1, height: 2, margin: "0 14px", borderRadius: 2,
-                background: done
-                  ? "linear-gradient(90deg, rgba(200,160,42,0.6), rgba(200,160,42,0.15))"
-                  : "var(--border)"
-              }} />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+// ── FormModulo ────────────────────────────────────────────────────
 
 // ── AcordeonPreviewSVG ────────────────────────────────────────────────────────
-// Preview de solo lectura que vive en FormModulo paso 1.
-// Cerrado por defecto — el carpintero lo expande si quiere ver la vista técnica.
+// Preview de solo lectura cerrado por defecto.
 function AcordeonPreviewSVG({ datos, herrajes }) {
   const [abierto, setAbierto] = useState(false);
   const { tema } = useTema();
@@ -635,7 +570,8 @@ function FormModulo({
   const esEdicion = !!codigoEditar;
   // Borrador persistido: solo para módulos nuevos (no edición de existentes)
   const _draft = !moduloBase ? cargarBorradorModulo() : null;
-  const [paso, setPaso] = useState(() => esEdicion ? 2 : (_draft?.paso || 1));
+  const [secs, setSecs] = useState({ ident: true, dims: false, clasif: false, vars: false, her: false, mo: false, res: false });
+  const toggleSec = k => setSecs(p => ({ ...p, [k]: !p[k] }));
   // Modal de decisión: aparece al guardar desde Nivel 3
   // null = cerrado, "pidiendo" = mostrando opciones, "nombre" = ingresando nombre para catálogo
   const [modalDecision, setModalDecision] = useState(null);
@@ -693,9 +629,9 @@ function FormModulo({
   // Persistir borrador automáticamente en cada cambio (solo módulos nuevos)
   useEffect(() => {
     if (moduloBase) return;
-    guardarBorradorModulo({ paso, datos, piezas, herrajes, moDeObra });
+    guardarBorradorModulo({ datos, piezas, herrajes, moDeObra });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paso, datos, piezas, herrajes, moDeObra]);
+  }, [datos, piezas, herrajes, moDeObra]);
   const [error, setError] = useState("");
   const [fp, setFp] = useState({ ...PIEZA_VACIA });
   const [fpError, setFpError] = useState("");
@@ -764,23 +700,6 @@ function FormModulo({
       return n;
     });
   };
-  const siguiente = () => {
-    if (paso === 1) {
-      if (!datos.codigo.trim() || !datos.nombre.trim()) {
-        setError("Código y nombre son obligatorios.");
-        return;
-      }
-      setError("");
-      setPaso(2);
-    } else if (paso === 2) {
-      if (piezas.length === 0) {
-        setError("Agregá al menos una pieza.");
-        return;
-      }
-      setError("");
-      setPaso(3);
-    }
-  };
   // Detecta si el formulario fue modificado respecto al módulo original
   const hayCambios = () => {
     if (!moduloBase) return piezas.length > 0 || datos.nombre.trim() !== "";
@@ -826,6 +745,12 @@ function FormModulo({
   };
 
   const guardar = () => {
+    if (!datos.codigo.trim() || !datos.nombre.trim()) {
+      setError("Código y nombre son obligatorios.");
+      setSecs(p => ({ ...p, ident: true }));
+      return;
+    }
+    setError("");
     // Desde presupuesto (Nivel 3): modal de decisión existente sin cambios
     if (esDeepLinkPresupuesto) {
       setNombreCatalogo(datos.nombre || "");
@@ -845,259 +770,30 @@ function FormModulo({
     piezas.length > 0
       ? calcularModulo({ ...datos, piezas, herrajes, moDeObra }, costos)
       : null;
+  // Helper para header de acordeón
+  const secHdr = (icon, title, previewNode, isOpen, onToggle) => (
+    <div onClick={onToggle} style={{ padding: "10px 14px", background: "rgba(255,255,255,0.10)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", userSelect: "none" }}>
+      <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>{icon} {title}</span>
+      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        {!isOpen && previewNode}
+        <span style={{ fontSize: 10, color: "var(--text-muted)", display: "inline-block", transition: "transform 0.2s", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+      </div>
+    </div>
+  );
   return (
-    <div>
-      <StepIndicator paso={paso} />
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+      {/* Error banner */}
       {error && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 14px",
-            borderRadius: 8,
-            marginBottom: 16,
-            fontSize: 13,
-            background: "rgba(200,60,60,0.10)",
-            border: "1px solid rgba(200,60,60,0.30)",
-            color: "#e08080"
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, fontSize: 13, background: "rgba(200,60,60,0.10)", border: "1px solid rgba(200,60,60,0.30)", color: "#e08080" }}>
           ⚠ {error}
         </div>
       )}
 
-      {paso === 1 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* ── Vista unificada: FormPieza + Acordeones ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 14, alignItems: 'start' }}>
 
-          {/* ── Bloque 1: Identificación ── */}
-          <div style={{ borderRadius: 12, border: "1px solid var(--border)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
-            <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>📌 Identificación</span>
-            </div>
-            <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 12, background: "var(--bg-surface)" }}>
-              <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12 }}>
-                <TextInput
-                  label="Código"
-                  placeholder="MC003"
-                  value={datos.codigo}
-                  onChange={(v) => setDatos((d) => ({ ...d, codigo: v.toUpperCase() }))}
-                  disabled={esEdicion}
-                  style={esEdicion ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
-                />
-                <TextInput
-                  label="Nombre"
-                  placeholder="Módulo bajo mesada 80cm"
-                  value={datos.nombre}
-                  onChange={(v) => setDatos((d) => ({ ...d, nombre: v }))}
-                />
-              </div>
-              {esEdicion && (
-                <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", marginTop: -6 }}>
-                  El código no se puede modificar en modo edición
-                </div>
-              )}
-              <TextInput
-                label="Descripción (opcional)"
-                value={datos.descripcion}
-                onChange={(v) => setDatos((d) => ({ ...d, descripcion: v }))}
-              />
-            </div>
-          </div>
-
-          {/* ── Bloque 2: Dimensiones y Material ── */}
-          <div style={{ borderRadius: 12, border: "1px solid var(--border)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
-            <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>📐 Dimensiones y Material</span>
-            </div>
-            <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 12, background: "var(--bg-surface)" }}>
-              <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
-                <TextInput label="Ancho (mm)" type="number" suffix="mm" value={datos.dimensiones.ancho}
-                  onChange={(v) => setDatos((d) => ({ ...d, dimensiones: { ...d.dimensiones, ancho: parseInt(v) || 0 } }))} />
-                <TextInput label="Profund. (mm)" type="number" suffix="mm" value={datos.dimensiones.profundidad}
-                  onChange={(v) => setDatos((d) => ({ ...d, dimensiones: { ...d.dimensiones, profundidad: parseInt(v) || 0 } }))} />
-                <TextInput label="Alto (mm)" type="number" suffix="mm" value={datos.dimensiones.alto}
-                  onChange={(v) => setDatos((d) => ({ ...d, dimensiones: { ...d.dimensiones, alto: parseInt(v) || 0 } }))} />
-                <Select label="Material" value={datos.material}
-                  onChange={(v) => setDatos((d) => ({ ...d, material: v }))}
-                  options={costos.materiales.map((m) => ({ value: m.tipo, label: `${m.nombre} (${m.espesor}mm)` }))} />
-              </div>
-              {matDef && (
-                <div style={{ padding: "8px 14px", borderRadius: 8, fontSize: 12, background: "rgba(212,175,55,0.08)", border: "1px solid var(--accent-border)", color: "var(--accent)", display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ opacity: 0.5 }}>▶</span>
-                  <span>Material activo: <strong>{matDef.nombre}</strong> — espesor <strong>{matDef.espesor}mm</strong></span>
-                  {!esEdicion && moduloBase && (
-                    <span style={{ marginLeft: 8, opacity: 0.6, fontSize: 11 }}>📋 Copia — editá el código antes de guardar.</span>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── Bloque 3: Clasificación ── */}
-          <div style={{ borderRadius: 12, border: "1px solid var(--border)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
-            <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>🏷 Clasificación</span>
-            </div>
-            <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", background: "var(--bg-surface)" }}>
-              {/* Categoría */}
-              <div style={{ padding: "14px 16px", borderRight: "1px solid var(--border)" }}>
-                <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 10 }}>Categoría</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {CATEGORIAS_DEFAULT.map(cat => {
-                    const activa = datos.categoria === cat.id;
-                    return (
-                      <button key={cat.id} onClick={() => setDatos(d => ({ ...d, categoria: cat.id }))}
-                        style={{
-                          padding: "5px 12px", borderRadius: 20, cursor: "pointer",
-                          fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
-                          transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5,
-                          background: activa ? `${cat.color}22` : "var(--bg-subtle)",
-                          border: `1px solid ${activa ? cat.color : "var(--border)"}`,
-                          color: activa ? cat.color : "var(--text-muted)",
-                          boxShadow: activa ? `0 0 14px ${cat.color}40` : "none",
-                        }}>
-                        {cat.icon} {cat.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              {/* Tipo visual */}
-              <div style={{ padding: "14px 16px" }}>
-                <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 10 }}>Tipo visual — Plano 2D</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {[
-                    { id: null,    label: "Sin definir", icon: "—",  color: "#606880" },
-                    { id: "bajo",  label: "Bajo",        icon: "⬇",  color: "#7090c8" },
-                    { id: "aereo", label: "Aéreo",       icon: "⬆",  color: "#a070c8" },
-                    { id: "torre", label: "Torre",       icon: "⬛", color: "var(--color-positive)" },
-                  ].map((tipo) => {
-                    const activo = datos.tipoVisual === tipo.id;
-                    return (
-                      <button key={String(tipo.id)} onClick={() => setDatos((d) => ({ ...d, tipoVisual: tipo.id }))}
-                        style={{
-                          padding: "5px 12px", borderRadius: 20, cursor: "pointer",
-                          fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
-                          transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5,
-                          background: activo ? `${tipo.color}22` : "var(--bg-subtle)",
-                          border: `1px solid ${activo ? tipo.color : "var(--border)"}`,
-                          color: activo ? tipo.color : "var(--text-muted)",
-                          boxShadow: activo ? `0 0 14px ${tipo.color}40` : "none",
-                        }}>
-                        {tipo.icon} {tipo.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Preview técnico SVG — acordeón cerrado por defecto */}
-          <AcordeonPreviewSVG datos={datos} herrajes={herrajes} />
-
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", paddingTop: 4 }}>
-            <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
-            {esEdicion && (
-              <Btn variant="ghost" onClick={guardar} style={{ borderColor: "var(--accent-border)", color: "var(--accent)" }}>
-                💾 Guardar y cerrar
-              </Btn>
-            )}
-            <Btn onClick={siguiente} style={{ background: "linear-gradient(135deg, var(--accent), #b8852a)", color: "#0a0a0a", fontWeight: 800, boxShadow: "0 4px 16px rgba(212,175,55,0.35)", border: "none" }}>
-              Siguiente → Piezas
-            </Btn>
-          </div>
-        </div>
-      )}
-
-      {paso === 2 && (
-        // rsp-paso2: apila verticalmente en móvil
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-        {/* Variables personalizadas — ancho completo, encima de las columnas */}
-        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
-          <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>⚡ Variables del módulo</span>
-            <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>usables en fórmulas de piezas</span>
-            <div style={{ flex: 1 }} />
-            {!agregandoVar && (
-              <button onClick={() => { setAgregandoVar(true); setNuevaVarNombre(""); }}
-                style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px dashed var(--border)", color: "var(--text-muted)", transition: "all 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent-border)"; e.currentTarget.style.color = "var(--accent)"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
-                + Agregar variable
-              </button>
-            )}
-          </div>
-
-          <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
-          {Object.entries(datos.variables || {}).length === 0 && !agregandoVar && (
-            <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", fontFamily: "'DM Mono',monospace" }}>
-              Sin variables — agregá una para usarla en fórmulas (ej: <span style={{ color: "var(--accent)" }}>luz</span>, <span style={{ color: "var(--accent)" }}>zocalo</span>).
-            </div>
-          )}
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {Object.entries(datos.variables || {}).map(([nombre, valor]) => (
-              <div key={nombre} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.22)", borderRadius: 8, padding: "5px 10px" }}>
-                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>{nombre} =</span>
-                <input
-                  type="number"
-                  value={valor}
-                  onChange={e => setDatos(d => ({ ...d, variables: { ...d.variables, [nombre]: parseFloat(e.target.value) || 0 } }))}
-                  style={{ width: 72, fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: "3px 6px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", outline: "none", textAlign: "right" }}
-                />
-                <span style={{ fontSize: 10, color: "var(--text-muted)" }}>mm</span>
-                <button
-                  onClick={() => setDatos(d => { const { [nombre]: _r, ...rest } = d.variables; return { ...d, variables: rest }; })}
-                  style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 16, lineHeight: 1, opacity: 0.5, padding: "0 2px" }}
-                  onMouseEnter={e => e.target.style.opacity = 1}
-                  onMouseLeave={e => e.target.style.opacity = 0.5}>×</button>
-              </div>
-            ))}
-
-            {agregandoVar && (
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <input
-                  autoFocus
-                  value={nuevaVarNombre}
-                  onChange={e => setNuevaVarNombre(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      const n = nuevaVarNombre.trim();
-                      if (n && !(n in (datos.variables || {}))) {
-                        setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [n]: 0 } }));
-                        setNuevaVarNombre("");
-                        setAgregandoVar(false);
-                      }
-                    }
-                    if (e.key === 'Escape') { setAgregandoVar(false); setNuevaVarNombre(""); }
-                  }}
-                  placeholder="nombre (ej: luz)"
-                  style={{ width: 130, fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "5px 8px", background: "var(--bg-base)", border: "1px solid var(--accent-border)", borderRadius: 6, color: "var(--text-primary)", outline: "none" }}
-                />
-                <button
-                  onClick={() => {
-                    const n = nuevaVarNombre.trim();
-                    if (n && !(n in (datos.variables || {}))) {
-                      setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [n]: 0 } }));
-                      setNuevaVarNombre("");
-                      setAgregandoVar(false);
-                    }
-                  }}
-                  style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
-                  Agregar
-                </button>
-                <button onClick={() => { setAgregandoVar(false); setNuevaVarNombre(""); }}
-                  style={{ padding: "5px 8px", borderRadius: 6, fontSize: 11, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
-              </div>
-            )}
-          </div>
-          </div>
-        </div>
-
-        {/* ── Fila 2: FormPieza ancho completo ── */}
+        {/* Columna izquierda: FormPieza */}
         <FormPieza
           fp={fp} setFp={setFp}
           onAgregar={agregarPieza}
@@ -1111,259 +807,233 @@ function FormModulo({
           variables={datos.variables}
         />
 
-        {/* ── Fila 3: Lista de piezas — acordeón ── */}
-        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>
-          <div
-            onClick={() => setListaPiezasAbierta(v => !v)}
-            style={{ padding: "10px 16px", background: "rgba(255,255,255,0.10)", borderBottom: listaPiezasAbierta ? "1px solid rgba(200,160,42,0.25)" : "none", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", userSelect: "none" }}>
-            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>
-              🪵 Piezas <span style={{ color: "var(--accent)", marginLeft: 6 }}>({piezas.length})</span>
-            </span>
-            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
-                Espesor: <span style={{ color: "var(--accent)" }}>{espesor}mm</span>
-              </span>
-              <span style={{ fontSize: 10, color: "var(--text-muted)", transition: "transform 0.2s", display: "inline-block", transform: listaPiezasAbierta ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
-            </div>
-          </div>
-          {listaPiezasAbierta && (
-            <div style={{ padding: "12px 14px", background: "var(--bg-surface)", display: "flex", flexDirection: "column", gap: 6 }}>
-            {piezas.length === 0 ? (
-              <div style={{ padding: "28px 0", textAlign: "center", fontSize: 12, borderRadius: 8, border: "1px dashed var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
-                Sin piezas todavía — agregá la primera arriba
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {piezas.map((p, i) => (
-                  <FilaPieza
-                    key={i}
-                    pieza={p}
-                    idx={i}
-                    dims={datos.dimensiones}
-                    espesor={espesor}
-                    tapacanto={costos.tapacanto}
-                    isFirst={i === 0}
-                    isLast={i === piezas.length - 1}
-                    modVars={datos.variables}
-                    onDelete={(i) => {
-                      setPiezas(prev => prev.filter((_, j) => j !== i));
-                      if (editandoPiezaIdx === i) cancelarEdicion();
-                    }}
-                    onEdit={editarPieza}
-                    onDuplicate={duplicarPieza}
-                    onMoveUp={(i) => moverPieza(i, -1)}
-                    onMoveDown={(i) => moverPieza(i, 1)}
-                    onChangeCantidad={(cant) => setPiezas(prev => prev.map((px, j) => j === i ? { ...px, cantidad: cant } : px))}
+        {/* Columna derecha: Acordeones */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+          {/* Identificación */}
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+            {secHdr('📌', 'Identificación',
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)' }}>{datos.codigo || '—'} · {datos.nombre || 'sin nombre'}</span>,
+              secs.ident, () => toggleSec('ident'))}
+            {secs.ident && (
+              <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--bg-surface)' }}>
+                <div className="rsp-grid-1" style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 12 }}>
+                  <TextInput
+                    label="Código"
+                    placeholder="MC003"
+                    value={datos.codigo}
+                    onChange={(v) => setDatos((d) => ({ ...d, codigo: v.toUpperCase() }))}
+                    disabled={esEdicion}
+                    style={esEdicion ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
                   />
-                ))}
-              </div>
-            )}
-            </div>
-          )}
-        </div>
-
-        {/* ── Fila 4: Botones de navegación ── */}
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", paddingTop: 4 }}>
-          <Btn variant="ghost" onClick={() => { setPaso(1); setError(""); }}>← Volver</Btn>
-          <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
-          {esEdicion && !modalDecision && !decisionCatalogo && (
-            <Btn variant="ghost" onClick={guardar} style={{ borderColor: "var(--accent-border)", color: "var(--accent)" }}>
-              💾 Guardar y cerrar
-            </Btn>
-          )}
-          {!modalDecision && !decisionCatalogo && (
-            <button onClick={siguiente} disabled={piezas.length === 0}
-              style={{ padding: "10px 22px", borderRadius: 8, cursor: piezas.length === 0 ? "default" : "pointer", fontWeight: 900, fontFamily: "'DM Mono',monospace", fontSize: 13, letterSpacing: "0.06em", transition: "all 0.2s", background: piezas.length === 0 ? "var(--bg-subtle)" : "linear-gradient(135deg, var(--accent), #b8852a)", border: "none", color: piezas.length === 0 ? "var(--text-muted)" : "#0a0a0a", boxShadow: piezas.length === 0 ? "none" : "0 4px 16px rgba(212,175,55,0.35)" }}>
-              Siguiente → Herrajes
-            </button>
-          )}
-        </div>
-
-        {/* Acordeón de decisión inline */}
-        {modalDecision && (
-          <div className="anim-fadeup" style={{ background: "var(--bg-subtle)", border: "1px solid var(--accent-border)", borderRadius: 12, padding: 16 }}>
-            <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent)", marginBottom: 12 }}>
-              ¿Dónde guardás esta variante?
-            </div>
-            {modalDecision === "nombre" ? (
-              <>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>Nombre en el catálogo:</div>
-                <input autoFocus value={nombreCatalogo} onChange={e => setNombreCatalogo(e.target.value)}
-                  placeholder="Nombre del nuevo módulo..."
-                  style={{ width: "100%", fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: "8px 12px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
-                  onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                  onBlur={e => e.target.style.borderColor = "var(--border)"}
-                  onKeyDown={e => e.key === "Enter" && guardarYLimpiar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true })} />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => { guardarYLimpiar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true }); setModalDecision(null); }}
-                    style={{ flex: 1, padding: "9px 0", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
-                    ✓ Confirmar nombre
-                  </button>
-                  <button onClick={() => setModalDecision("pidiendo")}
-                    style={{ padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
-                    ← Volver
-                  </button>
+                  <TextInput
+                    label="Nombre"
+                    placeholder="Módulo bajo mesada 80cm"
+                    value={datos.nombre}
+                    onChange={(v) => setDatos((d) => ({ ...d, nombre: v }))}
+                  />
                 </div>
-              </>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button onClick={() => { guardarYLimpiar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), _soloPresupuesto: true }); setModalDecision(null); }}
-                  style={{ padding: "11px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700, transition: "border-color 0.15s" }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
-                  📋 Solo en este presupuesto
-                  <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>El catálogo no cambia. Se elimina con el presupuesto.</div>
-                </button>
-                <button onClick={() => { setNombreCatalogo(datos.nombre || ""); setModalDecision("nombre"); }}
-                  style={{ padding: "11px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700, transition: "border-color 0.15s" }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-border)"}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
-                  📚 Guardar en catálogo
-                  <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginTop: 3 }}>Disponible para futuros presupuestos.</div>
-                </button>
-                <button onClick={() => setModalDecision(null)}
-                  style={{ padding: "7px 0", borderRadius: 8, cursor: "pointer", fontSize: 11, background: "transparent", border: "none", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
-                  ✕ Cancelar
-                </button>
+                {esEdicion && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: -6 }}>
+                    El código no se puede modificar en modo edición
+                  </div>
+                )}
+                <TextInput
+                  label="Descripción (opcional)"
+                  value={datos.descripcion}
+                  onChange={(v) => setDatos((d) => ({ ...d, descripcion: v }))}
+                />
               </div>
             )}
           </div>
-        )}
 
-        </div>
-      )}
-
-      {paso === 3 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div
-            className="rsp-grid-1"
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
-          >
-            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
-              <div style={{ background: "rgba(255,255,255,0.10)", borderLeft: "3px solid rgba(200,160,42,0.5)", padding: "10px 16px" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#c8a02a" }}>🔩 Herrajes</span>
+          {/* Dimensiones y Material */}
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+            {secHdr('📐', 'Dimensiones y Material',
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)' }}>{datos.dimensiones.ancho}×{datos.dimensiones.profundidad}×{datos.dimensiones.alto}mm</span>,
+              secs.dims, () => toggleSec('dims'))}
+            {secs.dims && (
+              <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--bg-surface)' }}>
+                <div className="rsp-grid-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+                  <TextInput label="Ancho (mm)" type="number" suffix="mm" value={datos.dimensiones.ancho}
+                    onChange={(v) => setDatos((d) => ({ ...d, dimensiones: { ...d.dimensiones, ancho: parseInt(v) || 0 } }))} />
+                  <TextInput label="Profund. (mm)" type="number" suffix="mm" value={datos.dimensiones.profundidad}
+                    onChange={(v) => setDatos((d) => ({ ...d, dimensiones: { ...d.dimensiones, profundidad: parseInt(v) || 0 } }))} />
+                  <TextInput label="Alto (mm)" type="number" suffix="mm" value={datos.dimensiones.alto}
+                    onChange={(v) => setDatos((d) => ({ ...d, dimensiones: { ...d.dimensiones, alto: parseInt(v) || 0 } }))} />
+                  <Select label="Material" value={datos.material}
+                    onChange={(v) => setDatos((d) => ({ ...d, material: v }))}
+                    options={costos.materiales.map((m) => ({ value: m.tipo, label: `${m.nombre} (${m.espesor}mm)` }))} />
+                </div>
+                {matDef && (
+                  <div style={{ padding: '8px 14px', borderRadius: 8, fontSize: 12, background: 'rgba(212,175,55,0.08)', border: '1px solid var(--accent-border)', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ opacity: 0.5 }}>▶</span>
+                    <span>Material activo: <strong>{matDef.nombre}</strong> — espesor <strong>{matDef.espesor}mm</strong></span>
+                    {!esEdicion && moduloBase && (
+                      <span style={{ marginLeft: 8, opacity: 0.6, fontSize: 11 }}>📋 Copia — editá el código antes de guardar.</span>
+                    )}
+                  </div>
+                )}
               </div>
-              <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
-              {costos.herrajes.map((h) => {
-                const item = herrajes.find((x) => x.id === h.id);
-                const cant = item?.cantidad || 0;
-                return (
-                  <div
-                    key={h.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "8px 0",
-                      borderBottom: "1px solid var(--border)"
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{ fontSize: 13, color: "var(--text-primary)" }}
-                      >
-                        {h.nombre}
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                        {fmtPeso(h.precio)}/{h.unidad}
-                      </div>
-                    </div>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 6 }}
-                    >
-                      {[
-                        [
-                          "−",
-                          () =>
-                            setHerrajes((prev) => {
-                              const idx = prev.findIndex((x) => x.id === h.id);
-                              if (cant <= 1)
-                                return prev.filter((x) => x.id !== h.id);
-                              const n = [...prev];
-                              n[idx].cantidad--;
-                              return n;
-                            }),
-                        ],
-                        [
-                          "+",
-                          () =>
-                            setHerrajes((prev) => {
-                              const idx = prev.findIndex((x) => x.id === h.id);
-                              if (idx < 0)
-                                return [...prev, { id: h.id, cantidad: 1 }];
-                              const n = [...prev];
-                              n[idx].cantidad++;
-                              return n;
-                            }),
-                        ],
-                      ].map(([lbl, fn]) => (
-                        <button
-                          key={lbl}
-                          onClick={fn}
-                          style={{
-                            width: 28,
-                            height: 28,
-                            background: "var(--accent-soft)",
-                            border: "1px solid var(--accent-border)",
-                            color: "var(--accent)",
-                            borderRadius: 5,
-                            cursor: "pointer",
-                            fontSize: 15,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center"
-                          }}
-                        >
-                          {lbl}
-                        </button>
-                      ))}
-                      <span
-                        style={{
-                          fontFamily: "'DM Mono',monospace",
-                          width: 24,
-                          textAlign: "center",
-                          color:
-                            cant > 0 ? "var(--accent)" : "var(--text-muted)"
-                        }}
-                      >
-                        {cant}
-                      </span>
+            )}
+          </div>
+
+          {/* Clasificación */}
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+            {secHdr('🏷', 'Clasificación',
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)' }}>{datos.categoria || 'sin cat.'}</span>,
+              secs.clasif, () => toggleSec('clasif'))}
+            {secs.clasif && (
+              <div style={{ background: 'var(--bg-surface)' }}>
+                <div className="rsp-grid-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+                  <div style={{ padding: '14px 16px', borderRight: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 10 }}>Categoría</div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {CATEGORIAS_DEFAULT.map(cat => {
+                        const activa = datos.categoria === cat.id;
+                        return (
+                          <button key={cat.id} onClick={() => setDatos(d => ({ ...d, categoria: cat.id }))}
+                            style={{ padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5, background: activa ? `${cat.color}22` : 'var(--bg-subtle)', border: `1px solid ${activa ? cat.color : 'var(--border)'}`, color: activa ? cat.color : 'var(--text-muted)', boxShadow: activa ? `0 0 14px ${cat.color}40` : 'none' }}>
+                            {cat.icon} {cat.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
-                );
-              })}
-              </div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
-                <div style={{ background: "rgba(255,255,255,0.10)", borderLeft: "3px solid rgba(200,160,42,0.5)", padding: "10px 16px" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#c8a02a" }}>🔨 Mano de obra</span>
+                  <div style={{ padding: '14px 16px' }}>
+                    <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 10 }}>Tipo visual — Plano 2D</div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {[
+                        { id: null,    label: 'Sin definir', icon: '—',  color: '#606880' },
+                        { id: 'bajo',  label: 'Bajo',        icon: '⬇',  color: '#7090c8' },
+                        { id: 'aereo', label: 'Aéreo',       icon: '⬆',  color: '#a070c8' },
+                        { id: 'torre', label: 'Torre',       icon: '⬛', color: 'var(--color-positive)' },
+                      ].map((tipo) => {
+                        const activo = datos.tipoVisual === tipo.id;
+                        return (
+                          <button key={String(tipo.id)} onClick={() => setDatos((d) => ({ ...d, tipoVisual: tipo.id }))}
+                            style={{ padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5, background: activo ? `${tipo.color}22` : 'var(--bg-subtle)', border: `1px solid ${activo ? tipo.color : 'var(--border)'}`, color: activo ? tipo.color : 'var(--text-muted)', boxShadow: activo ? `0 0 14px ${tipo.color}40` : 'none' }}>
+                            {tipo.icon} {tipo.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
-                <Select
-                  label="Tipo"
-                  value={moDeObra.tipo}
+                <div style={{ padding: '0 16px 14px' }}>
+                  <AcordeonPreviewSVG datos={datos} herrajes={herrajes} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Variables del módulo */}
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+            {secHdr('⚡', 'Variables del módulo',
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)' }}>{Object.keys(datos.variables || {}).length} vars</span>,
+              secs.vars, () => toggleSec('vars'))}
+            {secs.vars && (
+              <div style={{ padding: '12px 16px', background: 'var(--bg-surface)' }}>
+                {Object.entries(datos.variables || {}).length === 0 && !agregandoVar && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', fontFamily: "'DM Mono',monospace" }}>
+                    Sin variables — agregá una para usarla en fórmulas (ej: <span style={{ color: 'var(--accent)' }}>luz</span>, <span style={{ color: 'var(--accent)' }}>zocalo</span>).
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {Object.entries(datos.variables || {}).map(([nombre, valor]) => (
+                    <div key={nombre} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.22)', borderRadius: 8, padding: '5px 10px' }}>
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>{nombre} =</span>
+                      <input type="number" value={valor}
+                        onChange={e => setDatos(d => ({ ...d, variables: { ...d.variables, [nombre]: parseFloat(e.target.value) || 0 } }))}
+                        style={{ width: 72, fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: '3px 6px', background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', textAlign: 'right' }} />
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>mm</span>
+                      <button onClick={() => setDatos(d => { const { [nombre]: _r, ...rest } = d.variables; return { ...d, variables: rest }; })}
+                        style={{ background: 'none', border: 'none', color: '#e07070', cursor: 'pointer', fontSize: 16, lineHeight: 1, opacity: 0.5, padding: '0 2px' }}
+                        onMouseEnter={e => e.target.style.opacity = 1}
+                        onMouseLeave={e => e.target.style.opacity = 0.5}>×</button>
+                    </div>
+                  ))}
+                  {!agregandoVar && (
+                    <button onClick={() => { setAgregandoVar(true); setNuevaVarNombre(''); }}
+                      style={{ padding: '4px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: 'pointer', background: 'transparent', border: '1px dashed var(--border)', color: 'var(--text-muted)', transition: 'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-border)'; e.currentTarget.style.color = 'var(--accent)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
+                      + Agregar variable
+                    </button>
+                  )}
+                  {agregandoVar && (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input autoFocus value={nuevaVarNombre}
+                        onChange={e => setNuevaVarNombre(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { const n = nuevaVarNombre.trim(); if (n && !(n in (datos.variables || {}))) { setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [n]: 0 } })); setNuevaVarNombre(''); setAgregandoVar(false); } }
+                          if (e.key === 'Escape') { setAgregandoVar(false); setNuevaVarNombre(''); }
+                        }}
+                        placeholder="nombre (ej: luz)"
+                        style={{ width: 130, fontFamily: "'DM Mono',monospace", fontSize: 12, padding: '5px 8px', background: 'var(--bg-base)', border: '1px solid var(--accent-border)', borderRadius: 6, color: 'var(--text-primary)', outline: 'none' }} />
+                      <button onClick={() => { const n = nuevaVarNombre.trim(); if (n && !(n in (datos.variables || {}))) { setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [n]: 0 } })); setNuevaVarNombre(''); setAgregandoVar(false); } }}
+                        style={{ padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: 'pointer', background: 'linear-gradient(135deg,var(--accent),var(--accent-hover))', border: 'none', color: 'var(--text-inverted)' }}>
+                        Agregar
+                      </button>
+                      <button onClick={() => { setAgregandoVar(false); setNuevaVarNombre(''); }}
+                        style={{ padding: '5px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', fontFamily: "'DM Mono',monospace" }}>✕</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Herrajes */}
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+            {secHdr('🔩', 'Herrajes',
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)' }}>{herrajes.reduce((a, h) => a + h.cantidad, 0)} uds</span>,
+              secs.her, () => toggleSec('her'))}
+            {secs.her && (
+              <div style={{ padding: '12px 16px', background: 'var(--bg-surface)' }}>
+                {costos.herrajes.map((h) => {
+                  const item = herrajes.find((x) => x.id === h.id);
+                  const cant = item?.cantidad || 0;
+                  return (
+                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                      <div>
+                        <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{h.nombre}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{fmtPeso(h.precio)}/{h.unidad}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {[
+                          ['−', () => setHerrajes((prev) => { const idx = prev.findIndex((x) => x.id === h.id); if (cant <= 1) return prev.filter((x) => x.id !== h.id); const n = [...prev]; n[idx].cantidad--; return n; })],
+                          ['+', () => setHerrajes((prev) => { const idx = prev.findIndex((x) => x.id === h.id); if (idx < 0) return [...prev, { id: h.id, cantidad: 1 }]; const n = [...prev]; n[idx].cantidad++; return n; })],
+                        ].map(([lbl, fn]) => (
+                          <button key={lbl} onClick={fn}
+                            style={{ width: 28, height: 28, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)', borderRadius: 5, cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {lbl}
+                          </button>
+                        ))}
+                        <span style={{ fontFamily: "'DM Mono',monospace", width: 24, textAlign: 'center', color: cant > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>{cant}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Mano de Obra */}
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+            {secHdr('🔨', 'Mano de Obra',
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)' }}>{moDeObra.tipo}</span>,
+              secs.mo, () => toggleSec('mo'))}
+            {secs.mo && (
+              <div style={{ padding: '12px 16px', background: 'var(--bg-surface)' }}>
+                <Select label="Tipo" value={moDeObra.tipo}
                   onChange={(v) => setMoDeObra((m) => ({ ...m, tipo: v }))}
-                  options={costos.manoDeObra.map((m) => ({
-                    value: m.tipo,
-                    label: `${m.nombre} — ${fmtPeso(m.precio)}`
-                  }))}
+                  options={costos.manoDeObra.map((m) => ({ value: m.tipo, label: `${m.nombre} — ${fmtPeso(m.precio)}` }))}
                 />
-                {moDeObra.tipo === "por_hora" && (
+                {moDeObra.tipo === 'por_hora' && (
                   <div style={{ marginTop: 10 }}>
-                    <TextInput
-                      label="Horas estimadas"
-                      type="number"
-                      suffix="hs"
-                      value={moDeObra.horas}
-                      onChange={(v) =>
-                        setMoDeObra((m) => ({
-                          ...m,
-                          horas: parseFloat(v) || 0
-                        }))
-                      }
-                    />
-                    {/* Indicador: impacto de gastos fijos en estas horas */}
+                    <TextInput label="Horas estimadas" type="number" suffix="hs" value={moDeObra.horas}
+                      onChange={(v) => setMoDeObra((m) => ({ ...m, horas: parseFloat(v) || 0 }))} />
                     {(() => {
                       const gf = costos.gastosFijos;
                       if (!gf?.items?.length || !moDeObra.horas) return null;
@@ -1371,144 +1041,160 @@ function FormModulo({
                       const costoHora = gf.horasProductivasMes > 0 ? totalMensual / gf.horasProductivasMes : 0;
                       const impacto = Math.round(costoHora * moDeObra.horas);
                       return (
-                        <div style={{
-                          marginTop: 8, padding: "7px 11px", borderRadius: 7,
-                          background: "rgba(112,144,176,0.10)", border: "1px solid rgba(112,144,176,0.25)",
-                          display: "flex", justifyContent: "space-between", alignItems: "center"
-                        }}>
-                          <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
-                            ⏱ {moDeObra.horas}h × {fmtPeso(Math.round(costoHora))}/h taller
-                          </span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: "#7090c0", fontFamily: "'DM Mono',monospace" }}>
-                            {fmtPeso(impacto)}
-                          </span>
+                        <div style={{ marginTop: 8, padding: '7px 11px', borderRadius: 7, background: 'rgba(112,144,176,0.10)', border: '1px solid rgba(112,144,176,0.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: "'DM Mono',monospace" }}>⏱ {moDeObra.horas}h × {fmtPeso(Math.round(costoHora))}/h taller</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#7090c0', fontFamily: "'DM Mono',monospace" }}>{fmtPeso(impacto)}</span>
                         </div>
                       );
                     })()}
                   </div>
                 )}
-                </div>
               </div>
-              {(() => {
-                const c = calcularModulo(
-                  { ...datos, piezas, herrajes, moDeObra },
-                  costos
-                );
-                if (!c) return null;
-                return (
-                  <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(126,207,138,0.3)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
-                    <div style={{ background: "rgba(255,255,255,0.10)", borderLeft: "3px solid rgba(200,160,42,0.5)", padding: "10px 16px" }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#c8a02a" }}>📊 Resumen de costos</span>
-                    </div>
-                    <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
+            )}
+          </div>
+
+          {/* Resumen de Costos */}
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(126,207,138,0.3)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+            {secHdr('📊', 'Resumen de Costos',
+              preview
+                ? <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: 'var(--color-positive)' }}>{fmtPeso(preview.total)}</span>
+                : <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>sin piezas</span>,
+              secs.res, () => toggleSec('res'))}
+            {secs.res && (
+              <div style={{ padding: '12px 16px', background: 'var(--bg-surface)' }}>
+                {preview ? (
+                  <>
                     {[
-                      [
-                        "Material",
-                        c.costoMaterial,
-                        `${fmtNum(c.m2Neto)}m²+${c.pctDesp}%`,
-                      ],
-                      [
-                        "Tapacanto",
-                        c.costoTapacanto,
-                        `${fmtNum(c.metrosTapacanto, 2)}m`,
-                      ],
-                      ["MO", c.costoMO, ""],
-                      ["Herrajes", c.costoHerrajes, ""],
-                      ["── Costo base", c.costoBase, ""],
-                      ["Ganancia", c.ganancia, ""],
+                      ['Material', preview.costoMaterial, `${fmtNum(preview.m2Neto)}m²+${preview.pctDesp}%`],
+                      ['Tapacanto', preview.costoTapacanto, `${fmtNum(preview.metrosTapacanto, 2)}m`],
+                      ['MO', preview.costoMO, ''],
+                      ['Herrajes', preview.costoHerrajes, ''],
+                      ['── Costo base', preview.costoBase, ''],
+                      ['Ganancia', preview.ganancia, ''],
                     ].map(([k, v, note]) => (
-                      <div
-                        key={k}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          padding: "4px 0",
-                          borderBottom: "1px solid var(--border)",
-                          fontSize: 13
-                        }}
-                      >
-                        <span
-                          style={{
-                            color: k.startsWith("──")
-                              ? "var(--text-primary)"
-                              : "var(--text-muted)",
-                            fontWeight: k.startsWith("──") ? 700 : 400
-                          }}
-                        >
-                          {k}
-                        </span>
-                        <div style={{ textAlign: "right" }}>
-                          <span
-                            style={{
-                              fontFamily: "'DM Mono',monospace",
-                              color: "#c8c098"
-                            }}
-                          >
-                            {fmtPeso(v)}
-                          </span>
-                          {note && (
-                            <span
-                              style={{
-                                fontSize: 10,
-                                marginLeft: 6,
-                                color: "var(--text-muted)"
-                              }}
-                            >
-                              {note}
-                            </span>
-                          )}
+                      <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                        <span style={{ color: k.startsWith('──') ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: k.startsWith('──') ? 700 : 400 }}>{k}</span>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontFamily: "'DM Mono',monospace", color: '#c8c098' }}>{fmtPeso(v)}</span>
+                          {note && <span style={{ fontSize: 10, marginLeft: 6, color: 'var(--text-muted)' }}>{note}</span>}
                         </div>
                       </div>
                     ))}
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        paddingTop: 12,
-                        marginTop: 4,
-                        borderTop: "1px solid rgba(126,207,138,0.2)"
-                      }}
-                    >
-                      <span style={{ fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
-                        Precio de venta
-                      </span>
-                      <span
-                        style={{
-                          fontFamily: "'DM Mono',monospace",
-                          fontSize: 22,
-                          fontWeight: 900,
-                          color: "var(--color-positive)",
-                          textShadow: "0 0 20px rgba(126,207,138,0.4)"
-                        }}
-                      >
-                        {fmtPeso(c.total)}
-                      </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, marginTop: 4, borderTop: '1px solid rgba(126,207,138,0.2)' }}>
+                      <span style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>Precio de venta</span>
+                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 900, color: 'var(--color-positive)', textShadow: '0 0 20px rgba(126,207,138,0.4)' }}>{fmtPeso(preview.total)}</span>
                     </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Agregá piezas para ver el resumen de costos.</div>
+                )}
+              </div>
+            )}
           </div>
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-            <button
-              onClick={() => { setPaso(2); setError(""); }}
-              style={{ padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontWeight: 600, fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: "0.04em", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", transition: "all 0.15s" }}>
-              ← Volver
-            </button>
-            <button onClick={handleCancelar}
-              style={{ padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontWeight: 600, fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: "0.04em", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", transition: "all 0.15s" }}>
-              Cancelar
-            </button>
-            <button onClick={guardar}
-              style={{ padding: "10px 22px", borderRadius: 8, cursor: "pointer", fontWeight: 900, fontFamily: "'DM Mono',monospace", fontSize: 13, letterSpacing: "0.06em", transition: "all 0.2s", background: "linear-gradient(135deg, var(--accent), #b8852a)", border: "none", color: "#0a0a0a", boxShadow: "0 4px 16px rgba(212,175,55,0.35)" }}>
-              {esEdicion ? "✓ Guardar cambios" : "✓ Guardar módulo"}
-            </button>
+
+        </div>
+      </div>
+
+      {/* Lista de piezas */}
+      <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+        <div onClick={() => setListaPiezasAbierta(v => !v)}
+          style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.10)', borderBottom: listaPiezasAbierta ? '1px solid rgba(200,160,42,0.25)' : 'none', borderLeft: '3px solid rgba(200,160,42,0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}>
+          <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#c8a02a' }}>
+            🪵 Piezas <span style={{ color: 'var(--accent)', marginLeft: 6 }}>({piezas.length})</span>
+          </span>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)' }}>
+              Espesor: <span style={{ color: 'var(--accent)' }}>{espesor}mm</span>
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)', transition: 'transform 0.2s', display: 'inline-block', transform: listaPiezasAbierta ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
           </div>
         </div>
-      )}
+        {listaPiezasAbierta && (
+          <div style={{ padding: '12px 14px', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {piezas.length === 0 ? (
+              <div style={{ padding: '28px 0', textAlign: 'center', fontSize: 12, borderRadius: 8, border: '1px dashed var(--border)', color: 'var(--text-muted)', fontFamily: "'DM Mono',monospace" }}>
+                Sin piezas todavía — agregá la primera arriba
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {piezas.map((p, i) => (
+                  <FilaPieza key={i} pieza={p} idx={i} dims={datos.dimensiones} espesor={espesor} tapacanto={costos.tapacanto}
+                    isFirst={i === 0} isLast={i === piezas.length - 1} modVars={datos.variables}
+                    onDelete={(i) => { setPiezas(prev => prev.filter((_, j) => j !== i)); if (editandoPiezaIdx === i) cancelarEdicion(); }}
+                    onEdit={editarPieza} onDuplicate={duplicarPieza}
+                    onMoveUp={(i) => moverPieza(i, -1)} onMoveDown={(i) => moverPieza(i, 1)}
+                    onChangeCantidad={(cant) => setPiezas(prev => prev.map((px, j) => j === i ? { ...px, cantidad: cant } : px))} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
+      {/* Botones de acción */}
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap', paddingTop: 4 }}>
+        <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
+        {esEdicion && (
+          <Btn variant="ghost" onClick={guardar} style={{ borderColor: 'var(--accent-border)', color: 'var(--accent)' }}>
+            💾 Guardar y cerrar
+          </Btn>
+        )}
+        <button onClick={guardar}
+          style={{ padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 900, fontFamily: "'DM Mono',monospace", fontSize: 13, letterSpacing: '0.06em', transition: 'all 0.2s', background: 'linear-gradient(135deg, var(--accent), #b8852a)', border: 'none', color: '#0a0a0a', boxShadow: '0 4px 16px rgba(212,175,55,0.35)' }}>
+          {esEdicion ? '✓ Guardar cambios' : '✓ Guardar módulo'}
+        </button>
+      </div>
+
+      {/* Acordeón de decisión inline — desde presupuesto */}
+      {modalDecision && (
+        <div className="anim-fadeup" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--accent-border)', borderRadius: 12, padding: 16 }}>
+          <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent)', marginBottom: 12 }}>
+            ¿Dónde guardás esta variante?
+          </div>
+          {modalDecision === 'nombre' ? (
+            <>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>Nombre en el catálogo:</div>
+              <input autoFocus value={nombreCatalogo} onChange={e => setNombreCatalogo(e.target.value)}
+                placeholder="Nombre del nuevo módulo..."
+                style={{ width: '100%', fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13, padding: '8px 12px', background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', outline: 'none', marginBottom: 10, boxSizing: 'border-box' }}
+                onFocus={e => e.target.style.borderColor = 'var(--accent-border)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                onKeyDown={e => e.key === 'Enter' && guardarYLimpiar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true })} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => { guardarYLimpiar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), nombre: nombreCatalogo.trim() || datos.nombre, _guardarEnCatalogo: true }); setModalDecision(null); }}
+                  style={{ flex: 1, padding: '9px 0', borderRadius: 8, cursor: 'pointer', fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, background: 'linear-gradient(135deg,var(--accent),var(--accent-hover))', border: 'none', color: 'var(--text-inverted)' }}>
+                  ✓ Confirmar nombre
+                </button>
+                <button onClick={() => setModalDecision('pidiendo')}
+                  style={{ padding: '9px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', fontFamily: "'DM Mono',monospace" }}>
+                  ← Volver
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button onClick={() => { guardarYLimpiar(datos.codigo.trim().toUpperCase(), { ...datosGuardar(), _soloPresupuesto: true }); setModalDecision(null); }}
+                style={{ padding: '11px 14px', borderRadius: 8, cursor: 'pointer', textAlign: 'left', background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 700, transition: 'border-color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-border)'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                📋 Solo en este presupuesto
+                <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginTop: 3 }}>El catálogo no cambia. Se elimina con el presupuesto.</div>
+              </button>
+              <button onClick={() => { setNombreCatalogo(datos.nombre || ''); setModalDecision('nombre'); }}
+                style={{ padding: '11px 14px', borderRadius: 8, cursor: 'pointer', textAlign: 'left', background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 700, transition: 'border-color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-border)'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                📚 Guardar en catálogo
+                <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginTop: 3 }}>Disponible para futuros presupuestos.</div>
+              </button>
+              <button onClick={() => setModalDecision(null)}
+                style={{ padding: '7px 0', borderRadius: 8, cursor: 'pointer', fontSize: 11, background: 'transparent', border: 'none', color: 'var(--text-muted)', fontFamily: "'DM Mono',monospace" }}>
+                ✕ Cancelar
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {/* ── Acordeón de decisión al guardar desde catálogo directo ── */}
       {decisionCatalogo && !esDeepLinkPresupuesto && (
         <div className="anim-fadeup" style={{ marginTop: 14, background: "var(--bg-subtle)", border: "1px solid var(--accent-border)", borderRadius: 12, padding: 16 }}>
