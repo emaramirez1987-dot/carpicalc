@@ -867,8 +867,8 @@ function FormModulo({
 
           {/* ── Bloque 1: Identificación ── */}
           <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
-            <div style={{ padding: "10px 16px", background: "rgba(0,0,0,0.45)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid var(--accent)", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>📌 Identificación</span>
+            <div style={{ padding: "10px 16px", background: "rgba(212,175,55,0.10)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid var(--accent)", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(255,255,255,0.92)" }}>📌 Identificación</span>
             </div>
             <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 12, background: "var(--bg-surface)" }}>
               <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12 }}>
@@ -902,8 +902,8 @@ function FormModulo({
 
           {/* ── Bloque 2: Dimensiones y Material ── */}
           <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
-            <div style={{ padding: "10px 16px", background: "rgba(0,0,0,0.45)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid #7090c8", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#7090c8" }}>📐 Dimensiones y Material</span>
+            <div style={{ padding: "10px 16px", background: "rgba(212,175,55,0.10)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid #7090c8", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(255,255,255,0.92)" }}>📐 Dimensiones y Material</span>
             </div>
             <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 12, background: "var(--bg-surface)" }}>
               <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
@@ -931,8 +931,8 @@ function FormModulo({
 
           {/* ── Bloque 3: Clasificación ── */}
           <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
-            <div style={{ padding: "10px 16px", background: "rgba(0,0,0,0.45)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid #a070c8", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#a070c8" }}>🏷 Clasificación</span>
+            <div style={{ padding: "10px 16px", background: "rgba(212,175,55,0.10)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid #a070c8", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(255,255,255,0.92)" }}>🏷 Clasificación</span>
             </div>
             <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", background: "var(--bg-surface)" }}>
               {/* Categoría */}
@@ -1012,8 +1012,8 @@ function FormModulo({
 
         {/* Variables personalizadas — ancho completo, encima de las columnas */}
         <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 4px 20px rgba(0,0,0,0.35)" }}>
-          <div style={{ padding: "10px 16px", background: "rgba(0,0,0,0.45)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid #7090c8", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#7090c8" }}>⚡ Variables del módulo</span>
+          <div style={{ padding: "10px 16px", background: "rgba(212,175,55,0.10)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid #7090c8", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(255,255,255,0.92)" }}>⚡ Variables del módulo</span>
             <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono',monospace" }}>usables en fórmulas de piezas</span>
             <div style={{ flex: 1 }} />
             {!agregandoVar && (
@@ -1108,8 +1108,8 @@ function FormModulo({
 
         {/* ── Fila 3: Lista de piezas ── */}
         <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 4px 20px rgba(0,0,0,0.35)" }}>
-          <div style={{ padding: "10px 16px", background: "rgba(0,0,0,0.45)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid rgba(126,207,138,0.7)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(126,207,138,0.9)" }}>
+          <div style={{ padding: "10px 16px", background: "rgba(212,175,55,0.10)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid rgba(126,207,138,0.7)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(255,255,255,0.92)" }}>
               🪵 Piezas <span style={{ color: "var(--accent)", marginLeft: 6 }}>({piezas.length})</span>
             </span>
             <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "rgba(255,255,255,0.3)" }}>
@@ -1248,8 +1248,8 @@ function FormModulo({
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
           >
             <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
-              <div style={{ background: "rgba(0,0,0,0.45)", borderLeft: "3px solid rgba(112,144,176,0.8)", padding: "10px 16px" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7090c8" }}>🔩 Herrajes</span>
+              <div style={{ background: "rgba(212,175,55,0.10)", borderLeft: "3px solid rgba(112,144,176,0.8)", padding: "10px 16px" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.92)" }}>🔩 Herrajes</span>
               </div>
               <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
               {costos.herrajes.map((h) => {
@@ -1344,8 +1344,8 @@ function FormModulo({
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
-                <div style={{ background: "rgba(0,0,0,0.45)", borderLeft: "3px solid rgba(199,160,80,0.8)", padding: "10px 16px" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#c7a050" }}>🔨 Mano de obra</span>
+                <div style={{ background: "rgba(212,175,55,0.10)", borderLeft: "3px solid rgba(199,160,80,0.8)", padding: "10px 16px" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.92)" }}>🔨 Mano de obra</span>
                 </div>
                 <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
                 <Select
@@ -1405,8 +1405,8 @@ function FormModulo({
                 if (!c) return null;
                 return (
                   <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(126,207,138,0.3)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
-                    <div style={{ background: "rgba(0,0,0,0.45)", borderLeft: "3px solid rgba(126,207,138,0.8)", padding: "10px 16px" }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-positive)" }}>📊 Resumen de costos</span>
+                    <div style={{ background: "rgba(212,175,55,0.10)", borderLeft: "3px solid rgba(126,207,138,0.8)", padding: "10px 16px" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.92)" }}>📊 Resumen de costos</span>
                     </div>
                     <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
                     {[
