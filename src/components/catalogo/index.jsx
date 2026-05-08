@@ -191,7 +191,7 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
 
 // Estado inicial vacío de una pieza nueva en el formulario
 
-function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, espesor, nombresSugeridos, variables }) {
+function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSugeridos, variables }) {
   const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
   const [rolesTaller, setRolesTaller] = useState(() => cargarRolesPieza());
   const todosRoles = [...ROLES_PIEZA_DEFAULT, ...rolesTaller];
@@ -242,9 +242,10 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
   };
 
   return (
-    <div id="form-pieza" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div id="form-pieza" style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%" }}>
 
         <div style={{
+          flex: 1, display: "flex", flexDirection: "column",
           borderRadius: 12, overflow: "hidden",
           border: editando ? "1px solid var(--accent-border)" : "1px solid var(--border)",
           boxShadow: editando ? "0 0 28px rgba(212,175,55,0.18), 0 4px 20px rgba(0,0,0,0.35)" : "0 4px 20px rgba(0,0,0,0.3)",
@@ -272,7 +273,7 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
               </button>
             </div>
           </div>
-          <div style={{ background: "var(--bg-surface)", padding: "16px" }}>
+          <div style={{ flex: 1, background: "var(--bg-surface)", padding: "16px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
             {/* Nombre + Cantidad */}
@@ -460,19 +461,6 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
         </div>
 
 
-      {/* ── Botón agregar — ancho completo ── */}
-      {error && <p style={{ color: "#e07070", fontSize: 12, margin: 0 }}>⚠ {error}</p>}
-      <button onClick={onAgregar} style={{
-        width: "100%", padding: "11px 0", borderRadius: 8, cursor: "pointer", fontWeight: 700,
-        fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: "0.05em",
-        transition: "all 0.2s",
-        background: "rgba(200,160,42,0.15)",
-        border: "1px solid rgba(200,160,42,0.45)",
-        color: "#c8a02a",
-        boxShadow: "none",
-      }}>
-        {editando ? "✓ ACTUALIZAR PIEZA" : "+ AGREGAR ESTA PIEZA"}
-      </button>
     </div>
   );
 }
@@ -763,15 +751,13 @@ function FormModulo({
       )}
 
       {/* ── Vista unificada: FormPieza + Acordeones ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 14, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
 
         {/* Columna izquierda: FormPieza */}
         <FormPieza
           fp={fp} setFp={setFp}
-          onAgregar={agregarPieza}
           onCancelar={cancelarEdicion}
           editando={editandoPiezaIdx !== null}
-          error={fpError}
           dims={datos.dimensiones}
           espesor={espesor}
           nombresSugeridos={NOMBRES_SUGERIDOS}
@@ -1095,6 +1081,17 @@ function FormModulo({
             )}
           </div>
 
+          {/* Agregar pieza */}
+          {fpError && <p style={{ color: "#e07070", fontSize: 12, margin: 0 }}>⚠ {fpError}</p>}
+          <button onClick={agregarPieza} style={{
+            width: "100%", padding: "11px 0", borderRadius: 8, cursor: "pointer", fontWeight: 700,
+            fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: "0.05em",
+            transition: "all 0.2s", background: "rgba(200,160,42,0.15)",
+            border: "1px solid rgba(200,160,42,0.45)", color: "#c8a02a",
+          }}>
+            {editandoPiezaIdx !== null ? "✓ ACTUALIZAR PIEZA" : "+ AGREGAR ESTA PIEZA"}
+          </button>
+
         </div>
       </div>
 
@@ -1135,15 +1132,15 @@ function FormModulo({
       </div>
 
       {/* Botones de acción */}
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap', paddingTop: 4 }}>
-        <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
+      <div style={{ display: 'grid', gridTemplateColumns: esEdicion ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10, paddingTop: 4 }}>
+        <Btn variant="ghost" onClick={handleCancelar} style={{ width: '100%' }}>Cancelar</Btn>
         {esEdicion && (
-          <Btn variant="ghost" onClick={guardar} style={{ borderColor: 'var(--accent-border)', color: 'var(--accent)' }}>
+          <Btn variant="ghost" onClick={guardar} style={{ width: '100%', borderColor: 'var(--accent-border)', color: 'var(--accent)' }}>
             💾 Guardar y cerrar
           </Btn>
         )}
         <button onClick={guardar}
-          style={{ padding: '10px 22px', borderRadius: 8, cursor: 'pointer', fontWeight: 900, fontFamily: "'DM Mono',monospace", fontSize: 13, letterSpacing: '0.06em', transition: 'all 0.2s', background: 'linear-gradient(135deg, var(--accent), #b8852a)', border: 'none', color: '#0a0a0a', boxShadow: '0 4px 16px rgba(212,175,55,0.35)' }}>
+          style={{ width: '100%', padding: '10px 0', borderRadius: 8, cursor: 'pointer', fontWeight: 900, fontFamily: "'DM Mono',monospace", fontSize: 13, letterSpacing: '0.06em', transition: 'all 0.2s', background: 'linear-gradient(135deg, var(--accent), #b8852a)', border: 'none', color: '#0a0a0a', boxShadow: '0 4px 16px rgba(212,175,55,0.35)' }}>
           {esEdicion ? '✓ Guardar cambios' : '✓ Guardar módulo'}
         </button>
       </div>
