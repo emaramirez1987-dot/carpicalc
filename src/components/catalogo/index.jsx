@@ -1146,24 +1146,6 @@ function FormModulo({
             </div>
           )}
 
-          {/* Preview métricas */}
-          {preview && (
-            <Card style={{ borderColor: "rgba(126,207,138,0.15)" }}>
-              <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
-                {[
-                  ["m² neto", `${fmtNum(preview.m2Neto)} m²`],
-                  ["m² c/desp.", `${fmtNum(preview.m2Total)} m²`],
-                  [`Desp.(${preview.pctDesp}%)`, `${fmtNum(preview.m2Total - preview.m2Neto)} m²`],
-                  ["Tapacanto", `${fmtNum(preview.metrosTapacanto, 2)} m`],
-                ].map(([k, v]) => (
-                  <div key={k} style={{ textAlign: "center", background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px" }}>
-                    <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 3 }}>{k}</div>
-                    <div style={{ fontSize: 14, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-primary)" }}>{v}</div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
           </div>
         </div>
 
