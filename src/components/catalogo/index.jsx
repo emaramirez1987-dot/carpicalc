@@ -191,7 +191,7 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
 
 // Estado inicial vacío de una pieza nueva en el formulario
 
-function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, espesor, tapacanto, nombresSugeridos, variables }) {
+function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, espesor, nombresSugeridos, variables }) {
   const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
   const [rolesTaller, setRolesTaller] = useState(() => cargarRolesPieza());
   const todosRoles = [...ROLES_PIEZA_DEFAULT, ...rolesTaller];
@@ -244,10 +244,6 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
   return (
     <div id="form-pieza" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-      {/* ── Dos columnas: form fields | tapacanto ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "start" }}>
-
-        {/* Columna izquierda — campos de la pieza */}
         <div style={{
           borderRadius: 12, overflow: "hidden",
           border: editando ? "1px solid var(--accent-border)" : "1px solid var(--border)",
@@ -463,30 +459,6 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
           </div>
         </div>
 
-        {/* Columna derecha — tapacanto */}
-        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>
-          <div style={{ padding: "11px 16px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)" }}>
-            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#c8a02a" }}>🎗 Tapacanto</span>
-          </div>
-          <div style={{ padding: "14px 16px", background: "var(--bg-surface)", display: "flex", flexDirection: "column", gap: 10 }}>
-            <Select label="Tipo de cinta" value={fp.tc.id} small
-              onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, id: parseInt(v) } }))}
-              options={[{ value: 0, label: "Sin tapacanto" }, ...(tapacanto || []).map((t) => ({ value: t.id, label: t.nombre }))]} />
-            <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <TextInput label={`Lados D1 (${fp.especial ? "libre" : "altura"})`} type="number" value={fp.tc.lados1} small
-                onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, lados1: parseInt(v) || 0 } }))} />
-              <TextInput label={`Lados D2 (${fp.especial ? "libre" : "ancho"})`} type="number" value={fp.tc.lados2} small
-                onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, lados2: parseInt(v) || 0 } }))} />
-            </div>
-            {fp.tc.id > 0 && (
-              <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--accent)", background: "rgba(212,175,55,0.07)", borderRadius: 6, padding: "5px 10px" }}>
-                → <strong>{fmtNum((parseInt(fp.cantidad || 1) * ((fp.tc.lados1 || 0) * d1 + (fp.tc.lados2 || 0) * d2)) / 1000, 2)} m lineales</strong>
-              </div>
-            )}
-          </div>
-        </div>
-
-      </div>
 
       {/* ── Botón agregar — ancho completo ── */}
       {error && <p style={{ color: "#e07070", fontSize: 12, margin: 0 }}>⚠ {error}</p>}
@@ -570,7 +542,7 @@ function FormModulo({
   const esEdicion = !!codigoEditar;
   // Borrador persistido: solo para módulos nuevos (no edición de existentes)
   const _draft = !moduloBase ? cargarBorradorModulo() : null;
-  const [secs, setSecs] = useState({ ident: true, dims: false, clasif: false, vars: false, her: false, mo: false, res: false });
+  const [secs, setSecs] = useState({ ident: true, tc: false, dims: false, clasif: false, vars: false, her: false, mo: false, res: false });
   const toggleSec = k => setSecs(p => ({ ...p, [k]: !p[k] }));
   // Modal de decisión: aparece al guardar desde Nivel 3
   // null = cerrado, "pidiendo" = mostrando opciones, "nombre" = ingresando nombre para catálogo
@@ -802,7 +774,6 @@ function FormModulo({
           error={fpError}
           dims={datos.dimensiones}
           espesor={espesor}
-          tapacanto={costos.tapacanto}
           nombresSugeridos={NOMBRES_SUGERIDOS}
           variables={datos.variables}
         />
@@ -843,6 +814,38 @@ function FormModulo({
                   value={datos.descripcion}
                   onChange={(v) => setDatos((d) => ({ ...d, descripcion: v }))}
                 />
+              </div>
+            )}
+          </div>
+
+          {/* Tapacanto */}
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+            {secHdr('🎗', 'Tapacanto',
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)' }}>
+                {fp.tc.id > 0 ? (costos.tapacanto.find(t => t.id === fp.tc.id)?.nombre || 'cinta') : 'sin cinta'}
+              </span>,
+              secs.tc, () => toggleSec('tc'))}
+            {secs.tc && (
+              <div style={{ padding: '14px 16px', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Select label="Tipo de cinta" value={fp.tc.id} small
+                  onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, id: parseInt(v) } }))}
+                  options={[{ value: 0, label: 'Sin tapacanto' }, ...(costos.tapacanto || []).map((t) => ({ value: t.id, label: t.nombre }))]} />
+                <div className="rsp-grid-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <TextInput label={`Lados D1 (${fp.especial ? 'libre' : 'altura'})`} type="number" value={fp.tc.lados1} small
+                    onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, lados1: parseInt(v) || 0 } }))} />
+                  <TextInput label={`Lados D2 (${fp.especial ? 'libre' : 'ancho'})`} type="number" value={fp.tc.lados2} small
+                    onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, lados2: parseInt(v) || 0 } }))} />
+                </div>
+                {fp.tc.id > 0 && (() => {
+                  const allVars = { ancho: datos.dimensiones.ancho || 0, alto: datos.dimensiones.alto || 0, profundidad: datos.dimensiones.profundidad || 0, esp: espesor, ...(datos.variables || {}) };
+                  const d1tc = fp.especial ? (parseInt(fp.dimLibre1) || 0) : fp.formula1 ? (evaluarFormula(fp.formula1, allVars) ?? 0) : resolverDim(datos.dimensiones[fp.usaDim], parseInt(fp.offsetEsp) || 0, parseInt(fp.offsetMm) || 0, parseInt(fp.divisor) || 1, espesor);
+                  const d2tc = fp.especial ? (parseInt(fp.dimLibre2) || 0) : fp.formula2 ? (evaluarFormula(fp.formula2, allVars) ?? 0) : resolverDim(datos.dimensiones[fp.usaDim2], parseInt(fp.offsetEsp2) || 0, parseInt(fp.offsetMm2) || 0, parseInt(fp.divisor2) || 1, espesor);
+                  return (
+                    <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: 'var(--accent)', background: 'rgba(212,175,55,0.07)', borderRadius: 6, padding: '5px 10px' }}>
+                      → <strong>{fmtNum((parseInt(fp.cantidad || 1) * ((fp.tc.lados1 || 0) * d1tc + (fp.tc.lados2 || 0) * d2tc)) / 1000, 2)} m lineales</strong>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
