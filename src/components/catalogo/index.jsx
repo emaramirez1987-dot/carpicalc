@@ -250,12 +250,12 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
       {/* Header */}
       <div style={{
         padding: "11px 16px",
-        background: editando ? "rgba(212,175,55,0.12)" : "rgba(0,0,0,0.45)",
+        background: "rgba(255,255,255,0.10)",
         borderBottom: "1px solid rgba(200,160,42,0.25)",
-        borderLeft: editando ? "3px solid var(--accent)" : "3px solid rgba(126,207,138,0.6)",
+        borderLeft: editando ? "3px solid var(--accent)" : "3px solid rgba(200,160,42,0.5)",
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
-        <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", color: editando ? "var(--accent)" : "#7ecf8a" }}>
+        <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", color: editando ? "var(--accent)" : "#c8a02a" }}>
           {editando ? "✎ Editando pieza" : "＋ Nueva pieza"}
         </span>
         <div style={{ display: "flex", gap: 6 }}>
@@ -311,8 +311,8 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
           <>
             {/* Selector de roles */}
             <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <div style={{ padding: "7px 12px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", borderLeft: "2px solid rgba(255,255,255,0.2)" }}>
-                <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)" }}>Rol de pieza</span>
+              <div style={{ padding: "7px 12px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "2px solid rgba(200,160,42,0.5)" }}>
+                <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#c8a02a" }}>Rol de pieza</span>
               </div>
               <div style={{ padding: "10px 12px" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
@@ -347,7 +347,7 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
                 { label: "D1 — Altura", key: "formula1", valida: f1Valida, resultado: d1 },
                 { label: "D2 — Ancho",  key: "formula2", valida: f2Valida, resultado: d2 },
               ].map(({ label, key, valida, resultado }) => (
-                <div key={key} style={{ background: "rgba(0,0,0,0.18)", borderRadius: 8, padding: "10px 12px" }}>
+                <div key={key} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(200,160,42,0.15)", borderRadius: 8, padding: "10px 12px" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", marginBottom: 6 }}>{label}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <input
@@ -414,7 +414,7 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
                 {/* Guardar como rol */}
                 {!dialogoRol ? (
                   <button onClick={() => { setDialogoRol(true); setNombreRolNuevo(""); }}
-                    style={{ alignSelf: "flex-start", padding: "5px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "rgba(200,160,42,0.12)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+                    style={{ alignSelf: "flex-start", padding: "5px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "rgba(255,255,255,0.10)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
                     💾 Guardar fórmulas como rol
                   </button>
                 ) : (
@@ -457,8 +457,8 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
 
         {/* Tapacanto */}
         <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div style={{ padding: "7px 12px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", borderLeft: "2px solid rgba(199,160,80,0.5)" }}>
-            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(199,160,80,0.8)" }}>🎗 Tapacanto</span>
+          <div style={{ padding: "7px 12px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "2px solid rgba(200,160,42,0.5)" }}>
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#c8a02a" }}>🎗 Tapacanto</span>
           </div>
           <div style={{ padding: "10px 12px" }}>
           <div style={{ marginBottom: 8 }}>
@@ -482,17 +482,13 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
 
         {error && <p style={{ color: "#e07070", fontSize: 12 }}>⚠ {error}</p>}
         <button onClick={onAgregar} style={{
-          width: "100%", padding: "12px 0", borderRadius: 8, cursor: "pointer", fontWeight: 900,
-          fontFamily: "'DM Mono',monospace", fontSize: 13, letterSpacing: "0.06em",
+          width: "100%", padding: "9px 0", borderRadius: 8, cursor: "pointer", fontWeight: 700,
+          fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: "0.05em",
           transition: "all 0.2s",
-          background: editando
-            ? "linear-gradient(135deg, var(--accent), #b8852a)"
-            : "linear-gradient(135deg, rgba(126,207,138,0.85), rgba(80,170,95,0.85))",
-          border: "none",
-          color: "#0a0a0a",
-          boxShadow: editando
-            ? "0 4px 18px rgba(212,175,55,0.4)"
-            : "0 4px 18px rgba(126,207,138,0.3)",
+          background: "rgba(200,160,42,0.15)",
+          border: "1px solid rgba(200,160,42,0.45)",
+          color: "#c8a02a",
+          boxShadow: "none",
         }}>
           {editando ? "✓ ACTUALIZAR PIEZA" : "+ AGREGAR ESTA PIEZA"}
         </button>
@@ -868,7 +864,7 @@ function FormModulo({
 
           {/* ── Bloque 1: Identificación ── */}
           <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
-            <div style={{ padding: "10px 16px", background: "rgba(200,160,42,0.12)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>📌 Identificación</span>
             </div>
             <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 12, background: "var(--bg-surface)" }}>
@@ -903,7 +899,7 @@ function FormModulo({
 
           {/* ── Bloque 2: Dimensiones y Material ── */}
           <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
-            <div style={{ padding: "10px 16px", background: "rgba(200,160,42,0.12)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>📐 Dimensiones y Material</span>
             </div>
             <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 12, background: "var(--bg-surface)" }}>
@@ -932,7 +928,7 @@ function FormModulo({
 
           {/* ── Bloque 3: Clasificación ── */}
           <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
-            <div style={{ padding: "10px 16px", background: "rgba(200,160,42,0.12)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>🏷 Clasificación</span>
             </div>
             <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", background: "var(--bg-surface)" }}>
@@ -1012,10 +1008,10 @@ function FormModulo({
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
         {/* Variables personalizadas — ancho completo, encima de las columnas */}
-        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 4px 20px rgba(0,0,0,0.35)" }}>
-          <div style={{ padding: "10px 16px", background: "rgba(200,160,42,0.12)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
+          <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>⚡ Variables del módulo</span>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono',monospace" }}>usables en fórmulas de piezas</span>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>usables en fórmulas de piezas</span>
             <div style={{ flex: 1 }} />
             {!agregandoVar && (
               <button onClick={() => { setAgregandoVar(true); setNuevaVarNombre(""); }}
@@ -1108,8 +1104,8 @@ function FormModulo({
         />
 
         {/* ── Fila 3: Lista de piezas ── */}
-        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 4px 20px rgba(0,0,0,0.35)" }}>
-          <div style={{ padding: "10px 16px", background: "rgba(200,160,42,0.12)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
+          <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "3px solid rgba(200,160,42,0.5)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>
               🪵 Piezas <span style={{ color: "var(--accent)", marginLeft: 6 }}>({piezas.length})</span>
             </span>
@@ -1249,7 +1245,7 @@ function FormModulo({
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
           >
             <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
-              <div style={{ background: "rgba(200,160,42,0.12)", borderLeft: "3px solid rgba(200,160,42,0.5)", padding: "10px 16px" }}>
+              <div style={{ background: "rgba(255,255,255,0.10)", borderLeft: "3px solid rgba(200,160,42,0.5)", padding: "10px 16px" }}>
                 <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#c8a02a" }}>🔩 Herrajes</span>
               </div>
               <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
@@ -1345,7 +1341,7 @@ function FormModulo({
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
-                <div style={{ background: "rgba(200,160,42,0.12)", borderLeft: "3px solid rgba(200,160,42,0.5)", padding: "10px 16px" }}>
+                <div style={{ background: "rgba(255,255,255,0.10)", borderLeft: "3px solid rgba(200,160,42,0.5)", padding: "10px 16px" }}>
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#c8a02a" }}>🔨 Mano de obra</span>
                 </div>
                 <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
@@ -1406,7 +1402,7 @@ function FormModulo({
                 if (!c) return null;
                 return (
                   <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(126,207,138,0.3)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
-                    <div style={{ background: "rgba(200,160,42,0.12)", borderLeft: "3px solid rgba(200,160,42,0.5)", padding: "10px 16px" }}>
+                    <div style={{ background: "rgba(255,255,255,0.10)", borderLeft: "3px solid rgba(200,160,42,0.5)", padding: "10px 16px" }}>
                       <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#c8a02a" }}>📊 Resumen de costos</span>
                     </div>
                     <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
