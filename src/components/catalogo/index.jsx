@@ -242,25 +242,35 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
   };
 
   return (
-    <Card id="form-pieza" className="rsp-card" highlight style={{ border: editando ? "1.5px solid var(--accent)" : undefined }}>
+    <div id="form-pieza" style={{
+      borderRadius: 12, overflow: "hidden",
+      border: editando ? "1px solid var(--accent-border)" : "1px solid rgba(255,255,255,0.08)",
+      boxShadow: editando ? "0 0 28px rgba(212,175,55,0.18), 0 6px 28px rgba(0,0,0,0.45)" : "0 6px 28px rgba(0,0,0,0.4)",
+    }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h4 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: editando ? "var(--accent)" : "var(--text-muted)", margin: 0 }}>
-          {editando ? "✎ Editando pieza" : "➕ Nueva pieza"}
-        </h4>
+      <div style={{
+        padding: "11px 16px",
+        background: editando ? "rgba(212,175,55,0.12)" : "rgba(0,0,0,0.45)",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
+        borderLeft: editando ? "3px solid var(--accent)" : "3px solid rgba(126,207,138,0.6)",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+      }}>
+        <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", color: editando ? "var(--accent)" : "#7ecf8a" }}>
+          {editando ? "✎ Editando pieza" : "＋ Nueva pieza"}
+        </span>
         <div style={{ display: "flex", gap: 6 }}>
           {editando && (
-            <button onClick={onCancelar} style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+            <button onClick={onCancelar} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", background: "rgba(200,60,60,0.12)", border: "1px solid rgba(200,60,60,0.35)", color: "#e08080" }}>
               ✕ Cancelar
             </button>
           )}
-          <button
-            onClick={() => setFp(p => ({ ...p, especial: !p.especial }))}
-            style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", transition: "all 0.15s", background: fp.especial ? "rgba(212,175,55,0.18)" : "transparent", border: `1px solid ${fp.especial ? "var(--accent-border)" : "var(--border)"}`, color: fp.especial ? "var(--accent)" : "var(--text-muted)" }}>
+          <button onClick={() => setFp(p => ({ ...p, especial: !p.especial }))}
+            style={{ padding: "4px 12px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", transition: "all 0.15s", background: fp.especial ? "rgba(212,175,55,0.18)" : "rgba(255,255,255,0.04)", border: `1px solid ${fp.especial ? "var(--accent-border)" : "rgba(255,255,255,0.12)"}`, color: fp.especial ? "var(--accent)" : "rgba(255,255,255,0.4)" }}>
             ✦ {fp.especial ? "Medida libre" : "Libre"}
           </button>
         </div>
       </div>
+      <div style={{ background: "var(--bg-surface)", padding: "16px" }}>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
@@ -300,20 +310,24 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
         {!fp.especial && (
           <>
             {/* Selector de roles */}
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", marginBottom: 7 }}>Rol de pieza</div>
+            <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ padding: "7px 12px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", borderLeft: "2px solid rgba(255,255,255,0.2)" }}>
+                <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)" }}>Rol de pieza</span>
+              </div>
+              <div style={{ padding: "10px 12px" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                 {todosRoles.map(rol => {
                   const isActive = fp.formula1 === rol.formula1 && fp.formula2 === rol.formula2;
                   return (
                     <button key={rol.id} onClick={() => aplicarRol(rol)}
                       style={{
-                        padding: "4px 11px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                        padding: "5px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700,
                         fontFamily: "'DM Mono',monospace", cursor: "pointer",
                         transition: "all 0.15s",
-                        background: isActive ? "rgba(212,175,55,0.18)" : "transparent",
-                        border: `1px solid ${isActive ? "var(--accent-border)" : "var(--border)"}`,
-                        color: isActive ? "var(--accent)" : "var(--text-muted)",
+                        background: isActive ? "rgba(212,175,55,0.18)" : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${isActive ? "var(--accent-border)" : "rgba(255,255,255,0.1)"}`,
+                        color: isActive ? "var(--accent)" : "rgba(255,255,255,0.4)",
+                        boxShadow: isActive ? "0 0 12px rgba(212,175,55,0.25)" : "none",
                       }}>
                       {rol.nombre}
                       {!rol.sistema && (
@@ -323,6 +337,7 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
                     </button>
                   );
                 })}
+              </div>
               </div>
             </div>
 
@@ -441,10 +456,11 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
         )}
 
         {/* Tapacanto */}
-        <div style={{ background: "rgba(0,0,0,0.18)", borderRadius: 8, padding: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
-            🎗 Tapacanto
+        <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div style={{ padding: "7px 12px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", borderLeft: "2px solid rgba(199,160,80,0.5)" }}>
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(199,160,80,0.8)" }}>🎗 Tapacanto</span>
           </div>
+          <div style={{ padding: "10px 12px" }}>
           <div style={{ marginBottom: 8 }}>
             <Select label="Tipo de cinta" value={fp.tc.id} small
               onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, id: parseInt(v) } }))}
@@ -457,18 +473,32 @@ function FormPieza({ fp, setFp, onAgregar, onCancelar, editando, error, dims, es
               onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, lados2: parseInt(v) || 0 } }))} />
           </div>
           {fp.tc.id > 0 && (
-            <div style={{ fontSize: 11, marginTop: 6, fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>
-              → {fmtNum((parseInt(fp.cantidad || 1) * ((fp.tc.lados1 || 0) * d1 + (fp.tc.lados2 || 0) * d2)) / 1000, 2)} m lineales
+            <div style={{ fontSize: 11, marginTop: 8, fontFamily: "'DM Mono',monospace", color: "var(--accent)", background: "rgba(212,175,55,0.07)", borderRadius: 6, padding: "5px 10px" }}>
+              → <strong>{fmtNum((parseInt(fp.cantidad || 1) * ((fp.tc.lados1 || 0) * d1 + (fp.tc.lados2 || 0) * d2)) / 1000, 2)} m lineales</strong>
             </div>
           )}
+          </div>
         </div>
 
         {error && <p style={{ color: "#e07070", fontSize: 12 }}>⚠ {error}</p>}
-        <Btn onClick={onAgregar} full style={{ background: editando ? "linear-gradient(135deg,var(--accent),var(--accent-hover))" : undefined }}>
-          {editando ? "✓ Actualizar pieza" : "+ Agregar esta pieza"}
-        </Btn>
+        <button onClick={onAgregar} style={{
+          width: "100%", padding: "12px 0", borderRadius: 8, cursor: "pointer", fontWeight: 900,
+          fontFamily: "'DM Mono',monospace", fontSize: 13, letterSpacing: "0.06em",
+          transition: "all 0.2s",
+          background: editando
+            ? "linear-gradient(135deg, var(--accent), #b8852a)"
+            : "linear-gradient(135deg, rgba(126,207,138,0.85), rgba(80,170,95,0.85))",
+          border: "none",
+          color: "#0a0a0a",
+          boxShadow: editando
+            ? "0 4px 18px rgba(212,175,55,0.4)"
+            : "0 4px 18px rgba(126,207,138,0.3)",
+        }}>
+          {editando ? "✓ ACTUALIZAR PIEZA" : "+ AGREGAR ESTA PIEZA"}
+        </button>
       </div>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -480,68 +510,55 @@ function StepIndicator({ paso }) {
     ["3", "Herrajes y MO"],
   ];
   return (
-    <div style={{ display: "flex", alignItems: "center", marginBottom: 24 }}>
+    <div style={{
+      display: "flex", alignItems: "center", marginBottom: 28,
+      padding: "14px 20px",
+      background: "rgba(0,0,0,0.35)",
+      borderRadius: 12,
+      border: "1px solid rgba(255,255,255,0.05)",
+    }}>
       {steps.map(([n, label], i) => {
         const done = paso > i + 1;
         const active = paso === i + 1;
         return (
-          <div key={n} style={{ display: "flex", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  transition: "all 0.2s",
-                  background: active
-                    ? "var(--accent)"
-                    : done
-                    ? "rgba(126,207,138,0.2)"
-                    : "var(--bg-subtle)",
-                  border: `2px solid ${
-                    active
-                      ? "var(--accent)"
-                      : done
-                      ? "#7ecf8a"
-                      : "var(--border)"
-                  }`,
-                  color: active
-                    ? "#fff"
-                    : done
-                    ? "#7ecf8a"
-                    : "var(--text-muted)"
-                }}
-              >
+          <div key={n} style={{ display: "flex", alignItems: "center", flex: i < 2 ? 1 : "none" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: "50%",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, fontWeight: 900, fontFamily: "'DM Mono',monospace",
+                transition: "all 0.25s",
+                background: active
+                  ? "linear-gradient(135deg, var(--accent), #c8952a)"
+                  : done ? "rgba(126,207,138,0.15)" : "rgba(255,255,255,0.04)",
+                border: `2px solid ${active ? "var(--accent)" : done ? "#7ecf8a" : "rgba(255,255,255,0.12)"}`,
+                color: active ? "#0a0a0a" : done ? "#7ecf8a" : "rgba(255,255,255,0.3)",
+                boxShadow: active ? "0 0 20px rgba(212,175,55,0.45), 0 2px 8px rgba(0,0,0,0.4)" : "none",
+              }}>
                 {done ? "✓" : n}
               </div>
-              <span
-                style={{
-                  fontSize: 12,
-                  color: active
-                    ? "var(--accent)"
-                    : done
-                    ? "#7ecf8a"
-                    : "var(--text-muted)",
-                  fontWeight: active ? 700 : 400
-                }}
-              >
-                {label}
-              </span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                <span style={{
+                  fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                  textTransform: "uppercase", letterSpacing: "0.10em",
+                  color: active ? "var(--accent)" : done ? "#7ecf8a" : "rgba(255,255,255,0.3)",
+                  transition: "color 0.2s",
+                }}>
+                  {label}
+                </span>
+                {active && (
+                  <span style={{ fontSize: 9, color: "rgba(212,175,55,0.6)", fontFamily: "'DM Mono',monospace", letterSpacing: "0.06em" }}>
+                    EN CURSO
+                  </span>
+                )}
+              </div>
             </div>
             {i < 2 && (
-              <div
-                style={{
-                  width: 28,
-                  height: 1,
-                  background: "var(--border)",
-                  margin: "0 10px"
-                }}
-              />
+              <div style={{ flex: 1, height: 2, margin: "0 14px", borderRadius: 2,
+                background: done
+                  ? "linear-gradient(90deg, #7ecf8a, rgba(126,207,138,0.3))"
+                  : "rgba(255,255,255,0.07)"
+              }} />
             )}
           </div>
         );
@@ -846,191 +863,145 @@ function FormModulo({
       )}
 
       {paso === 1 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div
-            className="rsp-grid-1"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "160px 1fr",
-              gap: 12
-            }}
-          >
-            <TextInput
-              label="Código"
-              placeholder="MC003"
-              value={datos.codigo}
-              onChange={(v) =>
-                setDatos((d) => ({ ...d, codigo: v.toUpperCase() }))
-              }
-              disabled={esEdicion}
-              style={esEdicion ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
-            />
-            {esEdicion && (
-              <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", marginTop: -6 }}>
-                El código no se puede modificar en modo edición
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* ── Bloque 1: Identificación ── */}
+          <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
+            <div style={{ padding: "10px 16px", background: "rgba(0,0,0,0.45)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid var(--accent)", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>📌 Identificación</span>
+            </div>
+            <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 12, background: "var(--bg-surface)" }}>
+              <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12 }}>
+                <TextInput
+                  label="Código"
+                  placeholder="MC003"
+                  value={datos.codigo}
+                  onChange={(v) => setDatos((d) => ({ ...d, codigo: v.toUpperCase() }))}
+                  disabled={esEdicion}
+                  style={esEdicion ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
+                />
+                <TextInput
+                  label="Nombre"
+                  placeholder="Módulo bajo mesada 80cm"
+                  value={datos.nombre}
+                  onChange={(v) => setDatos((d) => ({ ...d, nombre: v }))}
+                />
               </div>
-            )}
-            <TextInput
-              label="Nombre"
-              placeholder="Módulo bajo mesada 80cm"
-              value={datos.nombre}
-              onChange={(v) => setDatos((d) => ({ ...d, nombre: v }))}
-            />
+              {esEdicion && (
+                <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", marginTop: -6 }}>
+                  El código no se puede modificar en modo edición
+                </div>
+              )}
+              <TextInput
+                label="Descripción (opcional)"
+                value={datos.descripcion}
+                onChange={(v) => setDatos((d) => ({ ...d, descripcion: v }))}
+              />
+            </div>
           </div>
-          <TextInput
-            label="Descripción (opcional)"
-            value={datos.descripcion}
-            onChange={(v) => setDatos((d) => ({ ...d, descripcion: v }))}
-          />
-          <div
-            className="rsp-grid-1"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr 1fr",
-              gap: 12
-            }}
-          >
-            <TextInput
-              label="Ancho (mm)"
-              type="number"
-              suffix="mm"
-              value={datos.dimensiones.ancho}
-              onChange={(v) =>
-                setDatos((d) => ({
-                  ...d,
-                  dimensiones: { ...d.dimensiones, ancho: parseInt(v) || 0 }
-                }))
-              }
-            />
-            <TextInput
-              label="Profund. (mm)"
-              type="number"
-              suffix="mm"
-              value={datos.dimensiones.profundidad}
-              onChange={(v) =>
-                setDatos((d) => ({
-                  ...d,
-                  dimensiones: {
-                    ...d.dimensiones,
-                    profundidad: parseInt(v) || 0
-                  }
-                }))
-              }
-            />
-            <TextInput
-              label="Alto (mm)"
-              type="number"
-              suffix="mm"
-              value={datos.dimensiones.alto}
-              onChange={(v) =>
-                setDatos((d) => ({
-                  ...d,
-                  dimensiones: { ...d.dimensiones, alto: parseInt(v) || 0 }
-                }))
-              }
-            />
-            <Select
-              label="Material"
-              value={datos.material}
-              onChange={(v) => setDatos((d) => ({ ...d, material: v }))}
-              options={costos.materiales.map((m) => ({
-                value: m.tipo,
-                label: `${m.nombre} (${m.espesor}mm)`
-              }))}
-            />
-          </div>
-          {matDef && (
-            <div
-              style={{
-                padding: "8px 14px",
-                borderRadius: 8,
-                fontSize: 12,
-                background: "var(--accent-soft)",
-                border: "1px solid var(--accent-border)",
-                color: "var(--accent)"
-              }}
-            >
-              Material: <strong>{matDef.nombre}</strong> — espesor{" "}
-              <strong>{matDef.espesor}mm</strong>
-              {!esEdicion && moduloBase && (
-                <span style={{ marginLeft: 12, opacity: 0.7 }}>
-                  📋 Copia — editá el código antes de guardar.
-                </span>
+
+          {/* ── Bloque 2: Dimensiones y Material ── */}
+          <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
+            <div style={{ padding: "10px 16px", background: "rgba(0,0,0,0.45)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid #7090c8", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#7090c8" }}>📐 Dimensiones y Material</span>
+            </div>
+            <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 12, background: "var(--bg-surface)" }}>
+              <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+                <TextInput label="Ancho (mm)" type="number" suffix="mm" value={datos.dimensiones.ancho}
+                  onChange={(v) => setDatos((d) => ({ ...d, dimensiones: { ...d.dimensiones, ancho: parseInt(v) || 0 } }))} />
+                <TextInput label="Profund. (mm)" type="number" suffix="mm" value={datos.dimensiones.profundidad}
+                  onChange={(v) => setDatos((d) => ({ ...d, dimensiones: { ...d.dimensiones, profundidad: parseInt(v) || 0 } }))} />
+                <TextInput label="Alto (mm)" type="number" suffix="mm" value={datos.dimensiones.alto}
+                  onChange={(v) => setDatos((d) => ({ ...d, dimensiones: { ...d.dimensiones, alto: parseInt(v) || 0 } }))} />
+                <Select label="Material" value={datos.material}
+                  onChange={(v) => setDatos((d) => ({ ...d, material: v }))}
+                  options={costos.materiales.map((m) => ({ value: m.tipo, label: `${m.nombre} (${m.espesor}mm)` }))} />
+              </div>
+              {matDef && (
+                <div style={{ padding: "8px 14px", borderRadius: 8, fontSize: 12, background: "rgba(212,175,55,0.08)", border: "1px solid var(--accent-border)", color: "var(--accent)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ opacity: 0.5 }}>▶</span>
+                  <span>Material activo: <strong>{matDef.nombre}</strong> — espesor <strong>{matDef.espesor}mm</strong></span>
+                  {!esEdicion && moduloBase && (
+                    <span style={{ marginLeft: 8, opacity: 0.6, fontSize: 11 }}>📋 Copia — editá el código antes de guardar.</span>
+                  )}
+                </div>
               )}
             </div>
-          )}
-
-          {/* Selector de categoría */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 8 }}>
-              Categoría
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {CATEGORIAS_DEFAULT.map(cat => {
-                const activa = datos.categoria === cat.id;
-                return (
-                  <button key={cat.id} onClick={() => setDatos(d => ({ ...d, categoria: cat.id }))}
-                    style={{
-                      padding: "6px 14px", borderRadius: 20, cursor: "pointer",
-                      fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
-                      transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5,
-                      background: activa ? `${cat.color}25` : "transparent",
-                      border: `1px solid ${activa ? cat.color : "var(--border)"}`,
-                      color: activa ? cat.color : "var(--text-muted)",
-                      boxShadow: activa ? `0 0 10px ${cat.color}30` : "none"
-                    }}>
-                    {cat.icon} {cat.label}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
-          {/* Tipo visual — Plano 2D */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 4 }}>
-              Tipo visual — Plano 2D
+          {/* ── Bloque 3: Clasificación ── */}
+          <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)", overflow: "hidden" }}>
+            <div style={{ padding: "10px 16px", background: "rgba(0,0,0,0.45)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid #a070c8", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#a070c8" }}>🏷 Clasificación</span>
             </div>
-            <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 8 }}>
-              Define cómo se posiciona en la vista frontal
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {[
-                { id: null,    label: "Sin definir", icon: "—",  color: "#606880" },
-                { id: "bajo",  label: "Bajo",        icon: "⬇",  color: "#7090c8" },
-                { id: "aereo", label: "Aéreo",        icon: "⬆",  color: "#a070c8" },
-                { id: "torre", label: "Torre",        icon: "⬛", color: "var(--color-positive)" },
-              ].map((tipo) => {
-                const activo = datos.tipoVisual === tipo.id;
-                return (
-                  <button key={String(tipo.id)} onClick={() => setDatos((d) => ({ ...d, tipoVisual: tipo.id }))}
-                    style={{
-                      padding: "6px 14px", borderRadius: 20, cursor: "pointer",
-                      fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
-                      transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5,
-                      background: activo ? `${tipo.color}25` : "transparent",
-                      border: `1px solid ${activo ? tipo.color : "var(--border)"}`,
-                      color: activo ? tipo.color : "var(--text-muted)",
-                      boxShadow: activo ? `0 0 10px ${tipo.color}30` : "none",
-                    }}>
-                    {tipo.icon} {tipo.label}
-                  </button>
-                );
-              })}
+            <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", background: "var(--bg-surface)" }}>
+              {/* Categoría */}
+              <div style={{ padding: "14px 16px", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 10 }}>Categoría</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {CATEGORIAS_DEFAULT.map(cat => {
+                    const activa = datos.categoria === cat.id;
+                    return (
+                      <button key={cat.id} onClick={() => setDatos(d => ({ ...d, categoria: cat.id }))}
+                        style={{
+                          padding: "5px 12px", borderRadius: 20, cursor: "pointer",
+                          fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
+                          transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5,
+                          background: activa ? `${cat.color}22` : "rgba(255,255,255,0.03)",
+                          border: `1px solid ${activa ? cat.color : "rgba(255,255,255,0.1)"}`,
+                          color: activa ? cat.color : "rgba(255,255,255,0.3)",
+                          boxShadow: activa ? `0 0 14px ${cat.color}40` : "none",
+                        }}>
+                        {cat.icon} {cat.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Tipo visual */}
+              <div style={{ padding: "14px 16px" }}>
+                <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 10 }}>Tipo visual — Plano 2D</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[
+                    { id: null,    label: "Sin definir", icon: "—",  color: "#606880" },
+                    { id: "bajo",  label: "Bajo",        icon: "⬇",  color: "#7090c8" },
+                    { id: "aereo", label: "Aéreo",       icon: "⬆",  color: "#a070c8" },
+                    { id: "torre", label: "Torre",       icon: "⬛", color: "var(--color-positive)" },
+                  ].map((tipo) => {
+                    const activo = datos.tipoVisual === tipo.id;
+                    return (
+                      <button key={String(tipo.id)} onClick={() => setDatos((d) => ({ ...d, tipoVisual: tipo.id }))}
+                        style={{
+                          padding: "5px 12px", borderRadius: 20, cursor: "pointer",
+                          fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700,
+                          transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5,
+                          background: activo ? `${tipo.color}22` : "rgba(255,255,255,0.03)",
+                          border: `1px solid ${activo ? tipo.color : "rgba(255,255,255,0.1)"}`,
+                          color: activo ? tipo.color : "rgba(255,255,255,0.3)",
+                          boxShadow: activo ? `0 0 14px ${tipo.color}40` : "none",
+                        }}>
+                        {tipo.icon} {tipo.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Preview técnico SVG — acordeón cerrado por defecto */}
           <AcordeonPreviewSVG datos={datos} herrajes={herrajes} />
 
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", paddingTop: 4 }}>
             <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
             {esEdicion && (
               <Btn variant="ghost" onClick={guardar} style={{ borderColor: "var(--accent-border)", color: "var(--accent)" }}>
                 💾 Guardar y cerrar
               </Btn>
             )}
-            <Btn onClick={siguiente}>Siguiente → Piezas</Btn>
+            <Btn onClick={siguiente} style={{ background: "linear-gradient(135deg, var(--accent), #b8852a)", color: "#0a0a0a", fontWeight: 800, boxShadow: "0 4px 16px rgba(212,175,55,0.35)", border: "none" }}>
+              Siguiente → Piezas
+            </Btn>
           </div>
         </div>
       )}
@@ -1040,12 +1011,10 @@ function FormModulo({
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
         {/* Variables personalizadas — ancho completo, encima de las columnas */}
-        <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>
-              Variables del módulo
-            </span>
-            <span style={{ fontSize: 10, color: "var(--text-muted)" }}>— usables en cualquier fórmula de pieza</span>
+        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 4px 20px rgba(0,0,0,0.35)" }}>
+          <div style={{ padding: "10px 16px", background: "rgba(0,0,0,0.45)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid #7090c8", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#7090c8" }}>⚡ Variables del módulo</span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono',monospace" }}>usables en fórmulas de piezas</span>
             <div style={{ flex: 1 }} />
             {!agregandoVar && (
               <button onClick={() => { setAgregandoVar(true); setNuevaVarNombre(""); }}
@@ -1057,9 +1026,10 @@ function FormModulo({
             )}
           </div>
 
+          <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
           {Object.entries(datos.variables || {}).length === 0 && !agregandoVar && (
-            <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
-              Sin variables. Agregá una para usarla en fórmulas (ej: <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>luz</span>, <span style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent)" }}>zocalo</span>).
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontStyle: "italic", fontFamily: "'DM Mono',monospace" }}>
+              Sin variables — agregá una para usarla en fórmulas (ej: <span style={{ color: "var(--accent)" }}>luz</span>, <span style={{ color: "var(--accent)" }}>zocalo</span>).
             </div>
           )}
 
@@ -1119,6 +1089,7 @@ function FormModulo({
               </div>
             )}
           </div>
+          </div>
         </div>
 
         {/* ── Fila 2: FormPieza ancho completo ── */}
@@ -1136,19 +1107,20 @@ function FormModulo({
         />
 
         {/* ── Fila 3: Lista de piezas ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h4 style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, color: "var(--text-secondary)", margin: 0 }}>
-              Piezas <span style={{ color: "var(--accent)" }}>({piezas.length})</span>
-            </h4>
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 4px 20px rgba(0,0,0,0.35)" }}>
+          <div style={{ padding: "10px 16px", background: "rgba(0,0,0,0.45)", borderBottom: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid rgba(126,207,138,0.7)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(126,207,138,0.9)" }}>
+              🪵 Piezas <span style={{ color: "var(--accent)", marginLeft: 6 }}>({piezas.length})</span>
+            </span>
+            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "rgba(255,255,255,0.3)" }}>
               Espesor: <span style={{ color: "var(--accent)" }}>{espesor}mm</span>
             </span>
           </div>
+          <div style={{ padding: "12px 14px", background: "var(--bg-surface)", display: "flex", flexDirection: "column", gap: 6 }}>
 
           {piezas.length === 0 ? (
-            <div style={{ padding: "24px 0", textAlign: "center", fontSize: 13, borderRadius: 8, border: "1px dashed var(--border)", color: "var(--text-muted)" }}>
-              Sin piezas todavía.
+            <div style={{ padding: "28px 0", textAlign: "center", fontSize: 12, borderRadius: 8, border: "1px dashed rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)", fontFamily: "'DM Mono',monospace" }}>
+              Sin piezas todavía — agregá la primera arriba
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1195,10 +1167,11 @@ function FormModulo({
               </div>
             </Card>
           )}
+          </div>
         </div>
 
         {/* ── Fila 4: Botones de navegación ── */}
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", paddingTop: 4 }}>
           <Btn variant="ghost" onClick={() => { setPaso(1); setError(""); }}>← Volver</Btn>
           <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
           {esEdicion && !modalDecision && !decisionCatalogo && (
@@ -1207,9 +1180,10 @@ function FormModulo({
             </Btn>
           )}
           {!modalDecision && !decisionCatalogo && (
-            <Btn onClick={siguiente} disabled={piezas.length === 0}>
+            <button onClick={siguiente} disabled={piezas.length === 0}
+              style={{ padding: "10px 22px", borderRadius: 8, cursor: piezas.length === 0 ? "default" : "pointer", fontWeight: 900, fontFamily: "'DM Mono',monospace", fontSize: 13, letterSpacing: "0.06em", transition: "all 0.2s", background: piezas.length === 0 ? "rgba(255,255,255,0.05)" : "linear-gradient(135deg, var(--accent), #b8852a)", border: "none", color: piezas.length === 0 ? "rgba(255,255,255,0.2)" : "#0a0a0a", boxShadow: piezas.length === 0 ? "none" : "0 4px 16px rgba(212,175,55,0.35)" }}>
               Siguiente → Herrajes
-            </Btn>
+            </button>
           )}
         </div>
 
@@ -1273,19 +1247,11 @@ function FormModulo({
             className="rsp-grid-1"
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
           >
-            <Card className="rsp-card">
-              <h4
-                style={{
-                  fontSize: 12,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  fontWeight: 700,
-                  color: "var(--accent)",
-                  marginBottom: 14
-                }}
-              >
-                🔩 Herrajes
-              </h4>
+            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
+              <div style={{ background: "rgba(0,0,0,0.45)", borderLeft: "3px solid rgba(112,144,176,0.8)", padding: "10px 16px" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7090c8" }}>🔩 Herrajes</span>
+              </div>
+              <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
               {costos.herrajes.map((h) => {
                 const item = herrajes.find((x) => x.id === h.id);
                 const cant = item?.cantidad || 0;
@@ -1374,21 +1340,14 @@ function FormModulo({
                   </div>
                 );
               })}
-            </Card>
+              </div>
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <Card className="rsp-card">
-                <h4
-                  style={{
-                    fontSize: 12,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                    fontWeight: 700,
-                    color: "var(--accent)",
-                    marginBottom: 14
-                  }}
-                >
-                  🔨 Mano de obra
-                </h4>
+              <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
+                <div style={{ background: "rgba(0,0,0,0.45)", borderLeft: "3px solid rgba(199,160,80,0.8)", padding: "10px 16px" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#c7a050" }}>🔨 Mano de obra</span>
+                </div>
+                <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
                 <Select
                   label="Tipo"
                   value={moDeObra.tipo}
@@ -1436,7 +1395,8 @@ function FormModulo({
                     })()}
                   </div>
                 )}
-              </Card>
+                </div>
+              </div>
               {(() => {
                 const c = calcularModulo(
                   { ...datos, piezas, herrajes, moDeObra },
@@ -1444,24 +1404,11 @@ function FormModulo({
                 );
                 if (!c) return null;
                 return (
-                  <Card
-                    className="rsp-card"
-                    style={{
-                      borderColor: "rgba(126,207,138,0.20)",
-                      background: "rgba(126,207,138,0.03)"
-                    }}
-                  >
-                    <h4
-                      style={{
-                        fontSize: 10,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.1em",
-                        color: "var(--color-positive)",
-                        marginBottom: 12
-                      }}
-                    >
-                      Resumen
-                    </h4>
+                  <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(126,207,138,0.3)", boxShadow: "0 6px 28px rgba(0,0,0,0.4)" }}>
+                    <div style={{ background: "rgba(0,0,0,0.45)", borderLeft: "3px solid rgba(126,207,138,0.8)", padding: "10px 16px" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-positive)" }}>📊 Resumen de costos</span>
+                    </div>
+                    <div style={{ padding: "12px 16px", background: "var(--bg-surface)" }}>
                     {[
                       [
                         "Material",
@@ -1525,47 +1472,47 @@ function FormModulo({
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
-                        paddingTop: 10
+                        alignItems: "center",
+                        paddingTop: 12,
+                        marginTop: 4,
+                        borderTop: "1px solid rgba(126,207,138,0.2)"
                       }}
                     >
-                      <span
-                        style={{
-                          fontWeight: 700,
-                          color: "var(--text-primary)"
-                        }}
-                      >
+                      <span style={{ fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
                         Precio de venta
                       </span>
                       <span
                         style={{
                           fontFamily: "'DM Mono',monospace",
-                          fontSize: 18,
-                          fontWeight: 700,
-                          color: "var(--color-positive)"
+                          fontSize: 22,
+                          fontWeight: 900,
+                          color: "var(--color-positive)",
+                          textShadow: "0 0 20px rgba(126,207,138,0.4)"
                         }}
                       >
                         {fmtPeso(c.total)}
                       </span>
                     </div>
-                  </Card>
+                    </div>
+                  </div>
                 );
               })()}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <Btn
-              variant="ghost"
-              onClick={() => {
-                setPaso(2);
-                setError("");
-              }}
-            >
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
+            <button
+              onClick={() => { setPaso(2); setError(""); }}
+              style={{ padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontWeight: 600, fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: "0.04em", background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "var(--text-muted)", transition: "all 0.15s" }}>
               ← Volver
-            </Btn>
-            <Btn variant="ghost" onClick={handleCancelar}>Cancelar</Btn>
-            <Btn onClick={guardar}>
+            </button>
+            <button onClick={handleCancelar}
+              style={{ padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontWeight: 600, fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: "0.04em", background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "var(--text-muted)", transition: "all 0.15s" }}>
+              Cancelar
+            </button>
+            <button onClick={guardar}
+              style={{ padding: "10px 22px", borderRadius: 8, cursor: "pointer", fontWeight: 900, fontFamily: "'DM Mono',monospace", fontSize: 13, letterSpacing: "0.06em", transition: "all 0.2s", background: "linear-gradient(135deg, var(--accent), #b8852a)", border: "none", color: "#0a0a0a", boxShadow: "0 4px 16px rgba(212,175,55,0.35)" }}>
               {esEdicion ? "✓ Guardar cambios" : "✓ Guardar módulo"}
-            </Btn>
+            </button>
           </div>
         </div>
       )}
