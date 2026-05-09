@@ -227,6 +227,8 @@ export function Vista3DTab({
   const [shadowDir,        setShadowDir]        = useState('right');
   const [editTab,          setEditTab]          = useState('mat');
   const [envPreset,        setEnvPreset]        = useState('apartment');
+  const [mostrarGrilla,    setMostrarGrilla]    = useState(true);
+  const [divisionesGrilla, setDivisionesGrilla] = useState(50);
 
   const irACamara = (key) => { setCamView(key); setCamTarget([...CAMARAS[key].pos]); };
 
@@ -509,6 +511,19 @@ export function Vista3DTab({
 
           <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
 
+          <BTN active={mostrarGrilla} onClick={() => setMostrarGrilla(v => !v)}>Grilla</BTN>
+          {mostrarGrilla && [
+            [20,  'G'],
+            [50,  'M'],
+            [100, 'F'],
+          ].map(([div, lbl]) => (
+            <BTN key={div} active={divisionesGrilla === div} onClick={() => setDivisionesGrilla(div)} style={{ minWidth: 22, padding: '4px 6px' }}>
+              {lbl}
+            </BTN>
+          ))}
+
+          <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
+
           <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, marginRight: 1, letterSpacing: '0.09em' }}>LUZ</span>
           {[['left','←'],['right','→'],['top','↑']].map(([dir, icon]) => (
             <BTN key={dir} active={shadowDir === dir} onClick={() => setShadowDir(dir)}>{icon}</BTN>
@@ -607,6 +622,8 @@ export function Vista3DTab({
               shadowIntensidad={shadowIntensidad}
               shadowDir={shadowDir}
               envPreset={envPreset}
+              mostrarGrilla={mostrarGrilla}
+              divisionesGrilla={divisionesGrilla}
             />
           </Canvas>
 

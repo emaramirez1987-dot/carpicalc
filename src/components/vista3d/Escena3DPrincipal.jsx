@@ -207,6 +207,31 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
   );
 }
 
+// ── Grid colors per theme ──────────────────────────────────────────────────────
+const GRID_DARK  = { c1: '#2a2d35', c2: '#1e2028' };
+const GRID_LIGHT = { c1: '#b8bac6', c2: '#c8cad8' };
+
+// ── GrillaFloor — piso receptor de sombras + grilla superpuesta ───────────────
+function GrillaFloor({ colorPiso, isDark, mostrarGrilla, divisiones }) {
+  const grid = useMemo(() => {
+    const { c1, c2 } = isDark ? GRID_DARK : GRID_LIGHT;
+    const g = new THREE.GridHelper(10, divisiones, c1, c2);
+    g.position.y = 0.002; // sobre el plano para evitar z-fighting
+    return g;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDark, divisiones]);
+
+  return (
+    <>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[10, 10]} />
+        <meshStandardMaterial color={colorPiso} roughness={0.92} metalness={0.01} />
+      </mesh>
+      {mostrarGrilla && <primitive object={grid} />}
+    </>
+  );
+}
+
 const MESADA_THICKNESS = 0.04;
 const MESADA_DEPTH     = 0.62;
 
@@ -259,6 +284,7 @@ export function Escena3DPrincipal({
   materiales3D, isDark = true,
   shadowIntensidad = 1, shadowDir = 'right',
   envPreset = 'apartment',
+  mostrarGrilla = true, divisionesGrilla = 50,
 }) {
   const orbitRef       = useRef();
   const livePositions  = useRef({}); // { [instanceId]: { x, z, hw, hd } }
@@ -277,10 +303,12 @@ export function Escena3DPrincipal({
       <directionalLight position={[0, -2, 4]} intensity={0.10} />
 
       {mostrarPiso && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[10, 10]} />
-          <meshStandardMaterial color={colorPiso} roughness={0.92} metalness={0.01} />
-        </mesh>
+        <GrillaFloor
+          colorPiso={colorPiso}
+          isDark={isDark}
+          mostrarGrilla={mostrarGrilla}
+          divisiones={divisionesGrilla}
+        />
       )}
 
       {mostrarPared && (
