@@ -226,6 +226,7 @@ export function Vista3DTab({
   const [shadowIntensidad, setShadowIntensidad] = useState(1.0);
   const [shadowDir,        setShadowDir]        = useState('right');
   const [editTab,          setEditTab]          = useState('mat');
+  const [envPreset,        setEnvPreset]        = useState('apartment');
 
   const irACamara = (key) => { setCamView(key); setCamTarget([...CAMARAS[key].pos]); };
 
@@ -520,6 +521,20 @@ export function Vista3DTab({
             title={`Intensidad: ${Math.round(shadowIntensidad * 100)}%`}
           />
 
+          <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
+
+          <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, marginRight: 1, letterSpacing: '0.09em' }}>ENTORNO</span>
+          {[
+            ['apartment', 'APT'],
+            ['studio',    'STU'],
+            ['lobby',     'LOB'],
+            ['city',      'CTY'],
+            ['sunset',    'SUN'],
+            ['warehouse', 'WHS'],
+          ].map(([preset, lbl]) => (
+            <BTN key={preset} active={envPreset === preset} onClick={() => setEnvPreset(preset)}>{lbl}</BTN>
+          ))}
+
           <div style={{ flex: 1 }} />
 
           {modulosEnEscena.length > 0 && (
@@ -591,6 +606,7 @@ export function Vista3DTab({
               isDark={isDark}
               shadowIntensidad={shadowIntensidad}
               shadowDir={shadowDir}
+              envPreset={envPreset}
             />
           </Canvas>
 

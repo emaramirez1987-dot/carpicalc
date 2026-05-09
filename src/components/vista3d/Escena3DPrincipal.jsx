@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, Environment } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import Modulo3D from '../visor3d/Modulo3D.jsx';
@@ -8,8 +8,9 @@ import { useAutoLayout3D } from './useAutoLayout3D.js';
 export const WALL_Z = -0.6; // posición de la pared trasera
 
 // ── Theme palettes ─────────────────────────────────────────────────────────────
-const DARK_PAL  = { bg: '#080a0d', fogNear: 6,  fogFar: 18, ambInt: 0.35, hemiSky: '#1e2540', hemiGnd: '#060709', hemiInt: 0.55 };
-const LIGHT_PAL = { bg: '#eff0f4', fogNear: 10, fogFar: 28, ambInt: 0.45, hemiSky: '#c8d8f0', hemiGnd: '#c4c0ba', hemiInt: 0.70 };
+// ambInt kept low — Environment (HDRI) handles most of the ambient contribution
+const DARK_PAL  = { bg: '#080a0d', fogNear: 6,  fogFar: 18, ambInt: 0.08 };
+const LIGHT_PAL = { bg: '#eff0f4', fogNear: 10, fogFar: 28, ambInt: 0.12 };
 
 // ── Shadow direction presets ───────────────────────────────────────────────────
 const SHADOW_DIRS = {
@@ -18,7 +19,7 @@ const SHADOW_DIRS = {
   top:   [ 1, 10, 2],
 };
 
-// ── EntornoEscena — adapts background, fog, ambient and hemisphere to theme ───
+// ── EntornoEscena — background + fog only; HDRI handles ambient ───────────────
 function EntornoEscena({ isDark }) {
   const pal = isDark ? DARK_PAL : LIGHT_PAL;
   return (
@@ -26,7 +27,6 @@ function EntornoEscena({ isDark }) {
       <color attach="background" args={[pal.bg]} />
       <fog   attach="fog"        args={[pal.bg, pal.fogNear, pal.fogFar]} />
       <ambientLight intensity={pal.ambInt} />
-      <hemisphereLight args={[pal.hemiSky, pal.hemiGnd, pal.hemiInt]} />
     </>
   );
 }
@@ -215,6 +215,7 @@ export function Escena3DPrincipal({
   camTarget, onSelectModulo, selectedCod, onUpdatePosicion,
   materiales3D, isDark = true,
   shadowIntensidad = 1, shadowDir = 'right',
+  envPreset = 'apartment',
 }) {
   const orbitRef      = useRef();
   const livePositions = useRef({}); // { [instanceId]: { x, z, hw, hd } }
@@ -240,9 +241,10 @@ export function Escena3DPrincipal({
       <OrbitControls ref={orbitRef} makeDefault enableDamping dampingFactor={0.08} />
 
       <EntornoEscena isDark={isDark} />
-      <directionalLight position={shadowLightPos} intensity={1.4 * shadowIntensidad} castShadow shadow-mapSize={[2048, 2048]} />
-      <directionalLight position={[-3, 4, -3]} intensity={0.35} color="#b8d4f0" />
-      <directionalLight position={[0, -2, 4]} intensity={0.15} />
+      <Environment preset={envPreset} background={false} />
+      <directionalLight position={shadowLightPos} intensity={0.9 * shadowIntensidad} castShadow shadow-mapSize={[2048, 2048]} />
+      <directionalLight position={[-3, 4, -3]} intensity={0.18} color="#b8d4f0" />
+      <directionalLight position={[0, -2, 4]} intensity={0.10} />
 
       {mostrarPiso && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
