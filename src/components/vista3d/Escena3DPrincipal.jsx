@@ -44,7 +44,7 @@ function resolveCollision(proposedX, proposedZ, hw, hd, selfId, livePositions) {
 }
 
 // ── ModuloEnEscena ────────────────────────────────────────────────────────────
-function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions }) {
+function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, texturaDataUrl }) {
   const groupRef   = useRef();
   const isDragging = useRef(false);
   const [hovered, setHovered] = useState(false);
@@ -161,6 +161,7 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
         explodeFactor={0}
         selectedPieza={null}
         onSelectPieza={null}
+        texturaDataUrl={texturaDataUrl}
       />
 
       {/* Highlight hover / selección */}
@@ -188,6 +189,7 @@ export function Escena3DPrincipal({
   mostrarPiso, mostrarPared, mostrarMesada,
   colorPiso, colorPared, colorMesada,
   camTarget, onSelectModulo, selectedCod, onUpdatePosicion,
+  materiales3D,
 }) {
   const orbitRef     = useRef();
   const livePositions = useRef({}); // { [instanceId]: { x, z, hw, hd } }
@@ -230,19 +232,24 @@ export function Escena3DPrincipal({
         </mesh>
       )}
 
-      {layoutItems.map((inst) => (
-        <ModuloEnEscena
-          key={inst.instanceId}
-          inst={inst}
-          modulos={modulos}
-          costos={costos}
-          isSelected={selectedCod === inst.instanceId}
-          onSelect={() => onSelectModulo?.(selectedCod === inst.instanceId ? null : inst.instanceId)}
-          onUpdatePosicion={onUpdatePosicion}
-          orbitRef={orbitRef}
-          livePositions={livePositions}
-        />
-      ))}
+      {layoutItems.map((inst) => {
+        const texturaCode   = inst.texturaCode;
+        const texturaDataUrl = texturaCode ? materiales3D?.[texturaCode]?.dataUrl : null;
+        return (
+          <ModuloEnEscena
+            key={inst.instanceId}
+            inst={inst}
+            modulos={modulos}
+            costos={costos}
+            isSelected={selectedCod === inst.instanceId}
+            onSelect={() => onSelectModulo?.(selectedCod === inst.instanceId ? null : inst.instanceId)}
+            onUpdatePosicion={onUpdatePosicion}
+            orbitRef={orbitRef}
+            livePositions={livePositions}
+            texturaDataUrl={texturaDataUrl}
+          />
+        );
+      })}
 
       {mostrarMesada && mesadaWidth > 0 && (
         <mesh position={[mesadaCenterX, mesadaY, 0]}>

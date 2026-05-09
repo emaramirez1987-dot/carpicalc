@@ -336,3 +336,15 @@ export const guardarBorradorModulo = (d) => _save("carpicalc:borrador_modulo", d
 export function limpiarBorradorModulo() {
   try { localStorage.removeItem("carpicalc:borrador_modulo"); } catch {}
 }
+
+// ── Materiales 3D (texturas PNG por código) ───────────────────────────────
+// Guardado en localStorage porque son data URLs de imágenes (binario grande)
+export function leerMateriales3D() {
+  try { return JSON.parse(localStorage.getItem("carpicalc:materiales3d")) || {}; }
+  catch { return {}; }
+}
+
+export function guardarMateriales3D(data) {
+  try { localStorage.setItem("carpicalc:materiales3d", JSON.stringify(data)); }
+  catch {}
+}

@@ -22,7 +22,7 @@ import { calcularModulo } from "./utils.js";
 import {
   cargarDatos, cargarSuscripcion,
   guardarModulos, guardarPresupuestos, guardarPerfil, guardarCostos,
-  leerVersionCostos,
+  leerVersionCostos, leerMateriales3D, guardarMateriales3D,
 } from "./storage.js";
 import { useTema } from "./hooks/useTema.js";
 import {
@@ -151,6 +151,19 @@ function AppInterna() {
   const [presupuestoActivoId, setPresupuestoActivoId] = useState(null);
   const [suscripcion,         setSuscripcion]         = useState(null);
   const [imagenRef3D,         setImagenRef3D]         = useState(null);
+  const [materiales3D,        setMateriales3D]        = useState(() => leerMateriales3D());
+
+  const handleGuardarMaterial3D = (cod, mat) => {
+    const nuevos = { ...materiales3D, [cod]: mat };
+    setMateriales3D(nuevos);
+    guardarMateriales3D(nuevos);
+  };
+  const handleEliminarMaterial3D = (cod) => {
+    const nuevos = { ...materiales3D };
+    delete nuevos[cod];
+    setMateriales3D(nuevos);
+    guardarMateriales3D(nuevos);
+  };
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -521,6 +534,9 @@ function AppInterna() {
                 suscripcion={suscripcion}
                 onRenderGenerado={() => cargarSuscripcion().then(setSuscripcion)}
                 imagenRef3D={imagenRef3D}
+                materiales3D={materiales3D}
+                onGuardarMaterial3D={handleGuardarMaterial3D}
+                onEliminarMaterial3D={handleEliminarMaterial3D}
               />
             </div>
 
@@ -533,6 +549,7 @@ function AppInterna() {
                 inlineModulos={inlineModulos}
                 presupuestoActivoId={presupuestoActivoId}
                 onCaptura={(base64) => setImagenRef3D(base64)}
+                materiales3D={materiales3D}
               />
             </div>
 

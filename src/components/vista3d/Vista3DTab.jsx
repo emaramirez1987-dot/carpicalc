@@ -93,6 +93,7 @@ export function Vista3DTab({
   inlineModulos = {},
   presupuestoActivoId,  // eslint-disable-line no-unused-vars
   onCaptura,
+  materiales3D = {},
 }) {
   const glRef = useRef(null);
 
@@ -175,6 +176,17 @@ export function Vista3DTab({
     setSelectedCod(null);
   };
 
+  const handleAsignarTextura = (texturaCode) => {
+    if (!selectedCod) return;
+    setModulosEnEscena(prev => prev.map(m =>
+      m.instanceId === selectedCod ? { ...m, texturaCode: texturaCode || null } : m
+    ));
+  };
+
+  const selectedInst = modulosEnEscena.find(m => m.instanceId === selectedCod);
+  const texturaCodActual = selectedInst?.texturaCode || null;
+  const materialesKeys = Object.keys(materiales3D);
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'row',
@@ -234,6 +246,52 @@ export function Vista3DTab({
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
                   <DPadBtn onClick={() => handleNudge(0, NUDGE_STEP)} title="Alejar de pared">▼</DPadBtn>
                 </div>
+
+                {/* Selector de material/textura */}
+                {materialesKeys.length > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: '#444', marginBottom: 5, letterSpacing: '0.08em' }}>
+                      MATERIAL
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      <button
+                        onClick={() => handleAsignarTextura(null)}
+                        style={{
+                          padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 9,
+                          fontFamily: "'DM Mono',monospace",
+                          background: !texturaCodActual ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.05)',
+                          border: !texturaCodActual ? '1px solid rgba(212,175,55,0.45)' : '1px solid rgba(255,255,255,0.10)',
+                          color: !texturaCodActual ? '#D4AF37' : '#666',
+                        }}
+                      >
+                        —
+                      </button>
+                      {materialesKeys.map(cod => (
+                        <button
+                          key={cod}
+                          onClick={() => handleAsignarTextura(cod)}
+                          title={materiales3D[cod].nombre || cod}
+                          style={{
+                            padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 9,
+                            fontFamily: "'DM Mono',monospace",
+                            background: texturaCodActual === cod ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.05)',
+                            border: texturaCodActual === cod ? '1px solid rgba(212,175,55,0.45)' : '1px solid rgba(255,255,255,0.10)',
+                            color: texturaCodActual === cod ? '#D4AF37' : '#888',
+                            display: 'flex', alignItems: 'center', gap: 4,
+                          }}
+                        >
+                          <span style={{
+                            display: 'inline-block', width: 10, height: 10, borderRadius: 2, flexShrink: 0,
+                            backgroundImage: `url(${materiales3D[cod].dataUrl})`,
+                            backgroundSize: 'cover',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                          }} />
+                          {cod}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Snap a pared */}
                 <button
@@ -382,6 +440,7 @@ export function Vista3DTab({
               onSelectModulo={setSelectedCod}
               selectedCod={selectedCod}
               onUpdatePosicion={handleUpdatePosicion}
+              materiales3D={materiales3D}
             />
           </Canvas>
 

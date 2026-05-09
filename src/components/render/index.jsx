@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { SectionTitle } from "../ui/index.jsx";
 import useIsMobile from "../../hooks/useIsMobile.js";
 import { EGGER_MATERIALES } from "../../data/egger_prompts.js";
@@ -499,6 +499,83 @@ function calcularCreditos(suscripcion) {
   return { usados, limite, restantes, bloqueado: restantes === 0 };
 }
 
+// ── BibliotecaMateriales3D ────────────────────────────────────────────────────
+
+function BibliotecaMateriales3D({ materiales3D, onGuardar, onEliminar }) {
+  const fileRef  = useRef();
+  const [codigo, setCodigo]   = useState('');
+  const [nombre, setNombre]   = useState('');
+  const [preview, setPreview] = useState(null);
+  const [error,   setError]   = useState('');
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setError('Solo imágenes PNG/JPG'); return; }
+    const reader = new FileReader();
+    reader.onloadend = () => { setPreview(reader.result); setError(''); };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleGuardar = () => {
+    if (!codigo.trim()) { setError('Ingresá un código'); return; }
+    if (!preview)       { setError('Seleccioná una imagen'); return; }
+    onGuardar(codigo.trim().toUpperCase(), { nombre: nombre.trim() || codigo.trim(), dataUrl: preview });
+    setCodigo(''); setNombre(''); setPreview(null);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Upload */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1, minWidth: 160 }}>
+          <input value={codigo} onChange={e => setCodigo(e.target.value)} placeholder="Código (ej: W908)" style={{ ...inp, fontSize: 12 }} />
+          <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre (opcional)" style={{ ...inp, fontSize: 12 }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'center' }}>
+          <div
+            onClick={() => fileRef.current?.click()}
+            style={{
+              width: 56, height: 56, borderRadius: 6, cursor: 'pointer',
+              border: '1px dashed var(--border)', background: 'var(--bg-subtle)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden',
+            }}
+          >
+            {preview
+              ? <img src={preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontSize: 20, color: 'var(--text-muted)' }}>+</span>}
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+          <button onClick={handleGuardar} style={{ ...btnSm('accent'), fontSize: 11 }}>Cargar</button>
+        </div>
+      </div>
+      {error && <div style={{ fontSize: 11, color: '#e07070', fontFamily: "'DM Mono',monospace" }}>{error}</div>}
+
+      {/* Lista */}
+      {Object.keys(materiales3D).length === 0 ? (
+        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin materiales cargados</p>
+      ) : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {Object.entries(materiales3D).map(([cod, mat]) => (
+            <div key={cod} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px 4px 5px', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6 }}>
+              <img src={mat.dataUrl} alt={cod} style={{ width: 22, height: 22, objectFit: 'cover', borderRadius: 3 }} />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: 'var(--accent)', lineHeight: 1 }}>{cod}</span>
+                {mat.nombre && mat.nombre !== cod && (
+                  <span style={{ fontSize: 9, color: 'var(--text-muted)', lineHeight: 1, marginTop: 1 }}>{mat.nombre}</span>
+                )}
+              </div>
+              <button onClick={() => onEliminar(cod)} style={{ ...btnSm('danger'), padding: '1px 5px', fontSize: 10, marginLeft: 2 }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export function RenderIA({
@@ -508,6 +585,9 @@ export function RenderIA({
   suscripcion = null,
   onRenderGenerado = null,
   imagenRef3D = null,
+  materiales3D = {},
+  onGuardarMaterial3D = null,
+  onEliminarMaterial3D = null,
 }) {
   const savedCfg = leerConfigRender();
   const isMobile = useIsMobile();
@@ -634,6 +714,18 @@ export function RenderIA({
           </div>
         )}
       </div>
+
+      {/* Biblioteca de materiales 3D */}
+      <InnerSection label="Biblioteca de Materiales 3D" icon="🪵" badge={Object.keys(materiales3D).length > 0 ? String(Object.keys(materiales3D).length) : null} defaultOpen={false}>
+        <BibliotecaMateriales3D
+          materiales3D={materiales3D}
+          onGuardar={(cod, mat) => onGuardarMaterial3D?.(cod, mat)}
+          onEliminar={(cod) => onEliminarMaterial3D?.(cod)}
+        />
+        <p style={{ margin: '8px 0 0', fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          Subí el PNG del tablero (ej. melamina EGGER). En Vista 3D podrás asignarlo a cada módulo para ver la textura real antes de renderizar.
+        </p>
+      </InnerSection>
 
       {/* Empty state */}
       {sinDatos && (
