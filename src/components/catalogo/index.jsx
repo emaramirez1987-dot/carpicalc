@@ -199,6 +199,8 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
   const todosRoles = [...ROLES_PIEZA_DEFAULT, ...rolesTaller];
   const [avanzado, setAvanzado] = useState(false);
   const [dialogoRol, setDialogoRol] = useState(false);
+  const tienePos3d = !!(fp.posFormulas?.x || fp.posFormulas?.y || fp.posFormulas?.z);
+  const [pos3dAbierto, setPos3dAbierto] = useState(() => tienePos3d);
   const [nombreRolNuevo, setNombreRolNuevo] = useState("");
 
   const allVars = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor, ...(variables || {}) };
@@ -398,6 +400,86 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                     </span>
                   </div>
                 )}
+
+                {/* Acordeón: Posición 3D */}
+                <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid rgba(100,180,255,0.15)" }}>
+                  <button
+                    onClick={() => setPos3dAbierto(v => !v)}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", background: "rgba(100,180,255,0.04)", border: "none", cursor: "pointer" }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#6ab4e8" }}>
+                        ƒ Posición 3D
+                      </span>
+                      {tienePos3d && (
+                        <span style={{ fontSize: 9, background: "rgba(100,180,255,0.15)", color: "#6ab4e8", border: "1px solid rgba(100,180,255,0.30)", borderRadius: 4, padding: "1px 5px", fontFamily: "'DM Mono',monospace" }}>
+                          custom
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 9, color: "var(--text-muted)", opacity: 0.5 }}>{pos3dAbierto ? "▲" : "▼"}</span>
+                  </button>
+                  {pos3dAbierto && (
+                    <div style={{ padding: "10px 12px", background: "rgba(0,0,0,0.10)", borderTop: "1px solid rgba(100,180,255,0.10)", display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", lineHeight: 1.5 }}>
+                        Centro de la pieza relativo al origen del módulo <span style={{ color: "#6ab4e8" }}>(0,0,0)</span>. Vacío = posición automática por función 3D.
+                      </div>
+                      {[
+                        { label: "X  izq ← 0 → der",    axis: "x", hint: "0 · ej: -(ancho/2 - esp/2)" },
+                        { label: "Y  abajo ↓ 0 ↑ arriba", axis: "y", hint: "0 · ej: alto/2 - esp/2"    },
+                        { label: "Z  fondo ← 0 → frente", axis: "z", hint: "0 · ej: profundidad/2"      },
+                      ].map(({ label, axis, hint }) => {
+                        const val      = fp.posFormulas?.[axis] ?? "";
+                        const resultado = val ? evaluarFormula(val, allVars) : null;
+                        const valida   = !val || resultado !== null;
+                        return (
+                          <div key={axis} style={{ border: "1px solid rgba(100,180,255,0.12)", borderRadius: 7, padding: "7px 10px" }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "#6ab4e8", marginBottom: 5 }}>{label}</div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                              <input
+                                value={val}
+                                onChange={e => {
+                                  const v = e.target.value;
+                                  setFp(p => {
+                                    const pf = { ...(p.posFormulas || {}), [axis]: v || null };
+                                    return { ...p, posFormulas: pf };
+                                  });
+                                }}
+                                placeholder={hint}
+                                style={{
+                                  flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 12,
+                                  padding: "5px 9px", background: "var(--bg-base)", color: "var(--text-primary)",
+                                  border: `1px solid ${!valida ? "rgba(224,112,112,0.6)" : "rgba(100,180,255,0.20)"}`,
+                                  borderRadius: 6, outline: "none",
+                                }}
+                              />
+                              {val ? (
+                                <button
+                                  onClick={() => setFp(p => {
+                                    const pf = { ...(p.posFormulas || {}), [axis]: null };
+                                    return { ...p, posFormulas: pf };
+                                  })}
+                                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13, padding: "0 3px", lineHeight: 1 }}
+                                >×</button>
+                              ) : null}
+                              <div style={{ minWidth: 58, textAlign: "right" }}>
+                                {val && valida && resultado !== null ? (
+                                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: "#6ab4e8" }}>
+                                    {Math.round(resultado * 10) / 10}<span style={{ fontSize: 9, marginLeft: 2, color: "var(--text-muted)" }}>mm</span>
+                                  </span>
+                                ) : val && !valida ? (
+                                  <span style={{ fontSize: 9, color: "#e07070", fontFamily: "'DM Mono',monospace" }}>⚠ inv.</span>
+                                ) : (
+                                  <span style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>auto</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
                 {/* Toggle configuración avanzada */}
                 <button onClick={() => setAvanzado(v => !v)}

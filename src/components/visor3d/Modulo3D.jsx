@@ -171,7 +171,16 @@ export function buildPiezas3D(modulo, costos) {
         }
       }
 
-      // offset3d (mm) + rot3d (degrees) — replace old pos3d absolute override
+      // posFormulas: fórmulas de posición opcionales (en mm, relativas al origen del módulo)
+      // Si se definen, reemplazan el autoPos calculado por el rol en ese eje.
+      if (p.posFormulas) {
+        const pf = p.posFormulas;
+        if (pf.x != null && pf.x !== '') { const v = evaluarFormula(String(pf.x), modVars); if (v !== null) autoPos[0] = v / 1000; }
+        if (pf.y != null && pf.y !== '') { const v = evaluarFormula(String(pf.y), modVars); if (v !== null) autoPos[1] = v / 1000; }
+        if (pf.z != null && pf.z !== '') { const v = evaluarFormula(String(pf.z), modVars); if (v !== null) autoPos[2] = v / 1000; }
+      }
+
+      // offset3d (mm) + rot3d (degrees) — ajuste manual encima de la posición calculada
       const offset3d = p.offset3d || { x: 0, y: 0, z: 0 };
       const rot3d    = p.rot3d || 0;
       const pos = [
