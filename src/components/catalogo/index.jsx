@@ -2293,6 +2293,13 @@ function CatalogoModulos({
             modulo={visor3D.mod}
             costos={costos}
             onClose={() => setVisor3D(null)}
+            onActualizar={(nuevoMod) => {
+              const cod        = visor3D.cod;
+              const nuevosMods = { ...modulos, [cod]: nuevoMod };
+              setModulos(nuevosMods);
+              onSave(nuevosMods);
+              setVisor3D({ cod, mod: nuevoMod });
+            }}
           />
         </Suspense>
       )}
