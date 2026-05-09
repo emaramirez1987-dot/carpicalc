@@ -1,9 +1,24 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { CAMARAS } from '../visor3d/CamaraPresets.js';
 import { PanelModulos3D } from './PanelModulos3D.jsx';
 import { Escena3DPrincipal, WALL_Z } from './Escena3DPrincipal.jsx';
 import { useAutoLayout3D } from './useAutoLayout3D.js';
+
+// Observa data-theme en <html> sin necesitar useTema() (evita prop drilling)
+function useIsDark() {
+  const [isDark, setIsDark] = useState(
+    () => document.documentElement.getAttribute('data-theme') !== 'light'
+  );
+  useEffect(() => {
+    const obs = new MutationObserver(() => {
+      setIsDark(document.documentElement.getAttribute('data-theme') !== 'light');
+    });
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
+}
 
 // ── Colores por defecto de la escena ──────────────────────────────────────────
 const DEFAULTS = {
@@ -95,6 +110,7 @@ export function Vista3DTab({
   onCaptura,
   materiales3D = {},
 }) {
+  const isDark = useIsDark();
   const glRef = useRef(null);
 
   // Módulos en escena
@@ -424,7 +440,7 @@ export function Vista3DTab({
             camera={{ position: CAMARAS.iso.pos, fov: 45, near: 0.01, far: 100 }}
             gl={{ preserveDrawingBuffer: true }}
             onCreated={({ gl }) => { glRef.current = gl; }}
-            style={{ background: '#080a0d', width: '100%', height: '100%' }}
+            style={{ background: isDark ? '#080a0d' : '#eff0f4', width: '100%', height: '100%' }}
           >
             <Escena3DPrincipal
               modulosEnEscena={modulosEnEscena}
@@ -441,6 +457,7 @@ export function Vista3DTab({
               selectedCod={selectedCod}
               onUpdatePosicion={handleUpdatePosicion}
               materiales3D={materiales3D}
+              isDark={isDark}
             />
           </Canvas>
 

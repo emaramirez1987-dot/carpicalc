@@ -6,6 +6,25 @@ import { ROLES_3D, buildPiezas3D } from './Modulo3D.jsx';
 import { getMaterialProps } from './useMaterial3D.js';
 import { CAMARAS } from './CamaraPresets.js';
 
+// ── Theme palettes ────────────────────────────────────────────────────────────
+const DARK_PAL  = { bg: '#1a1c22', floor: '#1e2028', fogNear: 5,  fogFar: 14, grid1: '#2a2d35', grid2: '#232630', ambInt: 0.60 };
+const LIGHT_PAL = { bg: '#f0f1f4', floor: '#e8e9ed', fogNear: 8,  fogFar: 24, grid1: '#c4c5ce', grid2: '#d0d1da', ambInt: 0.88 };
+
+// Reads data-theme from <html> without importing useTema (avoids re-render chain)
+function useIsDark() {
+  const [isDark, setIsDark] = useState(
+    () => document.documentElement.getAttribute('data-theme') !== 'light'
+  );
+  useEffect(() => {
+    const obs = new MutationObserver(() => {
+      setIsDark(document.documentElement.getAttribute('data-theme') !== 'light');
+    });
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STATUS_COLOR = {
   unassigned: '#F59E0B',
@@ -83,22 +102,63 @@ function PiezaAnimada({ targetPos, targetRotYDeg, size, explodeVec, explodeFacto
   );
 }
 
-// ── Entorno (Fusion 360 style) ────────────────────────────────────────────────
-function Entorno({ floorY }) {
+// ── Entorno ───────────────────────────────────────────────────────────────────
+// Theme-aware: background, fog and floor lerp smoothly between dark/light.
+function Entorno({ floorY, isDark }) {
+  const { scene } = useThree();
+  const pal = isDark ? DARK_PAL : LIGHT_PAL;
+
+  // Persistent color refs — avoid allocating every frame
+  const bgCur    = useRef(new THREE.Color(pal.bg));
+  const bgTarget = useRef(new THREE.Color(pal.bg));
+  const fgTarget = useRef(new THREE.Color(pal.floor));
+  const floorRef = useRef();
+  const ambRef   = useRef();
+
+  // Initialize fog + background on first mount
+  useEffect(() => {
+    const p = document.documentElement.getAttribute('data-theme') !== 'light' ? DARK_PAL : LIGHT_PAL;
+    bgCur.current.set(p.bg);
+    scene.background = bgCur.current;
+    scene.fog = new THREE.Fog(p.bg, p.fogNear, p.fogFar);
+    return () => { scene.fog = null; scene.background = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene]);
+
+  // Update targets whenever theme changes
+  useEffect(() => {
+    const p = isDark ? DARK_PAL : LIGHT_PAL;
+    bgTarget.current.set(p.bg);
+    fgTarget.current.set(p.floor);
+    if (scene.fog) { scene.fog.near = p.fogNear; scene.fog.far = p.fogFar; }
+  }, [isDark, scene]);
+
+  useFrame(() => {
+    const k = 0.055;
+    bgCur.current.lerp(bgTarget.current, k);
+    scene.background = bgCur.current;
+    if (scene.fog)      scene.fog.color.copy(bgCur.current);
+    if (floorRef.current) floorRef.current.color.lerp(fgTarget.current, k);
+    const targetInt = isDark ? DARK_PAL.ambInt : LIGHT_PAL.ambInt;
+    if (ambRef.current) ambRef.current.intensity += (targetInt - ambRef.current.intensity) * k;
+  });
+
+  // GridHelper recreated when theme or floor position changes
   const grid = useMemo(() => {
-    const g = new THREE.GridHelper(6, 60, '#2a2d35', '#232630');
+    const p = isDark ? DARK_PAL : LIGHT_PAL;
+    const g = new THREE.GridHelper(10, 100, p.grid1, p.grid2);
     g.position.y = floorY;
     return g;
-  }, [floorY]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [floorY, isDark]);
 
   return (
     <>
-      <color attach="background" args={['#1a1c22']} />
-      <fog   attach="fog"        args={['#1a1c22', 5, 12]} />
+      <ambientLight ref={ambRef} intensity={pal.ambInt} />
       <primitive object={grid} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, floorY - 0.001, 0]} receiveShadow>
-        <planeGeometry args={[6, 6]} />
-        <meshStandardMaterial color="#1e2028" roughness={0.95} />
+        <planeGeometry args={[10, 10]} />
+        <meshStandardMaterial ref={floorRef} color={pal.floor} roughness={0.95} />
       </mesh>
     </>
   );
@@ -117,12 +177,11 @@ function CamaraController({ targetPos }) {
 }
 
 // ── EscenaEditor ──────────────────────────────────────────────────────────────
-function EscenaEditor({ piezas3D, explodeFactor, selectedIdx, onSelect, floorY, targetCam }) {
+function EscenaEditor({ piezas3D, explodeFactor, selectedIdx, onSelect, floorY, targetCam, isDark }) {
   return (
     <>
       <CamaraController targetPos={targetCam} />
-      <Entorno floorY={floorY} />
-      <ambientLight intensity={0.6} />
+      <Entorno floorY={floorY} isDark={isDark} />
       <directionalLight position={[3, 5, 4]}  intensity={1.1} castShadow shadow-mapSize={[1024, 1024]} />
       <directionalLight position={[-3, 2, -3]} intensity={0.28} color="#b8d4f0" />
       {piezas3D.map(p => (
@@ -188,6 +247,7 @@ const LABEL = ({ children }) => (
 
 // ── VisorModulo3D ─────────────────────────────────────────────────────────────
 export default function VisorModulo3D({ modulo, costos, onClose, onActualizar }) {
+  const isDark = useIsDark();
   const [selectedIdx,   setSelectedIdx]   = useState(null);
   const [stepMm,        setStepMm]        = useState(1);
   const [explodeFactor, setExplodeFactor] = useState(0);
@@ -406,7 +466,7 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
             gl={{ preserveDrawingBuffer: true, antialias: true }}
             onCreated={({ gl }) => { glRef.current = gl; }}
             onPointerMissed={() => { setSelectedIdx(null); document.body.style.cursor = 'default'; }}
-            style={{ width: '100%', height: '100%' }}
+            style={{ width: '100%', height: '100%', background: isDark ? '#1a1c22' : '#f0f1f4' }}
           >
             <EscenaEditor
               piezas3D={piezas3D}
@@ -415,6 +475,7 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
               onSelect={handleSelect}
               floorY={floorY}
               targetCam={targetCam}
+              isDark={isDark}
             />
           </Canvas>
 

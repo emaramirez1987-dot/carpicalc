@@ -7,6 +7,44 @@ import { useAutoLayout3D } from './useAutoLayout3D.js';
 
 export const WALL_Z = -0.6; // posición de la pared trasera
 
+// ── Theme palettes ─────────────────────────────────────────────────────────────
+const DARK_PAL  = { bg: '#080a0d', fogNear: 6,  fogFar: 18, ambInt: 0.70 };
+const LIGHT_PAL = { bg: '#eff0f4', fogNear: 10, fogFar: 28, ambInt: 0.90 };
+
+// ── EntornoEscena — adapts background, fog and ambient to theme ────────────────
+function EntornoEscena({ isDark }) {
+  const { scene } = useThree();
+  const bgCur    = useRef(new THREE.Color(isDark ? DARK_PAL.bg : LIGHT_PAL.bg));
+  const bgTarget = useRef(new THREE.Color(isDark ? DARK_PAL.bg : LIGHT_PAL.bg));
+  const ambRef   = useRef();
+
+  useEffect(() => {
+    const p = document.documentElement.getAttribute('data-theme') !== 'light' ? DARK_PAL : LIGHT_PAL;
+    bgCur.current.set(p.bg);
+    scene.background = bgCur.current;
+    scene.fog = new THREE.Fog(p.bg, p.fogNear, p.fogFar);
+    return () => { scene.fog = null; scene.background = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene]);
+
+  useEffect(() => {
+    const p = isDark ? DARK_PAL : LIGHT_PAL;
+    bgTarget.current.set(p.bg);
+    if (scene.fog) { scene.fog.near = p.fogNear; scene.fog.far = p.fogFar; }
+  }, [isDark, scene]);
+
+  useFrame(() => {
+    const k = 0.055;
+    bgCur.current.lerp(bgTarget.current, k);
+    scene.background = bgCur.current;
+    if (scene.fog) scene.fog.color.copy(bgCur.current);
+    const targetInt = isDark ? DARK_PAL.ambInt : LIGHT_PAL.ambInt;
+    if (ambRef.current) ambRef.current.intensity += (targetInt - ambRef.current.intensity) * k;
+  });
+
+  return <ambientLight ref={ambRef} intensity={isDark ? DARK_PAL.ambInt : LIGHT_PAL.ambInt} />;
+}
+
 // ── CamaraController ──────────────────────────────────────────────────────────
 function CamaraController({ targetPos }) {
   const { camera, controls } = useThree();
@@ -189,7 +227,7 @@ export function Escena3DPrincipal({
   mostrarPiso, mostrarPared, mostrarMesada,
   colorPiso, colorPared, colorMesada,
   camTarget, onSelectModulo, selectedCod, onUpdatePosicion,
-  materiales3D,
+  materiales3D, isDark = true,
 }) {
   const orbitRef     = useRef();
   const livePositions = useRef({}); // { [instanceId]: { x, z, hw, hd } }
@@ -213,7 +251,7 @@ export function Escena3DPrincipal({
       <CamaraController targetPos={camTarget} />
       <OrbitControls ref={orbitRef} makeDefault enableDamping dampingFactor={0.08} />
 
-      <ambientLight intensity={0.7} />
+      <EntornoEscena isDark={isDark} />
       <directionalLight position={[4, 8, 4]} intensity={1.4} castShadow shadow-mapSize={[2048, 2048]} />
       <directionalLight position={[-3, 4, -3]} intensity={0.4} color="#b8d4f0" />
       <directionalLight position={[0, -2, 4]} intensity={0.2} />
