@@ -103,47 +103,11 @@ function PiezaAnimada({ targetPos, targetRotYDeg, size, explodeVec, explodeFacto
 }
 
 // ── Entorno ───────────────────────────────────────────────────────────────────
-// Theme-aware: background, fog and floor lerp smoothly between dark/light.
+// Usa el enfoque declarativo de R3F (<color>, <fog>) para garantizar que
+// scene.background y scene.fog se actualicen correctamente al cambiar el tema.
 function Entorno({ floorY, isDark }) {
-  const { scene } = useThree();
-  const pal = isDark ? DARK_PAL : LIGHT_PAL;
+  const pal  = isDark ? DARK_PAL : LIGHT_PAL;
 
-  // Persistent color refs — avoid allocating every frame
-  const bgCur    = useRef(new THREE.Color(pal.bg));
-  const bgTarget = useRef(new THREE.Color(pal.bg));
-  const fgTarget = useRef(new THREE.Color(pal.floor));
-  const floorRef = useRef();
-  const ambRef   = useRef();
-
-  // Initialize fog + background on first mount
-  useEffect(() => {
-    const p = document.documentElement.getAttribute('data-theme') !== 'light' ? DARK_PAL : LIGHT_PAL;
-    bgCur.current.set(p.bg);
-    scene.background = bgCur.current;
-    scene.fog = new THREE.Fog(p.bg, p.fogNear, p.fogFar);
-    return () => { scene.fog = null; scene.background = null; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene]);
-
-  // Update targets whenever theme changes
-  useEffect(() => {
-    const p = isDark ? DARK_PAL : LIGHT_PAL;
-    bgTarget.current.set(p.bg);
-    fgTarget.current.set(p.floor);
-    if (scene.fog) { scene.fog.near = p.fogNear; scene.fog.far = p.fogFar; }
-  }, [isDark, scene]);
-
-  useFrame(() => {
-    const k = 0.055;
-    bgCur.current.lerp(bgTarget.current, k);
-    scene.background = bgCur.current;
-    if (scene.fog)      scene.fog.color.copy(bgCur.current);
-    if (floorRef.current) floorRef.current.color.lerp(fgTarget.current, k);
-    const targetInt = isDark ? DARK_PAL.ambInt : LIGHT_PAL.ambInt;
-    if (ambRef.current) ambRef.current.intensity += (targetInt - ambRef.current.intensity) * k;
-  });
-
-  // GridHelper recreated when theme or floor position changes
   const grid = useMemo(() => {
     const p = isDark ? DARK_PAL : LIGHT_PAL;
     const g = new THREE.GridHelper(10, 100, p.grid1, p.grid2);
@@ -154,11 +118,13 @@ function Entorno({ floorY, isDark }) {
 
   return (
     <>
-      <ambientLight ref={ambRef} intensity={pal.ambInt} />
+      <color attach="background" args={[pal.bg]} />
+      <fog   attach="fog"        args={[pal.bg, pal.fogNear, pal.fogFar]} />
+      <ambientLight intensity={pal.ambInt} />
       <primitive object={grid} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, floorY - 0.001, 0]} receiveShadow>
         <planeGeometry args={[10, 10]} />
-        <meshStandardMaterial ref={floorRef} color={pal.floor} roughness={0.95} />
+        <meshStandardMaterial color={pal.floor} roughness={0.95} />
       </mesh>
     </>
   );

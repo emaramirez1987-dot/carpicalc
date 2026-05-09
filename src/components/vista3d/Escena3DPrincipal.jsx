@@ -13,36 +13,14 @@ const LIGHT_PAL = { bg: '#eff0f4', fogNear: 10, fogFar: 28, ambInt: 0.90 };
 
 // ── EntornoEscena — adapts background, fog and ambient to theme ────────────────
 function EntornoEscena({ isDark }) {
-  const { scene } = useThree();
-  const bgCur    = useRef(new THREE.Color(isDark ? DARK_PAL.bg : LIGHT_PAL.bg));
-  const bgTarget = useRef(new THREE.Color(isDark ? DARK_PAL.bg : LIGHT_PAL.bg));
-  const ambRef   = useRef();
-
-  useEffect(() => {
-    const p = document.documentElement.getAttribute('data-theme') !== 'light' ? DARK_PAL : LIGHT_PAL;
-    bgCur.current.set(p.bg);
-    scene.background = bgCur.current;
-    scene.fog = new THREE.Fog(p.bg, p.fogNear, p.fogFar);
-    return () => { scene.fog = null; scene.background = null; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene]);
-
-  useEffect(() => {
-    const p = isDark ? DARK_PAL : LIGHT_PAL;
-    bgTarget.current.set(p.bg);
-    if (scene.fog) { scene.fog.near = p.fogNear; scene.fog.far = p.fogFar; }
-  }, [isDark, scene]);
-
-  useFrame(() => {
-    const k = 0.055;
-    bgCur.current.lerp(bgTarget.current, k);
-    scene.background = bgCur.current;
-    if (scene.fog) scene.fog.color.copy(bgCur.current);
-    const targetInt = isDark ? DARK_PAL.ambInt : LIGHT_PAL.ambInt;
-    if (ambRef.current) ambRef.current.intensity += (targetInt - ambRef.current.intensity) * k;
-  });
-
-  return <ambientLight ref={ambRef} intensity={isDark ? DARK_PAL.ambInt : LIGHT_PAL.ambInt} />;
+  const pal = isDark ? DARK_PAL : LIGHT_PAL;
+  return (
+    <>
+      <color attach="background" args={[pal.bg]} />
+      <fog   attach="fog"        args={[pal.bg, pal.fogNear, pal.fogFar]} />
+      <ambientLight intensity={pal.ambInt} />
+    </>
+  );
 }
 
 // ── CamaraController ──────────────────────────────────────────────────────────
