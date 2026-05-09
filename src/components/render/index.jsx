@@ -665,8 +665,12 @@ export function RenderIA({
       const imageBase64 = imagenRef3D ? imagenRef3D.replace(/^data:image\/\w+;base64,/, '') : null;
       const body = { workspaceId: wsId, prompt: promptCompleto, imageBase64, guidance, controlStrength };
       if (seed1 !== "") body.seed = parseInt(seed1, 10);
-      const res  = await fetch("/api/generate-render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const data = await res.json();
+      const res = await fetch("/api/generate-render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      let data;
+      try { data = await res.json(); }
+      catch { throw new Error(window.location.hostname === "localhost"
+        ? "Las funciones API no están disponibles en dev local. Deployá en Vercel o usá 'vercel dev'."
+        : `Error del servidor (HTTP ${res.status}). Revisá los logs en Vercel → Functions.`); }
       if (!res.ok) { setErrorRender(data.error || "Error al generar"); return; }
       setImagenUrl(data.imageUrl);
       if (onRenderGenerado) onRenderGenerado();
@@ -681,8 +685,12 @@ export function RenderIA({
       const b64  = await urlToBase64(imagenUrl);
       const body = { workspaceId: wsId, prompt: promptCompletoEscena, imageBase64: b64, guidance: sceneGuidance };
       if (seed2 !== "") body.seed = parseInt(seed2, 10);
-      const res  = await fetch("/api/generate-scene", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const data = await res.json();
+      const res = await fetch("/api/generate-scene", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      let data;
+      try { data = await res.json(); }
+      catch { throw new Error(window.location.hostname === "localhost"
+        ? "Las funciones API no están disponibles en dev local. Deployá en Vercel o usá 'vercel dev'."
+        : `Error del servidor (HTTP ${res.status}). Revisá los logs en Vercel → Functions.`); }
       if (!res.ok) { setErrorRender(data.error || "Error al generar escena"); return; }
       setImagenEscenaUrl(data.imageUrl);
     } catch (e) { setErrorRender(e.message); }

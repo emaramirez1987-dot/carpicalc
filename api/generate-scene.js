@@ -86,6 +86,11 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST")   return res.status(405).end();
 
+  // Guard: env vars requeridas
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.REPLICATE_API_TOKEN) {
+    return res.status(500).json({ error: "Variables de entorno no configuradas en Vercel (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, REPLICATE_API_TOKEN)." });
+  }
+
   const { workspaceId, prompt, imageBase64, guidance = 30, seed } = req.body || {};
   if (!workspaceId || !prompt || !imageBase64) {
     return res.status(400).json({ error: "workspaceId, prompt e imageBase64 requeridos" });
