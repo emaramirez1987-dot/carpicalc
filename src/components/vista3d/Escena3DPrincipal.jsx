@@ -207,6 +207,49 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
   );
 }
 
+const MESADA_THICKNESS = 0.04;
+const MESADA_DEPTH     = 0.62;
+
+// ── Mesada — sigue las posiciones vivas de los módulos bajos ──────────────────
+function Mesada({ livePositions, modulosEnEscena, modulos, color }) {
+  const meshRef = useRef();
+
+  useFrame(() => {
+    if (!meshRef.current) return;
+
+    const bajos = modulosEnEscena.filter(inst =>
+      !['aereo', 'torre'].includes(modulos?.[inst.codigo]?.tipoVisual || '')
+    );
+
+    if (bajos.length === 0) { meshRef.current.visible = false; return; }
+
+    let minX = Infinity, maxX = -Infinity, maxH = 0;
+    for (const inst of bajos) {
+      const live = livePositions.current[inst.instanceId];
+      if (!live) continue;
+      const h = (modulos[inst.codigo]?.dimensiones?.alto || 700) / 1000;
+      minX = Math.min(minX, live.x - live.hw);
+      maxX = Math.max(maxX, live.x + live.hw);
+      maxH = Math.max(maxH, h);
+    }
+
+    if (minX === Infinity) { meshRef.current.visible = false; return; }
+
+    meshRef.current.visible    = true;
+    meshRef.current.position.x = (minX + maxX) / 2;
+    meshRef.current.position.y = maxH + MESADA_THICKNESS / 2;
+    // scale.x sobre una geometría de ancho=1 equivale al ancho real
+    meshRef.current.scale.x    = maxX - minX;
+  });
+
+  return (
+    <mesh ref={meshRef}>
+      <boxGeometry args={[1, MESADA_THICKNESS, MESADA_DEPTH]} />
+      <meshStandardMaterial color={color} roughness={0.3} metalness={0.05} />
+    </mesh>
+  );
+}
+
 // ── Escena3DPrincipal ─────────────────────────────────────────────────────────
 export function Escena3DPrincipal({
   modulosEnEscena, modulos, costos,
@@ -217,23 +260,10 @@ export function Escena3DPrincipal({
   shadowIntensidad = 1, shadowDir = 'right',
   envPreset = 'apartment',
 }) {
-  const orbitRef      = useRef();
-  const livePositions = useRef({}); // { [instanceId]: { x, z, hw, hd } }
-  const layoutItems   = useAutoLayout3D(modulosEnEscena, modulos);
+  const orbitRef       = useRef();
+  const livePositions  = useRef({}); // { [instanceId]: { x, z, hw, hd } }
+  const layoutItems    = useAutoLayout3D(modulosEnEscena, modulos);
   const shadowLightPos = SHADOW_DIRS[shadowDir] || SHADOW_DIRS.right;
-
-  const bajosLayout = layoutItems.filter(it =>
-    !['aereo', 'torre'].includes(modulos?.[it.codigo]?.tipoVisual || '')
-  );
-  const mesadaWidth = bajosLayout.reduce(
-    (acc, it) => acc + (modulos?.[it.codigo]?.dimensiones?.ancho || 600) / 1000, 0
-  );
-  const MESADA_THICKNESS = 0.04;
-  const maxBajoH = bajosLayout.reduce(
-    (max, it) => Math.max(max, (modulos?.[it.codigo]?.dimensiones?.alto || 700) / 1000), 0
-  );
-  const mesadaY       = maxBajoH + MESADA_THICKNESS / 2;
-  const mesadaCenterX = mesadaWidth / 2;
 
   return (
     <>
@@ -292,11 +322,13 @@ export function Escena3DPrincipal({
         );
       })}
 
-      {mostrarMesada && mesadaWidth > 0 && (
-        <mesh position={[mesadaCenterX, mesadaY, 0]}>
-          <boxGeometry args={[mesadaWidth, MESADA_THICKNESS, 0.62]} />
-          <meshStandardMaterial color={colorMesada} roughness={0.3} metalness={0.05} />
-        </mesh>
+      {mostrarMesada && (
+        <Mesada
+          livePositions={livePositions}
+          modulosEnEscena={modulosEnEscena}
+          modulos={modulos}
+          color={colorMesada}
+        />
       )}
     </>
   );
