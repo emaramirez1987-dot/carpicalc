@@ -1,11 +1,11 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { OrbitControls, TransformControls } from '@react-three/drei';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { OrbitControls } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import Modulo3D from '../visor3d/Modulo3D.jsx';
 import { useAutoLayout3D } from './useAutoLayout3D.js';
 
-export const WALL_Z    = -0.6;  // posición de la pared trasera en la escena
-export const WALL_X_MIN = -5;   // límites laterales del espacio
+export const WALL_Z = -0.6; // posición de la pared trasera
 
 // ── CamaraController ──────────────────────────────────────────────────────────
 function CamaraController({ targetPos }) {
@@ -20,73 +20,123 @@ function CamaraController({ targetPos }) {
 }
 
 // ── ModuloEnEscena ────────────────────────────────────────────────────────────
+// Drag directo: click y arrastrá el módulo en el plano del piso.
+// Listeners DOM en el canvas → el drag no se corta aunque el cursor salga del mesh.
 function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef }) {
-  const groupRef                      = useRef();
-  const [groupObject, setGroupObject] = useState(null);
-  const [x, y, z]                     = inst.worldPos;
-  const mod                           = modulos?.[inst.codigo];
+  const groupRef   = useRef();
+  const isDragging = useRef(false);
+  const [hovered, setHovered] = useState(false);
+  const { camera, gl } = useThree();
 
+  const [x, y, z] = inst.worldPos;
+  const mod        = modulos?.[inst.codigo];
+  const halfDepth  = useMemo(
+    () => (mod?.dimensiones?.profundidad || 550) / 2 / 1000,
+    [mod]
+  );
+
+  // Plano del piso para raycasting durante drag
+  const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
+  const raycaster  = useMemo(() => new THREE.Raycaster(), []);
+
+  // Ref "latest" para evitar closures viejas en los listeners DOM
+  const latestRef = useRef({ y, halfDepth, instanceId: inst.instanceId, onUpdatePosicion });
   useEffect(() => {
-    if (groupRef.current) setGroupObject(groupRef.current);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    latestRef.current = { y, halfDepth, instanceId: inst.instanceId, onUpdatePosicion };
+  });
 
+  // Listeners DOM en el canvas — funcionan aunque el cursor salga del módulo
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const onMove = (e) => {
+      if (!isDragging.current) return;
+      const rect = canvas.getBoundingClientRect();
+      const nx = ((e.clientX - rect.left) / rect.width)  *  2 - 1;
+      const ny = -((e.clientY - rect.top)  / rect.height) *  2 + 1;
+      raycaster.setFromCamera({ x: nx, y: ny }, camera);
+      const hit = new THREE.Vector3();
+      if (raycaster.ray.intersectPlane(floorPlane, hit) && groupRef.current) {
+        groupRef.current.position.x = hit.x;
+        groupRef.current.position.z = Math.max(hit.z, WALL_Z + latestRef.current.halfDepth);
+      }
+    };
+
+    const onUp = () => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      if (orbitRef.current) orbitRef.current.enabled = true;
+      canvas.style.cursor = 'auto';
+      if (groupRef.current) {
+        const p = groupRef.current.position;
+        latestRef.current.onUpdatePosicion(latestRef.current.instanceId, [p.x, latestRef.current.y, p.z]);
+      }
+    };
+
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerup',   onUp);
+    return () => {
+      canvas.removeEventListener('pointermove', onMove);
+      canvas.removeEventListener('pointerup',   onUp);
+    };
+  }, [camera, gl, floorPlane, raycaster, orbitRef]);
+
+  // Bloquear Y + colisión con pared en cada frame
   useFrame(() => {
     if (!groupRef.current) return;
-    // Bloquear eje Y — solo movimiento en X y Z
     groupRef.current.position.y = y;
-    // Colisión con pared trasera — el módulo no puede atravesarla
-    const halfDepth = (mod?.dimensiones?.profundidad || 550) / 2 / 1000;
-    const minZ = WALL_Z + halfDepth;
-    if (groupRef.current.position.z < minZ) {
-      groupRef.current.position.z = minZ;
+    if (groupRef.current.position.z < WALL_Z + halfDepth) {
+      groupRef.current.position.z = WALL_Z + halfDepth;
     }
   });
 
   if (!mod) return null;
 
   return (
-    <>
-      {groupObject && (
-        <TransformControls
-          object={groupObject}
-          mode="translate"
-          enabled={isSelected}
-          visible={isSelected}
-          onMouseDown={() => { if (orbitRef.current) orbitRef.current.enabled = false; }}
-          onMouseUp={() => {
-            if (orbitRef.current) orbitRef.current.enabled = true;
-            if (groupRef.current) {
-              const p = groupRef.current.position;
-              onUpdatePosicion(inst.instanceId, [p.x, y, p.z]);
-            }
-          }}
-        />
-      )}
+    <group
+      ref={groupRef}
+      position={[x, y, z]}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        isDragging.current = true;
+        if (orbitRef.current) orbitRef.current.enabled = false;
+        gl.domElement.style.cursor = 'grabbing';
+        onSelect();
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        setHovered(true);
+        gl.domElement.style.cursor = isDragging.current ? 'grabbing' : 'grab';
+      }}
+      onPointerOut={() => {
+        setHovered(false);
+        if (!isDragging.current) gl.domElement.style.cursor = 'auto';
+      }}
+    >
+      <Modulo3D
+        modulo={mod}
+        costos={costos}
+        explodeFactor={0}
+        selectedPieza={null}
+        onSelectPieza={null}
+      />
 
-      <group
-        ref={groupRef}
-        position={[x, y, z]}
-        onClick={(e) => { e.stopPropagation(); onSelect(); }}
-      >
-        <Modulo3D
-          modulo={mod}
-          costos={costos}
-          explodeFactor={0}
-          selectedPieza={null}
-          onSelectPieza={null}
-        />
-        {isSelected && (
-          <mesh>
-            <boxGeometry args={[
-              (mod.dimensiones?.ancho       || 600) / 1000 + 0.02,
-              (mod.dimensiones?.alto        || 700) / 1000 + 0.02,
-              (mod.dimensiones?.profundidad || 550) / 1000 + 0.02,
-            ]} />
-            <meshStandardMaterial color="#D4AF37" transparent opacity={0.12} />
-          </mesh>
-        )}
-      </group>
-    </>
+      {/* Highlight hover / selección */}
+      {(isSelected || hovered) && (
+        <mesh>
+          <boxGeometry args={[
+            (mod.dimensiones?.ancho       || 600) / 1000 + 0.015,
+            (mod.dimensiones?.alto        || 700) / 1000 + 0.015,
+            (mod.dimensiones?.profundidad || 550) / 1000 + 0.015,
+          ]} />
+          <meshStandardMaterial
+            color={isSelected ? '#D4AF37' : '#ffffff'}
+            transparent
+            opacity={isSelected ? 0.13 : 0.06}
+          />
+        </mesh>
+      )}
+    </group>
   );
 }
 
@@ -103,11 +153,13 @@ export function Escena3DPrincipal({
   const bajosLayout = layoutItems.filter(it =>
     !['aereo', 'torre'].includes(modulos?.[it.codigo]?.tipoVisual || '')
   );
-  const mesadaWidth   = bajosLayout.reduce((acc, it) =>
-    acc + (modulos?.[it.codigo]?.dimensiones?.ancho || 600) / 1000, 0);
+  const mesadaWidth = bajosLayout.reduce(
+    (acc, it) => acc + (modulos?.[it.codigo]?.dimensiones?.ancho || 600) / 1000, 0
+  );
   const MESADA_THICKNESS = 0.04;
-  const maxBajoH      = bajosLayout.reduce((max, it) =>
-    Math.max(max, (modulos?.[it.codigo]?.dimensiones?.alto || 700) / 1000), 0);
+  const maxBajoH = bajosLayout.reduce(
+    (max, it) => Math.max(max, (modulos?.[it.codigo]?.dimensiones?.alto || 700) / 1000), 0
+  );
   const mesadaY       = maxBajoH + MESADA_THICKNESS / 2;
   const mesadaCenterX = mesadaWidth / 2;
 
