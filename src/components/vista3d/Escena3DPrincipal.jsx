@@ -8,10 +8,17 @@ import { useAutoLayout3D } from './useAutoLayout3D.js';
 export const WALL_Z = -0.6; // posición de la pared trasera
 
 // ── Theme palettes ─────────────────────────────────────────────────────────────
-const DARK_PAL  = { bg: '#080a0d', fogNear: 6,  fogFar: 18, ambInt: 0.70 };
-const LIGHT_PAL = { bg: '#eff0f4', fogNear: 10, fogFar: 28, ambInt: 0.90 };
+const DARK_PAL  = { bg: '#080a0d', fogNear: 6,  fogFar: 18, ambInt: 0.35, hemiSky: '#1e2540', hemiGnd: '#060709', hemiInt: 0.55 };
+const LIGHT_PAL = { bg: '#eff0f4', fogNear: 10, fogFar: 28, ambInt: 0.45, hemiSky: '#c8d8f0', hemiGnd: '#c4c0ba', hemiInt: 0.70 };
 
-// ── EntornoEscena — adapts background, fog and ambient to theme ────────────────
+// ── Shadow direction presets ───────────────────────────────────────────────────
+const SHADOW_DIRS = {
+  left:  [-5, 7, 3],
+  right: [ 5, 7, 3],
+  top:   [ 1, 10, 2],
+};
+
+// ── EntornoEscena — adapts background, fog, ambient and hemisphere to theme ───
 function EntornoEscena({ isDark }) {
   const pal = isDark ? DARK_PAL : LIGHT_PAL;
   return (
@@ -19,6 +26,7 @@ function EntornoEscena({ isDark }) {
       <color attach="background" args={[pal.bg]} />
       <fog   attach="fog"        args={[pal.bg, pal.fogNear, pal.fogFar]} />
       <ambientLight intensity={pal.ambInt} />
+      <hemisphereLight args={[pal.hemiSky, pal.hemiGnd, pal.hemiInt]} />
     </>
   );
 }
@@ -206,10 +214,12 @@ export function Escena3DPrincipal({
   colorPiso, colorPared, colorMesada,
   camTarget, onSelectModulo, selectedCod, onUpdatePosicion,
   materiales3D, isDark = true,
+  shadowIntensidad = 1, shadowDir = 'right',
 }) {
-  const orbitRef     = useRef();
+  const orbitRef      = useRef();
   const livePositions = useRef({}); // { [instanceId]: { x, z, hw, hd } }
-  const layoutItems  = useAutoLayout3D(modulosEnEscena, modulos);
+  const layoutItems   = useAutoLayout3D(modulosEnEscena, modulos);
+  const shadowLightPos = SHADOW_DIRS[shadowDir] || SHADOW_DIRS.right;
 
   const bajosLayout = layoutItems.filter(it =>
     !['aereo', 'torre'].includes(modulos?.[it.codigo]?.tipoVisual || '')
@@ -230,21 +240,34 @@ export function Escena3DPrincipal({
       <OrbitControls ref={orbitRef} makeDefault enableDamping dampingFactor={0.08} />
 
       <EntornoEscena isDark={isDark} />
-      <directionalLight position={[4, 8, 4]} intensity={1.4} castShadow shadow-mapSize={[2048, 2048]} />
-      <directionalLight position={[-3, 4, -3]} intensity={0.4} color="#b8d4f0" />
-      <directionalLight position={[0, -2, 4]} intensity={0.2} />
+      <directionalLight position={shadowLightPos} intensity={1.4 * shadowIntensidad} castShadow shadow-mapSize={[2048, 2048]} />
+      <directionalLight position={[-3, 4, -3]} intensity={0.35} color="#b8d4f0" />
+      <directionalLight position={[0, -2, 4]} intensity={0.15} />
 
       {mostrarPiso && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[10, 10]} />
-          <meshStandardMaterial color={colorPiso} roughness={0.9} />
+          <meshStandardMaterial color={colorPiso} roughness={0.92} metalness={0.01} />
         </mesh>
       )}
 
       {mostrarPared && (
         <mesh position={[0, 1.5, WALL_Z]}>
           <planeGeometry args={[10, 3]} />
-          <meshStandardMaterial color={colorPared} roughness={0.85} side={2} />
+          <meshStandardMaterial color={colorPared} roughness={0.82} metalness={0.0} side={2} />
+        </mesh>
+      )}
+
+      {/* Floor/wall junction shadow strip */}
+      {mostrarPiso && mostrarPared && (
+        <mesh position={[0, 0.001, WALL_Z + 0.07]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[10, 0.14]} />
+          <meshStandardMaterial
+            color={isDark ? '#030405' : '#a8a6a3'}
+            roughness={1}
+            transparent
+            opacity={0.55}
+          />
         </mesh>
       )}
 

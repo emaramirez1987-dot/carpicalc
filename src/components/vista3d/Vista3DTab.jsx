@@ -193,11 +193,9 @@ const DPadBtn = ({ onClick, children, title }) => {
 };
 
 // ── Colores default de la escena ───────────────────────────────────────────────
-const DEFAULTS = {
-  colorPiso:   '#2a2c30',
-  colorPared:  '#1e2128',
-  colorMesada: '#c8b89a',
-};
+const DEFAULTS = { colorMesada: '#c8b89a' };
+const initColor = (dark, light) =>
+  () => document.documentElement.getAttribute('data-theme') === 'light' ? light : dark;
 
 // ── Vista3DTab ─────────────────────────────────────────────────────────────────
 export function Vista3DTab({
@@ -219,12 +217,15 @@ export function Vista3DTab({
   const [mostrarPiso,     setMostrarPiso]      = useState(true);
   const [mostrarPared,    setMostrarPared]     = useState(true);
   const [mostrarMesada,   setMostrarMesada]    = useState(true);
-  const [colorPiso,       setColorPiso]        = useState(DEFAULTS.colorPiso);
-  const [colorPared,      setColorPared]       = useState(DEFAULTS.colorPared);
-  const [colorMesada,     setColorMesada]      = useState(DEFAULTS.colorMesada);
-  const [camTarget,       setCamTarget]        = useState(CAMARAS.iso.pos);
-  const [camView,         setCamView]          = useState('iso');
-  const [capturado,       setCapturado]        = useState(false);
+  const [colorPiso,        setColorPiso]        = useState(initColor('#2e3136', '#ccc9c3'));
+  const [colorPared,       setColorPared]       = useState(initColor('#222530', '#d6d4d0'));
+  const [colorMesada,      setColorMesada]      = useState(DEFAULTS.colorMesada);
+  const [camTarget,        setCamTarget]        = useState(CAMARAS.iso.pos);
+  const [camView,          setCamView]          = useState('iso');
+  const [capturado,        setCapturado]        = useState(false);
+  const [shadowIntensidad, setShadowIntensidad] = useState(1.0);
+  const [shadowDir,        setShadowDir]        = useState('right');
+  const [editTab,          setEditTab]          = useState('mat');
 
   const irACamara = (key) => { setCamView(key); setCamTarget([...CAMARAS[key].pos]); };
 
@@ -316,112 +317,161 @@ export function Vista3DTab({
 
         {/* Panel inferior izquierdo */}
         {modulosEnEscena.length > 0 && (
-          <div style={{
-            padding: '10px 12px',
-            borderTop: `1px solid ${T.borderSub}`,
-            flexShrink: 0,
-          }}>
-            <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, marginBottom: 8, letterSpacing: '0.07em' }}>
+          <div style={{ borderTop: `1px solid ${T.borderSub}`, flexShrink: 0 }}>
+
+            {/* Count bar */}
+            <div style={{ padding: '6px 12px 4px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
               EN ESCENA · {modulosEnEscena.length}
             </div>
 
+            {/* Per-module tabbed edit panel */}
             {selectedCod && (
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, marginBottom: 6, letterSpacing: '0.09em' }}>
-                  MOVER SELECCIONADO
+              <div style={{ borderTop: `1px solid ${T.borderSub}` }}>
+                {/* Tab bar */}
+                <div style={{ display: 'flex', borderBottom: `1px solid ${T.borderSub}`, padding: '0 8px' }}>
+                  {[['mat', 'Material'], ['mover', 'Posición']].map(([tab, lbl]) => (
+                    <button
+                      key={tab}
+                      onClick={() => setEditTab(tab)}
+                      style={{
+                        padding: '6px 9px 5px',
+                        fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                        letterSpacing: '0.08em',
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: editTab === tab ? '#D4AF37' : T.text,
+                        borderBottom: editTab === tab ? '2px solid #D4AF37' : '2px solid transparent',
+                        marginBottom: -1,
+                        transition: 'color 0.12s',
+                      }}
+                    >
+                      {lbl.toUpperCase()}
+                    </button>
+                  ))}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 3 }}>
-                  <DPadBtn onClick={() => handleNudge(0, -NUDGE_STEP)} title="Acercar a pared">▲</DPadBtn>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginBottom: 3 }}>
-                  <DPadBtn onClick={() => handleNudge(-NUDGE_STEP, 0)} title="Izquierda">◀</DPadBtn>
-                  <div style={{ width: 28, height: 28, borderRadius: 6, background: T.dotBg, border: `1px solid ${T.dotBord}` }} />
-                  <DPadBtn onClick={() => handleNudge(NUDGE_STEP, 0)} title="Derecha">▶</DPadBtn>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
-                  <DPadBtn onClick={() => handleNudge(0, NUDGE_STEP)} title="Alejar de pared">▼</DPadBtn>
-                </div>
-
-                {materialesKeys.length > 0 && (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, marginBottom: 5, letterSpacing: '0.09em' }}>
-                      MATERIAL
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      <button
-                        onClick={() => handleAsignarTextura(null)}
-                        style={{
-                          padding: '3px 8px', borderRadius: 5, cursor: 'pointer', fontSize: 9,
-                          fontFamily: "'DM Mono',monospace",
-                          background: !texturaCodActual ? 'rgba(212,175,55,0.16)' : T.matBg,
-                          border: !texturaCodActual ? '1px solid rgba(212,175,55,0.45)' : `1px solid ${T.matBord}`,
-                          color: !texturaCodActual ? '#D4AF37' : T.matText,
-                        }}
-                      >—</button>
-                      {materialesKeys.map(cod => (
+                {/* Material tab */}
+                {editTab === 'mat' && (
+                  <div style={{ padding: 10, maxHeight: 200, overflowY: 'auto' }}>
+                    {materialesKeys.length === 0 ? (
+                      <p style={{
+                        fontSize: 10, color: T.text, fontFamily: "'DM Mono',monospace",
+                        textAlign: 'center', margin: '14px 0', lineHeight: 1.6,
+                      }}>
+                        Cargá materiales en la pestaña<br />Render IA
+                      </p>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+                        {/* None option */}
                         <button
-                          key={cod}
-                          onClick={() => handleAsignarTextura(cod)}
-                          title={materiales3D[cod].nombre || cod}
+                          onClick={() => handleAsignarTextura(null)}
                           style={{
-                            padding: '3px 8px', borderRadius: 5, cursor: 'pointer', fontSize: 9,
-                            fontFamily: "'DM Mono',monospace",
-                            background: texturaCodActual === cod ? 'rgba(212,175,55,0.16)' : T.matBg,
-                            border: texturaCodActual === cod ? '1px solid rgba(212,175,55,0.45)' : `1px solid ${T.matBord}`,
-                            color: texturaCodActual === cod ? '#D4AF37' : T.matText,
-                            display: 'flex', alignItems: 'center', gap: 4,
+                            borderRadius: 6, cursor: 'pointer', overflow: 'hidden',
+                            background: !texturaCodActual ? 'rgba(212,175,55,0.12)' : T.matBg,
+                            border: !texturaCodActual ? '1.5px solid rgba(212,175,55,0.50)' : `1px solid ${T.matBord}`,
+                            padding: 0, display: 'flex', flexDirection: 'column',
                           }}
                         >
+                          <div style={{
+                            width: '100%', height: 36,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 16, color: T.textDim, background: T.dotBg,
+                          }}>—</div>
                           <span style={{
-                            display: 'inline-block', width: 10, height: 10, borderRadius: 2, flexShrink: 0,
-                            backgroundImage: `url(${materiales3D[cod].dataUrl})`,
-                            backgroundSize: 'cover',
-                            border: `1px solid ${T.swatchBord}`,
-                          }} />
-                          {cod}
+                            fontSize: 8, fontFamily: "'DM Mono',monospace",
+                            color: !texturaCodActual ? '#D4AF37' : T.text,
+                            padding: '3px 5px', letterSpacing: '0.04em',
+                            textAlign: 'left',
+                          }}>
+                            SIN TEXTURA
+                          </span>
                         </button>
-                      ))}
-                    </div>
+
+                        {materialesKeys.map(cod => (
+                          <button
+                            key={cod}
+                            onClick={() => handleAsignarTextura(cod)}
+                            title={materiales3D[cod].nombre || cod}
+                            style={{
+                              borderRadius: 6, cursor: 'pointer', overflow: 'hidden',
+                              background: texturaCodActual === cod ? 'rgba(212,175,55,0.12)' : T.matBg,
+                              border: texturaCodActual === cod ? '1.5px solid rgba(212,175,55,0.50)' : `1px solid ${T.matBord}`,
+                              padding: 0, display: 'flex', flexDirection: 'column',
+                            }}
+                          >
+                            <div style={{
+                              width: '100%', height: 36,
+                              backgroundImage: `url(${materiales3D[cod].dataUrl})`,
+                              backgroundSize: 'cover', backgroundPosition: 'center',
+                            }} />
+                            <span style={{
+                              fontSize: 8, fontFamily: "'DM Mono',monospace",
+                              color: texturaCodActual === cod ? '#D4AF37' : T.text,
+                              padding: '3px 5px', letterSpacing: '0.04em',
+                              textAlign: 'left',
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {materiales3D[cod].nombre || cod}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                <button
-                  onClick={handleSnapToWall}
-                  title="Pegar el módulo a la pared trasera"
-                  style={{
-                    width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
-                    background: T.snapBg, border: `1px solid ${T.snapBord}`,
-                    color: T.snapText, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                    letterSpacing: '0.04em',
-                  }}
-                >
-                  ⊡ Pegar a pared
-                </button>
-
-                <button
-                  onClick={handleEliminarSeleccionado}
-                  style={{
-                    width: '100%', marginTop: 5, padding: '5px 0', borderRadius: 6, cursor: 'pointer',
-                    background: T.rmBg, border: `1px solid ${T.rmBord}`,
-                    color: T.rmText, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                  }}
-                >
-                  ✕ Quitar módulo
-                </button>
+                {/* Mover tab */}
+                {editTab === 'mover' && (
+                  <div style={{ padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 3 }}>
+                      <DPadBtn onClick={() => handleNudge(0, -NUDGE_STEP)} title="Acercar a pared">▲</DPadBtn>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginBottom: 3 }}>
+                      <DPadBtn onClick={() => handleNudge(-NUDGE_STEP, 0)} title="Izquierda">◀</DPadBtn>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: T.dotBg, border: `1px solid ${T.dotBord}` }} />
+                      <DPadBtn onClick={() => handleNudge(NUDGE_STEP, 0)} title="Derecha">▶</DPadBtn>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
+                      <DPadBtn onClick={() => handleNudge(0, NUDGE_STEP)} title="Alejar de pared">▼</DPadBtn>
+                    </div>
+                    <button
+                      onClick={handleSnapToWall}
+                      title="Pegar el módulo a la pared trasera"
+                      style={{
+                        width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
+                        background: T.snapBg, border: `1px solid ${T.snapBord}`,
+                        color: T.snapText, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                        letterSpacing: '0.04em', marginBottom: 5,
+                      }}
+                    >
+                      ⊡ Pegar a pared
+                    </button>
+                    <button
+                      onClick={handleEliminarSeleccionado}
+                      style={{
+                        width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
+                        background: T.rmBg, border: `1px solid ${T.rmBord}`,
+                        color: T.rmText, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                      }}
+                    >
+                      ✕ Quitar módulo
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
-            <button
-              onClick={handleLimpiarEscena}
-              style={{
-                width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
-                background: T.clrBg, border: `1px solid ${T.clrBord}`,
-                color: T.clrText, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-              }}
-            >
-              Limpiar escena
-            </button>
+            <div style={{ padding: '8px 12px', borderTop: `1px solid ${T.borderSub}` }}>
+              <button
+                onClick={handleLimpiarEscena}
+                style={{
+                  width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
+                  background: T.clrBg, border: `1px solid ${T.clrBord}`,
+                  color: T.clrText, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                }}
+              >
+                Limpiar escena
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -455,6 +505,20 @@ export function Vista3DTab({
           <ColorToggle value={mostrarPiso}   onToggle={() => setMostrarPiso(v => !v)}   color={colorPiso}   onColor={setColorPiso}   label="Piso" />
           <ColorToggle value={mostrarPared}  onToggle={() => setMostrarPared(v => !v)}  color={colorPared}  onColor={setColorPared}  label="Pared" />
           <ColorToggle value={mostrarMesada} onToggle={() => setMostrarMesada(v => !v)} color={colorMesada} onColor={setColorMesada} label="Mesada" />
+
+          <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
+
+          <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, marginRight: 1, letterSpacing: '0.09em' }}>LUZ</span>
+          {[['left','←'],['right','→'],['top','↑']].map(([dir, icon]) => (
+            <BTN key={dir} active={shadowDir === dir} onClick={() => setShadowDir(dir)}>{icon}</BTN>
+          ))}
+          <input
+            type="range" min={20} max={140} step={5}
+            value={Math.round(shadowIntensidad * 100)}
+            onChange={e => setShadowIntensidad(Number(e.target.value) / 100)}
+            style={{ width: 52, accentColor: '#D4AF37', cursor: 'pointer', verticalAlign: 'middle' }}
+            title={`Intensidad: ${Math.round(shadowIntensidad * 100)}%`}
+          />
 
           <div style={{ flex: 1 }} />
 
@@ -525,6 +589,8 @@ export function Vista3DTab({
               onUpdatePosicion={handleUpdatePosicion}
               materiales3D={materiales3D}
               isDark={isDark}
+              shadowIntensidad={shadowIntensidad}
+              shadowDir={shadowDir}
             />
           </Canvas>
 
