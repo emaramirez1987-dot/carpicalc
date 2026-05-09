@@ -9,8 +9,6 @@ import { fmtPeso, fmtNum, fmtFecha,
          generarTextoWhatsApp } from '../../utils.js';
 import { ESTADOS_TRABAJO, TIPO_MAT } from '../../constants.js';
 import { imprimirPresupuesto } from '../presupuesto/index.jsx';
-import { guardarPlano, leerPlano } from '../../storage.js';
-import SVGPlano from '../plano/SVGPlano.jsx';
 
 // ── Paper document colors (always light — mimics printed sheet) ─────────
 const P = {
@@ -223,8 +221,6 @@ function VistaPrevia({
       setItemsOcultos(p.itemsOcultos || []);
       setSelectorAbierto(false);
     }
-    // El plano es gestionado por PlanoDos y por handleCargarPresupuesto en App.js.
-    // Vista Previa no debe sobreescribirlo o se pierden los arreglos del usuario.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presSelId]);
 
@@ -290,7 +286,6 @@ function VistaPrevia({
   };
 
   const limpiarVista = () => {
-    guardarPlano({ bloques: [], altoCielorraso: 2400 });
     setPresSelId(null);
     setSelectorAbierto(true);
     setBusqueda("");
@@ -389,7 +384,6 @@ function VistaPrevia({
           <>
             <div style={{ width: 1, height: 18, background: "var(--border)", flexShrink: 0 }} />
             <button onClick={() => agregarHoja('continua')} style={{ ...btnBase, padding: "5px 10px", fontSize: 10 }}>+ Hoja</button>
-            <button onClick={() => agregarHoja('plano')} style={{ ...btnBase, padding: "5px 10px", fontSize: 10 }}>📐 Plano</button>
           </>
         )}
 
@@ -502,7 +496,7 @@ function VistaPrevia({
                 </div>
                 {extraPages.map((page, i) => (
                   <div key={page.id} onClick={() => setPaginaActiva(page.id)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 8px 6px 14px", borderRadius: "6px 6px 0 0", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, marginBottom: -1, transition: "all 0.15s", background: paginaActiva === page.id ? "#fff" : "transparent", border: `1px solid ${paginaActiva === page.id ? "#ddd" : "transparent"}`, borderBottom: `1px solid ${paginaActiva === page.id ? "#fff" : "transparent"}`, color: paginaActiva === page.id ? "#1a1a1a" : "#888", opacity: paginaActiva === page.id ? 1 : 0.65 }}>
-                    <span>{page.tipo === 'plano' ? '📐 Plano' : `Pág. ${i + 2}`}</span>
+                    <span>{`Pág. ${i + 2}`}</span>
                     <button onClick={e => { e.stopPropagation(); eliminarHoja(page.id); }} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 12, color: "#999", padding: 0, lineHeight: 1, opacity: 0.6 }}>×</button>
                   </div>
                 ))}
@@ -567,18 +561,6 @@ function VistaPrevia({
               if (paginaActiva !== 'main') {
                 const activePage = extraPages.find(p => p.id === paginaActiva);
                 if (!activePage) return null;
-                if (activePage.tipo === 'plano') {
-                  const planoData = leerPlano();
-                  return (
-                    <div style={paperStyle}>
-                      {cabecera}
-                      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: P.accent, marginBottom: 12, paddingBottom: 6, borderBottom: `1.5px solid ${P.accent}` }}>
-                        Plano 2D
-                      </div>
-                      <SVGPlano bloques={planoData?.bloques || []} altoCielorraso={planoData?.altoCielorraso || 2400} onSelect={() => {}} modulos={modulos} composicionOverride={presSel?.composicionOverride || {}} temaClaro={true} />
-                    </div>
-                  );
-                }
                 return <div style={paperStyle}>{cabecera}</div>;
               }
 

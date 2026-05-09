@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { SectionTitle } from "../ui/index.jsx";
 import useIsMobile from "../../hooks/useIsMobile.js";
 import { EGGER_MATERIALES } from "../../data/egger_prompts.js";
-import { leerPlano, leerPromptsRender, guardarPromptsRender, leerConfigRender, guardarConfigRender } from "../../storage.js";
+import { leerPromptsRender, guardarPromptsRender, leerConfigRender, guardarConfigRender } from "../../storage.js";
 import { PLANES_RENDER } from "../../constants.js";
 import { supabase } from "../../lib/supabase.js";
-import { generarImagenReferencia } from "../plano/planoUtils.js";
-import SVGPlano from "../plano/SVGPlano.jsx";
 
 // ── Prompts base por defecto ──────────────────────────────────────────────────
 
@@ -477,14 +475,12 @@ function PanelRender({ imagenUrl, imagenEscenaUrl, generando, generandoEscena, c
   );
 }
 
-// ── PanelSVG ──────────────────────────────────────────────────────────────────
+// ── Panel3DRef ────────────────────────────────────────────────────────────────
 
-function PanelSVG({ bloques, idsBajos, idsAltos, altoCielorraso, composicionOverride, modulos, compact = false }) {
-  const bloquesAltos = bloques.filter(b => idsAltos.includes(b.id));
-  const bloquesBajos = bloques.filter(b => idsBajos.includes(b.id));
+function Panel3DRef({ imagenRef3D, compact = false }) {
   return (
-    <div style={{ flex: 1, background: "#FAFAF7", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
-      <SVGPlano bloquesAltos={bloquesAltos} bloquesBajos={bloquesBajos} altoCielorraso={altoCielorraso} modulos={modulos} composicionOverride={composicionOverride} onSelect={null} selectedId={null} temaClaro={true} fitToModules={true} compact={compact} />
+    <div style={{ flex: 1, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+      <img src={imagenRef3D} alt="Captura 3D" style={{ maxWidth: "100%", maxHeight: compact ? 200 : "none", objectFit: "contain", borderRadius: 8 }} />
     </div>
   );
 }
@@ -503,31 +499,21 @@ function calcularCreditos(suscripcion) {
   return { usados, limite, restantes, bloqueado: restantes === 0 };
 }
 
-function derivarSecuencias(bloques) {
-  return {
-    idsBajos: bloques.filter(b => b.tipoVisual !== "aereo").map(b => b.id),
-    idsAltos: bloques.filter(b => b.tipoVisual === "aereo").map(b => b.id),
-  };
-}
-
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export function RenderIA({
-  modulos = {},
-  composicionOverride = {},
-  presupuestoActivoId = null,
+  modulos = {},               // eslint-disable-line no-unused-vars
+  composicionOverride = {},   // eslint-disable-line no-unused-vars
+  presupuestoActivoId = null, // eslint-disable-line no-unused-vars
   suscripcion = null,
   onRenderGenerado = null,
+  imagenRef3D = null,
 }) {
   const savedCfg = leerConfigRender();
   const isMobile = useIsMobile();
 
   // Visualización
   const [modo,     setModo]     = useState(isMobile ? "render" : "split");
-  const [bloques,  setBloques]  = useState([]);
-  const [idsBajos, setIdsBajos] = useState([]);
-  const [idsAltos, setIdsAltos] = useState([]);
-  const [alto,     setAlto]     = useState(2400);
   const [wsId,     setWsId]     = useState(null);
 
   // Paso 1
@@ -535,7 +521,6 @@ export function RenderIA({
   const [generando,    setGenerando]    = useState(false);
   const [imagenUrl,    setImagenUrl]    = useState(null);
   const [errorRender,  setErrorRender]  = useState(null);
-  const [refPreview,   setRefPreview]   = useState(null);
 
   // Paso 2
   const [generandoEscena,  setGenerandoEscena]  = useState(false);
@@ -556,8 +541,6 @@ export function RenderIA({
   const [sceneGuidance,        setSceneGuidance]        = useState(savedCfg.sceneGuidance        ?? 30);
   const [seed2,                setSeed2]                = useState(savedCfg.seed2                ?? "");
   const [presets2,             setPresets2]             = useState(savedCfg.presetsEscena        ?? []);
-
-  const prevKeyRef = useRef(null);
 
   useEffect(() => {
     supabase.from("workspaces").select("id").single().then(({ data }) => {
@@ -599,13 +582,7 @@ export function RenderIA({
     if (!wsId) return;
     setGenerando(true); setErrorRender(null); setImagenUrl(null);
     try {
-      let imageBase64 = null;
-      if (bloques.length > 0) {
-        const ba = bloques.filter(b => idsAltos.includes(b.id));
-        const bb = bloques.filter(b => idsBajos.includes(b.id));
-        try { imageBase64 = await generarImagenReferencia({ bloquesAltos: ba, bloquesBajos: bb, composicionOverride, modulos }); }
-        catch (e) { setErrorRender(`Error generando imagen de referencia: ${e.message}`); return; }
-      }
+      const imageBase64 = imagenRef3D ? imagenRef3D.replace(/^data:image\/\w+;base64,/, '') : null;
       const body = { workspaceId: wsId, prompt: promptCompleto, imageBase64, guidance, controlStrength };
       if (seed1 !== "") body.seed = parseInt(seed1, 10);
       const res  = await fetch("/api/generate-render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -632,31 +609,7 @@ export function RenderIA({
     finally { setGenerandoEscena(false); }
   };
 
-  const handleVerReferencia = async () => {
-    const ba = bloques.filter(b => idsAltos.includes(b.id));
-    const bb = bloques.filter(b => idsBajos.includes(b.id));
-    try {
-      const b64 = await generarImagenReferencia({ bloquesAltos: ba, bloquesBajos: bb, composicionOverride, modulos });
-      setRefPreview(`data:image/jpeg;base64,${b64}`);
-    } catch (e) { setErrorRender("Error: " + e.message); }
-  };
-
-  useEffect(() => {
-    if (prevKeyRef.current === presupuestoActivoId) return;
-    prevKeyRef.current = presupuestoActivoId;
-    if (!presupuestoActivoId) { setBloques([]); setIdsBajos([]); setIdsAltos([]); return; }
-    const saved = leerPlano();
-    const bs    = saved?.bloques || [];
-    const { idsBajos: fb, idsAltos: fa } = derivarSecuencias(bs);
-    setBloques(bs);
-    setIdsBajos(saved?.idsBajos ?? fb);
-    setIdsAltos(saved?.idsAltos ?? fa);
-    setAlto(saved?.altoCielorraso || 2400);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presupuestoActivoId]);
-
-  const sinDatos     = bloques.length === 0;
-  const svgProps     = { bloques, idsBajos, idsAltos, altoCielorraso: alto, composicionOverride, modulos };
+  const sinDatos     = !imagenRef3D;
   const creditos     = calcularCreditos(suscripcion);
   const puedeGenerar = !generando && !creditos.bloqueado;
 
@@ -675,7 +628,7 @@ export function RenderIA({
         <SectionTitle sub="Genera renders realistas en dos etapas">Render IA</SectionTitle>
         {!sinDatos && !isMobile && (
           <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={() => setModo("svg")}    style={btnSm(modo === "svg"    ? "accent" : "default")}>📐 Plano</button>
+            <button onClick={() => setModo("ref3d")}  style={btnSm(modo === "ref3d"  ? "accent" : "default")}>◈ Vista 3D</button>
             <button onClick={() => setModo("render")} style={btnSm(modo === "render" ? "accent" : "default")}>✨ Render</button>
             <button onClick={() => setModo("split")}  style={btnSm(modo === "split"  ? "accent" : "default")}>⊞ Dividido</button>
           </div>
@@ -685,20 +638,20 @@ export function RenderIA({
       {/* Empty state */}
       {sinDatos && (
         <div style={{ textAlign: "center", padding: "80px 0", borderRadius: 12, border: "1px dashed var(--border)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: 40 }}>📐</div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", margin: 0 }}>No hay plano activo</p>
+          <div style={{ fontSize: 40 }}>◈</div>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", margin: 0 }}>No hay captura 3D</p>
           <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
-            Abrí un presupuesto y armá el layout en <strong style={{ color: "var(--accent)" }}>Plano 2D</strong> para visualizarlo acá
+            Armá la escena en <strong style={{ color: "var(--accent)" }}>Vista 3D</strong> y capturá para usar como referencia
           </p>
         </div>
       )}
 
       {/* Visualización */}
-      {!sinDatos && modo === "svg"    && <PanelSVG {...svgProps} />}
+      {!sinDatos && modo === "ref3d"  && <Panel3DRef imagenRef3D={imagenRef3D} />}
       {!sinDatos && modo === "render" && <PanelRender imagenUrl={imagenUrl} imagenEscenaUrl={imagenEscenaUrl} generando={generando} generandoEscena={generandoEscena} />}
       {!sinDatos && modo === "split"  && (
         <div className="rsp-render-split" style={{ display: "flex", gap: 12, alignItems: "stretch", minHeight: isMobile ? "auto" : 360 }}>
-          <PanelSVG {...svgProps} compact />
+          <Panel3DRef imagenRef3D={imagenRef3D} compact />
           <PanelRender imagenUrl={imagenUrl} imagenEscenaUrl={imagenEscenaUrl} generando={generando} generandoEscena={generandoEscena} compact />
         </div>
       )}
@@ -716,7 +669,7 @@ export function RenderIA({
           numero="01" titulo="Render Base"
           subtitulo="Genera el mueble con material y terminación"
           listo={!!imagenUrl} generando={generando}
-          onGenerar={handleGenerar} onPreview={handleVerReferencia}
+          onGenerar={handleGenerar}
           bloqueado={!puedeGenerar} creditos={creditos} autoClose
         >
           <InnerSection label="Prompt base" icon="📝" badge={promptBase !== DEFAULT_PROMPT_BASE ? "personalizado" : null}>
@@ -766,17 +719,6 @@ export function RenderIA({
               onGuardar={guardarPreset1} onCargar={actualizarPromptBase} onEliminar={eliminarPreset1} />
           </InnerSection>
 
-          {refPreview && (
-            <div style={{ borderTop: "1px solid var(--border)", padding: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>
-                  Imagen enviada a Replicate
-                </span>
-                <button onClick={() => setRefPreview(null)} style={btnSm("danger")}>✕ Cerrar</button>
-              </div>
-              <img src={refPreview} alt="referencia" style={{ width: "100%", height: "auto", display: "block", borderRadius: 8 }} />
-            </div>
-          )}
         </StepCard>
       )}
 

@@ -13,8 +13,8 @@ import { NavProvider, useNav } from "./state/NavContext.jsx";
 import { PresupuestoContext } from "./state/PresupuestoContext.jsx";
 import { LoginScreen } from "./components/auth/LoginScreen.jsx";
 import { PanelPerfil } from "./components/perfil/PanelPerfil.jsx";
-import { PlanoDos } from "./components/plano/index.jsx";
 import { RenderIA } from "./components/render/index.jsx";
+import { Vista3DTab } from "./components/vista3d/Vista3DTab.jsx";
 
 import { PERFIL_VACIO } from "./constants.js";
 import { supabase } from "./lib/supabase.js";
@@ -22,7 +22,7 @@ import { calcularModulo } from "./utils.js";
 import {
   cargarDatos, cargarSuscripcion,
   guardarModulos, guardarPresupuestos, guardarPerfil, guardarCostos,
-  leerVersionCostos, guardarPlano,
+  leerVersionCostos,
 } from "./storage.js";
 import { useTema } from "./hooks/useTema.js";
 import {
@@ -150,6 +150,7 @@ function AppInterna() {
   // y restaurarlo correctamente entre sesiones.
   const [presupuestoActivoId, setPresupuestoActivoId] = useState(null);
   const [suscripcion,         setSuscripcion]         = useState(null);
+  const [imagenRef3D,         setImagenRef3D]         = useState(null);
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -307,7 +308,6 @@ function AppInterna() {
     setPresupuestoActivoId(id);   // el nuevo presupuesto ya tiene ID permanente
     withSave(() => guardarPresupuestos(nuevo));
     localStorage.removeItem("carpicalc:borrador");
-    guardarPlano({ bloques: [], altoCielorraso: 2400 });
   };
 
   const handleCargarPresupuesto = (p, id) => {
@@ -333,25 +333,6 @@ function AppInterna() {
     setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
     if (id) setPresupuestoActivoId(id);
     localStorage.removeItem("carpicalc:borrador");
-    const inlineM = p.inlineModulos && typeof p.inlineModulos === "object" ? p.inlineModulos : {};
-    const bloques = migratedItems.flatMap(item => {
-      const keyId  = item.id || item.codigo;
-      const inline = inlineM[keyId];
-      const mod    = inline ?? modulos[item.codigo];
-      if (!mod) return [];
-      const dims   = inline ? inline.dimensiones : (migratedDim[keyId] ? { ...mod.dimensiones, ...migratedDim[keyId] } : mod.dimensiones);
-      return Array.from({ length: item.cantidad }, () => ({
-        id: crypto.randomUUID(),
-        itemId: item.id,
-        codigo: item.codigo,
-        nombre: mod.nombre,
-        tipoVisual: mod.tipoVisual || null,
-        ancho: dims.ancho,
-        alto: dims.alto,
-        profundidad: dims.profundidad,
-      }));
-    });
-    guardarPlano({ bloques, altoCielorraso: 2400 });
   };
 
   const handleEliminarPresupuesto = (id) => {
@@ -391,7 +372,7 @@ function AppInterna() {
     { id: "presupuesto", label: "Presupuesto", icon: "📋" },
     { id: "preview",     label: "Vista previa", icon: "📄" },
     { id: "corte",       label: "Corte",        icon: "🪚" },
-    { id: "plano",       label: "Plano 2D",     icon: "📐" },
+    { id: "vista3d",     label: "Vista 3D",     icon: "◈" },
     { id: "render",      label: "Render IA",    icon: "✨" },
     { id: "trabajos",    label: "Trabajos",     icon: "📊" },
     { id: "caja",        label: "Caja",         icon: "💵" },
@@ -539,17 +520,19 @@ function AppInterna() {
                 presupuestoActivoId={presupuestoActivoId}
                 suscripcion={suscripcion}
                 onRenderGenerado={() => cargarSuscripcion().then(setSuscripcion)}
+                imagenRef3D={imagenRef3D}
               />
             </div>
 
-            <div style={{ display: nav.vista === "plano" ? undefined : "none" }}>
-              <PlanoDos
+            <div style={{ display: nav.vista === "vista3d" ? undefined : "none" }}>
+              <Vista3DTab
                 modulos={modulos}
+                costos={costos}
                 items={items}
                 dimOverride={dimOverride}
-                composicionOverride={composicionOverride}
                 inlineModulos={inlineModulos}
                 presupuestoActivoId={presupuestoActivoId}
+                onCaptura={(base64) => setImagenRef3D(base64)}
               />
             </div>
 
