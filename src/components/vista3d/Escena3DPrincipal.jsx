@@ -19,10 +19,32 @@ function CamaraController({ targetPos }) {
   return null;
 }
 
+// ── resolveCollision ──────────────────────────────────────────────────────────
+// Empuja el módulo arrastrado fuera de cualquier módulo con el que colisione.
+// livePositions: { [instanceId]: { x, z, hw, hd } }
+// Devuelve { x, z } resuelto.
+function resolveCollision(proposedX, proposedZ, hw, hd, selfId, livePositions) {
+  let x = proposedX;
+  let z = proposedZ;
+
+  for (const [id, other] of Object.entries(livePositions)) {
+    if (id === selfId) continue;
+    const overlapX = hw + other.hw - Math.abs(x - other.x);
+    const overlapZ = hd + other.hd - Math.abs(z - other.z);
+    if (overlapX > 0 && overlapZ > 0) {
+      // Empujar por el eje de menor penetración
+      if (overlapX < overlapZ) {
+        x += x > other.x ? overlapX : -overlapX;
+      } else {
+        z += z > other.z ? overlapZ : -overlapZ;
+      }
+    }
+  }
+  return { x, z };
+}
+
 // ── ModuloEnEscena ────────────────────────────────────────────────────────────
-// Drag directo: click y arrastrá el módulo en el plano del piso.
-// Listeners DOM en el canvas → el drag no se corta aunque el cursor salga del mesh.
-function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef }) {
+function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions }) {
   const groupRef   = useRef();
   const isDragging = useRef(false);
   const [hovered, setHovered] = useState(false);
@@ -30,7 +52,12 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
 
   const [x, y, z] = inst.worldPos;
   const mod        = modulos?.[inst.codigo];
-  const halfDepth  = useMemo(
+
+  const halfWidth = useMemo(
+    () => (mod?.dimensiones?.ancho       || 600) / 2 / 1000,
+    [mod]
+  );
+  const halfDepth = useMemo(
     () => (mod?.dimensiones?.profundidad || 550) / 2 / 1000,
     [mod]
   );
@@ -40,9 +67,9 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
   const raycaster  = useMemo(() => new THREE.Raycaster(), []);
 
   // Ref "latest" para evitar closures viejas en los listeners DOM
-  const latestRef = useRef({ y, halfDepth, instanceId: inst.instanceId, onUpdatePosicion });
+  const latestRef = useRef({ y, halfWidth, halfDepth, instanceId: inst.instanceId, onUpdatePosicion });
   useEffect(() => {
-    latestRef.current = { y, halfDepth, instanceId: inst.instanceId, onUpdatePosicion };
+    latestRef.current = { y, halfWidth, halfDepth, instanceId: inst.instanceId, onUpdatePosicion };
   });
 
   // Listeners DOM en el canvas — funcionan aunque el cursor salga del módulo
@@ -57,8 +84,16 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
       raycaster.setFromCamera({ x: nx, y: ny }, camera);
       const hit = new THREE.Vector3();
       if (raycaster.ray.intersectPlane(floorPlane, hit) && groupRef.current) {
-        groupRef.current.position.x = hit.x;
-        groupRef.current.position.z = Math.max(hit.z, WALL_Z + latestRef.current.halfDepth);
+        const { halfWidth: hw, halfDepth: hd, instanceId } = latestRef.current;
+
+        // Colisión con pared trasera
+        const clampedZ = Math.max(hit.z, WALL_Z + hd);
+
+        // Colisión entre módulos
+        const resolved = resolveCollision(hit.x, clampedZ, hw, hd, instanceId, livePositions.current);
+
+        groupRef.current.position.x = resolved.x;
+        groupRef.current.position.z = resolved.z;
       }
     };
 
@@ -79,15 +114,22 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
       canvas.removeEventListener('pointermove', onMove);
       canvas.removeEventListener('pointerup',   onUp);
     };
-  }, [camera, gl, floorPlane, raycaster, orbitRef]);
+  }, [camera, gl, floorPlane, raycaster, orbitRef, livePositions]);
 
-  // Bloquear Y + colisión con pared en cada frame
+  // Actualizar posición en vivo + bloquear Y + colisión con pared
   useFrame(() => {
     if (!groupRef.current) return;
     groupRef.current.position.y = y;
     if (groupRef.current.position.z < WALL_Z + halfDepth) {
       groupRef.current.position.z = WALL_Z + halfDepth;
     }
+    // Registrar posición live para que otros módulos puedan evitarla
+    livePositions.current[inst.instanceId] = {
+      x:  groupRef.current.position.x,
+      z:  groupRef.current.position.z,
+      hw: halfWidth,
+      hd: halfDepth,
+    };
   });
 
   if (!mod) return null;
@@ -147,8 +189,9 @@ export function Escena3DPrincipal({
   colorPiso, colorPared, colorMesada,
   camTarget, onSelectModulo, selectedCod, onUpdatePosicion,
 }) {
-  const orbitRef    = useRef();
-  const layoutItems = useAutoLayout3D(modulosEnEscena, modulos);
+  const orbitRef     = useRef();
+  const livePositions = useRef({}); // { [instanceId]: { x, z, hw, hd } }
+  const layoutItems  = useAutoLayout3D(modulosEnEscena, modulos);
 
   const bajosLayout = layoutItems.filter(it =>
     !['aereo', 'torre'].includes(modulos?.[it.codigo]?.tipoVisual || '')
@@ -197,6 +240,7 @@ export function Escena3DPrincipal({
           onSelect={() => onSelectModulo?.(selectedCod === inst.instanceId ? null : inst.instanceId)}
           onUpdatePosicion={onUpdatePosicion}
           orbitRef={orbitRef}
+          livePositions={livePositions}
         />
       ))}
 
