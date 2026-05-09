@@ -19,13 +19,13 @@ export const ROLES_3D = [
 // ── Clasificación por nombre (fallback) ───────────────────────────────────────
 function clasificarPorNombre(nombre) {
   const n = (nombre || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  if (/caj[ao]n|cajones|gaveta/.test(n))      return 'cajon';
-  if (/lateral|costado/.test(n))              return 'lateral';
-  if (/techo|tapa superior|superior/.test(n)) return 'techo';
+  if (/caj[ao]n|cajones|gaveta/.test(n))           return 'cajon';
+  if (/lateral|costado/.test(n))                   return 'lateral';
+  if (/techo|tapa superior|superior/.test(n))      return 'techo';
   if (/base|piso|fondo inferior|inferior/.test(n)) return 'base';
-  if (/fondo|trasera|respaldo/.test(n))       return 'fondo';
-  if (/puerta/.test(n))                       return 'puerta';
-  if (/estante|balda|horizontal|entrepa/.test(n)) return 'estante';
+  if (/fondo|trasera|respaldo/.test(n))            return 'fondo';
+  if (/puerta/.test(n))                            return 'puerta';
+  if (/estante|balda|horizontal|entrepa/.test(n))  return 'estante';
   return 'unknown';
 }
 
@@ -33,7 +33,7 @@ function getRole(pieza) {
   return pieza.rol3d || clasificarPorNombre(pieza.nombre);
 }
 
-// ── buildPiezas3D (exported for editor use) ───────────────────────────────────
+// ── buildPiezas3D ─────────────────────────────────────────────────────────────
 export function buildPiezas3D(modulo, costos) {
   if (!modulo?.piezas || !costos?.materiales) return [];
 
@@ -91,40 +91,40 @@ export function buildPiezas3D(modulo, costos) {
 
       switch (role) {
         case 'lateral_izq': {
-          size      = [te, d1 / M, d2 / M];
-          autoPos   = [-(hw - te / 2), 0, 0];
+          size       = [te, d1 / M, d2 / M];
+          autoPos    = [-(hw - te / 2), 0, 0];
           explodeVec = [-1, 0, 0];
           break;
         }
         case 'lateral_der': {
-          size      = [te, d1 / M, d2 / M];
-          autoPos   = [hw - te / 2, 0, 0];
+          size       = [te, d1 / M, d2 / M];
+          autoPos    = [hw - te / 2, 0, 0];
           explodeVec = [1, 0, 0];
           break;
         }
         case 'lateral': {
           const side = latIdx === 0 ? -1 : 1;
-          size      = [te, d1 / M, d2 / M];
-          autoPos   = [side * (hw - te / 2), 0, 0];
-          explodeVec = [side * 1, 0, 0];
+          size       = [te, d1 / M, d2 / M];
+          autoPos    = [side * (hw - te / 2), 0, 0];
+          explodeVec = [side, 0, 0];
           latIdx++;
           break;
         }
         case 'techo': {
-          size      = [d1 / M, te, d2 / M];
-          autoPos   = [0, hh - te / 2, 0];
+          size       = [d1 / M, te, d2 / M];
+          autoPos    = [0, hh - te / 2, 0];
           explodeVec = [0, 1, 0];
           break;
         }
         case 'base': {
-          size      = [d1 / M, te, d2 / M];
-          autoPos   = [0, -(hh - te / 2), 0];
+          size       = [d1 / M, te, d2 / M];
+          autoPos    = [0, -(hh - te / 2), 0];
           explodeVec = [0, -1, 0];
           break;
         }
         case 'fondo': {
-          size      = [d1 / M, d2 / M, te];
-          autoPos   = [0, 0, -(hd - te / 2)];
+          size       = [d1 / M, d2 / M, te];
+          autoPos    = [0, 0, -(hd - te / 2)];
           explodeVec = [0, 0, -1];
           break;
         }
@@ -132,8 +132,8 @@ export function buildPiezas3D(modulo, costos) {
           const offset = doorTotal > 1
             ? -hw + (hw * 2 / doorTotal) * (doorIdx + 0.5)
             : 0;
-          size      = [d2 / M, d1 / M, te];
-          autoPos   = [offset, 0, hd + te / 2];
+          size       = [d2 / M, d1 / M, te];
+          autoPos    = [offset, 0, hd + te / 2];
           explodeVec = [0, 0, 1];
           handleSources.push({ x: offset + (hw * 2 / (doorTotal || 1)) * 0.25, y: 0, z: hd + te });
           doorIdx++;
@@ -146,8 +146,8 @@ export function buildPiezas3D(modulo, costos) {
           const centerY = baseY + step * (cajonIdx + 0.5);
           const frontH  = step - 0.004;
           const frontW  = (ancho / M) - te * 2;
-          size      = [frontW, frontH, te];
-          autoPos   = [0, centerY, hd + te / 2];
+          size       = [frontW, frontH, te];
+          autoPos    = [0, centerY, hd + te / 2];
           explodeVec = [0, 0, 1];
           handleSources.push({ x: 0, y: centerY, z: hd + te });
           cajonIdx++;
@@ -155,24 +155,35 @@ export function buildPiezas3D(modulo, costos) {
         }
         case 'estante': {
           const shelfCount = roleCounts['estante'] || 1;
-          const step = (alto - esp * 4) / (shelfCount + 1);
+          const step  = (alto - esp * 4) / (shelfCount + 1);
           const shelfY = -hh + (step * (shelfIdx + 1)) / M + te * 2;
-          size      = [d1 / M, te, d2 / M];
-          autoPos   = [0, shelfY, 0];
+          size       = [d1 / M, te, d2 / M];
+          autoPos    = [0, shelfY, 0];
           explodeVec = [0, shelfIdx % 2 === 0 ? 0.5 : -0.5, 0];
           shelfIdx++;
           break;
         }
         default: {
-          size      = [d2 / M || 0.3, te, d1 / M || 0.3];
-          autoPos   = [0, hh + te * (i + 2), -hd - te * (i + 2)];
+          size       = [d2 / M || 0.3, te, d1 / M || 0.3];
+          autoPos    = [0, hh + te * (i + 2), -hd - te * (i + 2)];
           explodeVec = [0, 1, -1];
           break;
         }
       }
 
-      // pos3d override: use manual position if set, else auto
-      const pos = p.pos3d ? [p.pos3d[0], p.pos3d[1], p.pos3d[2]] : autoPos;
+      // offset3d (mm) + rot3d (degrees) — replace old pos3d absolute override
+      const offset3d = p.offset3d || { x: 0, y: 0, z: 0 };
+      const rot3d    = p.rot3d || 0;
+      const pos = [
+        autoPos[0] + (offset3d.x || 0) / 1000,
+        autoPos[1] + (offset3d.y || 0) / 1000,
+        autoPos[2] + (offset3d.z || 0) / 1000,
+      ];
+      const hasOffset =
+        Math.abs(offset3d.x || 0) > 0.01 ||
+        Math.abs(offset3d.y || 0) > 0.01 ||
+        Math.abs(offset3d.z || 0) > 0.01;
+      const status = role === 'unknown' ? 'unassigned' : hasOffset ? 'manual' : 'auto';
 
       result.push({
         id:          `${p.nombre}-${i}`,
@@ -183,11 +194,22 @@ export function buildPiezas3D(modulo, costos) {
         pos,
         autoPos,
         explodeVec,
+        offset3d,
+        rot3d,
+        status,
         materialTipo: modulo.material || 'melamina',
         isHandle:    false,
-        hasManualPos: !!p.pos3d,
+        hasManualPos: hasOffset,
       });
     }
+  });
+
+  // Conflict detection: flag duplicate single-instance roles
+  const singleRoles  = ['techo', 'base', 'fondo'];
+  const roleCountFin = {};
+  result.forEach(p => { if (!p.isHandle) roleCountFin[p.role] = (roleCountFin[p.role] || 0) + 1; });
+  result.forEach(p => {
+    if (singleRoles.includes(p.role) && roleCountFin[p.role] > 1) p.status = 'conflict';
   });
 
   // Auto-generate handles
@@ -201,6 +223,9 @@ export function buildPiezas3D(modulo, costos) {
       pos:          [h.x, h.y, h.z + 0.009],
       autoPos:      [h.x, h.y, h.z + 0.009],
       explodeVec:   [0, 0, 1],
+      offset3d:     { x: 0, y: 0, z: 0 },
+      rot3d:        0,
+      status:       'auto',
       materialTipo: 'manija',
       isHandle:     true,
       hasManualPos: false,
@@ -211,7 +236,7 @@ export function buildPiezas3D(modulo, costos) {
 }
 
 // ── Pieza ─────────────────────────────────────────────────────────────────────
-function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, onClick, texturaDataUrl }) {
+function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, onClick, texturaDataUrl, rotY = 0 }) {
   const matProps = getMaterialProps(materialTipo);
   const ep       = explodeFactor * 0.35;
   const finalPos = [
@@ -230,20 +255,23 @@ function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, o
   }, [texturaDataUrl, materialTipo]);
 
   return (
-    <mesh position={finalPos} onClick={onClick} castShadow receiveShadow>
-      <boxGeometry args={size} />
-      <meshStandardMaterial
-        color={selected ? '#d4af37' : (texture ? '#ffffff' : matProps.color)}
-        roughness={texture ? 0.65 : matProps.roughness}
-        metalness={texture ? 0.0  : matProps.metalness}
-        map={texture ?? undefined}
-        transparent={selected}
-        opacity={selected ? 0.9 : 1}
-      />
-    </mesh>
+    <group position={finalPos} rotation={[0, rotY * Math.PI / 180, 0]} onClick={onClick}>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={size} />
+        <meshStandardMaterial
+          color={selected ? '#d4af37' : (texture ? '#ffffff' : matProps.color)}
+          roughness={texture ? 0.65 : matProps.roughness}
+          metalness={texture ? 0.0  : matProps.metalness}
+          map={texture ?? undefined}
+          transparent={selected}
+          opacity={selected ? 0.9 : 1}
+        />
+      </mesh>
+    </group>
   );
 }
 
+// ── Modulo3D (default export — used in main scene) ────────────────────────────
 export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPieza, onSelectPieza, texturaDataUrl }) {
   const piezas = useMemo(
     () => buildPiezas3D(modulo, costos),
@@ -262,6 +290,7 @@ export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPi
           explodeFactor={explodeFactor}
           materialTipo={p.materialTipo}
           selected={selectedPieza === p.id}
+          rotY={p.rot3d || 0}
           onClick={(e) => {
             e.stopPropagation();
             if (!p.isHandle) onSelectPieza?.({ id: p.id, piezaIdx: p.piezaIdx, nombre: p.nombre, role: p.role, size: p.size, pos: p.pos });
