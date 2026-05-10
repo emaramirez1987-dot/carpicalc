@@ -291,7 +291,7 @@ export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPi
 
   return (
     <group>
-      {piezas.map(p => (
+      {piezas.filter(p => !p.isHandle).map(p => (
         <Pieza
           key={p.id}
           size={p.size}
@@ -303,9 +303,9 @@ export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPi
           rotY={p.rot3d || 0}
           onClick={(e) => {
             e.stopPropagation();
-            if (!p.isHandle) onSelectPieza?.({ id: p.id, piezaIdx: p.piezaIdx, nombre: p.nombre, role: p.role, size: p.size, pos: p.pos });
+            onSelectPieza?.({ id: p.id, piezaIdx: p.piezaIdx, nombre: p.nombre, role: p.role, size: p.size, pos: p.pos });
           }}
-          texturaDataUrl={p.isHandle ? null : texturaDataUrl}
+          texturaDataUrl={texturaDataUrl}
         />
       ))}
     </group>
