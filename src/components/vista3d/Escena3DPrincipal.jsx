@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { OrbitControls, Environment } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import Modulo3D from '../visor3d/Modulo3D.jsx';
@@ -7,12 +7,11 @@ import { useAutoLayout3D } from './useAutoLayout3D.js';
 
 export const WALL_Z = -0.6; // posición de la pared trasera
 
-// ── Theme palettes — identical to VisorModulo3D ────────────────────────────────
-// ambInt kept low: HDRI Environment handles most ambient; palette matches editor
-const DARK_PAL  = { bg: '#1a1c22', fogNear: 5,  fogFar: 14, ambInt: 0.08 };
-const LIGHT_PAL = { bg: '#f0f1f4', fogNear: 8,  fogFar: 24, ambInt: 0.12 };
+// ── Theme palettes — identical to VisorModulo3D (no HDRI, manual lighting only) ─
+const DARK_PAL  = { bg: '#1a1c22', fogNear: 5,  fogFar: 14, ambInt: 0.60 };
+const LIGHT_PAL = { bg: '#f0f1f4', fogNear: 8,  fogFar: 24, ambInt: 0.88 };
 
-// ── EntornoEscena — background + fog only; HDRI handles ambient ───────────────
+// ── EntornoEscena — background + fog + ambient (idéntico a VisorModulo3D) ────
 function EntornoEscena({ isDark }) {
   const pal = isDark ? DARK_PAL : LIGHT_PAL;
   return (
@@ -213,8 +212,8 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
 }
 
 // ── Grid colors per theme ──────────────────────────────────────────────────────
-const GRID_DARK  = { c1: '#2a2d35', c2: '#1e2028' };
-const GRID_LIGHT = { c1: '#b8bac6', c2: '#c8cad8' };
+const GRID_DARK  = { c1: '#2a2d35', c2: '#232630' };
+const GRID_LIGHT = { c1: '#c4c5ce', c2: '#d0d1da' };
 
 // ── GrillaFloor — piso receptor de sombras + grilla superpuesta ───────────────
 function GrillaFloor({ colorPiso, isDark, mostrarGrilla, divisiones }) {
@@ -288,7 +287,6 @@ export function Escena3DPrincipal({
   camTarget, onSelectModulo, selectedCod, onUpdatePosicion,
   materiales3D, isDark = true,
   shadowIntensidad = 1, shadowAngle = 45,
-  envPreset = 'apartment',
   mostrarGrilla = true, divisionesGrilla = 50,
   mostrarParedIzq = false, mostrarParedDer = false,
 }) {
@@ -305,10 +303,9 @@ export function Escena3DPrincipal({
       <OrbitControls ref={orbitRef} makeDefault enableDamping dampingFactor={0.08} />
 
       <EntornoEscena isDark={isDark} />
-      <Environment preset={envPreset} background={false} intensity={isDark ? 0.35 : 0.70} />
-      <directionalLight position={shadowLightPos} intensity={0.9 * shadowIntensidad} castShadow shadow-mapSize={[2048, 2048]} />
-      <directionalLight position={[-3, 4, -3]} intensity={0.18} color="#b8d4f0" />
-      <directionalLight position={[0, -2, 4]} intensity={0.10} />
+      {/* Luces idénticas a VisorModulo3D — sin HDRI */}
+      <directionalLight position={shadowLightPos} intensity={1.1 * shadowIntensidad} castShadow shadow-mapSize={[1024, 1024]} />
+      <directionalLight position={[-3, 2, -3]} intensity={0.28} color="#b8d4f0" />
 
       {mostrarPiso && (
         <GrillaFloor

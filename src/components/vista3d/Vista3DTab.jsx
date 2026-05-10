@@ -280,7 +280,6 @@ export function Vista3DTab({
   const [shadowIntensidad, setShadowIntensidad] = useState(1.0);
   const [shadowAngle,      setShadowAngle]      = useState(45);
   const [editTab,          setEditTab]          = useState('mat');
-  const [envPreset,        setEnvPreset]        = useState('city');
   const [mostrarGrilla,    setMostrarGrilla]    = useState(true);
   const [divisionesGrilla, setDivisionesGrilla] = useState(50);
   const [mostrarParedIzq,  setMostrarParedIzq]  = useState(false);
@@ -595,19 +594,6 @@ export function Vista3DTab({
 
           <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
 
-          {/* Entorno — dropdown */}
-          <Dropdown label="Entorno" active={false}>
-            {[
-              ['apartment', 'Apartamento'], ['studio', 'Estudio'],
-              ['lobby',     'Lobby'],       ['city',   'Ciudad'],
-              ['sunset',    'Atardecer'],   ['warehouse','Depósito'],
-            ].map(([preset, lbl]) => (
-              <DropItem key={preset} active={envPreset === preset} onClick={() => setEnvPreset(preset)}>{lbl}</DropItem>
-            ))}
-          </Dropdown>
-
-          <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
-
           {/* Luz — ángulo libre + intensidad */}
           <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, letterSpacing: '0.09em', whiteSpace: 'nowrap' }}>LUZ</span>
           <input
@@ -696,7 +682,6 @@ export function Vista3DTab({
               isDark={isDark}
               shadowIntensidad={shadowIntensidad}
               shadowAngle={shadowAngle}
-              envPreset={envPreset}
               mostrarGrilla={mostrarGrilla}
               divisionesGrilla={divisionesGrilla}
               mostrarParedIzq={mostrarParedIzq}
