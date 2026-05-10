@@ -26,6 +26,17 @@ Ambientación: [ACCESORIOS].
 
 Profundidad cinematográfica, atmósfera curada, visualización arquitectónica profesional.`;
 
+const DEFAULT_PROMPT_GPT =
+`Transform this 3D furniture render into a photorealistic interior photo.
+Preserve the exact structure, proportions, materials and finish visible in the render.
+
+Scene: [FONDO]
+Lighting: [ILUMINACION]
+Camera angle: [PERSPECTIVA]
+Styling: [ACCESORIOS]
+
+Professional interior photography, natural shadows, realistic reflections, high resolution.`;
+
 // ── Variables ─────────────────────────────────────────────────────────────────
 
 const VARIABLES_CONFIG = [
@@ -676,6 +687,10 @@ export function RenderIA({
   const [seed1,           setSeed1]           = useState(savedCfg.seed1           ?? "");
   const [presets1,        setPresets1]        = useState(() => leerPromptsRender());
 
+  // Config persistida — Modo GPT (etapa única)
+  const [promptGpt,      setPromptGpt]      = useState(savedCfg.promptGpt      ?? DEFAULT_PROMPT_GPT);
+  const [variablesGpt,   setVariablesGpt]   = useState(savedCfg.variablesGpt   ?? {});
+
   // Config persistida — Paso 2
   const [promptBaseEscena,     setPromptBaseEscena]     = useState(savedCfg.promptBaseEscena     ?? DEFAULT_SCENE_PROMPT_BASE);
   const [variablesEscena,      setVariablesEscena]      = useState(savedCfg.variablesEscena      ?? {});
@@ -692,6 +707,7 @@ export function RenderIA({
   const persistirConfig = (patch) =>
     guardarConfigRender({
       promptBase, variables, guidance, controlStrength, modeloRender, seed1,
+      promptGpt, variablesGpt,
       promptBaseEscena, variablesEscena, sceneGuidance, seed2,
       presetsEscena: presets2,
       ...patch,
@@ -703,6 +719,8 @@ export function RenderIA({
   const actualizarGuidance        = (val) => { setGuidance(val);         persistirConfig({ guidance: val }); };
   const actualizarControlStrength = (val) => { setControlStrength(val);  persistirConfig({ controlStrength: val }); };
   const actualizarModeloRender    = (val) => { setModeloRender(val);     persistirConfig({ modeloRender: val }); };
+  const actualizarPromptGpt       = (val) => { setPromptGpt(val);        persistirConfig({ promptGpt: val }); };
+  const actualizarVariableGpt     = (id, val) => { const v = { ...variablesGpt, [id]: val }; setVariablesGpt(v); persistirConfig({ variablesGpt: v }); };
   const actualizarSeed1           = (val) => { setSeed1(val);            persistirConfig({ seed1: val }); };
 
   const guardarPreset1  = (p)  => { const n = [...presets1, p];               setPresets1(n); guardarPromptsRender(n); };
@@ -719,6 +737,7 @@ export function RenderIA({
 
   const promptCompleto       = ensamblarPrompt(promptBase,      variables,      VARS_PASO1);
   const promptCompletoEscena = ensamblarPrompt(promptBaseEscena, variablesEscena, VARS_PASO2);
+  const promptCompletoGpt    = ensamblarPrompt(promptGpt,        variablesGpt,   VARIABLES_CONFIG);
 
   const handleGenerar = async () => {
     if (!wsId) return;
@@ -726,7 +745,8 @@ export function RenderIA({
     try {
       const imageBase64 = imagenRef3D ? imagenRef3D.replace(/^data:image\/\w+;base64,/, '') : null;
       const endpoint = modeloRender === "gpt" ? "/api/generate-render-gpt" : "/api/generate-render";
-      const body = { workspaceId: wsId, prompt: promptCompleto, imageBase64 };
+      const prompt   = modeloRender === "gpt" ? promptCompletoGpt : promptCompleto;
+      const body = { workspaceId: wsId, prompt, imageBase64 };
       if (modeloRender !== "gpt") { body.guidance = guidance; body.controlStrength = controlStrength; }
       if (seed1 !== "") body.seed = parseInt(seed1, 10);
       const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -769,8 +789,9 @@ export function RenderIA({
   const hintControl   = controlStrength <= 0.25 ? "ignora estructura" : controlStrength <= 0.55 ? "balance" : "respeta estructura";
   const hintSceneGuidance = sceneGuidance <= 15 ? "muy libre" : sceneGuidance <= 40 ? "balance" : sceneGuidance <= 70 ? "literal" : "muy literal";
 
-  const activasP1 = VARS_PASO1.filter(v => variables[v.id]).length;
-  const activasP2 = VARS_PASO2.filter(v => variablesEscena[v.id]).length;
+  const activasP1  = VARS_PASO1.filter(v => variables[v.id]).length;
+  const activasP2  = VARS_PASO2.filter(v => variablesEscena[v.id]).length;
+  const activasGpt = VARIABLES_CONFIG.filter(v => variablesGpt[v.id]).length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -830,38 +851,57 @@ export function RenderIA({
       {/* ── Paso 1 · Render Base ─────────────────────────────────────────────── */}
       {!sinDatos && (
         <StepCard
-          numero="01" titulo="Render Base"
-          subtitulo="Genera el mueble con material y terminación"
+          numero="01"
+          titulo={modeloRender === "gpt" ? "Render Completo" : "Render Base"}
+          subtitulo={modeloRender === "gpt" ? "Material, estructura y escena en una sola pasada" : "Genera el mueble con material y terminación"}
           listo={!!imagenUrl} generando={generando}
           onGenerar={handleGenerar}
           bloqueado={!puedeGenerar} creditos={creditos} autoClose
         >
-          <InnerSection label="Prompt base" icon="📝" badge={promptBase !== DEFAULT_PROMPT_BASE ? "personalizado" : null}>
-            <PromptSection value={promptBase} onChange={actualizarPromptBase} defaultValue={DEFAULT_PROMPT_BASE} />
-          </InnerSection>
+          {modeloRender === "gpt" ? (
+            <>
+              <InnerSection label="Prompt" icon="📝" badge={promptGpt !== DEFAULT_PROMPT_GPT ? "personalizado" : null}>
+                <PromptSection value={promptGpt} onChange={actualizarPromptGpt} defaultValue={DEFAULT_PROMPT_GPT} />
+              </InnerSection>
+              <InnerSection label="Variables de escena y estilo" icon="🏠" badge={activasGpt > 0 ? `${activasGpt} activa${activasGpt !== 1 ? "s" : ""}` : null}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {VARIABLES_CONFIG.map(vc => (
+                    <VariableItem key={vc.id} config={vc} value={variablesGpt[vc.id] ?? null} onChange={val => actualizarVariableGpt(vc.id, val)} />
+                  ))}
+                </div>
+              </InnerSection>
+            </>
+          ) : (
+            <>
+              <InnerSection label="Prompt base" icon="📝" badge={promptBase !== DEFAULT_PROMPT_BASE ? "personalizado" : null}>
+                <PromptSection value={promptBase} onChange={actualizarPromptBase} defaultValue={DEFAULT_PROMPT_BASE} />
+              </InnerSection>
+              <InnerSection label="Variables del mueble" icon="🎨" badge={activasP1 > 0 ? `${activasP1} activa${activasP1 !== 1 ? "s" : ""}` : null}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {VARS_PASO1.map(vc => (
+                    <VariableItem key={vc.id} config={vc} value={variables[vc.id] ?? null} onChange={val => actualizarVariable(vc.id, val)} />
+                  ))}
+                </div>
+              </InnerSection>
+            </>
+          )}
 
-          <InnerSection label="Variables del mueble" icon="🎨" badge={activasP1 > 0 ? `${activasP1} activa${activasP1 !== 1 ? "s" : ""}` : null}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {VARS_PASO1.map(vc => (
-                <VariableItem key={vc.id} config={vc} value={variables[vc.id] ?? null} onChange={val => actualizarVariable(vc.id, val)} />
-              ))}
-            </div>
-          </InnerSection>
-
-          <InnerSection label="Materiales EGGER" icon="🪵" badge={selectedEggerCode ? (EGGER_MATERIALES.find(m => m.codigo === selectedEggerCode)?.nombre ?? null) : null}>
-            <SelectorMaterialEgger
-              codigoSeleccionado={selectedEggerCode}
-              onSeleccionar={(mat) => {
-                if (!mat) {
-                  setSelectedEggerCode(null);
-                  actualizarVariable("material", null);
-                } else {
-                  setSelectedEggerCode(mat.codigo);
-                  actualizarVariable("material", mat.prompt);
-                }
-              }}
-            />
-          </InnerSection>
+          {modeloRender !== "gpt" && (
+            <InnerSection label="Materiales EGGER" icon="🪵" badge={selectedEggerCode ? (EGGER_MATERIALES.find(m => m.codigo === selectedEggerCode)?.nombre ?? null) : null}>
+              <SelectorMaterialEgger
+                codigoSeleccionado={selectedEggerCode}
+                onSeleccionar={(mat) => {
+                  if (!mat) {
+                    setSelectedEggerCode(null);
+                    actualizarVariable("material", null);
+                  } else {
+                    setSelectedEggerCode(mat.codigo);
+                    actualizarVariable("material", mat.prompt);
+                  }
+                }}
+              />
+            </InnerSection>
+          )}
 
           <InnerSection label="Configuración avanzada" icon="⚙️" defaultOpen={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -914,8 +954,8 @@ export function RenderIA({
         </StepCard>
       )}
 
-      {/* ── Paso 2 · Render de Escena ────────────────────────────────────────── */}
-      {!sinDatos && (
+      {/* ── Paso 2 · Render de Escena (solo modo Flux) ───────────────────────── */}
+      {!sinDatos && modeloRender !== "gpt" && (
         <StepCard
           numero="02" titulo="Render de Escena"
           subtitulo="Ambienta el mueble en su contexto final"
