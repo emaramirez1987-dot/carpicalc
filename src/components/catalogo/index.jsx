@@ -222,8 +222,9 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
   const aplicarRol = (rol) => {
     setFp(p => ({
       ...p,
-      formula1: rol.formula1,
-      formula2: rol.formula2,
+      ...(rol.formula1 != null ? { formula1: rol.formula1 } : {}),
+      ...(rol.formula2 != null ? { formula2: rol.formula2 } : {}),
+      ...(rol.rol3d    != null ? { rol3d:    rol.rol3d    } : {}),
       tc: { ...p.tc, lados1: rol.tc?.lados1 ?? p.tc.lados1, lados2: rol.tc?.lados2 ?? p.tc.lados2 },
     }));
   };
@@ -323,7 +324,10 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                   <div style={{ padding: "10px 12px" }}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                     {todosRoles.map(rol => {
-                      const isActive = fp.formula1 === rol.formula1 && fp.formula2 === rol.formula2;
+                      const isActive =
+                        fp.formula1 === rol.formula1 &&
+                        fp.formula2 === rol.formula2 &&
+                        (rol.rol3d == null || fp.rol3d === rol.rol3d);
                       return (
                         <button key={rol.id} onClick={() => aplicarRol(rol)}
                           style={{
