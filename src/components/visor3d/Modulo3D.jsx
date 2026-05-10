@@ -65,7 +65,6 @@ export function buildPiezas3D(modulo, costos) {
     const r = getRole(p);
     roleCounts[r] = (roleCounts[r] || 0) + (p.cantidad || 1);
   }
-  const doorTotal  = roleCounts['puerta'] || 0;
   const cajonTotal = roleCounts['cajon']  || 0;
 
   let shelfIdx = 0;
@@ -137,13 +136,12 @@ export function buildPiezas3D(modulo, costos) {
           break;
         }
         case 'puerta': {
-          const offset = doorTotal > 1
-            ? -hw + (hw * 2 / doorTotal) * (doorIdx + 0.5)
-            : 0;
+          // Cada puerta se posiciona de forma independiente.
+          // Por defecto va al centro-frente; usar posFormulas u offset3d para ubicarla.
           size       = [d2 / M, d1 / M, te];
-          autoPos    = [offset, 0, hd + te / 2];
+          autoPos    = [0, 0, hd + te / 2];
           explodeVec = [0, 0, 1];
-          handleSources.push({ x: offset + (hw * 2 / (doorTotal || 1)) * 0.25, y: 0, z: hd + te });
+          handleSources.push({ x: 0, y: 0, z: hd + te });
           doorIdx++;
           break;
         }
