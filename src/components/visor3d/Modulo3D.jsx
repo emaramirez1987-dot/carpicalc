@@ -68,7 +68,6 @@ export function buildPiezas3D(modulo, costos) {
   const cajonTotal = roleCounts['cajon']  || 0;
 
   let shelfIdx = 0;
-  let doorIdx  = 0;
   let cajonIdx = 0;
   let latIdx   = 0;
 
@@ -137,12 +136,12 @@ export function buildPiezas3D(modulo, costos) {
         }
         case 'puerta': {
           // Cada puerta se posiciona de forma independiente.
-          // Por defecto va al centro-frente; usar posFormulas u offset3d para ubicarla.
+          // Default: esquina inferior-izquierda del frente (X=izq, Y=piso).
+          // Usar posFormulas (X/Y desde esquina del módulo) u offset3d para ubicarla.
           size       = [d2 / M, d1 / M, te];
-          autoPos    = [0, 0, hd + te / 2];
+          autoPos    = [-(hw - d2 / M / 2), -(hh - d1 / M / 2), hd + te / 2];
           explodeVec = [0, 0, 1];
-          handleSources.push({ x: 0, y: 0, z: hd + te });
-          doorIdx++;
+          handleSources.push({ x: -(hw - d2 / M / 2), y: 0, z: hd + te });
           break;
         }
         case 'cajon': {
