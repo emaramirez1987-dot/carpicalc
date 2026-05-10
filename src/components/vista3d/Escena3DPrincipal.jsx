@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, Html } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import Modulo3D from '../visor3d/Modulo3D.jsx';
@@ -60,7 +60,8 @@ function resolveCollision(proposedX, proposedZ, hw, hd, selfId, livePositions) {
 }
 
 // ── ModuloEnEscena ────────────────────────────────────────────────────────────
-function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, texturaDataUrl }) {
+// Props >8 justificados: escena 3D con controles flotantes integrados
+function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, texturaDataUrl, onRotar90, onEliminarModulo }) {
   const groupRef   = useRef();
   const isDragging = useRef(false);
   const [hovered, setHovered] = useState(false);
@@ -87,6 +88,18 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
   useEffect(() => {
     latestRef.current = { y, halfWidth, halfDepth, instanceId: inst.instanceId, onUpdatePosicion };
   });
+
+  // Handlers para el overlay flotante (usan refs para evitar closures viejas)
+  const handleLocalNudge = (dx, dz) => {
+    if (!groupRef.current) return;
+    const p = groupRef.current.position;
+    latestRef.current.onUpdatePosicion(latestRef.current.instanceId, [p.x + dx, latestRef.current.y, p.z + dz]);
+  };
+  const handleLocalSnap = () => {
+    if (!groupRef.current) return;
+    const p = groupRef.current.position;
+    latestRef.current.onUpdatePosicion(latestRef.current.instanceId, [p.x, latestRef.current.y, WALL_Z + latestRef.current.halfDepth]);
+  };
 
   // Listeners DOM en el canvas — funcionan aunque el cursor salga del módulo
   useEffect(() => {
@@ -188,28 +201,70 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
         texturaDataUrl={texturaDataUrl}
       />
 
-      {/* Outline CAD — BackSide doble capa: negro fino + borde blanco externo */}
+      {/* Outline de selección — perimetro azul CAD */}
       {isSelected && (
-        <>
-          <mesh>
-            <boxGeometry args={[ow + 0.022, oh + 0.022, od + 0.022]} />
-            <meshBasicMaterial color="white" side={THREE.BackSide} transparent opacity={0.55} depthWrite={false} />
-          </mesh>
-          <mesh>
-            <boxGeometry args={[ow + 0.012, oh + 0.012, od + 0.012]} />
-            <meshBasicMaterial color="#0d0d0d" side={THREE.BackSide} depthWrite={false} />
-          </mesh>
-        </>
+        <mesh>
+          <boxGeometry args={[ow + 0.014, oh + 0.014, od + 0.014]} />
+          <meshBasicMaterial color="#3d9af5" side={THREE.BackSide} transparent opacity={0.88} depthWrite={false} />
+        </mesh>
       )}
       {hovered && !isSelected && (
         <mesh>
-          <boxGeometry args={[ow + 0.012, oh + 0.012, od + 0.012]} />
-          <meshStandardMaterial color="white" transparent opacity={0.07} />
+          <boxGeometry args={[ow + 0.010, oh + 0.010, od + 0.010]} />
+          <meshBasicMaterial color="#3d9af5" side={THREE.BackSide} transparent opacity={0.22} depthWrite={false} />
         </mesh>
+      )}
+
+      {/* Overlay flotante de controles — solo cuando está seleccionado */}
+      {isSelected && (
+        <Html
+          position={[0, oh / 2 + 0.18, 0]}
+          center
+          distanceFactor={5}
+          zIndexRange={[50, 0]}
+          style={{ pointerEvents: 'none' }}
+        >
+          <div
+            onPointerDown={e => e.stopPropagation()}
+            style={{
+              pointerEvents: 'auto',
+              background: 'rgba(8,10,16,0.88)',
+              border: '1px solid rgba(61,154,245,0.35)',
+              borderRadius: 10,
+              padding: '6px 9px',
+              display: 'flex', gap: 4, alignItems: 'center',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.55)',
+              userSelect: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <button style={FLOAT_BTN} onClick={() => handleLocalNudge(-FLOAT_STEP, 0)} title="Izquierda">◀</button>
+            <button style={FLOAT_BTN} onClick={() => handleLocalNudge(0, -FLOAT_STEP)} title="Acercar a pared">▲</button>
+            <button style={FLOAT_BTN} onClick={() => handleLocalNudge(0,  FLOAT_STEP)} title="Alejar de pared">▼</button>
+            <button style={FLOAT_BTN} onClick={() => handleLocalNudge( FLOAT_STEP, 0)} title="Derecha">▶</button>
+            <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.10)', margin: '0 2px', flexShrink: 0 }} />
+            <button style={{ ...FLOAT_BTN, color: '#7090e8' }} onClick={() => onRotar90(inst.instanceId)} title="Rotar 90°">↻</button>
+            <button style={{ ...FLOAT_BTN, color: '#D4AF37' }} onClick={handleLocalSnap} title="Pegar a pared">⊡</button>
+            <button style={{ ...FLOAT_BTN, color: '#e07070' }} onClick={() => onEliminarModulo(inst.instanceId)} title="Quitar módulo">✕</button>
+          </div>
+        </Html>
       )}
     </group>
   );
 }
+
+// ── Floating overlay constants ────────────────────────────────────────────────
+const FLOAT_STEP = 0.05; // 5 cm de nudge
+const FLOAT_BTN = {
+  width: 26, height: 26, borderRadius: 6,
+  background: 'rgba(255,255,255,0.07)',
+  border: '1px solid rgba(255,255,255,0.13)',
+  color: '#9aa0b0', cursor: 'pointer', fontSize: 12, lineHeight: 1,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  padding: 0,
+};
 
 // ── Grid colors per theme ──────────────────────────────────────────────────────
 const GRID_DARK  = { c1: '#2a2d35', c2: '#232630' };
@@ -252,13 +307,15 @@ function Mesada({ livePositions, modulosEnEscena, modulos, color }) {
 
     if (bajos.length === 0) { meshRef.current.visible = false; return; }
 
-    let minX = Infinity, maxX = -Infinity, maxH = 0;
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxH = 0;
     for (const inst of bajos) {
       const live = livePositions.current[inst.instanceId];
       if (!live) continue;
       const h = (modulos[inst.codigo]?.dimensiones?.alto || 700) / 1000;
       minX = Math.min(minX, live.x - live.hw);
       maxX = Math.max(maxX, live.x + live.hw);
+      minZ = Math.min(minZ, live.z - live.hd);
+      maxZ = Math.max(maxZ, live.z + live.hd);
       maxH = Math.max(maxH, h);
     }
 
@@ -267,6 +324,7 @@ function Mesada({ livePositions, modulosEnEscena, modulos, color }) {
     meshRef.current.visible    = true;
     meshRef.current.position.x = (minX + maxX) / 2;
     meshRef.current.position.y = maxH + MESADA_THICKNESS / 2;
+    meshRef.current.position.z = (minZ + maxZ) / 2;
     // scale.x sobre una geometría de ancho=1 equivale al ancho real
     meshRef.current.scale.x    = maxX - minX;
   });
@@ -288,6 +346,7 @@ export function Escena3DPrincipal({
   materiales3D, isDark = true,
   shadowIntensidad = 1, shadowAngle = 45,
   mostrarGrilla = true, divisionesGrilla = 50,
+  onRotar90, onEliminarModulo,
   mostrarParedIzq = false, mostrarParedDer = false,
 }) {
   const orbitRef       = useRef();
@@ -366,6 +425,8 @@ export function Escena3DPrincipal({
             onUpdatePosicion={onUpdatePosicion}
             orbitRef={orbitRef}
             livePositions={livePositions}
+            onRotar90={onRotar90}
+            onEliminarModulo={onEliminarModulo}
             texturaDataUrl={texturaDataUrl}
           />
         );

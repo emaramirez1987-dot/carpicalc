@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { CAMARAS } from '../visor3d/CamaraPresets.js';
 import { PanelModulos3D } from './PanelModulos3D.jsx';
-import { Escena3DPrincipal, WALL_Z } from './Escena3DPrincipal.jsx';
-import { useAutoLayout3D } from './useAutoLayout3D.js';
+import { Escena3DPrincipal } from './Escena3DPrincipal.jsx';
 
 // ── Lectura de tema robusta — usa localStorage como fallback cuando
 // data-theme aún no fue seteado por useTema (efecto corre después del primer render)
@@ -169,36 +168,6 @@ function ColorToggle({ value, onToggle, color, onColor, label }) {
   );
 }
 
-// ── DPadBtn ────────────────────────────────────────────────────────────────────
-const DPadBtn = ({ onClick, children, title }) => {
-  const t = tok();
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      style={{
-        width: 28, height: 28, borderRadius: 6, cursor: 'pointer',
-        background: t.dpBg, border: `1px solid ${t.dpBord}`,
-        color: t.dpText, fontSize: 11, lineHeight: 1,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.12s',
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.background = 'rgba(212,175,55,0.16)';
-        e.currentTarget.style.color = '#D4AF37';
-        e.currentTarget.style.borderColor = 'rgba(212,175,55,0.38)';
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.background = t.dpBg;
-        e.currentTarget.style.color = t.dpText;
-        e.currentTarget.style.borderColor = t.dpBord;
-      }}
-    >
-      {children}
-    </button>
-  );
-};
-
 // ── DropItem ───────────────────────────────────────────────────────────────────
 function DropItem({ active, onClick, children }) {
   const t = tok();
@@ -285,7 +254,6 @@ export function Vista3DTab({
   const [capturado,        setCapturado]        = useState(false);
   const [shadowIntensidad, setShadowIntensidad] = useState(1.0);
   const [shadowAngle,      setShadowAngle]      = useState(45);
-  const [editTab,          setEditTab]          = useState('mat');
   const [mostrarGrilla,    setMostrarGrilla]    = useState(true);
   const [divisionesGrilla, setDivisionesGrilla] = useState(50);
   const [mostrarParedIzq,  setMostrarParedIzq]  = useState(false);
@@ -298,31 +266,10 @@ export function Vista3DTab({
     setModulosEnEscena(prev => [...prev, { instanceId, codigo, posicion: [0, 0, 0] }]);
   };
 
-  const layoutItems = useAutoLayout3D(modulosEnEscena, modulos);
-
   const handleUpdatePosicion = (instanceId, newPos) =>
     setModulosEnEscena(prev => prev.map(m =>
       m.instanceId === instanceId ? { ...m, posicion: newPos } : m
     ));
-
-  const NUDGE_STEP = 0.05;
-
-  const handleNudge = (dx, dz) => {
-    if (!selectedCod) return;
-    const item = layoutItems.find(it => it.instanceId === selectedCod);
-    if (!item) return;
-    const [cx, cy, cz] = item.worldPos;
-    handleUpdatePosicion(selectedCod, [cx + dx, cy, cz + dz]);
-  };
-
-  const handleSnapToWall = () => {
-    if (!selectedCod) return;
-    const item = layoutItems.find(it => it.instanceId === selectedCod);
-    if (!item) return;
-    const mod = modulos?.[item.codigo];
-    const halfDepth = (mod?.dimensiones?.profundidad || 550) / 2 / 1000;
-    handleUpdatePosicion(selectedCod, [item.worldPos[0], item.worldPos[1], WALL_Z + halfDepth]);
-  };
 
   const handleCapturar = () => {
     if (!glRef.current) return;
@@ -331,19 +278,17 @@ export function Vista3DTab({
     setTimeout(() => setCapturado(false), 2000);
   };
 
-  const handleRotar90 = () => {
-    if (!selectedCod) return;
+  const handleRotar90 = (instanceId) => {
     setModulosEnEscena(prev => prev.map(m =>
-      m.instanceId === selectedCod
+      m.instanceId === instanceId
         ? { ...m, rotacionY: ((m.rotacionY || 0) + Math.PI / 2) % (Math.PI * 2) }
         : m
     ));
   };
 
-  const handleLimpiarEscena       = () => { setModulosEnEscena([]); setSelectedCod(null); };
-  const handleEliminarSeleccionado = () => {
-    if (!selectedCod) return;
-    setModulosEnEscena(prev => prev.filter(m => m.instanceId !== selectedCod));
+  const handleLimpiarEscena = () => { setModulosEnEscena([]); setSelectedCod(null); };
+  const handleEliminarModulo = (instanceId) => {
+    setModulosEnEscena(prev => prev.filter(m => m.instanceId !== instanceId));
     setSelectedCod(null);
   };
   const handleAsignarTextura = (texturaCode) => {
@@ -397,34 +342,13 @@ export function Vista3DTab({
               EN ESCENA · {modulosEnEscena.length}
             </div>
 
-            {/* Per-module tabbed edit panel */}
-            {selectedCod && (
-              <div style={{ borderTop: `1px solid ${T.borderSub}` }}>
-                {/* Tab bar */}
-                <div style={{ display: 'flex', borderBottom: `1px solid ${T.borderSub}`, padding: '0 8px' }}>
-                  {[['mat', 'Material'], ['mover', 'Posición']].map(([tab, lbl]) => (
-                    <button
-                      key={tab}
-                      onClick={() => setEditTab(tab)}
-                      style={{
-                        padding: '6px 9px 5px',
-                        fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                        letterSpacing: '0.08em',
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: editTab === tab ? '#D4AF37' : T.text,
-                        borderBottom: editTab === tab ? '2px solid #D4AF37' : '2px solid transparent',
-                        marginBottom: -1,
-                        transition: 'color 0.12s',
-                      }}
-                    >
-                      {lbl.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Material tab */}
-                {editTab === 'mat' && (
-                  <div style={{ padding: 10, maxHeight: 200, overflowY: 'auto' }}>
+              {/* Panel de material del módulo seleccionado */}
+              {selectedCod && (
+                <div style={{ borderTop: `1px solid ${T.borderSub}` }}>
+                  <div style={{ padding: '6px 12px 4px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
+                    MATERIAL
+                  </div>
+                  <div style={{ padding: '0 10px 10px', maxHeight: 200, overflowY: 'auto' }}>
                     {materialesKeys.length === 0 ? (
                       <p style={{
                         fontSize: 10, color: T.text, fontFamily: "'DM Mono',monospace",
@@ -490,60 +414,8 @@ export function Vista3DTab({
                       </div>
                     )}
                   </div>
-                )}
-
-                {/* Mover tab */}
-                {editTab === 'mover' && (
-                  <div style={{ padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 3 }}>
-                      <DPadBtn onClick={() => handleNudge(0, -NUDGE_STEP)} title="Acercar a pared">▲</DPadBtn>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginBottom: 3 }}>
-                      <DPadBtn onClick={() => handleNudge(-NUDGE_STEP, 0)} title="Izquierda">◀</DPadBtn>
-                      <div style={{ width: 28, height: 28, borderRadius: 6, background: T.dotBg, border: `1px solid ${T.dotBord}` }} />
-                      <DPadBtn onClick={() => handleNudge(NUDGE_STEP, 0)} title="Derecha">▶</DPadBtn>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
-                      <DPadBtn onClick={() => handleNudge(0, NUDGE_STEP)} title="Alejar de pared">▼</DPadBtn>
-                    </div>
-                    <button
-                      onClick={handleRotar90}
-                      title="Rotar 90° sobre eje vertical"
-                      style={{
-                        width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
-                        background: 'rgba(100,140,255,0.08)', border: '1px solid rgba(100,140,255,0.28)',
-                        color: '#7090e8', fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                        marginBottom: 5,
-                      }}
-                    >
-                      ↻ Rotar 90°
-                    </button>
-                    <button
-                      onClick={handleSnapToWall}
-                      title="Pegar el módulo a la pared trasera"
-                      style={{
-                        width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
-                        background: T.snapBg, border: `1px solid ${T.snapBord}`,
-                        color: T.snapText, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                        letterSpacing: '0.04em', marginBottom: 5,
-                      }}
-                    >
-                      ⊡ Pegar a pared
-                    </button>
-                    <button
-                      onClick={handleEliminarSeleccionado}
-                      style={{
-                        width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
-                        background: T.rmBg, border: `1px solid ${T.rmBord}`,
-                        color: T.rmText, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                      }}
-                    >
-                      ✕ Quitar módulo
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
 
             <div style={{ padding: '8px 12px', borderTop: `1px solid ${T.borderSub}` }}>
               <button
@@ -578,7 +450,7 @@ export function Vista3DTab({
           WebkitBackdropFilter: 'blur(10px)',
           transition: 'background 0.35s ease, box-shadow 0.35s ease',
         }}>
-          {/* Vistas — dropdown */}
+          {/* Vistas */}
           <Dropdown label="Vistas" active={false}>
             {Object.entries(CAMARAS).map(([k, v]) => (
               <DropItem key={k} active={camView === k} onClick={() => irACamara(k)}>{v.label}</DropItem>
@@ -587,35 +459,60 @@ export function Vista3DTab({
 
           <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
 
-          {/* Escena */}
-          <ColorToggle value={mostrarPiso}   onToggle={() => setMostrarPiso(v => !v)}   color={colorPiso}   onColor={setColorPiso}   label="Piso" />
-          <BTN active={mostrarGrilla} onClick={() => setMostrarGrilla(v => !v)}>Grilla</BTN>
-          {mostrarGrilla && [[20,'G'],[50,'M'],[100,'F']].map(([div, lbl]) => (
-            <BTN key={div} active={divisionesGrilla === div} onClick={() => setDivisionesGrilla(div)} style={{ minWidth: 22, padding: '4px 6px' }}>{lbl}</BTN>
-          ))}
-          <ColorToggle value={mostrarPared}  onToggle={() => setMostrarPared(v => !v)}  color={colorPared}  onColor={setColorPared}  label="Pared" />
-          <BTN active={mostrarParedIzq} onClick={() => setMostrarParedIzq(v => !v)} style={{ padding: '4px 7px' }}>Izq</BTN>
-          <BTN active={mostrarParedDer} onClick={() => setMostrarParedDer(v => !v)} style={{ padding: '4px 7px' }}>Der</BTN>
+          {/* Piso */}
+          <ColorToggle value={mostrarPiso} onToggle={() => setMostrarPiso(v => !v)} color={colorPiso} onColor={setColorPiso} label="Piso" />
+
+          {/* Grilla */}
+          <Dropdown label="Grilla" active={mostrarGrilla}>
+            <DropItem active={mostrarGrilla} onClick={() => setMostrarGrilla(v => !v)}>
+              {mostrarGrilla ? '✓ ' : ''}Mostrar grilla
+            </DropItem>
+            {mostrarGrilla && (
+              <>
+                <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
+                {[[20, 'Gruesa  · 20 div'],[50, 'Media   · 50 div'],[100, 'Fina   · 100 div']].map(([div, lbl]) => (
+                  <DropItem key={div} active={divisionesGrilla === div} onClick={() => setDivisionesGrilla(div)}>{lbl}</DropItem>
+                ))}
+              </>
+            )}
+          </Dropdown>
+
+          {/* Paredes */}
+          <Dropdown label="Paredes" active={mostrarPared || mostrarParedIzq || mostrarParedDer}>
+            <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <ColorToggle value={mostrarPared}    onToggle={() => setMostrarPared(v => !v)}    color={colorPared} onColor={setColorPared} label="Trasera" />
+              <BTN active={mostrarParedIzq} onClick={() => setMostrarParedIzq(v => !v)}>Izquierda</BTN>
+              <BTN active={mostrarParedDer} onClick={() => setMostrarParedDer(v => !v)}>Derecha</BTN>
+            </div>
+          </Dropdown>
+
+          {/* Mesada */}
           <ColorToggle value={mostrarMesada} onToggle={() => setMostrarMesada(v => !v)} color={colorMesada} onColor={setColorMesada} label="Mesada" />
 
           <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
 
-          {/* Luz — ángulo libre + intensidad */}
-          <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, letterSpacing: '0.09em', whiteSpace: 'nowrap' }}>LUZ</span>
-          <input
-            type="range" min={0} max={359} step={1}
-            value={shadowAngle}
-            onChange={e => setShadowAngle(Number(e.target.value))}
-            style={{ width: 72, accentColor: '#D4AF37', cursor: 'pointer', verticalAlign: 'middle' }}
-            title={`Ángulo: ${shadowAngle}°`}
-          />
-          <input
-            type="range" min={20} max={140} step={5}
-            value={Math.round(shadowIntensidad * 100)}
-            onChange={e => setShadowIntensidad(Number(e.target.value) / 100)}
-            style={{ width: 52, accentColor: '#D4AF37', cursor: 'pointer', verticalAlign: 'middle' }}
-            title={`Intensidad: ${Math.round(shadowIntensidad * 100)}%`}
-          />
+          {/* Luz */}
+          <Dropdown label="Luz" active={false}>
+            <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 170 }}>
+              <div>
+                <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, letterSpacing: '0.08em', marginBottom: 5 }}>
+                  ÁNGULO · {shadowAngle}°
+                </div>
+                <input type="range" min={0} max={359} step={1} value={shadowAngle}
+                  onChange={e => setShadowAngle(Number(e.target.value))}
+                  style={{ width: '100%', accentColor: '#D4AF37', cursor: 'pointer' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, letterSpacing: '0.08em', marginBottom: 5 }}>
+                  INTENSIDAD · {Math.round(shadowIntensidad * 100)}%
+                </div>
+                <input type="range" min={20} max={140} step={5}
+                  value={Math.round(shadowIntensidad * 100)}
+                  onChange={e => setShadowIntensidad(Number(e.target.value) / 100)}
+                  style={{ width: '100%', accentColor: '#D4AF37', cursor: 'pointer' }} />
+              </div>
+            </div>
+          </Dropdown>
 
           <div style={{ flex: 1 }} />
 
@@ -692,6 +589,8 @@ export function Vista3DTab({
               divisionesGrilla={divisionesGrilla}
               mostrarParedIzq={mostrarParedIzq}
               mostrarParedDer={mostrarParedDer}
+              onRotar90={handleRotar90}
+              onEliminarModulo={handleEliminarModulo}
             />
           </Canvas>
 
