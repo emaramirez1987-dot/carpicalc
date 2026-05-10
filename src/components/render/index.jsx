@@ -9,14 +9,12 @@ import { supabase } from "../../lib/supabase.js";
 // ── Prompts base por defecto ──────────────────────────────────────────────────
 
 const DEFAULT_PROMPT_BASE =
-`Convertir esta vista 3D en una fotografía arquitectónica hiperrealista del mueble.
-
-Conservar exactamente los materiales, colores, texturas y proporciones de la imagen de referencia. Si el mueble muestra madera oscura, mantener ese tono y veta. Si muestra melamina blanca, mantenerla.
+`Fotografía arquitectónica hiperrealista de mueble de cocina o living. Mantener estrictamente la estructura, silueta y proporciones de la referencia.
 
 Material: [MATERIAL] / Color: [COLOR] / Acabado: [ACABADO]
 Cámara: [CAMARA] / Estilo: [ESTILO]
 
-Fondo neutro liso, iluminación de estudio. Sombras suaves, reflejos realistas, detalles precisos de carpintería, fotografía profesional de producto de alta gama.`;
+Fondo liso neutro, luz difusa de estudio. Texturas naturales detalladas, sombras suaves, reflejos realistas, carpintería de alta gama. Fotografía profesional de producto.`;
 
 const DEFAULT_SCENE_PROMPT_BASE =
 `Fotografía arquitectónica de interiores premium, alta resolución.
@@ -673,7 +671,7 @@ export function RenderIA({
   const [promptBase,      setPromptBase]      = useState(savedCfg.promptBase      ?? DEFAULT_PROMPT_BASE);
   const [variables,       setVariables]       = useState(savedCfg.variables       ?? {});
   const [guidance,        setGuidance]        = useState(savedCfg.guidance        ?? 30);
-  const [controlStrength] = useState(savedCfg.controlStrength ?? 0.55); // persistido, no editable desde UI (kontext no lo usa)
+  const [controlStrength, setControlStrength] = useState(savedCfg.controlStrength ?? 0.65);
   const [seed1,           setSeed1]           = useState(savedCfg.seed1           ?? "");
   const [presets1,        setPresets1]        = useState(() => leerPromptsRender());
 
@@ -702,6 +700,7 @@ export function RenderIA({
   const actualizarPromptBase      = (val) => { setPromptBase(val);       persistirConfig({ promptBase: val }); };
   const actualizarVariable        = (id, val) => { const v = { ...variables, [id]: val };       setVariables(v);       persistirConfig({ variables: v }); };
   const actualizarGuidance        = (val) => { setGuidance(val);         persistirConfig({ guidance: val }); };
+  const actualizarControlStrength = (val) => { setControlStrength(val);  persistirConfig({ controlStrength: val }); };
   const actualizarSeed1           = (val) => { setSeed1(val);            persistirConfig({ seed1: val }); };
 
   const guardarPreset1  = (p)  => { const n = [...presets1, p];               setPresets1(n); guardarPromptsRender(n); };
@@ -763,6 +762,7 @@ export function RenderIA({
   const puedeGenerar = !generando && !creditos.bloqueado;
 
   const hintGuidance  = guidance <= 15 ? "muy libre" : guidance <= 40 ? "balance" : guidance <= 70 ? "literal" : "muy literal";
+  const hintControl   = controlStrength <= 0.25 ? "ignora estructura" : controlStrength <= 0.55 ? "balance" : "respeta estructura";
   const hintSceneGuidance = sceneGuidance <= 15 ? "muy libre" : sceneGuidance <= 40 ? "balance" : sceneGuidance <= 70 ? "literal" : "muy literal";
 
   const activasP1 = VARS_PASO1.filter(v => variables[v.id]).length;
@@ -863,6 +863,8 @@ export function RenderIA({
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <SliderParam label="Adherencia al prompt" value={guidance} min={1} max={100} step={1}
                 onChange={actualizarGuidance} hint={hintGuidance} izq="1 — libre" der="100 — literal" />
+              <SliderParam label="Fuerza estructural" value={controlStrength} min={0.05} max={0.95} step={0.05}
+                onChange={actualizarControlStrength} hint={hintControl} izq="0.05 — libre" der="0.95 — estricto" />
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Seed</span>
                 <input type="number" value={seed1} onChange={e => actualizarSeed1(e.target.value)}
