@@ -166,7 +166,7 @@ const GlobalStyles = () => (
     /* Animación de entrada al cambiar de pestaña */
     @keyframes tabEnter {
       from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
+      to   { opacity: 1; transform: none; }
     }
     .tab-view {
       animation: tabEnter 0.32s cubic-bezier(0.22,1,0.36,1) both;
