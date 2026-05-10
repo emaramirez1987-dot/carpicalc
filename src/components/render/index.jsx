@@ -61,6 +61,142 @@ const VARIABLES_CONFIG = [
 ];
 
 const ESCENA_IDS  = ["fondo", "iluminacion", "perspectiva", "accesorios"];
+
+// ── Presets de estilo para modo GPT ──────────────────────────────────────────
+const ESTILOS_PRESET_GPT = [
+  {
+    id: "escandinavo", label: "Escandinavo", emoji: "🌿", desc: "Blanco, madera clara, luz natural",
+    variables: {
+      fondo:        "Scandinavian living room, white walls, light oak hardwood floor, large window with sheer curtains",
+      iluminacion:  "soft natural daylight from a large side window, gentle diffuse shadows",
+      perspectiva:  "three-quarter front view",
+      accesorios:   "small potted plant, knitted throw, minimalist ceramic vase in neutral tones",
+      estilo:       "escandinavo minimalista",
+      camara:       "lente 35mm",
+    },
+  },
+  {
+    id: "minimalista", label: "Minimalista", emoji: "◻", desc: "Vacío, luz perfecta, producto puro",
+    variables: {
+      fondo:        "pure white seamless studio background, infinite white floor",
+      iluminacion:  "professional studio softbox lighting, perfectly even, no harsh shadows",
+      perspectiva:  "vista frontal directa",
+      accesorios:   "sin accesorios, fondo completamente limpio",
+      estilo:       "minimalista contemporáneo",
+      camara:       "lente 50mm",
+    },
+  },
+  {
+    id: "japandi", label: "Japandi", emoji: "🎋", desc: "Japonés-escandinavo, wabi-sabi",
+    variables: {
+      fondo:        "japandi interior, warm beige walls, light wood floor, shoji paper screen, zen atmosphere",
+      iluminacion:  "warm diffuse natural light filtered through paper screens, golden hour feel",
+      perspectiva:  "vista lateral derecha",
+      accesorios:   "handmade ceramic bowl, small bonsai, linen fabric, smooth river stones",
+      estilo:       "japandi wabi-sabi",
+      camara:       "lente 50mm",
+    },
+  },
+  {
+    id: "contemporaneo", label: "Contemporáneo", emoji: "🏙", desc: "Living moderno, luz cálida",
+    variables: {
+      fondo:        "contemporary living room, warm grey walls, polished concrete floor, open plan space",
+      iluminacion:  "warm ambient evening light, floor lamp glow, subtle recessed ceiling lights",
+      perspectiva:  "vista frontal en 3/4",
+      accesorios:   "curated books, architectural plant, sculptural decorative object",
+      estilo:       "contemporáneo premium",
+      camara:       "lente 35mm",
+    },
+  },
+  {
+    id: "industrial", label: "Industrial", emoji: "🏗", desc: "Cemento, metal, luz dramática",
+    variables: {
+      fondo:        "urban loft interior, exposed concrete walls, worn brick accent wall, raw steel beams",
+      iluminacion:  "dramatic overhead industrial pendant lights, strong directional shadows",
+      perspectiva:  "vista frontal en 3/4",
+      accesorios:   "metal pipe details, industrial pendant lamp, large monstera plant",
+      estilo:       "industrial moderno",
+      camara:       "lente 35mm",
+    },
+  },
+  {
+    id: "lujo", label: "Lujo", emoji: "✨", desc: "Mármol, alto brillo, dramatismo",
+    variables: {
+      fondo:        "luxury showroom, white Calacatta marble floor, dark charcoal walls, high ceiling",
+      iluminacion:  "dramatic cinematic lighting with subtle specular highlights, moody atmosphere",
+      perspectiva:  "vista isométrica",
+      accesorios:   "crystal vase with flowers, premium decorative objects, gold accent details",
+      estilo:       "lujo contemporáneo",
+      camara:       "lente 50mm",
+    },
+  },
+  {
+    id: "midcentury", label: "Mid-Century", emoji: "🟠", desc: "Retro, maderas cálidas, vintage 60s",
+    variables: {
+      fondo:        "mid-century modern living room, mustard yellow accent wall, patterned geometric rug, teak wood floor",
+      iluminacion:  "warm incandescent ambient light, vintage arc floor lamp",
+      perspectiva:  "vista lateral derecha",
+      accesorios:   "vinyl record, cactus, retro ceramic decorations, 60s inspired objects",
+      estilo:       "mid-century modern",
+      camara:       "lente 50mm",
+    },
+  },
+  {
+    id: "boho", label: "Boho Natural", emoji: "🌾", desc: "Tierras, plantas, texturas naturales",
+    variables: {
+      fondo:        "bohemian interior, terracotta walls, natural rattan furniture, warm earthy tones",
+      iluminacion:  "golden hour warm sunlight streaming through a window, soft warm shadows",
+      perspectiva:  "vista frontal en 3/4",
+      accesorios:   "macramé wall hanging, lush tropical plants, woven baskets, natural linen textiles",
+      estilo:       "boho contemporáneo",
+      camara:       "lente 35mm",
+    },
+  },
+  {
+    id: "mediterraneo", label: "Mediterráneo", emoji: "🌊", desc: "Cal, terracota, luz del sur",
+    variables: {
+      fondo:        "Mediterranean interior, whitewashed lime walls, terracotta tile floor, arched doorway",
+      iluminacion:  "intense bright southern sunlight, sharp contrasting shadows, warm white light",
+      perspectiva:  "vista frontal en 3/4",
+      accesorios:   "handmade ceramic pottery, olive branch, natural linen curtains, mosaic tile detail",
+      estilo:       "mediterráneo contemporáneo",
+      camara:       "lente 35mm",
+    },
+  },
+  {
+    id: "nordic_dark", label: "Nordic Dark", emoji: "🌑", desc: "Oscuro, velas, hygge invernal",
+    variables: {
+      fondo:        "dark nordic interior, deep forest green walls, dark oak floor, cozy winter atmosphere",
+      iluminacion:  "warm candlelight and soft pendant lamp glow, moody hygge ambiance",
+      perspectiva:  "vista frontal en 3/4",
+      accesorios:   "candles, dark ceramic mugs, wool blanket, pine branches",
+      estilo:       "nordic dark hygge",
+      camara:       "lente 35mm",
+    },
+  },
+  {
+    id: "art_deco", label: "Art Déco", emoji: "🔷", desc: "Dorado, glamour, geometría",
+    variables: {
+      fondo:        "art deco interior, deep navy blue walls, gold geometric moldings, black marble floor",
+      iluminacion:  "glamorous warm golden light from art deco sconces and chandelier",
+      perspectiva:  "vista isométrica",
+      accesorios:   "gold vase, geometric decorative objects, luxury velvet accent",
+      estilo:       "art déco glamour",
+      camara:       "lente 50mm",
+    },
+  },
+  {
+    id: "exterior", label: "Exterior / Jardín", emoji: "🌳", desc: "Al aire libre, luz natural",
+    variables: {
+      fondo:        "outdoor garden setting, lush green grass, stone patio, natural wood deck",
+      iluminacion:  "bright natural outdoor daylight, dappled shade from trees",
+      perspectiva:  "vista frontal en 3/4",
+      accesorios:   "potted plants, garden accessories, natural stone elements",
+      estilo:       "exterior contemporáneo",
+      camara:       "lente 35mm",
+    },
+  },
+];
 const VARS_PASO1  = VARIABLES_CONFIG.filter(v => !ESCENA_IDS.includes(v.id));
 const VARS_PASO2  = VARIABLES_CONFIG.filter(v =>  ESCENA_IDS.includes(v.id));
 
@@ -688,8 +824,9 @@ export function RenderIA({
   const [presets1,        setPresets1]        = useState(() => leerPromptsRender());
 
   // Config persistida — Modo GPT (etapa única)
-  const [promptGpt,      setPromptGpt]      = useState(savedCfg.promptGpt      ?? DEFAULT_PROMPT_GPT);
-  const [variablesGpt,   setVariablesGpt]   = useState(savedCfg.variablesGpt   ?? {});
+  const [promptGpt,       setPromptGpt]       = useState(savedCfg.promptGpt       ?? DEFAULT_PROMPT_GPT);
+  const [variablesGpt,    setVariablesGpt]    = useState(savedCfg.variablesGpt    ?? {});
+  const [estiloActivoGpt, setEstiloActivoGpt] = useState(savedCfg.estiloActivoGpt ?? null);
 
   // Config persistida — Paso 2
   const [promptBaseEscena,     setPromptBaseEscena]     = useState(savedCfg.promptBaseEscena     ?? DEFAULT_SCENE_PROMPT_BASE);
@@ -707,7 +844,7 @@ export function RenderIA({
   const persistirConfig = (patch) =>
     guardarConfigRender({
       promptBase, variables, guidance, controlStrength, modeloRender, seed1,
-      promptGpt, variablesGpt,
+      promptGpt, variablesGpt, estiloActivoGpt,
       promptBaseEscena, variablesEscena, sceneGuidance, seed2,
       presetsEscena: presets2,
       ...patch,
@@ -720,7 +857,17 @@ export function RenderIA({
   const actualizarControlStrength = (val) => { setControlStrength(val);  persistirConfig({ controlStrength: val }); };
   const actualizarModeloRender    = (val) => { setModeloRender(val);     persistirConfig({ modeloRender: val }); };
   const actualizarPromptGpt       = (val) => { setPromptGpt(val);        persistirConfig({ promptGpt: val }); };
-  const actualizarVariableGpt     = (id, val) => { const v = { ...variablesGpt, [id]: val }; setVariablesGpt(v); persistirConfig({ variablesGpt: v }); };
+  const actualizarVariableGpt     = (id, val) => {
+    const v = { ...variablesGpt, [id]: val };
+    setVariablesGpt(v);
+    setEstiloActivoGpt(null);
+    persistirConfig({ variablesGpt: v, estiloActivoGpt: null });
+  };
+  const aplicarEstiloGpt = (preset) => {
+    setVariablesGpt(preset.variables);
+    setEstiloActivoGpt(preset.id);
+    persistirConfig({ variablesGpt: preset.variables, estiloActivoGpt: preset.id });
+  };
   const actualizarSeed1           = (val) => { setSeed1(val);            persistirConfig({ seed1: val }); };
 
   const guardarPreset1  = (p)  => { const n = [...presets1, p];               setPresets1(n); guardarPromptsRender(n); };
@@ -863,7 +1010,31 @@ export function RenderIA({
               <InnerSection label="Prompt" icon="📝" badge={promptGpt !== DEFAULT_PROMPT_GPT ? "personalizado" : null}>
                 <PromptSection value={promptGpt} onChange={actualizarPromptGpt} defaultValue={DEFAULT_PROMPT_GPT} />
               </InnerSection>
-              <InnerSection label="Variables de escena y estilo" icon="🏠" badge={activasGpt > 0 ? `${activasGpt} activa${activasGpt !== 1 ? "s" : ""}` : null}>
+              <InnerSection label="Estilo de escena" icon="🎨" badge={estiloActivoGpt ? (ESTILOS_PRESET_GPT.find(p => p.id === estiloActivoGpt)?.label ?? null) : (activasGpt > 0 ? "personalizado" : null)}>
+                {/* Grilla de presets */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 12 }}>
+                  {ESTILOS_PRESET_GPT.map(preset => {
+                    const activo = estiloActivoGpt === preset.id;
+                    return (
+                      <button key={preset.id} onClick={() => aplicarEstiloGpt(preset)}
+                        title={preset.desc}
+                        style={{
+                          padding: "8px 6px", borderRadius: 8, cursor: "pointer", textAlign: "center",
+                          background: activo ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)",
+                          border: activo ? "1px solid rgba(212,175,55,0.6)" : "1px solid rgba(255,255,255,0.09)",
+                          color: activo ? "#D4AF37" : "var(--text-secondary)",
+                          transition: "all 0.15s",
+                          display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                        }}>
+                        <span style={{ fontSize: 18, lineHeight: 1 }}>{preset.emoji}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, lineHeight: 1.2 }}>{preset.label}</span>
+                        <span style={{ fontSize: 9, opacity: 0.6, lineHeight: 1.2 }}>{preset.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Variables editables (se rellenan al aplicar preset, editables individualmente) */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {VARIABLES_CONFIG.map(vc => (
                     <VariableItem key={vc.id} config={vc} value={variablesGpt[vc.id] ?? null} onChange={val => actualizarVariableGpt(vc.id, val)} />
