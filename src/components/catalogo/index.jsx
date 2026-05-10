@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
+import ReactDOM from 'react-dom';
 import { useNav } from '../../state/NavContext.jsx';
 import { useUndo } from '../../hooks/useUndo.js';
 import { useTema } from '../../hooks/useTema.js';
@@ -2500,8 +2501,10 @@ function CatalogoModulos({
       )}
       <ToastContainer />
 
-      {/* ── Visor 3D ── */}
-      {visor3D && (
+      {/* ── Visor 3D — Portal: se monta en document.body para evitar
+           que transforms/animations de ancestros creen un containing block
+           que limite position:fixed al div del catálogo en vez del viewport ── */}
+      {visor3D && ReactDOM.createPortal(
         <Suspense fallback={null}>
           <VisorModulo3D
             modulo={visor3D.mod}
@@ -2515,7 +2518,8 @@ function CatalogoModulos({
               setVisor3D({ cod, mod: nuevoMod });
             }}
           />
-        </Suspense>
+        </Suspense>,
+        document.body
       )}
     </div>
   );
