@@ -192,6 +192,60 @@ const DPadBtn = ({ onClick, children, title }) => {
   );
 };
 
+// ── DropItem ───────────────────────────────────────────────────────────────────
+function DropItem({ active, onClick, children }) {
+  const t = tok();
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: active ? 'rgba(212,175,55,0.18)' : 'transparent',
+        border: active ? '1px solid rgba(212,175,55,0.42)' : '1px solid transparent',
+        color: active ? '#D4AF37' : t.btnText,
+        borderRadius: 5, padding: '5px 10px', cursor: 'pointer',
+        fontSize: 11, fontFamily: "'DM Mono',monospace",
+        textAlign: 'left', width: '100%', transition: 'background 0.12s',
+      }}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.btnHoverBg; }}
+      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── Dropdown ───────────────────────────────────────────────────────────────────
+function Dropdown({ label, active, children }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+  const t = tok();
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <BTN active={active || open} onClick={() => setOpen(v => !v)}>
+        {label} <span style={{ fontSize: 7, marginLeft: 2, opacity: 0.65 }}>▾</span>
+      </BTN>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 5px)', left: 0,
+          background: t.toolbarBg, border: `1px solid ${t.border}`,
+          borderRadius: 8, padding: 5, zIndex: 300, minWidth: 140,
+          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+          boxShadow: '0 6px 24px rgba(0,0,0,0.30)',
+          display: 'flex', flexDirection: 'column', gap: 2,
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Colores default de la escena ───────────────────────────────────────────────
 const DEFAULTS = { colorMesada: '#c8b89a' };
 const initColor = (dark, light) =>
@@ -217,14 +271,14 @@ export function Vista3DTab({
   const [mostrarPiso,     setMostrarPiso]      = useState(true);
   const [mostrarPared,    setMostrarPared]     = useState(true);
   const [mostrarMesada,   setMostrarMesada]    = useState(true);
-  const [colorPiso,        setColorPiso]        = useState(initColor('#2e3136', '#ccc9c3'));
-  const [colorPared,       setColorPared]       = useState(initColor('#222530', '#d6d4d0'));
+  const [colorPiso,        setColorPiso]        = useState(initColor('#1e2028', '#e8e9ed'));
+  const [colorPared,       setColorPared]       = useState(initColor('#1c1f28', '#e0e1e5'));
   const [colorMesada,      setColorMesada]      = useState(DEFAULTS.colorMesada);
   const [camTarget,        setCamTarget]        = useState(CAMARAS.iso.pos);
   const [camView,          setCamView]          = useState('iso');
   const [capturado,        setCapturado]        = useState(false);
   const [shadowIntensidad, setShadowIntensidad] = useState(1.0);
-  const [shadowDir,        setShadowDir]        = useState('right');
+  const [shadowAngle,      setShadowAngle]      = useState(45);
   const [editTab,          setEditTab]          = useState('mat');
   const [envPreset,        setEnvPreset]        = useState('apartment');
   const [mostrarGrilla,    setMostrarGrilla]    = useState(true);
@@ -452,17 +506,6 @@ export function Vista3DTab({
                       title="Rotar 90° sobre eje vertical"
                       style={{
                         width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
-                        background: T.btnBg, border: `1px solid ${T.btnBord}`,
-                        color: T.btnText, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                        letterSpacing: '0.04em', marginBottom: 5,
-                      }}
-                    >
-                      ↻ Rotar 90°
-                    </button>
-                    <button
-                      onClick={handleRotar90}
-                      style={{
-                        width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
                         background: 'rgba(100,140,255,0.08)', border: '1px solid rgba(100,140,255,0.28)',
                         color: '#7090e8', fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
                         marginBottom: 5,
@@ -530,16 +573,21 @@ export function Vista3DTab({
           WebkitBackdropFilter: 'blur(10px)',
           transition: 'background 0.35s ease, box-shadow 0.35s ease',
         }}>
-          {/* Ángulos */}
-          <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, marginRight: 1, letterSpacing: '0.09em' }}>ÁNGULO</span>
-          {Object.entries(CAMARAS).map(([k, v]) => (
-            <BTN key={k} active={camView === k} onClick={() => irACamara(k)}>{v.label}</BTN>
-          ))}
+          {/* Vistas — dropdown */}
+          <Dropdown label="Vistas" active={false}>
+            {Object.entries(CAMARAS).map(([k, v]) => (
+              <DropItem key={k} active={camView === k} onClick={() => irACamara(k)}>{v.label}</DropItem>
+            ))}
+          </Dropdown>
 
           <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
 
-          {/* Toggles de escena */}
+          {/* Escena */}
           <ColorToggle value={mostrarPiso}   onToggle={() => setMostrarPiso(v => !v)}   color={colorPiso}   onColor={setColorPiso}   label="Piso" />
+          <BTN active={mostrarGrilla} onClick={() => setMostrarGrilla(v => !v)}>Grilla</BTN>
+          {mostrarGrilla && [[20,'G'],[50,'M'],[100,'F']].map(([div, lbl]) => (
+            <BTN key={div} active={divisionesGrilla === div} onClick={() => setDivisionesGrilla(div)} style={{ minWidth: 22, padding: '4px 6px' }}>{lbl}</BTN>
+          ))}
           <ColorToggle value={mostrarPared}  onToggle={() => setMostrarPared(v => !v)}  color={colorPared}  onColor={setColorPared}  label="Pared" />
           <BTN active={mostrarParedIzq} onClick={() => setMostrarParedIzq(v => !v)} style={{ padding: '4px 7px' }}>Izq</BTN>
           <BTN active={mostrarParedDer} onClick={() => setMostrarParedDer(v => !v)} style={{ padding: '4px 7px' }}>Der</BTN>
@@ -547,23 +595,28 @@ export function Vista3DTab({
 
           <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
 
-          <BTN active={mostrarGrilla} onClick={() => setMostrarGrilla(v => !v)}>Grilla</BTN>
-          {mostrarGrilla && [
-            [20,  'G'],
-            [50,  'M'],
-            [100, 'F'],
-          ].map(([div, lbl]) => (
-            <BTN key={div} active={divisionesGrilla === div} onClick={() => setDivisionesGrilla(div)} style={{ minWidth: 22, padding: '4px 6px' }}>
-              {lbl}
-            </BTN>
-          ))}
+          {/* Entorno — dropdown */}
+          <Dropdown label="Entorno" active={false}>
+            {[
+              ['apartment', 'Apartamento'], ['studio', 'Estudio'],
+              ['lobby',     'Lobby'],       ['city',   'Ciudad'],
+              ['sunset',    'Atardecer'],   ['warehouse','Depósito'],
+            ].map(([preset, lbl]) => (
+              <DropItem key={preset} active={envPreset === preset} onClick={() => setEnvPreset(preset)}>{lbl}</DropItem>
+            ))}
+          </Dropdown>
 
           <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
 
-          <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, marginRight: 1, letterSpacing: '0.09em' }}>LUZ</span>
-          {[['left','←'],['right','→'],['top','↑']].map(([dir, icon]) => (
-            <BTN key={dir} active={shadowDir === dir} onClick={() => setShadowDir(dir)}>{icon}</BTN>
-          ))}
+          {/* Luz — ángulo libre + intensidad */}
+          <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, letterSpacing: '0.09em', whiteSpace: 'nowrap' }}>LUZ</span>
+          <input
+            type="range" min={0} max={359} step={1}
+            value={shadowAngle}
+            onChange={e => setShadowAngle(Number(e.target.value))}
+            style={{ width: 72, accentColor: '#D4AF37', cursor: 'pointer', verticalAlign: 'middle' }}
+            title={`Ángulo: ${shadowAngle}°`}
+          />
           <input
             type="range" min={20} max={140} step={5}
             value={Math.round(shadowIntensidad * 100)}
@@ -571,20 +624,6 @@ export function Vista3DTab({
             style={{ width: 52, accentColor: '#D4AF37', cursor: 'pointer', verticalAlign: 'middle' }}
             title={`Intensidad: ${Math.round(shadowIntensidad * 100)}%`}
           />
-
-          <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
-
-          <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, marginRight: 1, letterSpacing: '0.09em' }}>ENTORNO</span>
-          {[
-            ['apartment', 'APT'],
-            ['studio',    'STU'],
-            ['lobby',     'LOB'],
-            ['city',      'CTY'],
-            ['sunset',    'SUN'],
-            ['warehouse', 'WHS'],
-          ].map(([preset, lbl]) => (
-            <BTN key={preset} active={envPreset === preset} onClick={() => setEnvPreset(preset)}>{lbl}</BTN>
-          ))}
 
           <div style={{ flex: 1 }} />
 
@@ -656,7 +695,7 @@ export function Vista3DTab({
               materiales3D={materiales3D}
               isDark={isDark}
               shadowIntensidad={shadowIntensidad}
-              shadowDir={shadowDir}
+              shadowAngle={shadowAngle}
               envPreset={envPreset}
               mostrarGrilla={mostrarGrilla}
               divisionesGrilla={divisionesGrilla}

@@ -7,17 +7,10 @@ import { useAutoLayout3D } from './useAutoLayout3D.js';
 
 export const WALL_Z = -0.6; // posición de la pared trasera
 
-// ── Theme palettes ─────────────────────────────────────────────────────────────
-// ambInt kept low — Environment (HDRI) handles most of the ambient contribution
-const DARK_PAL  = { bg: '#080a0d', fogNear: 6,  fogFar: 18, ambInt: 0.08 };
-const LIGHT_PAL = { bg: '#eff0f4', fogNear: 10, fogFar: 28, ambInt: 0.12 };
-
-// ── Shadow direction presets ───────────────────────────────────────────────────
-const SHADOW_DIRS = {
-  left:  [-5, 7, 3],
-  right: [ 5, 7, 3],
-  top:   [ 1, 10, 2],
-};
+// ── Theme palettes — identical to VisorModulo3D ────────────────────────────────
+// ambInt kept low: HDRI Environment handles most ambient; palette matches editor
+const DARK_PAL  = { bg: '#1a1c22', fogNear: 5,  fogFar: 14, ambInt: 0.08 };
+const LIGHT_PAL = { bg: '#f0f1f4', fogNear: 8,  fogFar: 24, ambInt: 0.12 };
 
 // ── EntornoEscena — background + fog only; HDRI handles ambient ───────────────
 function EntornoEscena({ isDark }) {
@@ -294,7 +287,7 @@ export function Escena3DPrincipal({
   colorPiso, colorPared, colorMesada,
   camTarget, onSelectModulo, selectedCod, onUpdatePosicion,
   materiales3D, isDark = true,
-  shadowIntensidad = 1, shadowDir = 'right',
+  shadowIntensidad = 1, shadowAngle = 45,
   envPreset = 'apartment',
   mostrarGrilla = true, divisionesGrilla = 50,
   mostrarParedIzq = false, mostrarParedDer = false,
@@ -302,7 +295,9 @@ export function Escena3DPrincipal({
   const orbitRef       = useRef();
   const livePositions  = useRef({}); // { [instanceId]: { x, z, hw, hd } }
   const layoutItems    = useAutoLayout3D(modulosEnEscena, modulos);
-  const shadowLightPos = SHADOW_DIRS[shadowDir] || SHADOW_DIRS.right;
+  // shadowAngle: azimuth en grados (0=frente, 90=derecha, 180=atrás, 270=izquierda)
+  const shadowRad      = (shadowAngle * Math.PI) / 180;
+  const shadowLightPos = [Math.sin(shadowRad) * 7, 7, Math.cos(shadowRad) * 7];
 
   return (
     <>
