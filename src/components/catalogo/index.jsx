@@ -193,7 +193,16 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
 
 // Estado inicial vacío de una pieza nueva en el formulario
 
-function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSugeridos, variables, onVarsUpdate }) {
+// ── Detecta en qué piezas se usa una variable (por nombre en fórmulas) ───────
+function piezasQueUsanVar(varName, piezas) {
+  const re = new RegExp(`\\b${varName}\\b`);
+  return (piezas || []).filter(p => {
+    const campos = [p.formula1, p.formula2, p.posFormulas?.x, p.posFormulas?.y, p.posFormulas?.z];
+    return campos.some(f => typeof f === 'string' && re.test(f));
+  });
+}
+
+function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSugeridos, variables, onVarsUpdate, piezas }) {
   const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
   const [rolesTaller, setRolesTaller] = useState(() => cargarRolesPieza());
   const todosRoles = [...ROLES_PIEZA_DEFAULT, ...rolesTaller];
@@ -205,6 +214,8 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
   const [varsAbierto, setVarsAbierto] = useState(false);
   const [agregandoVar, setAgregandoVar] = useState(false);
   const [nuevaVarNombre, setNuevaVarNombre] = useState("");
+  const [confirmDeleteVar, setConfirmDeleteVar] = useState(null); // nombre de var pendiente de confirmación
+  const [varInputFocus, setVarInputFocus] = useState(null); // nombre de la var con foco
 
   // ── Click-to-insert: ref al input activo ────────────────────────────────
   const activeInputEl = useRef(null);
@@ -453,26 +464,58 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
 
                           {/* Variables custom: editar valor + eliminar */}
                           {customVarEntries.length > 0 && onVarsUpdate && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                               {customVarEntries.map(([nombre, valor]) => {
                                 const valStr  = typeof valor === 'number' ? String(valor) : (valor || '');
                                 const valEval = resolvedCustomVars[nombre];
                                 const evalStr = valEval != null ? String(Math.round(valEval * 10) / 10) : null;
+                                const enfocado = varInputFocus === nombre;
+                                const pendiente = confirmDeleteVar === nombre;
+                                const usadas = pendiente ? piezasQueUsanVar(nombre, piezas) : [];
                                 return (
-                                  <div key={nombre} style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.22)", borderRadius: 7, padding: "4px 8px" }}>
-                                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>{nombre} =</span>
-                                    <input type="text" value={valStr}
-                                      onChange={e => onVarsUpdate({ ...(variables || {}), [nombre]: e.target.value })}
-                                      onFocus={e => { activeInputEl.current = e.target; }}
-                                      style={{ width: 80, fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, padding: "2px 5px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", outline: "none" }} />
-                                    {evalStr !== null && evalStr !== valStr && (
-                                      <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--color-positive)", fontWeight: 700 }}>={evalStr}</span>
+                                  <div key={nombre} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(212,175,55,0.07)", border: `1px solid ${enfocado ? "rgba(212,175,55,0.55)" : "rgba(212,175,55,0.22)"}`, borderRadius: 7, padding: "5px 8px", transition: "border-color 0.15s" }}>
+                                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{nombre} =</span>
+                                      <input
+                                        type="text"
+                                        value={valStr}
+                                        onChange={e => onVarsUpdate({ ...(variables || {}), [nombre]: e.target.value })}
+                                        onFocus={() => setVarInputFocus(nombre)}
+                                        onBlur={() => setVarInputFocus(null)}
+                                        style={{ flex: 1, minWidth: 60, fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: "3px 6px", background: "var(--bg-base)", border: "1px solid transparent", borderRadius: 5, color: "var(--text-primary)", outline: "none" }}
+                                      />
+                                      {evalStr !== null && evalStr !== valStr && (
+                                        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--color-positive)", fontWeight: 700, flexShrink: 0 }}>= {evalStr}</span>
+                                      )}
+                                      <button
+                                        onClick={() => { setConfirmDeleteVar(nombre); }}
+                                        title="Eliminar variable"
+                                        style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: "0 2px", opacity: 0.45, flexShrink: 0, transition: "opacity 0.15s" }}
+                                        onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
+                                        onMouseLeave={e => { e.currentTarget.style.opacity = 0.45; }}>×</button>
+                                    </div>
+                                    {/* Confirmación de eliminación */}
+                                    {pendiente && (
+                                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, padding: "6px 10px", background: "rgba(200,60,60,0.08)", border: "1px solid rgba(200,60,60,0.30)", borderRadius: 7 }}>
+                                        {usadas.length > 0 ? (
+                                          <span style={{ fontSize: 10, color: "#e07070", fontFamily: "'DM Mono',monospace", flex: 1 }}>
+                                            ⚠ Usada en: <strong>{usadas.map(p => p.nombre).join(', ')}</strong>
+                                          </span>
+                                        ) : (
+                                          <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", flex: 1 }}>
+                                            ¿Eliminar <strong style={{ color: "var(--accent)" }}>{nombre}</strong>?
+                                          </span>
+                                        )}
+                                        <button
+                                          onClick={() => { const { [nombre]: _r, ...rest } = variables || {}; onVarsUpdate(rest); setConfirmDeleteVar(null); }}
+                                          style={{ padding: "3px 10px", borderRadius: 5, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "rgba(200,60,60,0.20)", border: "1px solid rgba(200,60,60,0.45)", color: "#e07070" }}>
+                                          Sí, eliminar
+                                        </button>
+                                        <button
+                                          onClick={() => setConfirmDeleteVar(null)}
+                                          style={{ padding: "3px 8px", borderRadius: 5, fontSize: 11, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>Cancelar</button>
+                                      </div>
                                     )}
-                                    <button
-                                      onClick={() => { const { [nombre]: _r, ...rest } = variables || {}; onVarsUpdate(rest); }}
-                                      style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 15, lineHeight: 1, opacity: 0.5, padding: "0 2px" }}
-                                      onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
-                                      onMouseLeave={e => { e.currentTarget.style.opacity = 0.5; }}>×</button>
                                   </div>
                                 );
                               })}
@@ -991,6 +1034,7 @@ function FormModulo({
           nombresSugeridos={NOMBRES_SUGERIDOS}
           variables={datos.variables}
           onVarsUpdate={v => setDatos(d => ({ ...d, variables: v }))}
+          piezas={datos.piezas || []}
         />
 
         {/* Columna derecha: Acordeones */}
