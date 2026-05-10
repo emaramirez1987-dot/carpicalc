@@ -572,6 +572,7 @@ export function Vista3DTab({
             camera={{ position: CAMARAS.iso.pos, fov: 45, near: 0.01, far: 100 }}
             gl={{ preserveDrawingBuffer: true }}
             onCreated={({ gl }) => { glRef.current = gl; }}
+            onPointerMissed={() => setSelectedCod(null)}
             style={{ background: T.canvasFallbk, width: '100%', height: '100%' }}
           >
             <Escena3DPrincipal

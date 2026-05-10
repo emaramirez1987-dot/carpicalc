@@ -201,26 +201,32 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
         texturaDataUrl={texturaDataUrl}
       />
 
-      {/* Outline de selección — perimetro azul CAD */}
+      {/* Outline de selección — doble capa: halo blanco externo + filo negro interno */}
       {isSelected && (
-        <mesh>
-          <boxGeometry args={[ow + 0.014, oh + 0.014, od + 0.014]} />
-          <meshBasicMaterial color="#3d9af5" side={THREE.BackSide} transparent opacity={0.88} depthWrite={false} />
-        </mesh>
+        <>
+          <mesh>
+            <boxGeometry args={[ow + 0.026, oh + 0.026, od + 0.026]} />
+            <meshBasicMaterial color="white" side={THREE.BackSide} transparent opacity={0.55} depthWrite={false} />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[ow + 0.013, oh + 0.013, od + 0.013]} />
+            <meshBasicMaterial color="#0a0b0f" side={THREE.BackSide} depthWrite={false} />
+          </mesh>
+        </>
       )}
       {hovered && !isSelected && (
         <mesh>
           <boxGeometry args={[ow + 0.010, oh + 0.010, od + 0.010]} />
-          <meshBasicMaterial color="#3d9af5" side={THREE.BackSide} transparent opacity={0.22} depthWrite={false} />
+          <meshBasicMaterial color="white" side={THREE.BackSide} transparent opacity={0.10} depthWrite={false} />
         </mesh>
       )}
 
-      {/* Overlay flotante de controles — solo cuando está seleccionado */}
+      {/* Overlay flotante — pill premium, separado del módulo */}
       {isSelected && (
         <Html
-          position={[0, oh / 2 + 0.22, 0]}
+          position={[0, oh / 2 + 0.42, 0]}
           center
-          distanceFactor={7}
+          distanceFactor={8}
           zIndexRange={[50, 0]}
           style={{ pointerEvents: 'none' }}
         >
@@ -228,14 +234,14 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
             onPointerDown={e => e.stopPropagation()}
             style={{
               pointerEvents: 'auto',
-              background: 'rgba(6,7,12,0.78)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              borderRadius: 8,
-              padding: '3px 6px',
-              display: 'flex', gap: 2, alignItems: 'center',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.50), 0 0 0 0.5px rgba(255,255,255,0.05) inset',
+              background: 'rgba(10,11,17,0.76)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: 100,
+              padding: '4px 8px',
+              display: 'flex', gap: 0, alignItems: 'center',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.07) inset',
               userSelect: 'none',
               whiteSpace: 'nowrap',
             }}
@@ -244,10 +250,10 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
             <button style={FLOAT_BTN} onClick={() => handleLocalNudge(0, -FLOAT_STEP)} title="Acercar a pared">▲</button>
             <button style={FLOAT_BTN} onClick={() => handleLocalNudge(0,  FLOAT_STEP)} title="Alejar de pared">▼</button>
             <button style={FLOAT_BTN} onClick={() => handleLocalNudge( FLOAT_STEP, 0)} title="Derecha">▶</button>
-            <div style={{ width: 1, height: 12, background: 'rgba(255,255,255,0.08)', margin: '0 2px', flexShrink: 0 }} />
-            <button style={{ ...FLOAT_BTN, color: '#6070c8' }} onClick={() => onRotar90(inst.instanceId)} title="Rotar 90°">↻</button>
-            <button style={{ ...FLOAT_BTN, color: '#a07820' }} onClick={handleLocalSnap} title="Pegar a pared">⊡</button>
-            <button style={{ ...FLOAT_BTN, color: '#a04848' }} onClick={() => onEliminarModulo(inst.instanceId)} title="Quitar módulo">✕</button>
+            <div style={{ width: 1, height: 10, background: 'rgba(255,255,255,0.12)', margin: '0 4px', flexShrink: 0 }} />
+            <button style={{ ...FLOAT_BTN, color: 'rgba(140,150,230,0.85)' }} onClick={() => onRotar90(inst.instanceId)} title="Rotar 90°">↻</button>
+            <button style={{ ...FLOAT_BTN, color: 'rgba(190,155,70,0.85)' }} onClick={handleLocalSnap} title="Pegar a pared">⊡</button>
+            <button style={{ ...FLOAT_BTN, color: 'rgba(190,90,90,0.85)' }} onClick={() => onEliminarModulo(inst.instanceId)} title="Quitar módulo">✕</button>
           </div>
         </Html>
       )}
