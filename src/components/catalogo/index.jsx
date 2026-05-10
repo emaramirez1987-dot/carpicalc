@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { useNav } from '../../state/NavContext.jsx';
 import { useUndo } from '../../hooks/useUndo.js';
 import { useTema } from '../../hooks/useTema.js';
@@ -202,8 +202,30 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
   const tienePos3d = !!(fp.posFormulas?.x || fp.posFormulas?.y || fp.posFormulas?.z);
   const [pos3dAbierto, setPos3dAbierto] = useState(() => tienePos3d);
   const [nombreRolNuevo, setNombreRolNuevo] = useState("");
+  const [varsAbierto, setVarsAbierto] = useState(false);
 
-  const allVars = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor, ...(variables || {}) };
+  // ── Click-to-insert: ref al input activo ────────────────────────────────
+  const activeInputEl = useRef(null);
+  const insertarVariable = (e, nombre) => {
+    e.preventDefault(); // no quitar foco del input activo
+    const el = activeInputEl.current;
+    if (!el) return;
+    const start  = el.selectionStart ?? el.value.length;
+    const end    = el.selectionEnd   ?? el.value.length;
+    const newVal = el.value.slice(0, start) + nombre + el.value.slice(end);
+    // Trigger React synthetic onChange via native setter
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    setter.call(el, newVal);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    setTimeout(() => { el.setSelectionRange(start + nombre.length, start + nombre.length); el.focus(); }, 0);
+  };
+
+  const baseVars = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor };
+  const resolvedCustomVars = {};
+  Object.entries(variables || {}).forEach(([k, v]) => {
+    resolvedCustomVars[k] = typeof v === 'number' ? v : (evaluarFormula(String(v), baseVars) ?? parseFloat(String(v)) ?? 0);
+  });
+  const allVars = { ...baseVars, ...resolvedCustomVars };
 
   const d1 = fp.especial
     ? (parseInt(fp.dimLibre1) || 0)
@@ -351,6 +373,39 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                   </div>
                 </div>
 
+                {/* ── Variables del módulo — accordion clickeable ── */}
+                {(() => {
+                  const varsDisp = [
+                    { n: 'ancho',       v: dims.ancho || 0 },
+                    { n: 'alto',        v: dims.alto  || 0 },
+                    { n: 'profundidad', v: dims.profundidad || 0 },
+                    { n: 'esp',         v: espesor },
+                    ...Object.entries(resolvedCustomVars).map(([k, val]) => ({ n: k, v: Math.round(val * 10) / 10 })),
+                  ];
+                  return (
+                    <div style={{ border: "1px solid rgba(212,175,55,0.18)", borderRadius: 8, overflow: "hidden" }}>
+                      <button onClick={() => setVarsAbierto(a => !a)}
+                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", background: "rgba(212,175,55,0.06)", border: "none", cursor: "pointer", textAlign: "left" }}>
+                        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--accent)" }}>
+                          ⚡ Variables del módulo
+                        </span>
+                        <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{varsAbierto ? "▲" : "▼"} {varsDisp.length} vars · click para insertar</span>
+                      </button>
+                      {varsAbierto && (
+                        <div style={{ padding: "8px 12px", display: "flex", flexWrap: "wrap", gap: 5 }}>
+                          {varsDisp.map(({ n, v }) => (
+                            <button key={n} onMouseDown={e => insertarVariable(e, n)}
+                              style={{ padding: "3px 9px", borderRadius: 5, border: "1px solid rgba(212,175,55,0.30)", background: "rgba(212,175,55,0.08)", color: "var(--accent)", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                              {n}
+                              <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 10 }}>={v}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Fórmulas D1 y D2 */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {[
@@ -363,6 +418,7 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                         <input
                           value={fp[key] || ""}
                           onChange={e => setFp(p => ({ ...p, [key]: e.target.value }))}
+                          onFocus={e => { activeInputEl.current = e.target; }}
                           placeholder="ej: alto - 2 * esp"
                           style={{
                             flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 600,
@@ -381,13 +437,6 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                             <span style={{ fontSize: 10, color: "#e07070", fontFamily: "'DM Mono',monospace" }}>⚠ inválida</span>
                           )}
                         </div>
-                      </div>
-                      <div style={{ fontSize: 10, marginTop: 5, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
-                        Variables: <span style={{ color: "var(--accent)", opacity: 0.8 }}>ancho</span> · <span style={{ color: "var(--accent)", opacity: 0.8 }}>alto</span> · <span style={{ color: "var(--accent)", opacity: 0.8 }}>profundidad</span> · <span style={{ color: "var(--accent)", opacity: 0.8 }}>esp</span>
-                        {Object.keys(variables || {}).map(v => (
-                          <span key={v}> · <span style={{ color: "var(--accent)", fontWeight: 700 }}>{v}</span></span>
-                        ))}
-                        {dims && <span style={{ marginLeft: 10, color: "var(--text-muted)" }}>({dims.ancho}·{dims.alto}·{dims.profundidad}·{espesor}{Object.entries(variables || {}).map(([k, v]) => `·${k}=${v}`).join('')})</span>}
                       </div>
                     </div>
                   ))}
@@ -449,6 +498,7 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                                     return { ...p, posFormulas: pf };
                                   });
                                 }}
+                                onFocus={e => { activeInputEl.current = e.target; }}
                                 placeholder={hint}
                                 style={{
                                   flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 12,
@@ -1017,19 +1067,26 @@ function FormModulo({
                   </div>
                 )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {Object.entries(datos.variables || {}).map(([nombre, valor]) => (
-                    <div key={nombre} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.22)', borderRadius: 8, padding: '5px 10px' }}>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>{nombre} =</span>
-                      <input type="number" value={valor}
-                        onChange={e => setDatos(d => ({ ...d, variables: { ...d.variables, [nombre]: parseFloat(e.target.value) || 0 } }))}
-                        style={{ width: 72, fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, padding: '3px 6px', background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', textAlign: 'right' }} />
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>mm</span>
-                      <button onClick={() => setDatos(d => { const { [nombre]: _r, ...rest } = d.variables; return { ...d, variables: rest }; })}
-                        style={{ background: 'none', border: 'none', color: '#e07070', cursor: 'pointer', fontSize: 16, lineHeight: 1, opacity: 0.5, padding: '0 2px' }}
-                        onMouseEnter={e => e.target.style.opacity = 1}
-                        onMouseLeave={e => e.target.style.opacity = 0.5}>×</button>
-                    </div>
-                  ))}
+                  {Object.entries(datos.variables || {}).map(([nombre, valor]) => {
+                    const dimBase = { ancho: datos.dimensiones?.ancho || 600, alto: datos.dimensiones?.alto || 700, profundidad: datos.dimensiones?.profundidad || 550, esp: 18 };
+                    const valEval = typeof valor === 'number' ? valor : (evaluarFormula(String(valor), dimBase) ?? parseFloat(String(valor)));
+                    const valStr  = typeof valor === 'number' ? String(valor) : (valor || '');
+                    return (
+                      <div key={nombre} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.22)', borderRadius: 8, padding: '5px 10px' }}>
+                        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>{nombre} =</span>
+                        <input type="text" value={valStr}
+                          onChange={e => setDatos(d => ({ ...d, variables: { ...d.variables, [nombre]: e.target.value } }))}
+                          style={{ width: 120, fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: '3px 6px', background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none' }} />
+                        {valEval !== null && valEval !== undefined && (
+                          <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: 'var(--color-positive)', fontWeight: 700 }}>= {Math.round(valEval * 10) / 10}</span>
+                        )}
+                        <button onClick={() => setDatos(d => { const { [nombre]: _r, ...rest } = d.variables; return { ...d, variables: rest }; })}
+                          style={{ background: 'none', border: 'none', color: '#e07070', cursor: 'pointer', fontSize: 16, lineHeight: 1, opacity: 0.5, padding: '0 2px' }}
+                          onMouseEnter={e => e.target.style.opacity = 1}
+                          onMouseLeave={e => e.target.style.opacity = 0.5}>×</button>
+                      </div>
+                    );
+                  })}
                   {!agregandoVar && (
                     <button onClick={() => { setAgregandoVar(true); setNuevaVarNombre(''); }}
                       style={{ padding: '4px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: 'pointer', background: 'transparent', border: '1px dashed var(--border)', color: 'var(--text-muted)', transition: 'all 0.15s' }}
@@ -1043,14 +1100,14 @@ function FormModulo({
                       <input autoFocus value={nuevaVarNombre}
                         onChange={e => setNuevaVarNombre(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())}
                         onKeyDown={e => {
-                          if (e.key === 'Enter') { const n = nuevaVarNombre.trim(); if (n && !(n in (datos.variables || {}))) { setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [n]: 0 } })); setNuevaVarNombre(''); setAgregandoVar(false); } }
+                          if (e.key === 'Enter') { const n = nuevaVarNombre.trim(); if (n && !(n in (datos.variables || {}))) { setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [n]: '' } })); setNuevaVarNombre(''); setAgregandoVar(false); } }
                           if (e.key === 'Escape') { setAgregandoVar(false); setNuevaVarNombre(''); }
                         }}
                         placeholder="nombre (ej: luz)"
                         style={{ width: 130, fontFamily: "'DM Mono',monospace", fontSize: 12, padding: '5px 8px', background: 'var(--bg-base)', border: '1px solid var(--accent-border)', borderRadius: 6, color: 'var(--text-primary)', outline: 'none' }} />
                       <button onClick={() => { const n = nuevaVarNombre.trim(); if (n && !(n in (datos.variables || {}))) { setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [n]: 0 } })); setNuevaVarNombre(''); setAgregandoVar(false); } }}
                         style={{ padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: 'pointer', background: 'linear-gradient(135deg,var(--accent),var(--accent-hover))', border: 'none', color: 'var(--text-inverted)' }}>
-                        Agregar
+                        OK
                       </button>
                       <button onClick={() => { setAgregandoVar(false); setNuevaVarNombre(''); }}
                         style={{ padding: '5px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', fontFamily: "'DM Mono',monospace" }}>✕</button>

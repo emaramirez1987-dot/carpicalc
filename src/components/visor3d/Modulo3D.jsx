@@ -45,7 +45,15 @@ export function buildPiezas3D(modulo, costos) {
   const M   = 1000;
 
   const dimMap  = { ancho, alto, profundidad };
-  const modVars = { ...dimMap, esp, ...(modulo.variables || {}) };
+  // Resolver variables personalizadas como fórmulas (pueden usar ancho/alto/profundidad/esp)
+  const dimBase = { ...dimMap, esp };
+  const customVarsResolved = {};
+  Object.entries(modulo.variables || {}).forEach(([k, v]) => {
+    customVarsResolved[k] = typeof v === 'number'
+      ? v
+      : (evaluarFormula(String(v), dimBase) ?? parseFloat(String(v)) ?? 0);
+  });
+  const modVars = { ...dimBase, ...customVarsResolved };
 
   const hw = ancho       / 2 / M;
   const hh = alto        / 2 / M;
