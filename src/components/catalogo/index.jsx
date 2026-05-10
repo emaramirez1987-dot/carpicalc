@@ -338,40 +338,56 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
 
             {!fp.especial && (
               <>
-                {/* Selector de roles */}
-                <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-                  <div style={{ padding: "7px 12px", background: "rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(200,160,42,0.25)", borderLeft: "2px solid rgba(200,160,42,0.5)" }}>
-                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#c8a02a" }}>Rol de pieza</span>
-                  </div>
-                  <div style={{ padding: "10px 12px" }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                    {todosRoles.map(rol => {
-                      const isActive =
-                        fp.formula1 === rol.formula1 &&
-                        fp.formula2 === rol.formula2 &&
-                        (rol.rol3d != null ? fp.rol3d === rol.rol3d : !fp.rol3d);
-                      return (
-                        <button key={rol.id} onClick={() => aplicarRol(rol)}
-                          style={{
-                            padding: "5px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                            fontFamily: "'DM Mono',monospace", cursor: "pointer",
-                            transition: "all 0.15s",
-                            background: isActive ? "rgba(212,175,55,0.18)" : "var(--bg-subtle)",
-                            border: `1px solid ${isActive ? "var(--accent-border)" : "var(--border)"}`,
-                            color: isActive ? "var(--accent)" : "var(--text-muted)",
-                            boxShadow: isActive ? "0 0 12px rgba(212,175,55,0.25)" : "none",
-                          }}>
-                          {rol.nombre}
-                          {!rol.sistema && (
-                            <span onClick={(e) => { e.stopPropagation(); const nuevos = rolesTaller.filter(r => r.id !== rol.id); setRolesTaller(nuevos); guardarRolesPieza(nuevos); }}
-                              style={{ marginLeft: 5, opacity: 0.5, cursor: "pointer" }}>×</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  </div>
-                </div>
+                {/* Selector de roles — acordeón */}
+                {(() => {
+                  const rolActivo = todosRoles.find(rol =>
+                    fp.formula1 === rol.formula1 &&
+                    fp.formula2 === rol.formula2 &&
+                    (rol.rol3d != null ? fp.rol3d === rol.rol3d : !fp.rol3d)
+                  );
+                  return (
+                    <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
+                      <button onClick={() => setFp(p => ({ ...p, _rolesAbierto: !p._rolesAbierto }))}
+                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", borderLeft: "2px solid rgba(200,160,42,0.5)", textAlign: "left" }}>
+                        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#c8a02a" }}>
+                          🎭 Rol de pieza
+                        </span>
+                        <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: rolActivo ? "var(--accent)" : "var(--text-muted)", fontWeight: rolActivo ? 700 : 400 }}>
+                          {rolActivo ? rolActivo.nombre : "sin rol"} {fp._rolesAbierto ? "▲" : "▼"}
+                        </span>
+                      </button>
+                      {fp._rolesAbierto && (
+                        <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(200,160,42,0.15)" }}>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                            {todosRoles.map(rol => {
+                              const isActive =
+                                fp.formula1 === rol.formula1 &&
+                                fp.formula2 === rol.formula2 &&
+                                (rol.rol3d != null ? fp.rol3d === rol.rol3d : !fp.rol3d);
+                              return (
+                                <button key={rol.id} onClick={() => { aplicarRol(rol); setFp(p => ({ ...p, _rolesAbierto: false })); }}
+                                  style={{
+                                    padding: "5px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                                    fontFamily: "'DM Mono',monospace", cursor: "pointer", transition: "all 0.15s",
+                                    background: isActive ? "rgba(212,175,55,0.18)" : "var(--bg-subtle)",
+                                    border: `1px solid ${isActive ? "var(--accent-border)" : "var(--border)"}`,
+                                    color: isActive ? "var(--accent)" : "var(--text-muted)",
+                                    boxShadow: isActive ? "0 0 12px rgba(212,175,55,0.25)" : "none",
+                                  }}>
+                                  {rol.nombre}
+                                  {!rol.sistema && (
+                                    <span onClick={(e) => { e.stopPropagation(); const nuevos = rolesTaller.filter(r => r.id !== rol.id); setRolesTaller(nuevos); guardarRolesPieza(nuevos); }}
+                                      style={{ marginLeft: 5, opacity: 0.5, cursor: "pointer" }}>×</span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* ── Variables del módulo — accordion clickeable ── */}
                 {(() => {
