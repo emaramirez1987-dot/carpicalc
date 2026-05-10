@@ -236,6 +236,7 @@ export function Vista3DTab({
   presupuestoActivoId,  // eslint-disable-line no-unused-vars
   onCaptura,
   materiales3D = {},
+  visible = true,
 }) {
   const isDark = useIsDark();
   const glRef  = useRef(null);
@@ -312,7 +313,7 @@ export function Vista3DTab({
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 200,
-      display: 'flex', flexDirection: 'row',
+      display: visible ? 'flex' : 'none', flexDirection: 'row',
       background: T.outerBg,
       transition: 'background 0.35s ease',
     }}>

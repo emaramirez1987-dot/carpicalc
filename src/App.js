@@ -540,18 +540,17 @@ function AppInterna() {
               />
             </div>
 
-            <div style={{ display: nav.vista === "vista3d" ? undefined : "none" }}>
-              <Vista3DTab
-                modulos={modulos}
-                costos={costos}
-                items={items}
-                dimOverride={dimOverride}
-                inlineModulos={inlineModulos}
-                presupuestoActivoId={presupuestoActivoId}
-                onCaptura={(base64) => setImagenRef3D(base64)}
-                materiales3D={materiales3D}
-              />
-            </div>
+            <Vista3DTab
+              visible={nav.vista === "vista3d"}
+              modulos={modulos}
+              costos={costos}
+              items={items}
+              dimOverride={dimOverride}
+              inlineModulos={inlineModulos}
+              presupuestoActivoId={presupuestoActivoId}
+              onCaptura={(base64) => setImagenRef3D(base64)}
+              materiales3D={materiales3D}
+            />
 
             <div style={{ display: nav.vista === "catalogo" ? undefined : "none" }}>
               <CatalogoModulos
