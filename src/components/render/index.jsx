@@ -553,21 +553,85 @@ function BibliotecaMateriales3D({ materiales3D, onGuardar, onEliminar }) {
       </div>
       {error && <div style={{ fontSize: 11, color: '#e07070', fontFamily: "'DM Mono',monospace" }}>{error}</div>}
 
-      {/* Lista */}
+      {/* Catálogo de materiales */}
       {Object.keys(materiales3D).length === 0 ? (
         <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin materiales cargados</p>
       ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8 }}>
           {Object.entries(materiales3D).map(([cod, mat]) => (
-            <div key={cod} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px 4px 5px', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6 }}>
-              <img src={mat.dataUrl} alt={cod} style={{ width: 22, height: 22, objectFit: 'cover', borderRadius: 3 }} />
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: 'var(--accent)', lineHeight: 1 }}>{cod}</span>
-                {mat.nombre && mat.nombre !== cod && (
-                  <span style={{ fontSize: 9, color: 'var(--text-muted)', lineHeight: 1, marginTop: 1 }}>{mat.nombre}</span>
-                )}
+            <div
+              key={cod}
+              style={{
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'border-color 0.15s, box-shadow 0.15s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--accent-border)';
+                e.currentTarget.style.boxShadow   = '0 4px 14px rgba(0,0,0,0.18)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow   = 'none';
+              }}
+            >
+              {/* Imagen — aspect-ratio 4:3 */}
+              <div style={{ position: 'relative', paddingTop: '75%' }}>
+                <img
+                  src={mat.dataUrl}
+                  alt={cod}
+                  style={{
+                    position: 'absolute', inset: 0,
+                    width: '100%', height: '100%',
+                    objectFit: 'cover', display: 'block',
+                  }}
+                />
+                {/* Botón eliminar */}
+                <button
+                  onClick={() => onEliminar(cod)}
+                  title="Eliminar material"
+                  style={{
+                    position: 'absolute', top: 5, right: 5,
+                    width: 20, height: 20, borderRadius: 5,
+                    background: 'rgba(0,0,0,0.60)',
+                    border: '1px solid rgba(255,255,255,0.20)',
+                    color: '#fff', fontSize: 12, lineHeight: 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(4px)',
+                    WebkitBackdropFilter: 'blur(4px)',
+                    transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(200,60,60,0.80)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.60)'; }}
+                >
+                  ×
+                </button>
               </div>
-              <button onClick={() => onEliminar(cod)} style={{ ...btnSm('danger'), padding: '1px 5px', fontSize: 10, marginLeft: 2 }}>×</button>
+
+              {/* Texto */}
+              <div style={{ padding: '6px 8px 8px', background: 'var(--bg-surface)' }}>
+                <div style={{
+                  fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                  color: 'var(--accent)', letterSpacing: '0.05em',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  lineHeight: 1.3,
+                }}>
+                  {cod}
+                </div>
+                <div style={{
+                  fontSize: 9, color: 'var(--text-secondary)',
+                  fontFamily: "'Bricolage Grotesque',sans-serif",
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  lineHeight: 1.4, marginTop: 1,
+                }}>
+                  {mat.nombre || cod}
+                </div>
+              </div>
             </div>
           ))}
         </div>
