@@ -259,6 +259,13 @@ export function Vista3DTab({
   const [mostrarParedIzq,  setMostrarParedIzq]  = useState(false);
   const [mostrarParedDer,  setMostrarParedDer]  = useState(false);
 
+  // Sincronizar colores de piso/pared con el tema — igual que VisorModulo3D
+  // El usuario puede personalizar con el color picker, pero al cambiar tema se resetean
+  useEffect(() => {
+    setColorPiso(isDark ? '#1e2028' : '#e8e9ed');
+    setColorPared(isDark ? '#1c1f28' : '#e0e1e5');
+  }, [isDark]);
+
   const irACamara = (key) => { setCamView(key); setCamTarget([...CAMARAS[key].pos]); };
 
   const handleAgregar = ({ codigo }) => {
