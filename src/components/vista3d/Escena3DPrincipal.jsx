@@ -221,12 +221,12 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
         </mesh>
       )}
 
-      {/* Overlay flotante — compact dark rounded toolbar */}
+      {/* Overlay flotante — mini toolbar discreta, escala con zoom via distanceFactor */}
       {isSelected && (
         <Html
-          position={[0, oh / 2 + 0.28, 0]}
+          position={[0, oh / 2 + 0.13, 0]}
           center
-          distanceFactor={5}
+          distanceFactor={2.5}
           zIndexRange={[50, 0]}
           style={{ pointerEvents: 'none' }}
         >
@@ -234,14 +234,14 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
             onPointerDown={e => e.stopPropagation()}
             style={{
               pointerEvents: 'auto',
-              background: 'rgba(14,16,22,0.92)',
-              border: '1px solid rgba(255,255,255,0.11)',
-              borderRadius: 10,
-              padding: '6px 8px',
-              display: 'flex', gap: 5, alignItems: 'center',
-              backdropFilter: 'blur(18px)',
-              WebkitBackdropFilter: 'blur(18px)',
-              boxShadow: '0 6px 22px rgba(0,0,0,0.60)',
+              background: 'rgba(12,14,20,0.88)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              borderRadius: 7,
+              padding: '4px 5px',
+              display: 'flex', gap: 3, alignItems: 'center',
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+              boxShadow: '0 3px 12px rgba(0,0,0,0.55)',
               userSelect: 'none',
               whiteSpace: 'nowrap',
             }}
@@ -250,10 +250,10 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
             <button style={FLOAT_BTN} onClick={() => handleLocalNudge(0, -FLOAT_STEP)} title="Acercar a pared">▲</button>
             <button style={FLOAT_BTN} onClick={() => handleLocalNudge(0,  FLOAT_STEP)} title="Alejar de pared">▼</button>
             <button style={FLOAT_BTN} onClick={() => handleLocalNudge( FLOAT_STEP, 0)} title="Derecha">▶</button>
-            <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.13)', flexShrink: 0 }} />
-            <button style={{ ...FLOAT_BTN, color: 'rgba(100,140,255,0.90)' }} onClick={() => onRotar90(inst.instanceId)} title="Rotar 90°">↻</button>
-            <button style={{ ...FLOAT_BTN, color: 'rgba(210,175,70,0.90)' }} onClick={handleLocalSnap} title="Pegar a pared">⊡</button>
-            <button style={{ ...FLOAT_BTN, color: 'rgba(210,80,80,0.90)' }} onClick={() => onEliminarModulo(inst.instanceId)} title="Quitar módulo">✕</button>
+            <div style={{ width: 1, height: 11, background: 'rgba(255,255,255,0.13)', flexShrink: 0 }} />
+            <button style={{ ...FLOAT_BTN, color: 'rgba(100,140,255,0.92)' }} onClick={() => onRotar90(inst.instanceId)} title="Rotar 90°">↻</button>
+            <button style={{ ...FLOAT_BTN, color: 'rgba(210,175,70,0.92)' }} onClick={handleLocalSnap} title="Pegar a pared">⊡</button>
+            <button style={{ ...FLOAT_BTN, color: 'rgba(210,80,80,0.92)' }} onClick={() => onEliminarModulo(inst.instanceId)} title="Quitar módulo">✕</button>
           </div>
         </Html>
       )}
@@ -262,12 +262,13 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
 }
 
 // ── Floating overlay constants ────────────────────────────────────────────────
+// distanceFactor=2.5 + 20px CSS → ~28px visual at iso view (~1.8u) | escala con zoom
 const FLOAT_STEP = 0.05; // 5 cm de nudge
 const FLOAT_BTN = {
-  width: 28, height: 28, borderRadius: 6,
-  background: 'rgba(255,255,255,0.06)',
+  width: 20, height: 20, borderRadius: 4,
+  background: 'rgba(255,255,255,0.07)',
   border: '1px solid rgba(255,255,255,0.10)',
-  color: 'rgba(190,200,220,0.80)', cursor: 'pointer', fontSize: 13, lineHeight: 1,
+  color: 'rgba(185,195,215,0.82)', cursor: 'pointer', fontSize: 10, lineHeight: 1,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   padding: 0, flexShrink: 0,
 };
