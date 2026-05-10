@@ -672,6 +672,7 @@ export function RenderIA({
   const [variables,       setVariables]       = useState(savedCfg.variables       ?? {});
   const [guidance,        setGuidance]        = useState(savedCfg.guidance        ?? 30);
   const [controlStrength, setControlStrength] = useState(savedCfg.controlStrength ?? 0.65);
+  const [modeloRender,    setModeloRender]    = useState(savedCfg.modeloRender    ?? "flux");
   const [seed1,           setSeed1]           = useState(savedCfg.seed1           ?? "");
   const [presets1,        setPresets1]        = useState(() => leerPromptsRender());
 
@@ -690,7 +691,7 @@ export function RenderIA({
 
   const persistirConfig = (patch) =>
     guardarConfigRender({
-      promptBase, variables, guidance, controlStrength, seed1,
+      promptBase, variables, guidance, controlStrength, modeloRender, seed1,
       promptBaseEscena, variablesEscena, sceneGuidance, seed2,
       presetsEscena: presets2,
       ...patch,
@@ -701,6 +702,7 @@ export function RenderIA({
   const actualizarVariable        = (id, val) => { const v = { ...variables, [id]: val };       setVariables(v);       persistirConfig({ variables: v }); };
   const actualizarGuidance        = (val) => { setGuidance(val);         persistirConfig({ guidance: val }); };
   const actualizarControlStrength = (val) => { setControlStrength(val);  persistirConfig({ controlStrength: val }); };
+  const actualizarModeloRender    = (val) => { setModeloRender(val);     persistirConfig({ modeloRender: val }); };
   const actualizarSeed1           = (val) => { setSeed1(val);            persistirConfig({ seed1: val }); };
 
   const guardarPreset1  = (p)  => { const n = [...presets1, p];               setPresets1(n); guardarPromptsRender(n); };
@@ -723,9 +725,11 @@ export function RenderIA({
     setGenerando(true); setErrorRender(null); setImagenUrl(null);
     try {
       const imageBase64 = imagenRef3D ? imagenRef3D.replace(/^data:image\/\w+;base64,/, '') : null;
-      const body = { workspaceId: wsId, prompt: promptCompleto, imageBase64, guidance, controlStrength };
+      const endpoint = modeloRender === "gpt" ? "/api/generate-render-gpt" : "/api/generate-render";
+      const body = { workspaceId: wsId, prompt: promptCompleto, imageBase64 };
+      if (modeloRender !== "gpt") { body.guidance = guidance; body.controlStrength = controlStrength; }
       if (seed1 !== "") body.seed = parseInt(seed1, 10);
-      const res = await fetch("/api/generate-render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       let data;
       try { data = await res.json(); }
       catch { throw new Error(window.location.hostname === "localhost"
@@ -861,10 +865,38 @@ export function RenderIA({
 
           <InnerSection label="Configuración avanzada" icon="⚙️" defaultOpen={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <SliderParam label="Adherencia al prompt" value={guidance} min={1} max={100} step={1}
-                onChange={actualizarGuidance} hint={hintGuidance} izq="1 — libre" der="100 — literal" />
-              <SliderParam label="Fuerza estructural" value={controlStrength} min={0.05} max={0.95} step={0.05}
-                onChange={actualizarControlStrength} hint={hintControl} izq="0.05 — libre" der="0.95 — estricto" />
+
+              {/* Selector de modelo IA */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Modelo IA</span>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {[
+                    { id: "flux", label: "Flux Canny", desc: "Rápido · estructura fiel" },
+                    { id: "gpt",  label: "GPT-4o",     desc: "Ve el material real" },
+                  ].map(m => (
+                    <button key={m.id} onClick={() => actualizarModeloRender(m.id)}
+                      style={{
+                        flex: 1, padding: "7px 10px", borderRadius: 7, cursor: "pointer", textAlign: "left",
+                        background: modeloRender === m.id ? "rgba(212,175,55,0.13)" : "rgba(255,255,255,0.04)",
+                        border: modeloRender === m.id ? "1px solid rgba(212,175,55,0.55)" : "1px solid rgba(255,255,255,0.10)",
+                        color: modeloRender === m.id ? "#D4AF37" : "var(--text-secondary)",
+                        transition: "all 0.15s",
+                      }}>
+                      <div style={{ fontSize: 12, fontWeight: 700 }}>{m.label}</div>
+                      <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>{m.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {modeloRender !== "gpt" && (
+                <>
+                  <SliderParam label="Adherencia al prompt" value={guidance} min={1} max={100} step={1}
+                    onChange={actualizarGuidance} hint={hintGuidance} izq="1 — libre" der="100 — literal" />
+                  <SliderParam label="Fuerza estructural" value={controlStrength} min={0.05} max={0.95} step={0.05}
+                    onChange={actualizarControlStrength} hint={hintControl} izq="0.05 — libre" der="0.95 — estricto" />
+                </>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Seed</span>
                 <input type="number" value={seed1} onChange={e => actualizarSeed1(e.target.value)}
