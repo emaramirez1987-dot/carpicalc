@@ -9,12 +9,12 @@ import { supabase } from "../../lib/supabase.js";
 // ── Prompts base por defecto ──────────────────────────────────────────────────
 
 const DEFAULT_PROMPT_BASE =
-`Fotografía arquitectónica hiperrealista de mueble de cocina o living. Mantener estrictamente la estructura, silueta y proporciones de la referencia.
+`Product photography of a single furniture piece. Plain neutral background, studio lighting. No room, no scene, no other objects around it.
 
-Material: [MATERIAL] / Color: [COLOR] / Acabado: [ACABADO]
-Cámara: [CAMARA] / Estilo: [ESTILO]
+Material: [MATERIAL] / Color: [COLOR] / Finish: [ACABADO]
+Lens: [CAMARA] / Style: [ESTILO]
 
-Fondo liso neutro, luz difusa de estudio. Texturas naturales detalladas, sombras suaves, reflejos realistas, carpintería de alta gama. Fotografía profesional de producto.`;
+Soft shadows, realistic reflections, detailed wood grain and textures, precise joinery. Professional high-end product photo, white or light gray seamless background.`;
 
 const DEFAULT_SCENE_PROMPT_BASE =
 `Fotografía arquitectónica de interiores premium, alta resolución.
