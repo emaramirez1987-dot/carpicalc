@@ -316,27 +316,21 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
       display: 'flex', flexDirection: 'column',
     }}>
 
-      {/* ── Header ── */}
+      {/* ── Header — una sola línea siempre ── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
-        padding: '7px 14px', borderBottom: '1px solid rgba(255,255,255,0.07)',
-        background: 'rgba(10,12,18,0.98)', flexWrap: 'wrap', zIndex: 10,
+        display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'nowrap',
+        padding: '6px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)',
+        background: 'rgba(10,12,18,0.98)', zIndex: 10, minHeight: 0,
       }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#d4af37', fontFamily: "'DM Mono',monospace", letterSpacing: '0.06em' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#d4af37', fontFamily: "'DM Mono',monospace", letterSpacing: '0.06em', flexShrink: 0 }}>
           ◈ EDITOR 3D
         </span>
-        <span style={{ fontSize: 12, color: '#666', flex: 1 }}>{modulo?.nombre}</span>
-        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: '#333' }}>
-          {ancho} × {profundidad} × {alto} mm
+        <span style={{ fontSize: 11, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+          {modulo?.nombre}
         </span>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {Object.entries(CAMARAS).map(([k, v]) => (
-            <BTN key={k} small active={camView === k} onClick={() => irACamara(k)}>{v.label}</BTN>
-          ))}
-        </div>
-        <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.07)' }} />
-        <BTN small active={exploding} onClick={toggleExplode}>💥 Explotar</BTN>
-        <BTN small onClick={exportPNG}>↓ PNG</BTN>
+        <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: '#333', flexShrink: 0, whiteSpace: 'nowrap' }}>
+          {ancho}×{profundidad}×{alto}
+        </span>
         <BTN small danger onClick={onClose}>✕</BTN>
       </div>
 
@@ -426,6 +420,25 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
 
         {/* ── Canvas ── */}
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+
+          {/* Toolbar flotante sobre el canvas */}
+          <div style={{
+            position: 'absolute', top: 8, right: 8, zIndex: 20,
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: 'rgba(10,12,18,0.82)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 8, padding: '4px 8px',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}>
+            {Object.entries(CAMARAS).map(([k, v]) => (
+              <BTN key={k} small active={camView === k} onClick={() => irACamara(k)}>{v.label}</BTN>
+            ))}
+            <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.10)', margin: '0 2px' }} />
+            <BTN small active={exploding} onClick={toggleExplode}>💥</BTN>
+            <BTN small onClick={exportPNG}>↓ PNG</BTN>
+          </div>
+
           <Canvas
             shadows
             camera={{ position: CAMARAS.iso.pos, fov: 45, near: 0.01, far: 50 }}
