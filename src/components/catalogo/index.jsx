@@ -7,6 +7,7 @@ import { Btn, Card, Badge, TextInput, Select, SectionTitle } from '../ui/index.j
 import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarFormula } from '../../utils.js';
 import VistaModuloSVG from '../vista-svg/index.js';
 import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT, ROLES_PIEZA_DEFAULT } from '../../constants.js';
+import { CARAS_3D } from '../visor3d/Modulo3D.jsx';
 import { guardarPresupuestos, cargarRolesPieza, guardarRolesPieza, cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
 
 const VisorModulo3D = lazy(() => import('../visor3d/VisorModulo3D.jsx'));
@@ -203,7 +204,7 @@ function piezasQueUsanVar(varName, piezas) {
   });
 }
 
-function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSugeridos, variables, onVarsUpdate, piezas }) {
+function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSugeridos, variables, onVarsUpdate, piezas, rolesCustom, onRolesCustomUpdate }) {
   const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
   const [rolesTaller, setRolesTaller] = useState(() => cargarRolesPieza());
   const todosRoles = [...ROLES_PIEZA_DEFAULT, ...rolesTaller];
@@ -217,6 +218,9 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
   const [nuevaVarNombre, setNuevaVarNombre] = useState("");
   const [confirmDeleteVar, setConfirmDeleteVar] = useState(null); // nombre de var pendiente de confirmación
   const [varInputFocus, setVarInputFocus] = useState(null); // nombre de la var con foco
+  const [nuevoRolCustomNombre, setNuevoRolCustomNombre] = useState('');
+  const [nuevoRolCustomCara,   setNuevoRolCustomCara]   = useState('front');
+  const [formRolCustom,        setFormRolCustom]        = useState(false);
 
   // ── Click-to-insert: ref al input activo ────────────────────────────────
   const activeInputEl = useRef(null);
@@ -359,6 +363,9 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                     fp.formula2 === rol.formula2 &&
                     (rol.rol3d != null ? fp.rol3d === rol.rol3d : !fp.rol3d)
                   );
+                  const rolCustomActivo = (rolesCustom || []).find(r => r.id === fp.rol3d);
+                  const rolLabel = rolActivo?.nombre ?? rolCustomActivo?.label ?? "sin rol";
+                  const hayRolActivo = !!(rolActivo || rolCustomActivo);
                   return (
                     <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
                       <button onClick={() => setFp(p => ({ ...p, _rolesAbierto: !p._rolesAbierto }))}
@@ -366,12 +373,13 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                         <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#c8a02a" }}>
                           🎭 Rol de pieza
                         </span>
-                        <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: rolActivo ? "var(--accent)" : "var(--text-muted)", fontWeight: rolActivo ? 700 : 400 }}>
-                          {rolActivo ? rolActivo.nombre : "sin rol"} {fp._rolesAbierto ? "▲" : "▼"}
+                        <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: hayRolActivo ? "var(--accent)" : "var(--text-muted)", fontWeight: hayRolActivo ? 700 : 400 }}>
+                          {rolLabel} {fp._rolesAbierto ? "▲" : "▼"}
                         </span>
                       </button>
                       {fp._rolesAbierto && (
                         <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(200,160,42,0.15)" }}>
+                          {/* Roles predefinidos del taller */}
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                             {todosRoles.map(rol => {
                               const isActive =
@@ -397,6 +405,73 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                               );
                             })}
                           </div>
+
+                          {/* Roles 3D personalizados del módulo */}
+                          {(rolesCustom || []).length > 0 && (
+                            <>
+                              <div style={{ borderTop: "1px dashed rgba(212,175,55,0.20)", margin: "8px 0 6px", display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: "rgba(212,175,55,0.55)", letterSpacing: "0.08em" }}>ROLES 3D DEL MÓDULO</span>
+                              </div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                                {rolesCustom.map(rc => {
+                                  const isActive = fp.rol3d === rc.id;
+                                  return (
+                                    <button key={rc.id}
+                                      onClick={() => { setFp(p => ({ ...p, rol3d: rc.id, _rolesAbierto: false })); }}
+                                      style={{
+                                        padding: "5px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                                        fontFamily: "'DM Mono',monospace", cursor: "pointer", transition: "all 0.15s",
+                                        background: isActive ? "rgba(212,175,55,0.18)" : "var(--bg-subtle)",
+                                        border: `1px solid ${isActive ? "var(--accent-border)" : "rgba(212,175,55,0.25)"}`,
+                                        color: isActive ? "var(--accent)" : "rgba(212,175,55,0.6)",
+                                        boxShadow: isActive ? "0 0 12px rgba(212,175,55,0.25)" : "none",
+                                      }}>
+                                      {rc.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          )}
+
+                          {/* Crear nuevo rol 3D del módulo */}
+                          {onRolesCustomUpdate && (
+                            formRolCustom ? (
+                              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 5, background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.18)", borderRadius: 6, padding: "8px 10px" }}>
+                                <input autoFocus value={nuevoRolCustomNombre} onChange={e => setNuevoRolCustomNombre(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Escape') { setFormRolCustom(false); setNuevoRolCustomNombre(''); } }}
+                                  placeholder="Nombre del rol 3D…"
+                                  style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 5, padding: "4px 8px", color: "var(--text-primary)", fontSize: 11, fontFamily: "'DM Mono',monospace", outline: "none" }} />
+                                <select value={nuevoRolCustomCara} onChange={e => setNuevoRolCustomCara(e.target.value)}
+                                  style={{ background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 5, padding: "4px 8px", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace", outline: "none", cursor: "pointer" }}>
+                                  {CARAS_3D.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                                </select>
+                                <div style={{ display: "flex", gap: 5 }}>
+                                  <button
+                                    disabled={!nuevoRolCustomNombre.trim()}
+                                    onClick={() => {
+                                      if (!nuevoRolCustomNombre.trim()) return;
+                                      const newRol = { id: crypto.randomUUID(), label: nuevoRolCustomNombre.trim(), cara: nuevoRolCustomCara };
+                                      onRolesCustomUpdate([...(rolesCustom || []), newRol]);
+                                      setFp(p => ({ ...p, rol3d: newRol.id, _rolesAbierto: false }));
+                                      setNuevoRolCustomNombre(''); setFormRolCustom(false);
+                                    }}
+                                    style={{ flex: 1, padding: "4px 0", borderRadius: 5, cursor: nuevoRolCustomNombre.trim() ? "pointer" : "default", fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: nuevoRolCustomNombre.trim() ? "rgba(212,175,55,0.18)" : "transparent", border: "1px solid rgba(212,175,55,0.35)", color: "var(--accent)" }}>
+                                    Agregar
+                                  </button>
+                                  <button onClick={() => { setFormRolCustom(false); setNuevoRolCustomNombre(''); }}
+                                    style={{ padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontFamily: "'DM Mono',monospace", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button onClick={() => setFormRolCustom(true)}
+                                style={{ marginTop: 8, width: "100%", padding: "4px 0", borderRadius: 5, cursor: "pointer", fontSize: 10, fontFamily: "'DM Mono',monospace", background: "transparent", border: "1px dashed rgba(212,175,55,0.25)", color: "rgba(212,175,55,0.5)" }}>
+                                + Nuevo rol 3D
+                              </button>
+                            )
+                          )}
                         </div>
                       )}
                     </div>
@@ -1036,6 +1111,8 @@ function FormModulo({
           variables={datos.variables}
           onVarsUpdate={v => setDatos(d => ({ ...d, variables: v }))}
           piezas={datos.piezas || []}
+          rolesCustom={datos.rolesCustom || []}
+          onRolesCustomUpdate={v => setDatos(d => ({ ...d, rolesCustom: v }))}
         />
 
         {/* Columna derecha: Acordeones */}
