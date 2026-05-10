@@ -171,13 +171,16 @@ export function buildPiezas3D(modulo, costos) {
         }
       }
 
-      // posFormulas: fórmulas de posición opcionales (en mm, relativas al origen del módulo)
-      // Si se definen, reemplazan el autoPos calculado por el rol en ese eje.
+      // posFormulas: esquina inferior-izquierda-fondo de la pieza (en mm desde la esquina del módulo).
+      //   X: 0 = borde izq  →  ancho = borde der
+      //   Y: 0 = piso       →  alto  = techo
+      //   Z: 0 = fondo      →  profundidad = frente
+      // Se suma size/2 para convertir al centro que usa Three.js (sistema centrado).
       if (p.posFormulas) {
         const pf = p.posFormulas;
-        if (pf.x != null && pf.x !== '') { const v = evaluarFormula(String(pf.x), modVars); if (v !== null) autoPos[0] = v / 1000; }
-        if (pf.y != null && pf.y !== '') { const v = evaluarFormula(String(pf.y), modVars); if (v !== null) autoPos[1] = v / 1000; }
-        if (pf.z != null && pf.z !== '') { const v = evaluarFormula(String(pf.z), modVars); if (v !== null) autoPos[2] = v / 1000; }
+        if (pf.x != null && pf.x !== '') { const v = evaluarFormula(String(pf.x), modVars); if (v !== null) autoPos[0] = v / 1000 + size[0] / 2 - hw; }
+        if (pf.y != null && pf.y !== '') { const v = evaluarFormula(String(pf.y), modVars); if (v !== null) autoPos[1] = v / 1000 + size[1] / 2 - hh; }
+        if (pf.z != null && pf.z !== '') { const v = evaluarFormula(String(pf.z), modVars); if (v !== null) autoPos[2] = v / 1000 + size[2] / 2 - hd; }
       }
 
       // offset3d (mm) + rot3d (degrees) — ajuste manual encima de la posición calculada

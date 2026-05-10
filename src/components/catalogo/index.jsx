@@ -429,9 +429,9 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                         Centro de la pieza relativo al origen del módulo <span style={{ color: "#6ab4e8" }}>(0,0,0)</span>. Vacío = posición automática por función 3D.
                       </div>
                       {[
-                        { label: "X  izq ← 0 → der",    axis: "x", hint: "0 · ej: -(ancho/2 - esp/2)" },
-                        { label: "Y  abajo ↓ 0 ↑ arriba", axis: "y", hint: "0 · ej: alto/2 - esp/2"    },
-                        { label: "Z  fondo ← 0 → frente", axis: "z", hint: "0 · ej: profundidad/2"      },
+                        { label: "X  0=izq → ancho=der",    axis: "x", hint: "ej: esp (lat.izq) · ancho-esp (lat.der)" },
+                        { label: "Y  0=piso → alto=techo",  axis: "y", hint: "ej: 0 (base) · alto-esp (techo) · 400 (estante)" },
+                        { label: "Z  0=fondo → prof=frente",axis: "z", hint: "ej: 0 (fondo) · profundidad-esp (frente)" },
                       ].map(({ label, axis, hint }) => {
                         const val      = fp.posFormulas?.[axis] ?? "";
                         const resultado = val ? evaluarFormula(val, allVars) : null;
