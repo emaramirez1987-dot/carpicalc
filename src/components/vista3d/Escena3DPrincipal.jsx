@@ -305,7 +305,7 @@ export function Escena3DPrincipal({
       <OrbitControls ref={orbitRef} makeDefault enableDamping dampingFactor={0.08} />
 
       <EntornoEscena isDark={isDark} />
-      <Environment preset={envPreset} background={false} />
+      <Environment preset={envPreset} background={false} intensity={isDark ? 0.35 : 0.70} />
       <directionalLight position={shadowLightPos} intensity={0.9 * shadowIntensidad} castShadow shadow-mapSize={[2048, 2048]} />
       <directionalLight position={[-3, 4, -3]} intensity={0.18} color="#b8d4f0" />
       <directionalLight position={[0, -2, 4]} intensity={0.10} />

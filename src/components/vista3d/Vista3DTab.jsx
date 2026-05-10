@@ -280,7 +280,7 @@ export function Vista3DTab({
   const [shadowIntensidad, setShadowIntensidad] = useState(1.0);
   const [shadowAngle,      setShadowAngle]      = useState(45);
   const [editTab,          setEditTab]          = useState('mat');
-  const [envPreset,        setEnvPreset]        = useState('apartment');
+  const [envPreset,        setEnvPreset]        = useState('city');
   const [mostrarGrilla,    setMostrarGrilla]    = useState(true);
   const [divisionesGrilla, setDivisionesGrilla] = useState(50);
   const [mostrarParedIzq,  setMostrarParedIzq]  = useState(false);
