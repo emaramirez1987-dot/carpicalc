@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Canvas } from '@react-three/fiber';
 import { CAMARAS } from '../visor3d/CamaraPresets.js';
 import { PanelModulos3D } from './PanelModulos3D.jsx';
@@ -310,12 +311,11 @@ export function Vista3DTab({
   const texturaCodActual = selectedInst?.texturaCode || null;
   const materialesKeys  = Object.keys(materiales3D);
 
-  return (
+  const inner = (
     <div style={maximizado ? {
       position: 'fixed', inset: 0, zIndex: 200,
       display: 'flex', flexDirection: 'row',
       background: T.outerBg,
-      transition: 'background 0.35s ease',
     } : {
       display: 'flex', flexDirection: 'row',
       height: 'calc(100vh - 120px)',
@@ -638,4 +638,8 @@ export function Vista3DTab({
       </div>
     </div>
   );
+
+  return maximizado
+    ? ReactDOM.createPortal(inner, document.body)
+    : inner;
 }
