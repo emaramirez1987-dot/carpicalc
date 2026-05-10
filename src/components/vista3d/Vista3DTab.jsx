@@ -236,7 +236,6 @@ export function Vista3DTab({
   presupuestoActivoId,  // eslint-disable-line no-unused-vars
   onCaptura,
   materiales3D = {},
-  visible = true,
 }) {
   const isDark = useIsDark();
   const glRef  = useRef(null);
@@ -259,6 +258,7 @@ export function Vista3DTab({
   const [divisionesGrilla, setDivisionesGrilla] = useState(50);
   const [mostrarParedIzq,  setMostrarParedIzq]  = useState(false);
   const [mostrarParedDer,  setMostrarParedDer]  = useState(false);
+  const [maximizado,       setMaximizado]       = useState(false);
 
   // Sincronizar colores de piso/pared con el tema — igual que VisorModulo3D
   // El usuario puede personalizar con el color picker, pero al cambiar tema se resetean
@@ -311,9 +311,15 @@ export function Vista3DTab({
   const materialesKeys  = Object.keys(materiales3D);
 
   return (
-    <div style={{
+    <div style={maximizado ? {
       position: 'fixed', inset: 0, zIndex: 200,
-      display: visible ? 'flex' : 'none', flexDirection: 'row',
+      display: 'flex', flexDirection: 'row',
+      background: T.outerBg,
+      transition: 'background 0.35s ease',
+    } : {
+      display: 'flex', flexDirection: 'row',
+      height: 'calc(100vh - 120px)',
+      margin: '0 -20px',
       background: T.outerBg,
       transition: 'background 0.35s ease',
     }}>
@@ -545,6 +551,22 @@ export function Vista3DTab({
             }}
           >
             {capturado ? '✓ Capturado' : '◈ Capturar'}
+          </button>
+
+          <button
+            onClick={() => setMaximizado(v => !v)}
+            title={maximizado ? 'Restaurar' : 'Pantalla completa'}
+            style={{
+              marginLeft: 4,
+              padding: '5px 9px', borderRadius: 6, cursor: 'pointer',
+              background: maximizado ? 'rgba(212,175,55,0.14)' : T.btnBg,
+              border: maximizado ? '1px solid rgba(212,175,55,0.42)' : `1px solid ${T.btnBord}`,
+              color: maximizado ? '#D4AF37' : T.btnText,
+              fontSize: 13, lineHeight: 1,
+              transition: 'all 0.15s',
+            }}
+          >
+            {maximizado ? '⤡' : '⤢'}
           </button>
         </div>
 

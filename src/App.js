@@ -41,7 +41,7 @@ function Header({ tabs, saveEst, tema, toggleTema }) {
     <header
       className="no-print rsp-header-inner"
       style={{
-        position: "sticky", top: 0, zIndex: 300,
+        position: "sticky", top: 0, zIndex: 100,
         display: "flex", alignItems: "center", gap: 24,
         padding: "0 28px",
         background: "var(--bg-nav)",
@@ -540,17 +540,18 @@ function AppInterna() {
               />
             </div>
 
-            <Vista3DTab
-              visible={nav.vista === "vista3d"}
-              modulos={modulos}
-              costos={costos}
-              items={items}
-              dimOverride={dimOverride}
-              inlineModulos={inlineModulos}
-              presupuestoActivoId={presupuestoActivoId}
-              onCaptura={(base64) => setImagenRef3D(base64)}
-              materiales3D={materiales3D}
-            />
+            <div style={{ display: nav.vista === "vista3d" ? undefined : "none" }}>
+              <Vista3DTab
+                modulos={modulos}
+                costos={costos}
+                items={items}
+                dimOverride={dimOverride}
+                inlineModulos={inlineModulos}
+                presupuestoActivoId={presupuestoActivoId}
+                onCaptura={(base64) => setImagenRef3D(base64)}
+                materiales3D={materiales3D}
+              />
+            </div>
 
             <div style={{ display: nav.vista === "catalogo" ? undefined : "none" }}>
               <CatalogoModulos
