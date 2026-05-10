@@ -5,11 +5,18 @@ import { PanelModulos3D } from './PanelModulos3D.jsx';
 import { Escena3DPrincipal, WALL_Z } from './Escena3DPrincipal.jsx';
 import { useAutoLayout3D } from './useAutoLayout3D.js';
 
+// ── Lectura de tema robusta — usa localStorage como fallback cuando
+// data-theme aún no fue seteado por useTema (efecto corre después del primer render)
+function getTema() {
+  const attr = document.documentElement.getAttribute('data-theme');
+  if (attr) return attr;
+  try { return localStorage.getItem('carpicalc:tema') || 'dark'; }
+  catch { return 'dark'; }
+}
+
 // ── Theme observer ─────────────────────────────────────────────────────────────
 function useIsDark() {
-  const [isDark, setIsDark] = useState(
-    () => document.documentElement.getAttribute('data-theme') !== 'light'
-  );
+  const [isDark, setIsDark] = useState(() => getTema() !== 'light');
   useEffect(() => {
     const obs = new MutationObserver(() =>
       setIsDark(document.documentElement.getAttribute('data-theme') !== 'light')
@@ -23,7 +30,7 @@ function useIsDark() {
 // ── Theme tokens ───────────────────────────────────────────────────────────────
 // Components read isDark from DOM so they re-theme on every parent re-render.
 function tok() {
-  const d = document.documentElement.getAttribute('data-theme') !== 'light';
+  const d = getTema() !== 'light';
   return d ? {
     outerBg:      '#07090c',
     panelBg:      '#0b0d12',
@@ -248,8 +255,7 @@ function Dropdown({ label, active, children }) {
 
 // ── Colores default de la escena ───────────────────────────────────────────────
 const DEFAULTS = { colorMesada: '#c8b89a' };
-const initColor = (dark, light) =>
-  () => document.documentElement.getAttribute('data-theme') === 'light' ? light : dark;
+const initColor = (dark, light) => () => getTema() === 'light' ? light : dark;
 
 // ── Vista3DTab ─────────────────────────────────────────────────────────────────
 export function Vista3DTab({
