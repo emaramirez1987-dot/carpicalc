@@ -144,8 +144,8 @@ export const ROLES_PIEZA_DEFAULT = [
   { id: "horizontal_interna", nombre: "Horizontal interna",  sistema: true,                       formula1: "ancho - 2 * esp",        formula2: "profundidad",      tc: { lados1: 0, lados2: 1 } },
   { id: "estante",            nombre: "Estante",             sistema: true, rol3d: "estante",     formula1: "ancho - 2 * esp",        formula2: "profundidad - 20", tc: { lados1: 1, lados2: 0 } },
   // ── Puertas y cajones ────────────────────────────────────────────────────
-  { id: "puerta_simple",      nombre: "Puerta simple",       sistema: true, rol3d: "puerta",      formula1: "alto",                   formula2: "ancho",            tc: { lados1: 2, lados2: 2 } },
-  { id: "puerta_doble",       nombre: "Puerta doble",        sistema: true, rol3d: "puerta",      formula1: "alto",                   formula2: "ancho / 2",        tc: { lados1: 2, lados2: 2 } },
+  // Puerta: usar rol personalizado en el editor 3D (cara=front) con posFormulas para ubicarla.
+  { id: "puerta",             nombre: "Puerta",              sistema: true,                       formula1: "alto",                   formula2: "ancho",            tc: { lados1: 2, lados2: 2 } },
   { id: "cajon",              nombre: "Cajón",               sistema: true, rol3d: "cajon",       formula1: "(alto - 2 * esp) / 3",   formula2: "ancho - 2 * esp",  tc: { lados1: 2, lados2: 2 } },
   // ── Especiales ───────────────────────────────────────────────────────────
   { id: "ignorar",            nombre: "No mostrar",          sistema: true, rol3d: "ignorar",     formula1: null,                     formula2: null,               tc: { lados1: 0, lados2: 0 } },
