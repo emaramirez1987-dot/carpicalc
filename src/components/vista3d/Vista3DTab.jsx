@@ -311,9 +311,8 @@ export function Vista3DTab({
 
   return (
     <div style={{
+      position: 'fixed', inset: 0, zIndex: 200,
       display: 'flex', flexDirection: 'row',
-      height: 'calc(100vh - 120px)',
-      margin: '0 -20px',
       background: T.outerBg,
       transition: 'background 0.35s ease',
     }}>

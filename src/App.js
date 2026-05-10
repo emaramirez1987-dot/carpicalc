@@ -41,7 +41,7 @@ function Header({ tabs, saveEst, tema, toggleTema }) {
     <header
       className="no-print rsp-header-inner"
       style={{
-        position: "sticky", top: 0, zIndex: 100,
+        position: "sticky", top: 0, zIndex: 300,
         display: "flex", alignItems: "center", gap: 24,
         padding: "0 28px",
         background: "var(--bg-nav)",
