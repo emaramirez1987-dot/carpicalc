@@ -268,6 +268,7 @@ function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, o
       <mesh castShadow receiveShadow>
         <boxGeometry args={size} />
         <meshStandardMaterial
+          key={texturaDataUrl ?? 'plain'}
           color={selected ? '#d4af37' : (texture ? '#ffffff' : matProps.color)}
           roughness={texture ? 0.65 : matProps.roughness}
           metalness={texture ? 0.0  : matProps.metalness}
