@@ -3,18 +3,44 @@ import * as THREE from 'three';
 import { getMaterialProps } from './useMaterial3D.js';
 import { resolverDim, evaluarFormula } from '../../utils.js';
 
-// ── Roles 3D ──────────────────────────────────────────────────────────────────
+// ── Roles 3D predefinidos ─────────────────────────────────────────────────────
 export const ROLES_3D = [
   { id: 'lateral_izq', label: 'Lateral Izq.' },
   { id: 'lateral_der', label: 'Lateral Der.' },
   { id: 'techo',       label: 'Techo'        },
   { id: 'base',        label: 'Base'         },
   { id: 'fondo',       label: 'Fondo'        },
-  { id: 'puerta',      label: 'Puerta'       },
   { id: 'cajon',       label: 'Cajón'        },
   { id: 'estante',     label: 'Estante'      },
   { id: 'ignorar',     label: 'No mostrar'   },
 ];
+
+// ── Caras disponibles para roles personalizados ───────────────────────────────
+// Definen la orientación y cara del módulo donde se ubica la pieza por defecto.
+// El usuario ajusta la posición exacta con posFormulas u offset3d.
+export const CARAS_3D = [
+  { id: 'front',    label: 'Frente'    },
+  { id: 'back',     label: 'Trasera'   },
+  { id: 'left',     label: 'Lat. Izq.' },
+  { id: 'right',    label: 'Lat. Der.' },
+  { id: 'top',      label: 'Techo'     },
+  { id: 'bottom',   label: 'Base'      },
+  { id: 'interior', label: 'Interior'  },
+];
+
+// Posición por defecto según cara — origen en esquina inferior-izquierda-fondo.
+function autoPosPorCara(cara, d1, d2, hw, hh, hd, te, M) {
+  switch (cara) {
+    case 'front':    return { size: [d2/M, d1/M, te],    autoPos: [-hw + d2/M/2,  -hh + d1/M/2,  hd + te/2],       explodeVec: [0,  0,    1] };
+    case 'back':     return { size: [d1/M, d2/M, te],    autoPos: [-hw + d1/M/2,  -hh + d2/M/2, -(hd - te/2)],     explodeVec: [0,  0,   -1] };
+    case 'left':     return { size: [te, d1/M, d2/M],    autoPos: [-(hw - te/2),  -hh + d1/M/2,  -hd + d2/M/2],    explodeVec: [-1, 0,    0] };
+    case 'right':    return { size: [te, d1/M, d2/M],    autoPos: [hw - te/2,     -hh + d1/M/2,  -hd + d2/M/2],    explodeVec: [1,  0,    0] };
+    case 'top':      return { size: [d1/M, te, d2/M],    autoPos: [-hw + d1/M/2,  hh - te/2,     -hd + d2/M/2],    explodeVec: [0,  1,    0] };
+    case 'bottom':   return { size: [d1/M, te, d2/M],    autoPos: [-hw + d1/M/2, -(hh - te/2),   -hd + d2/M/2],    explodeVec: [0, -1,    0] };
+    case 'interior': return { size: [d1/M, te, d2/M],    autoPos: [-hw + d1/M/2,  0,              -hd + d2/M/2],   explodeVec: [0,  0.5,  0] };
+    default:         return { size: [d2/M, te, d1/M],    autoPos: [0, 0, 0],                                        explodeVec: [0,  1,    0] };
+  }
+}
 
 // ── Clasificación por nombre (fallback) ───────────────────────────────────────
 function clasificarPorNombre(nombre) {
@@ -60,6 +86,8 @@ export function buildPiezas3D(modulo, costos) {
   const hd = profundidad / 2 / M;
   const te = esp / M;
 
+  const rolesCustom = modulo.rolesCustom || [];
+
   const roleCounts = {};
   for (const p of modulo.piezas) {
     const r = getRole(p);
@@ -95,7 +123,12 @@ export function buildPiezas3D(modulo, costos) {
     for (let i = 0; i < cantidad; i++) {
       let size, autoPos, explodeVec;
 
-      switch (role) {
+      // Roles personalizados tienen prioridad sobre el switch predefinido
+      const customRolDef = rolesCustom.find(r => r.id === role);
+      if (customRolDef) {
+        const c = autoPosPorCara(customRolDef.cara, d1, d2, hw, hh, hd, te, M);
+        size = c.size; autoPos = [...c.autoPos]; explodeVec = c.explodeVec;
+      } else switch (role) {
         case 'lateral_izq': {
           size       = [te, d1 / M, d2 / M];
           autoPos    = [-(hw - te / 2), 0, 0];
