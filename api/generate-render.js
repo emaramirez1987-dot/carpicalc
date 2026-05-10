@@ -76,29 +76,33 @@ module.exports = async function handler(req, res) {
   if (!deduct.ok) return res.status(403).json({ error: deduct.error });
 
   try {
-    const endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-canny-pro/predictions";
-    let input;
+    let endpoint, input;
 
     if (imageBase64) {
-      console.log(`[render] guidance=${guidance} control_strength=${controlStrength}`);
+      // flux-kontext-dev: imagen completa como referencia visual
+      // Preserva materiales, colores y texturas del 3D — a diferencia de flux-canny-pro
+      // que solo usa bordes estructurales y pierde toda la información de color/material.
+      // guidance 1-100 → 1.0-10.0 (escala interna de kontext)
+      const kontextGuidance = Math.max(1, Math.min(10, parseFloat((guidance / 10).toFixed(1))));
+      console.log(`[render] kontext guidance=${kontextGuidance} (raw=${guidance})`);
+      endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-dev/predictions";
       input = {
-        prompt:           prompt,
-        control_image:    `data:image/png;base64,${imageBase64}`,
-        control_strength: parseFloat(controlStrength.toFixed(2)),
-        guidance:         parseInt(guidance, 10),
-        num_outputs:      1,
-        output_format:    "jpg",
-        output_quality:   90,
-        safety_tolerance: 2,
+        prompt:               prompt,
+        input_image:          `data:image/png;base64,${imageBase64}`,
+        guidance:             kontextGuidance,
+        num_inference_steps:  28,
+        output_format:        "jpg",
+        output_quality:       90,
         ...(seed != null ? { seed: parseInt(seed, 10) } : {}),
       };
     } else {
+      // Sin imagen de referencia: generación libre por prompt
+      endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions";
       input = {
-        prompt:      prompt,
-        num_outputs: 1,
+        prompt,
+        num_outputs:   1,
         output_format: "jpg",
         output_quality: 90,
-        safety_tolerance: 2,
         ...(seed != null ? { seed: parseInt(seed, 10) } : {}),
       };
     }
