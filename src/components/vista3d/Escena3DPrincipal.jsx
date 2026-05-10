@@ -147,21 +147,29 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
     if (groupRef.current.position.z < WALL_Z + halfDepth) {
       groupRef.current.position.z = WALL_Z + halfDepth;
     }
-    // Registrar posición live para que otros módulos puedan evitarla
+    // Swap hw/hd cuando el módulo está rotado 90° (footprint se transpone)
+    const rotSteps = Math.round((inst.rotacionY || 0) / (Math.PI / 2)) % 2;
+    const effectiveHW = rotSteps !== 0 ? halfDepth : halfWidth;
+    const effectiveHD = rotSteps !== 0 ? halfWidth  : halfDepth;
     livePositions.current[inst.instanceId] = {
       x:  groupRef.current.position.x,
       z:  groupRef.current.position.z,
-      hw: halfWidth,
-      hd: halfDepth,
+      hw: effectiveHW,
+      hd: effectiveHD,
     };
   });
 
   if (!mod) return null;
 
+  const ow = (mod.dimensiones?.ancho       || 600) / 1000;
+  const oh = (mod.dimensiones?.alto        || 700) / 1000;
+  const od = (mod.dimensiones?.profundidad || 550) / 1000;
+
   return (
     <group
       ref={groupRef}
       position={[x, y, z]}
+      rotation={[0, inst.rotacionY || 0, 0]}
       onPointerDown={(e) => {
         e.stopPropagation();
         isDragging.current = true;
@@ -188,19 +196,23 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
         texturaDataUrl={texturaDataUrl}
       />
 
-      {/* Highlight hover / selección */}
-      {(isSelected || hovered) && (
+      {/* Outline CAD — BackSide doble capa: negro fino + borde blanco externo */}
+      {isSelected && (
+        <>
+          <mesh>
+            <boxGeometry args={[ow + 0.022, oh + 0.022, od + 0.022]} />
+            <meshBasicMaterial color="white" side={THREE.BackSide} transparent opacity={0.55} depthWrite={false} />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[ow + 0.012, oh + 0.012, od + 0.012]} />
+            <meshBasicMaterial color="#0d0d0d" side={THREE.BackSide} depthWrite={false} />
+          </mesh>
+        </>
+      )}
+      {hovered && !isSelected && (
         <mesh>
-          <boxGeometry args={[
-            (mod.dimensiones?.ancho       || 600) / 1000 + 0.015,
-            (mod.dimensiones?.alto        || 700) / 1000 + 0.015,
-            (mod.dimensiones?.profundidad || 550) / 1000 + 0.015,
-          ]} />
-          <meshStandardMaterial
-            color={isSelected ? '#D4AF37' : '#ffffff'}
-            transparent
-            opacity={isSelected ? 0.13 : 0.06}
-          />
+          <boxGeometry args={[ow + 0.012, oh + 0.012, od + 0.012]} />
+          <meshStandardMaterial color="white" transparent opacity={0.07} />
         </mesh>
       )}
     </group>
@@ -285,6 +297,7 @@ export function Escena3DPrincipal({
   shadowIntensidad = 1, shadowDir = 'right',
   envPreset = 'apartment',
   mostrarGrilla = true, divisionesGrilla = 50,
+  mostrarParedIzq = false, mostrarParedDer = false,
 }) {
   const orbitRef       = useRef();
   const livePositions  = useRef({}); // { [instanceId]: { x, z, hw, hd } }
@@ -314,6 +327,22 @@ export function Escena3DPrincipal({
       {mostrarPared && (
         <mesh position={[0, 1.5, WALL_Z]}>
           <planeGeometry args={[10, 3]} />
+          <meshStandardMaterial color={colorPared} roughness={0.82} metalness={0.0} side={2} />
+        </mesh>
+      )}
+
+      {/* Pared lateral izquierda */}
+      {mostrarParedIzq && (
+        <mesh position={[-5, 1.5, WALL_Z + 3]} rotation={[0, Math.PI / 2, 0]}>
+          <planeGeometry args={[6, 3]} />
+          <meshStandardMaterial color={colorPared} roughness={0.82} metalness={0.0} side={2} />
+        </mesh>
+      )}
+
+      {/* Pared lateral derecha */}
+      {mostrarParedDer && (
+        <mesh position={[5, 1.5, WALL_Z + 3]} rotation={[0, -Math.PI / 2, 0]}>
+          <planeGeometry args={[6, 3]} />
           <meshStandardMaterial color={colorPared} roughness={0.82} metalness={0.0} side={2} />
         </mesh>
       )}

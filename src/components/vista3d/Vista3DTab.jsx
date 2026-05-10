@@ -229,6 +229,8 @@ export function Vista3DTab({
   const [envPreset,        setEnvPreset]        = useState('apartment');
   const [mostrarGrilla,    setMostrarGrilla]    = useState(true);
   const [divisionesGrilla, setDivisionesGrilla] = useState(50);
+  const [mostrarParedIzq,  setMostrarParedIzq]  = useState(false);
+  const [mostrarParedDer,  setMostrarParedDer]  = useState(false);
 
   const irACamara = (key) => { setCamView(key); setCamTarget([...CAMARAS[key].pos]); };
 
@@ -268,6 +270,15 @@ export function Vista3DTab({
     onCaptura?.(glRef.current.domElement.toDataURL('image/png'));
     setCapturado(true);
     setTimeout(() => setCapturado(false), 2000);
+  };
+
+  const handleRotar90 = () => {
+    if (!selectedCod) return;
+    setModulosEnEscena(prev => prev.map(m =>
+      m.instanceId === selectedCod
+        ? { ...m, rotacionY: ((m.rotacionY || 0) + Math.PI / 2) % (Math.PI * 2) }
+        : m
+    ));
   };
 
   const handleLimpiarEscena       = () => { setModulosEnEscena([]); setSelectedCod(null); };
@@ -437,6 +448,29 @@ export function Vista3DTab({
                       <DPadBtn onClick={() => handleNudge(0, NUDGE_STEP)} title="Alejar de pared">▼</DPadBtn>
                     </div>
                     <button
+                      onClick={handleRotar90}
+                      title="Rotar 90° sobre eje vertical"
+                      style={{
+                        width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
+                        background: T.btnBg, border: `1px solid ${T.btnBord}`,
+                        color: T.btnText, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                        letterSpacing: '0.04em', marginBottom: 5,
+                      }}
+                    >
+                      ↻ Rotar 90°
+                    </button>
+                    <button
+                      onClick={handleRotar90}
+                      style={{
+                        width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
+                        background: 'rgba(100,140,255,0.08)', border: '1px solid rgba(100,140,255,0.28)',
+                        color: '#7090e8', fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                        marginBottom: 5,
+                      }}
+                    >
+                      ↻ Rotar 90°
+                    </button>
+                    <button
                       onClick={handleSnapToWall}
                       title="Pegar el módulo a la pared trasera"
                       style={{
@@ -507,6 +541,8 @@ export function Vista3DTab({
           {/* Toggles de escena */}
           <ColorToggle value={mostrarPiso}   onToggle={() => setMostrarPiso(v => !v)}   color={colorPiso}   onColor={setColorPiso}   label="Piso" />
           <ColorToggle value={mostrarPared}  onToggle={() => setMostrarPared(v => !v)}  color={colorPared}  onColor={setColorPared}  label="Pared" />
+          <BTN active={mostrarParedIzq} onClick={() => setMostrarParedIzq(v => !v)} style={{ padding: '4px 7px' }}>Izq</BTN>
+          <BTN active={mostrarParedDer} onClick={() => setMostrarParedDer(v => !v)} style={{ padding: '4px 7px' }}>Der</BTN>
           <ColorToggle value={mostrarMesada} onToggle={() => setMostrarMesada(v => !v)} color={colorMesada} onColor={setColorMesada} label="Mesada" />
 
           <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
@@ -624,6 +660,8 @@ export function Vista3DTab({
               envPreset={envPreset}
               mostrarGrilla={mostrarGrilla}
               divisionesGrilla={divisionesGrilla}
+              mostrarParedIzq={mostrarParedIzq}
+              mostrarParedDer={mostrarParedDer}
             />
           </Canvas>
 
