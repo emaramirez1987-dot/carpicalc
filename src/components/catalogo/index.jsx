@@ -545,8 +545,8 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                 {/* Fórmulas D1 y D2 */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {[
-                    { label: "D1 — Altura", key: "formula1", valida: f1Valida, resultado: d1 },
-                    { label: "D2 — Ancho",  key: "formula2", valida: f2Valida, resultado: d2 },
+                    { label: "D1 — Largo", key: "formula1", valida: f1Valida, resultado: d1 },
+                    { label: "D2 — Ancho", key: "formula2", valida: f2Valida, resultado: d2 },
                   ].map(({ label, key, valida, resultado }) => (
                     <div key={key} style={{ background: "transparent", border: "1px solid rgba(200,160,42,0.15)", borderRadius: 8, padding: "10px 12px" }}>
                       <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", marginBottom: 6 }}>{label}</div>
