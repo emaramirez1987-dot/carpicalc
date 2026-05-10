@@ -327,7 +327,7 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                       const isActive =
                         fp.formula1 === rol.formula1 &&
                         fp.formula2 === rol.formula2 &&
-                        (rol.rol3d == null || fp.rol3d === rol.rol3d);
+                        (rol.rol3d != null ? fp.rol3d === rol.rol3d : !fp.rol3d);
                       return (
                         <button key={rol.id} onClick={() => aplicarRol(rol)}
                           style={{
