@@ -894,7 +894,8 @@ export function RenderIA({
       const endpoint = modeloRender === "gpt" ? "/api/generate-render-gpt" : "/api/generate-render";
       const prompt   = modeloRender === "gpt" ? promptCompletoGpt : promptCompleto;
       const body = { workspaceId: wsId, prompt, imageBase64 };
-      if (modeloRender !== "gpt") { body.guidance = guidance; body.controlStrength = controlStrength; }
+      if (modeloRender === "flux-kontext") body.modelType = "flux-kontext";
+      if (modeloRender === "flux") { body.guidance = guidance; body.controlStrength = controlStrength; }
       if (seed1 !== "") body.seed = parseInt(seed1, 10);
       const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       let data;
@@ -1000,7 +1001,11 @@ export function RenderIA({
         <StepCard
           numero="01"
           titulo={modeloRender === "gpt" ? "Render Completo" : "Render Base"}
-          subtitulo={modeloRender === "gpt" ? "Material, estructura y escena en una sola pasada" : "Genera el mueble con material y terminación"}
+          subtitulo={
+            modeloRender === "gpt"          ? "Material, estructura y escena en una sola pasada" :
+            modeloRender === "flux-kontext" ? "Edición directa de imagen · más rápido y consistente" :
+                                              "Genera el mueble con material y terminación"
+          }
           listo={!!imagenUrl} generando={generando}
           onGenerar={handleGenerar}
           bloqueado={!puedeGenerar} creditos={creditos} autoClose
@@ -1080,27 +1085,38 @@ export function RenderIA({
               {/* Selector de modelo IA */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Modelo IA</span>
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   {[
-                    { id: "flux", label: "Flux Canny", desc: "Rápido · estructura fiel" },
-                    { id: "gpt",  label: "GPT-4o",     desc: "Ve el material real" },
+                    { id: "flux-kontext", label: "Flux Kontext", tag: "⚡ Recomendado", desc: "Edición directa · más rápido · resultados consistentes" },
+                    { id: "flux",         label: "Flux Canny",   tag: null,             desc: "Bordes estructurales · control preciso de silueta" },
+                    { id: "gpt",          label: "GPT-4o",       tag: null,             desc: "Interpreta el render visualmente · escena en una pasada" },
                   ].map(m => (
                     <button key={m.id} onClick={() => actualizarModeloRender(m.id)}
                       style={{
-                        flex: 1, padding: "7px 10px", borderRadius: 7, cursor: "pointer", textAlign: "left",
+                        width: "100%", padding: "8px 12px", borderRadius: 7, cursor: "pointer", textAlign: "left",
                         background: modeloRender === m.id ? "rgba(212,175,55,0.13)" : "rgba(255,255,255,0.04)",
                         border: modeloRender === m.id ? "1px solid rgba(212,175,55,0.55)" : "1px solid rgba(255,255,255,0.10)",
                         color: modeloRender === m.id ? "#D4AF37" : "var(--text-secondary)",
                         transition: "all 0.15s",
+                        display: "flex", alignItems: "center", gap: 8,
                       }}>
-                      <div style={{ fontSize: 12, fontWeight: 700 }}>{m.label}</div>
-                      <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>{m.desc}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700 }}>{m.label}</div>
+                        <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>{m.desc}</div>
+                      </div>
+                      {m.tag && (
+                        <span style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+                          background: "rgba(212,175,55,0.18)", border: "1px solid rgba(212,175,55,0.40)",
+                          color: "#D4AF37", borderRadius: 4, padding: "2px 6px", whiteSpace: "nowrap" }}>
+                          {m.tag}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {modeloRender !== "gpt" && (
+              {modeloRender === "flux" && (
                 <>
                   <SliderParam label="Adherencia al prompt" value={guidance} min={1} max={100} step={1}
                     onChange={actualizarGuidance} hint={hintGuidance} izq="1 — libre" der="100 — literal" />
@@ -1125,7 +1141,7 @@ export function RenderIA({
         </StepCard>
       )}
 
-      {/* ── Paso 2 · Render de Escena (solo modo Flux) ───────────────────────── */}
+      {/* ── Paso 2 · Render de Escena (Flux y Kontext) ──────────────────────── */}
       {!sinDatos && modeloRender !== "gpt" && (
         <StepCard
           numero="02" titulo="Render de Escena"

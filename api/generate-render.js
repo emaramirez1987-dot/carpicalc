@@ -62,7 +62,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: "Variables de entorno no configuradas en Vercel (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, REPLICATE_API_TOKEN)." });
   }
 
-  const { workspaceId, prompt, imageBase64, guidance = 30, controlStrength = 0.55, seed } = req.body || {};
+  const { workspaceId, prompt, imageBase64, guidance = 30, controlStrength = 0.55, seed, modelType } = req.body || {};
   if (!workspaceId || !prompt) {
     return res.status(400).json({ error: "workspaceId y prompt requeridos" });
   }
@@ -78,10 +78,22 @@ module.exports = async function handler(req, res) {
   try {
     let endpoint, input;
 
-    if (imageBase64) {
+    if (modelType === "flux-kontext" && imageBase64) {
+      // flux-kontext-pro: edición directa de imagen con prompt natural.
+      // Más rápido que Canny y mantiene mejor coherencia visual de la estructura.
+      console.log(`[render] kontext`);
+      endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions";
+      input = {
+        prompt,
+        input_image:    `data:image/jpeg;base64,${imageBase64}`,
+        aspect_ratio:   "match_input",
+        output_format:  "jpg",
+        output_quality: 90,
+        safety_tolerance: 2,
+        ...(seed != null ? { seed: parseInt(seed, 10) } : {}),
+      };
+    } else if (imageBase64) {
       // flux-canny-pro: extrae bordes Canny del 3D → reconstruye como foto real.
-      // Es el modelo correcto para este job: transforma el render 3D en fotografía
-      // fotorrealista respetando estructura/silueta. El material se especifica en el prompt.
       console.log(`[render] canny guidance=${guidance} control_strength=${controlStrength}`);
       endpoint = "https://api.replicate.com/v1/models/black-forest-labs/flux-canny-pro/predictions";
       input = {
