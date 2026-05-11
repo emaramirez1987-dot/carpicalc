@@ -6,8 +6,8 @@ import { useTema } from '../../hooks/useTema.js';
 import { Btn, Card, Badge, TextInput, Select, SectionTitle } from '../ui/index.jsx';
 import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarFormula } from '../../utils.js';
 import VistaModuloSVG from '../vista-svg/index.js';
-import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT, ROLES_PIEZA_DEFAULT } from '../../constants.js';
-import { guardarPresupuestos, cargarRolesPieza, guardarRolesPieza, cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
+import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT } from '../../constants.js';
+import { guardarPresupuestos, cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
 
 const VisorModulo3D = lazy(() => import('../visor3d/VisorModulo3D.jsx'));
 
@@ -205,13 +205,9 @@ function piezasQueUsanVar(varName, piezas) {
 
 function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSugeridos, variables, onVarsUpdate, piezas }) {
   const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
-  const [rolesTaller, setRolesTaller] = useState(() => cargarRolesPieza());
-  const todosRoles = [...ROLES_PIEZA_DEFAULT, ...rolesTaller];
   const [avanzado, setAvanzado] = useState(false);
-  const [dialogoRol, setDialogoRol] = useState(false);
   const tienePos3d = !!(fp.posFormulas?.x || fp.posFormulas?.y || fp.posFormulas?.z);
   const [pos3dAbierto, setPos3dAbierto] = useState(() => tienePos3d);
-  const [nombreRolNuevo, setNombreRolNuevo] = useState("");
   const [varsAbierto, setVarsAbierto] = useState(false);
   const [agregandoVar, setAgregandoVar] = useState(false);
   const [nuevaVarNombre, setNuevaVarNombre] = useState("");
@@ -254,33 +250,6 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
 
   const f1Valida = fp.especial || !fp.formula1 || evaluarFormula(fp.formula1, allVars) !== null;
   const f2Valida = fp.especial || !fp.formula2 || evaluarFormula(fp.formula2, allVars) !== null;
-
-  const aplicarRol = (rol) => {
-    setFp(p => ({
-      ...p,
-      ...(rol.formula1      != null ? { formula1:      rol.formula1      } : {}),
-      ...(rol.formula2      != null ? { formula2:      rol.formula2      } : {}),
-      ...(rol.orientacion3d != null ? { orientacion3d: rol.orientacion3d } : {}),
-      tc: { ...p.tc, lados1: rol.tc?.lados1 ?? p.tc.lados1, lados2: rol.tc?.lados2 ?? p.tc.lados2 },
-    }));
-  };
-
-  const handleGuardarRol = () => {
-    if (!nombreRolNuevo.trim()) return;
-    const nuevo = {
-      id: crypto.randomUUID(),
-      nombre: nombreRolNuevo.trim(),
-      sistema: false,
-      formula1: fp.formula1,
-      formula2: fp.formula2,
-      tc: { lados1: fp.tc.lados1, lados2: fp.tc.lados2 },
-    };
-    const nuevos = [...rolesTaller, nuevo];
-    setRolesTaller(nuevos);
-    guardarRolesPieza(nuevos);
-    setDialogoRol(false);
-    setNombreRolNuevo("");
-  };
 
   return (
     <div id="form-pieza" style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%" }}>
@@ -352,59 +321,6 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
 
             {!fp.especial && (
               <>
-                {/* Selector de roles — acordeón */}
-                {(() => {
-                  const rolActivo = todosRoles.find(rol =>
-                    fp.formula1 === rol.formula1 &&
-                    fp.formula2 === rol.formula2 &&
-                    (rol.orientacion3d != null ? fp.orientacion3d === rol.orientacion3d : !fp.orientacion3d)
-                  );
-                  const rolLabel = rolActivo?.nombre ?? "sin rol";
-                  const hayRolActivo = !!rolActivo;
-                  return (
-                    <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-                      <button onClick={() => setFp(p => ({ ...p, _rolesAbierto: !p._rolesAbierto }))}
-                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", borderLeft: "2px solid rgba(200,160,42,0.5)", textAlign: "left" }}>
-                        <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#c8a02a" }}>
-                          🎭 Rol de pieza
-                        </span>
-                        <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: hayRolActivo ? "var(--accent)" : "var(--text-muted)", fontWeight: hayRolActivo ? 700 : 400 }}>
-                          {rolLabel} {fp._rolesAbierto ? "▲" : "▼"}
-                        </span>
-                      </button>
-                      {fp._rolesAbierto && (
-                        <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(200,160,42,0.15)" }}>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                            {todosRoles.map(rol => {
-                              const isActive =
-                                fp.formula1 === rol.formula1 &&
-                                fp.formula2 === rol.formula2 &&
-                                (rol.orientacion3d != null ? fp.orientacion3d === rol.orientacion3d : !fp.orientacion3d);
-                              return (
-                                <button key={rol.id} onClick={() => { aplicarRol(rol); setFp(p => ({ ...p, _rolesAbierto: false })); }}
-                                  style={{
-                                    padding: "5px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                                    fontFamily: "'DM Mono',monospace", cursor: "pointer", transition: "all 0.15s",
-                                    background: isActive ? "rgba(212,175,55,0.18)" : "var(--bg-subtle)",
-                                    border: `1px solid ${isActive ? "var(--accent-border)" : "var(--border)"}`,
-                                    color: isActive ? "var(--accent)" : "var(--text-muted)",
-                                    boxShadow: isActive ? "0 0 12px rgba(212,175,55,0.25)" : "none",
-                                  }}>
-                                  {rol.nombre}
-                                  {!rol.sistema && (
-                                    <span onClick={(e) => { e.stopPropagation(); const nuevos = rolesTaller.filter(r => r.id !== rol.id); setRolesTaller(nuevos); guardarRolesPieza(nuevos); }}
-                                      style={{ marginLeft: 5, opacity: 0.5, cursor: "pointer" }}>×</span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
                 {/* ── Variables del módulo — acordeón unificado ── */}
                 {(() => {
                   const customVarEntries = Object.entries(variables || {});
@@ -690,27 +606,6 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                     <div style={{ fontSize: 10, color: "var(--text-muted)", padding: "4px 0" }}>
                       Los campos avanzados se usan como fallback si no hay fórmula arriba.
                     </div>
-                    {!dialogoRol ? (
-                      <button onClick={() => { setDialogoRol(true); setNombreRolNuevo(""); }}
-                        style={{ alignSelf: "flex-start", padding: "5px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "rgba(255,255,255,0.10)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
-                        💾 Guardar fórmulas como rol
-                      </button>
-                    ) : (
-                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                        <input autoFocus value={nombreRolNuevo} onChange={e => setNombreRolNuevo(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleGuardarRol(); if (e.key === 'Escape') setDialogoRol(false); }}
-                          placeholder="Nombre del rol..."
-                          style={{ flex: 1, minWidth: 140, fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "5px 10px", background: "var(--bg-base)", border: "1px solid var(--accent-border)", borderRadius: 6, color: "var(--text-primary)", outline: "none" }} />
-                        <button onClick={handleGuardarRol}
-                          style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
-                          Guardar
-                        </button>
-                        <button onClick={() => setDialogoRol(false)}
-                          style={{ padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                          ✕
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )}
               </>
