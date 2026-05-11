@@ -68,7 +68,11 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
   const { camera, gl } = useThree();
 
   const [x, y, z] = inst.worldPos;
-  const mod        = modulos?.[inst.codigo];
+  const modBase    = modulos?.[inst.codigo];
+  const mod = useMemo(() => {
+    if (!modBase || !inst.dimsOverride) return modBase;
+    return { ...modBase, dimensiones: { ...modBase.dimensiones, ...inst.dimsOverride } };
+  }, [modBase, inst.dimsOverride]);
 
   const halfWidth = useMemo(
     () => (mod?.dimensiones?.ancho       || 600) / 2 / 1000,

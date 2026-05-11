@@ -97,7 +97,7 @@ export function PanelModulos3D({ items, modulos, inlineModulos, dimOverride, onA
 
             {/* Add button */}
             <button
-              onClick={() => onAgregar?.({ codigo: item.codigo, cantidad: item.cantidad })}
+              onClick={() => onAgregar?.({ codigo: item.codigo, cantidad: item.cantidad, dimsOverride: dims })}
               title="Agregar a la escena"
               style={{
                 width: 26, height: 26, borderRadius: 5, cursor: 'pointer', flexShrink: 0,

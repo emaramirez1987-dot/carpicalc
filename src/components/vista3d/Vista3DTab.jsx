@@ -270,9 +270,9 @@ export function Vista3DTab({
 
   const irACamara = (key) => { setCamView(key); setCamTarget([...CAMARAS[key].pos]); };
 
-  const handleAgregar = ({ codigo }) => {
+  const handleAgregar = ({ codigo, dimsOverride }) => {
     const instanceId = `${codigo}-${crypto.randomUUID()}`;
-    setModulosEnEscena(prev => [...prev, { instanceId, codigo, posicion: [0, 0, 0] }]);
+    setModulosEnEscena(prev => [...prev, { instanceId, codigo, posicion: [0, 0, 0], dimsOverride }]);
   };
 
   const handleUpdatePosicion = (instanceId, newPos) =>
