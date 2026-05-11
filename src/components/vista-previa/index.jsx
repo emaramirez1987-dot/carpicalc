@@ -209,7 +209,7 @@ function VistaPrevia({
   const gananciaActual  = parseFloat(presSel?.gananciaExtra) || 0;
   const totalAjustado   = (presSel?.total || 0) + gananciaActual - descuentoActual;
   const hayAjustes      = descuentoActual > 0 || gananciaActual > 0;
-  const necesitaAct     = presSelId && presupuestoNecesitaActualizacion(presSelId, costosVersion, presSel);
+  const necesitaAct     = presSelId && presupuestoNecesitaActualizacion(presSelId, costosVersion, presSel, modulos, costos);
 
   useEffect(() => {
     const p = presSelId ? presupuestos[presSelId] : null;

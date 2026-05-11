@@ -145,14 +145,16 @@ export function resolverDim(base, offsetEsp, offsetMm, divisor, espesor) {
 export function calcularModulo(modulo, costos) {
   if (!modulo?.piezas || !costos?.materiales) return null;
 
-  const matDef = costos.materiales.find((m) => m.tipo === modulo.material) || costos.materiales[0];
-  if (!matDef) return null;
+  const matDef = costos.materiales.find((m) => m.tipo === modulo.material);
+  const matFallback = !matDef ? costos.materiales[0] : null;
+  const mat = matDef || matFallback;
+  if (!mat) return null;
 
   const { ancho, profundidad, alto } = modulo.dimensiones || {};
   if (!ancho && !profundidad && !alto) return null;
 
   const dimMap = { ancho: ancho || 0, profundidad: profundidad || 0, alto: alto || 0 };
-  const esp = matDef.espesor || 18;
+  const esp = mat.espesor || 18;
   const baseVars = { ...dimMap, esp };
   const modVars = resolverVariables(modulo.variables, baseVars);
 
@@ -190,7 +192,7 @@ export function calcularModulo(modulo, costos) {
 
   const pctDesp    = costos.desperdicioPct || 20;
   const m2Total    = m2Neto * (1 + pctDesp / 100);  // área con desperdicio
-  const costoMaterial = m2Total * matDef.precioM2;
+  const costoMaterial = m2Total * mat.precioM2;
 
   // Mano de obra: precio fijo por módulo ó precio × horas
   let costoMO = 0;
@@ -222,6 +224,8 @@ export function calcularModulo(modulo, costos) {
     desglosePiezas,
     // Espesor del material usado
     espesor: esp,
+    // true si el material del módulo no existe en costos y se usó el primero como fallback
+    materialFallback: !!matFallback,
   };
 }
 
@@ -244,8 +248,15 @@ export function calcularModulo(modulo, costos) {
  * @param {object} p              - Objeto del presupuesto
  * @returns {boolean}
  */
-export function presupuestoNecesitaActualizacion(presId, costosVersion, p) {
-  if (!costosVersion || !presId) return false;
+export function presupuestoNecesitaActualizacion(presId, costosVersion, p, modulos, costos) {
+  if (!presId || !presupuestoTieneContenido(p)) return false;
+  // Comparación real si tenemos los datos: diff > $1 → desactualizado
+  if (modulos && costos) {
+    const recalc = recalcularTotalPresupuesto(p, modulos, costos);
+    if (recalc !== null) return Math.abs(recalc - (p?.total ?? 0)) > 1;
+  }
+  // Fallback timestamp si no hay datos de costos disponibles
+  if (!costosVersion) return false;
   return (p?.costosVersionAl ?? 0) < costosVersion;
 }
 
@@ -365,6 +376,7 @@ export function resolverModuloDesdePresupuesto(p, item, modulos) {
   const over  = (p.dimOverride && p.dimOverride[keyId]) || {};
   return {
     ...base,
+    material: over.material ?? base.material,
     dimensiones: {
       ancho:       over.ancho       ?? base.dimensiones.ancho,
       profundidad: over.profundidad ?? base.dimensiones.profundidad,

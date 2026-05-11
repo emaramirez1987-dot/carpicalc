@@ -1700,20 +1700,47 @@ function Presupuesto({
       const nuevosModulos = { ...modulos, [tempCod]: { ...modulos[tempCod], dimensiones: modalEdicion.dims, material: modalEdicion.material } };
       setModulos && setModulos(nuevosModulos);
       hSaveModulos && hSaveModulos(nuevosModulos);
-    } else {
-      const keyId = modalEdicion.item.id || modalEdicion.item.codigo;
-      // Si hay un inline module, las dims deben vivir dentro de él (dimOverride es ignorado por getModUsado)
-      if (inlineModulos[keyId]) {
-        setInlineModulos(prev => ({
-          ...prev,
-          [keyId]: { ...prev[keyId], dimensiones: { ...modalEdicion.dims }, material: modalEdicion.material },
-        }));
-        return;
+      return;
+    }
+
+    const keyId = modalEdicion.item.id || modalEdicion.item.codigo;
+
+    // Inline module: dims/material viven dentro del inline (dimOverride es ignorado por getModUsado)
+    if (inlineModulos[keyId]) {
+      const nuevoInline = {
+        ...inlineModulos,
+        [keyId]: { ...inlineModulos[keyId], dimensiones: { ...modalEdicion.dims }, material: modalEdicion.material },
+      };
+      setInlineModulos(nuevoInline);
+      if (presupuestoActivoId && costos) {
+        const pTemp = { items, dimOverride, inlineModulos: nuevoInline, adicionales, costosDirectos };
+        const nuevoTotal = recalcularTotalPresupuesto(pTemp, modulos, costos);
+        if (nuevoTotal !== null) {
+          onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, {
+            inlineModulos: nuevoInline, total: Math.round(nuevoTotal),
+          });
+        }
       }
-      const base = modulos[modalEdicion.origenCodigo];
-      const bd = base?.dimensiones || {};
-      const difiere = modalEdicion.dims.ancho !== bd.ancho || modalEdicion.dims.profundidad !== bd.profundidad || modalEdicion.dims.alto !== bd.alto || modalEdicion.material !== (base?.material ?? "melamina");
-      setDimOverride(prev => { const n = { ...prev }; if (difiere) n[keyId] = { ...modalEdicion.dims, material: modalEdicion.material }; else delete n[keyId]; return n; });
+      return;
+    }
+
+    // Módulo normal: actualizar dimOverride
+    const base = modulos[modalEdicion.origenCodigo];
+    const bd = base?.dimensiones || {};
+    const difiere = modalEdicion.dims.ancho !== bd.ancho || modalEdicion.dims.profundidad !== bd.profundidad || modalEdicion.dims.alto !== bd.alto || modalEdicion.material !== (base?.material ?? "melamina");
+    const nuevoDimOverride = { ...dimOverride };
+    if (difiere) nuevoDimOverride[keyId] = { ...modalEdicion.dims, material: modalEdicion.material };
+    else delete nuevoDimOverride[keyId];
+    setDimOverride(nuevoDimOverride);
+
+    if (presupuestoActivoId && costos) {
+      const pTemp = { items, dimOverride: nuevoDimOverride, inlineModulos, adicionales, costosDirectos };
+      const nuevoTotal = recalcularTotalPresupuesto(pTemp, modulos, costos);
+      if (nuevoTotal !== null) {
+        onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, {
+          dimOverride: nuevoDimOverride, total: Math.round(nuevoTotal),
+        });
+      }
     }
   };
 
