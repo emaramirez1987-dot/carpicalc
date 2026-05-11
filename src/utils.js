@@ -123,8 +123,14 @@ export function calcularModulo(modulo, costos) {
 
   const dimMap = { ancho: ancho || 0, profundidad: profundidad || 0, alto: alto || 0 };
   const esp = matDef.espesor || 18;
-  // Variables del módulo: base (ancho/alto/profundidad/esp) + personalizadas (luz, zocalo, etc.)
-  const modVars = { ...dimMap, esp, ...(modulo.variables || {}) };
+  const baseVars = { ...dimMap, esp };
+  // Resolve custom variables: formula strings (e.g. "alto - 32") must be evaluated
+  // against base dims before being used as numeric substitutions in piece formulas.
+  const resolvedCustomVars = {};
+  Object.entries(modulo.variables || {}).forEach(([k, v]) => {
+    resolvedCustomVars[k] = typeof v === 'number' ? v : (evaluarFormula(String(v), baseVars) ?? parseFloat(String(v)) ?? 0);
+  });
+  const modVars = { ...baseVars, ...resolvedCustomVars };
 
   let m2Neto = 0, metrosTapacanto = 0, costoTapacanto = 0;
   const desglosePiezas = [];
