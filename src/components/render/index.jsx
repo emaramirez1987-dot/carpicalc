@@ -1087,7 +1087,7 @@ export function RenderIA({
                 <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Modelo IA</span>
                 <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   {[
-                    { id: "flux-kontext", label: "Flux Kontext", tag: "⚡ Recomendado", desc: "Edición directa · más rápido · resultados consistentes" },
+                    { id: "flux-kontext", label: "FLUX.1 Kontext", tag: "⚡ Recomendado", desc: "Edición directa · más rápido · resultados consistentes" },
                     { id: "flux",         label: "Flux Canny",   tag: null,             desc: "Bordes estructurales · control preciso de silueta" },
                     { id: "gpt",          label: "GPT-4o",       tag: null,             desc: "Interpreta el render visualmente · escena en una pasada" },
                   ].map(m => (
