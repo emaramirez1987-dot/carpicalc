@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, Badge, SectionTitle } from '../ui/index.jsx';
-import { fmtNum, fmtPeso, resolverDim, recalcularTotalPresupuesto } from '../../utils.js';
+import { fmtNum, fmtPeso, resolverDim, evaluarFormula, recalcularTotalPresupuesto } from '../../utils.js';
 import { OptimizerButton } from './OptimizerButton.jsx';
 import * as optimizerService from '../../services/optimizerService.js';
 import { ResumenOptimizado } from './ResumenOptimizado.jsx';
@@ -510,21 +510,23 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
         areaNetaM2: 0,
         piezas: []
       };
+    const { ancho = 0, alto = 0, profundidad = 0 } = modUsado.dimensiones || {};
+    const modVars = { ancho, alto, profundidad, esp };
+    Object.entries(modUsado.variables || {}).forEach(([k, v]) => {
+      modVars[k] = typeof v === 'number' ? v : (evaluarFormula(String(v), modVars) ?? parseFloat(String(v)) ?? 0);
+    });
+
     modUsado.piezas.forEach((p) => {
-      const d1 = resolverDim(
-        modUsado.dimensiones[p.usaDim],
-        p.offsetEsp,
-        p.offsetMm,
-        p.divisor || 1,
-        esp
-      );
-      const d2 = resolverDim(
-        modUsado.dimensiones[p.usaDim2],
-        p.offsetEsp2,
-        p.offsetMm2,
-        p.divisor2 || 1,
-        esp
-      );
+      const d1 = p.especial
+        ? (parseFloat(p.dimLibre1) || 0)
+        : p.formula1 != null
+          ? (evaluarFormula(p.formula1, modVars) ?? 0)
+          : resolverDim(modUsado.dimensiones[p.usaDim], p.offsetEsp, p.offsetMm, p.divisor || 1, esp);
+      const d2 = p.especial
+        ? (parseFloat(p.dimLibre2) || 0)
+        : p.formula2 != null
+          ? (evaluarFormula(p.formula2, modVars) ?? 0)
+          : resolverDim(modUsado.dimensiones[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, esp);
       const tcDef = costos.tapacanto?.find((t) => t.id === p.tc?.id);
       const cant = p.cantidad * item.cantidad;
       grupos[matKey].areaNetaM2 += (d1 * d2 * cant) / 1_000_000;
