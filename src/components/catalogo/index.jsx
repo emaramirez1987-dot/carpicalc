@@ -8,6 +8,7 @@ import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarF
 import VistaModuloSVG from '../vista-svg/index.js';
 import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT } from '../../constants.js';
 import { guardarPresupuestos, cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
+import { ORIENTACIONES_3D } from '../visor3d/Modulo3D.jsx';
 
 const VisorModulo3D = lazy(() => import('../visor3d/VisorModulo3D.jsx'));
 
@@ -316,6 +317,41 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                   <button onClick={() => setFp(p => ({ ...p, cantidad: (parseInt(p.cantidad) || 1) + 1 }))}
                     style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                 </div>
+              </div>
+            </div>
+
+            {/* Orientación 3D */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Orientación 3D
+              </div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                {ORIENTACIONES_3D.map(o => {
+                  const isActive = fp.orientacion3d === o.id;
+                  const isDanger = o.id === 'ignorar';
+                  return (
+                    <button
+                      key={o.id}
+                      onClick={() => setFp(p => ({ ...p, orientacion3d: isActive ? undefined : o.id }))}
+                      style={{
+                        padding: "5px 14px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                        fontFamily: "'DM Mono',monospace", cursor: "pointer", transition: "all 0.15s",
+                        background: isActive
+                          ? (isDanger ? "rgba(200,60,60,0.15)" : "rgba(212,175,55,0.18)")
+                          : "var(--bg-subtle)",
+                        border: `1px solid ${isActive
+                          ? (isDanger ? "rgba(200,60,60,0.45)" : "var(--accent-border)")
+                          : "var(--border)"}`,
+                        color: isActive
+                          ? (isDanger ? "#e07070" : "var(--accent)")
+                          : "var(--text-muted)",
+                        boxShadow: isActive && !isDanger ? "0 0 10px rgba(212,175,55,0.20)" : "none",
+                      }}
+                    >
+                      {o.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
