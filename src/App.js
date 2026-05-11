@@ -371,6 +371,11 @@ function AppInterna() {
     withSave(() => guardarPresupuestos(nuevo));
   };
 
+  const handleImportarRender = (renderData) => {
+    if (!presupuestoActivoId) return;
+    handleActualizarPresupuesto(presupuestoActivoId, { renderUrl: renderData });
+  };
+
   const handleGuardarExtraFrecuente = (extra) => {
     const nuevo = {
       ...costos,
@@ -533,6 +538,7 @@ function AppInterna() {
                 presupuestoActivoId={presupuestoActivoId}
                 suscripcion={suscripcion}
                 onRenderGenerado={() => cargarSuscripcion().then(setSuscripcion)}
+                onImportarRender={handleImportarRender}
                 imagenRef3D={imagenRef3D}
                 materiales3D={materiales3D}
                 onGuardarMaterial3D={handleGuardarMaterial3D}

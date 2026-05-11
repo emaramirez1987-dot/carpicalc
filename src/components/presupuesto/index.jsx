@@ -31,7 +31,8 @@ function imprimirPresupuesto(
   gananciaExtra = 0,
   tema = "dorado",
   adicionales = [],
-  costosDirectos = []
+  costosDirectos = [],
+  renderUrl = null
 ) {
   const perfil = leerPerfil();
   const fecha = fmtFechaLarga(Date.now());
@@ -276,6 +277,8 @@ function imprimirPresupuesto(
   ${nombre ? `<div style="font-size:16px;font-weight:700;color:${p.textoPrincipal};padding:12px 0 24px 0;letter-spacing:0.01em">${nombre}</div>` : ""}
 
   ${textoApertura ? `<div style="margin-bottom:20px;padding:12px 16px;background:${p.fondoCliente};border-left:3px solid ${p.acentoSuave};border-radius:0 6px 6px 0;font-size:13px;color:${p.textoSec};line-height:1.7">${textoApertura.replace(/\n/g, "<br>")}</div>` : ""}
+
+  ${renderUrl ? `<div style="margin-bottom:24px;border-radius:10px;overflow:hidden;border:1px solid ${p.separador}"><img src="${renderUrl}" alt="Render del trabajo" style="width:100%;height:auto;display:block;max-height:480px;object-fit:cover" /></div>` : ""}
 
   <!-- ZONA 2: TABLA -->
   <table class="tabla-items">

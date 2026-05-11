@@ -268,7 +268,7 @@ function VistaPrevia({
     };
     const adicionalesVisibles   = (presSel.adicionales   || []).filter(x => !itemsOcultos.includes(`ad-${x.id}`));
     const costosDirectosVisibles = (presSel.costosDirectos || []).filter(x => !itemsOcultos.includes(`cd-${x.id}`));
-    imprimirPresupuesto(itemsVisibles, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, mostrarPrecioUnitario, presSel.cliente, textoApertura, condiciones, presSel.descuento || 0, presSel.gananciaExtra || 0, temaPDF, adicionalesVisibles, costosDirectosVisibles);
+    imprimirPresupuesto(itemsVisibles, modulos, costos, getModUsadoLocal, presSel.total, presSel.nombre, mostrarPrecioUnitario, presSel.cliente, textoApertura, condiciones, presSel.descuento || 0, presSel.gananciaExtra || 0, temaPDF, adicionalesVisibles, costosDirectosVisibles, presSel.renderUrl || null);
   };
 
   const handleActualizar = () => {
@@ -568,6 +568,12 @@ function VistaPrevia({
                 <div style={paperStyle}>
                   {cabecera}
 
+                  {presSel.renderUrl && (
+                    <div style={{ marginBottom: 24, borderRadius: 8, overflow: "hidden", border: `1px solid ${P.border}` }}>
+                      <img src={presSel.renderUrl} alt="Render del trabajo" style={{ width: "100%", maxHeight: 420, objectFit: "cover", display: "block" }} />
+                    </div>
+                  )}
+
                   {/* Items section header */}
                   <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: P.accent, marginBottom: 6, paddingBottom: 6, borderBottom: `1.5px solid ${P.accent}` }}>
                     Detalle de Ítems
@@ -764,6 +770,24 @@ function VistaPrevia({
                     </SeccionColapsable>
                   );
                 })()}
+
+                {/* Render IA */}
+                <SeccionColapsable titulo="Render IA" resumen={presSel.renderUrl ? "Incluido en PDF" : "Sin render"} defaultOpen={!!presSel.renderUrl}>
+                  {presSel.renderUrl ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <img src={presSel.renderUrl} alt="render" style={{ width: "100%", borderRadius: 7, display: "block" }} />
+                      <button
+                        onClick={() => onActualizarPresupuesto(presSelId, { renderUrl: null })}
+                        style={{ width: "100%", padding: "6px 0", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "rgba(200,60,60,0.10)", border: "1px solid rgba(200,60,60,0.30)", color: "#e07070" }}>
+                        Quitar render del presupuesto
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
+                      Generá un render en la sección <strong style={{ color: "var(--accent)" }}>Render IA</strong> con un presupuesto activo y usá "Importar al presupuesto".
+                    </div>
+                  )}
+                </SeccionColapsable>
 
                 {/* Texto de apertura */}
                 <SeccionColapsable titulo="Texto de apertura" resumen={textoApertura ? textoApertura.slice(0, 60) + (textoApertura.length > 60 ? "…" : "") : "Sin texto"}>

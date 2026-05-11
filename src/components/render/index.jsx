@@ -325,7 +325,29 @@ function StepCard({ numero, titulo, subtitulo, listo, generando, onGenerar, bloq
 
 // ── PanelRender ───────────────────────────────────────────────────────────────
 
-function PanelRender({ imagenUrl, generando, compact = false }) {
+function PanelRender({ imagenUrl, generando, compact = false, onImportar = null, importado = false }) {
+  const [importando, setImportando] = useState(false);
+
+  const handleImportar = async () => {
+    if (!onImportar || !imagenUrl) return;
+    setImportando(true);
+    try {
+      const r = await fetch(imagenUrl);
+      const blob = await r.blob();
+      await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload  = () => { onImportar(reader.result); res(); };
+        reader.onerror = rej;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      // Si CORS bloquea el fetch, guardamos la URL directamente
+      onImportar(imagenUrl);
+    } finally {
+      setImportando(false);
+    }
+  };
+
   if (generando) return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--bg-surface)", border: "1px dashed var(--border)", borderRadius: 12, padding: compact ? "24px 16px" : "60px 32px", gap: 12 }}>
       <div style={{ fontSize: compact ? 26 : 38 }}>⏳</div>
@@ -339,6 +361,12 @@ function PanelRender({ imagenUrl, generando, compact = false }) {
       <div style={{ padding: compact ? "8px 12px" : "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-secondary)" }}>✨ Render IA</span>
         <div style={{ flex: 1 }} />
+        {onImportar && (
+          <button onClick={handleImportar} disabled={importando || importado}
+            style={{ ...btnSm(importado ? "muted" : "accent"), opacity: importado ? 0.6 : 1, cursor: importado ? "default" : "pointer" }}>
+            {importando ? "Importando…" : importado ? "✓ Importado" : "Importar al presupuesto"}
+          </button>
+        )}
         <a href={imagenUrl} download="render.jpg" target="_blank" rel="noopener noreferrer"
           style={{ ...btnSm("accent"), textDecoration: "none", display: "inline-block" }}>⬇ Descargar</a>
       </div>
@@ -453,9 +481,10 @@ function BibliotecaMateriales3D({ materiales3D, onGuardar, onEliminar }) {
 export function RenderIA({
   modulos = {},               // eslint-disable-line no-unused-vars
   composicionOverride = {},   // eslint-disable-line no-unused-vars
-  presupuestoActivoId = null, // eslint-disable-line no-unused-vars
+  presupuestoActivoId = null,
   suscripcion = null,
   onRenderGenerado = null,
+  onImportarRender = null,
   imagenRef3D = null,
   materiales3D = {},
   onGuardarMaterial3D = null,
@@ -592,11 +621,11 @@ export function RenderIA({
 
       {/* Visualización */}
       {!sinDatos && modo === "ref3d"  && <Panel3DRef imagenRef3D={imagenRef3D} />}
-      {!sinDatos && modo === "render" && <PanelRender imagenUrl={imagenUrl} generando={generando} />}
+      {!sinDatos && modo === "render" && <PanelRender imagenUrl={imagenUrl} generando={generando} onImportar={presupuestoActivoId && onImportarRender ? onImportarRender : null} />}
       {!sinDatos && modo === "split"  && (
         <div className="rsp-render-split" style={{ display: "flex", gap: 12, alignItems: "stretch", minHeight: isMobile ? "auto" : 360 }}>
           <Panel3DRef imagenRef3D={imagenRef3D} compact />
-          <PanelRender imagenUrl={imagenUrl} generando={generando} compact />
+          <PanelRender imagenUrl={imagenUrl} generando={generando} compact onImportar={presupuestoActivoId && onImportarRender ? onImportarRender : null} />
         </div>
       )}
 
