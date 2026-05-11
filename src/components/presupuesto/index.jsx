@@ -2237,9 +2237,19 @@ function Presupuesto({
                   </div>
 
                   {/* Material + espesor — mismo Badge del catálogo */}
-                  <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                  <div style={{ display: "flex", gap: 5, flexShrink: 0, flexWrap: "wrap" }}>
                     <Badge>{TIPO_MAT[modUsado.material]}</Badge>
                     {calc.espesor && <Badge color="#705090">{calc.espesor}mm</Badge>}
+                    {calc.materialFallback && (
+                      <span title={`Material "${modUsado.material}" no encontrado — se usó el primero disponible`} style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.35)", color: "#ef4444", borderRadius: 3, padding: "1px 5px", cursor: "help" }}>
+                        ⚠ material
+                      </span>
+                    )}
+                    {calc.piezasNegativas?.length > 0 && (
+                      <span title={`Fórmulas con resultado negativo (clamped a 0): ${calc.piezasNegativas.join(", ")}`} style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(234,179,8,0.12)", border: "1px solid rgba(234,179,8,0.35)", color: "#ca8a04", borderRadius: 3, padding: "1px 5px", cursor: "help" }}>
+                        ⚠ fórmula
+                      </span>
+                    )}
                   </div>
 
                   {/* Cantidad − n + */}

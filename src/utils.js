@@ -128,6 +128,22 @@ export function resolverDim(base, offsetEsp, offsetMm, divisor, espesor) {
   return Math.max(0, raw / Math.max(1, divisor || 1));
 }
 
+// Evalúa una fórmula SIN clampar a 0 — solo para detectar resultados negativos.
+function _evalRaw(expr, vars) {
+  if (!expr || typeof expr !== 'string') return null;
+  let t = expr.trim();
+  const sorted = Object.entries(vars).sort((a, b) => b[0].length - a[0].length);
+  for (const [name, val] of sorted) {
+    t = t.replace(new RegExp(`\\b${name}\\b`, 'g'), String(val ?? 0));
+  }
+  if (!/^[\d\s+\-*/().]+$/.test(t)) return null;
+  try {
+    // eslint-disable-next-line no-new-func
+    const r = new Function(`return (${t})`)();
+    return typeof r === 'number' && isFinite(r) ? r : null;
+  } catch { return null; }
+}
+
 /**
  * Calcula el costo completo de un módulo de carpintería.
  *
@@ -160,6 +176,7 @@ export function calcularModulo(modulo, costos) {
 
   let m2Neto = 0, metrosTapacanto = 0, costoTapacanto = 0;
   const desglosePiezas = [];
+  const piezasNegativas = [];
 
   for (const p of modulo.piezas) {
     // Pieza especial: usa dimensiones libres en lugar de las parametrizadas
@@ -174,6 +191,19 @@ export function calcularModulo(modulo, costos) {
       : p.formula2 != null
         ? (evaluarFormula(p.formula2, modVars) ?? 0)
         : resolverDim(dimMap[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, esp);
+
+    // Detectar fórmulas o dims que dieron negativo antes del clamp a 0
+    if (!p.especial) {
+      const raw1 = p.formula1 != null
+        ? _evalRaw(p.formula1, modVars)
+        : (dimMap[p.usaDim] || 0) + (p.offsetEsp || 0) * esp + (p.offsetMm || 0);
+      const raw2 = p.formula2 != null
+        ? _evalRaw(p.formula2, modVars)
+        : (dimMap[p.usaDim2] || 0) + (p.offsetEsp2 || 0) * esp + (p.offsetMm2 || 0);
+      if ((raw1 !== null && raw1 < 0) || (raw2 !== null && raw2 < 0)) {
+        piezasNegativas.push(p.nombre || "pieza");
+      }
+    }
 
     const area = (d1 * d2 * p.cantidad) / 1_000_000; // mm² → m²
     m2Neto += area;
@@ -226,6 +256,8 @@ export function calcularModulo(modulo, costos) {
     espesor: esp,
     // true si el material del módulo no existe en costos y se usó el primero como fallback
     materialFallback: !!matFallback,
+    // Piezas cuya fórmula dio negativo y fue clamped a 0
+    piezasNegativas,
   };
 }
 
@@ -268,7 +300,7 @@ export function presupuestoNecesitaActualizacion(presId, costosVersion, p, modul
  * @returns {boolean}
  */
 export function presupuestoTieneContenido(p) {
-  return (
+  return !!(
     (p?.items && p.items.length > 0) ||
     (p?.costosDirectos && p.costosDirectos.length > 0) ||
     (p?.adicionales && p.adicionales.length > 0)
