@@ -134,21 +134,20 @@ export const costoIniciales = {
 // El carpintero puede crear roles propios (sistema:false) desde el formulario.
 export const ROLES_PIEZA_DEFAULT = [
   // ── Estructura principal ──────────────────────────────────────────────────
-  { id: "lateral",            nombre: "Lateral",             sistema: true, rol3d: "lateral",     formula1: "alto",                   formula2: "profundidad",      tc: { lados1: 1, lados2: 0 } },
-  { id: "lateral_izq",        nombre: "Lateral Izq.",        sistema: true, rol3d: "lateral_izq", formula1: "alto",                   formula2: "profundidad",      tc: { lados1: 1, lados2: 0 } },
-  { id: "lateral_der",        nombre: "Lateral Der.",        sistema: true, rol3d: "lateral_der", formula1: "alto",                   formula2: "profundidad",      tc: { lados1: 1, lados2: 0 } },
-  { id: "techo",              nombre: "Techo",               sistema: true, rol3d: "techo",       formula1: "ancho - 2 * esp",        formula2: "profundidad",      tc: { lados1: 2, lados2: 1 } },
-  { id: "base",               nombre: "Base",                sistema: true, rol3d: "base",        formula1: "ancho - 2 * esp",        formula2: "profundidad",      tc: { lados1: 2, lados2: 1 } },
-  { id: "fondo",              nombre: "Fondo",               sistema: true, rol3d: "fondo",       formula1: "ancho - 2 * esp",        formula2: "alto - 2 * esp",   tc: { lados1: 0, lados2: 0 } },
+  { id: "lateral",            nombre: "Lateral",             sistema: true, orientacion3d: "vertical",    formula1: "alto",                   formula2: "profundidad",      tc: { lados1: 1, lados2: 0 } },
+  { id: "lateral_izq",        nombre: "Lateral Izq.",        sistema: true, orientacion3d: "vertical",    formula1: "alto",                   formula2: "profundidad",      tc: { lados1: 1, lados2: 0 } },
+  { id: "lateral_der",        nombre: "Lateral Der.",        sistema: true, orientacion3d: "vertical",    formula1: "alto",                   formula2: "profundidad",      tc: { lados1: 1, lados2: 0 } },
+  { id: "techo",              nombre: "Techo",               sistema: true, orientacion3d: "horizontal",  formula1: "ancho - 2 * esp",        formula2: "profundidad",      tc: { lados1: 2, lados2: 1 } },
+  { id: "base",               nombre: "Base",                sistema: true, orientacion3d: "horizontal",  formula1: "ancho - 2 * esp",        formula2: "profundidad",      tc: { lados1: 2, lados2: 1 } },
+  { id: "fondo",              nombre: "Fondo",               sistema: true, orientacion3d: "frente",      formula1: "ancho - 2 * esp",        formula2: "alto - 2 * esp",   tc: { lados1: 0, lados2: 0 } },
   // ── Horizontales internas ─────────────────────────────────────────────────
-  { id: "horizontal_interna", nombre: "Horizontal interna",  sistema: true,                       formula1: "ancho - 2 * esp",        formula2: "profundidad",      tc: { lados1: 0, lados2: 1 } },
-  { id: "estante",            nombre: "Estante",             sistema: true, rol3d: "estante",     formula1: "ancho - 2 * esp",        formula2: "profundidad - 20", tc: { lados1: 1, lados2: 0 } },
+  { id: "horizontal_interna", nombre: "Horizontal interna",  sistema: true, orientacion3d: "horizontal",  formula1: "ancho - 2 * esp",        formula2: "profundidad",      tc: { lados1: 0, lados2: 1 } },
+  { id: "estante",            nombre: "Estante",             sistema: true, orientacion3d: "horizontal",  formula1: "ancho - 2 * esp",        formula2: "profundidad - 20", tc: { lados1: 1, lados2: 0 } },
   // ── Puertas y cajones ────────────────────────────────────────────────────
-  // Puerta: usar rol personalizado en el editor 3D (cara=front) con posFormulas para ubicarla.
-  { id: "puerta",             nombre: "Puerta",              sistema: true,                       formula1: "alto",                   formula2: "ancho",            tc: { lados1: 2, lados2: 2 } },
-  { id: "cajon",              nombre: "Cajón",               sistema: true, rol3d: "cajon",       formula1: "(alto - 2 * esp) / 3",   formula2: "ancho - 2 * esp",  tc: { lados1: 2, lados2: 2 } },
+  { id: "puerta",             nombre: "Puerta",              sistema: true, orientacion3d: "frente",      formula1: "alto",                   formula2: "ancho",            tc: { lados1: 2, lados2: 2 } },
+  { id: "cajon",              nombre: "Cajón",               sistema: true, orientacion3d: "frente",      formula1: "(alto - 2 * esp) / 3",   formula2: "ancho - 2 * esp",  tc: { lados1: 2, lados2: 2 } },
   // ── Especiales ───────────────────────────────────────────────────────────
-  { id: "ignorar",            nombre: "No mostrar",          sistema: true, rol3d: "ignorar",     formula1: null,                     formula2: null,               tc: { lados1: 0, lados2: 0 } },
+  { id: "ignorar",            nombre: "No mostrar",          sistema: true, orientacion3d: "ignorar",     formula1: null,                     formula2: null,               tc: { lados1: 0, lados2: 0 } },
 ];
 
 // ── Módulos iniciales ─────────────────────────────────────────────────────

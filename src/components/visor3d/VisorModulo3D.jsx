@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { ROLES_3D, CARAS_3D, buildPiezas3D } from './Modulo3D.jsx';
+import { ORIENTACIONES_3D, buildPiezas3D } from './Modulo3D.jsx';
 import { getMaterialProps } from './useMaterial3D.js';
 import { CAMARAS } from './CamaraPresets.js';
 
@@ -220,9 +220,6 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
   const [exploding,      setExploding]      = useState(false);
   const [camView,        setCamView]        = useState('iso');
   const [targetCam,      setTargetCam]      = useState(CAMARAS.iso.pos);
-  const [nuevoRolNombre, setNuevoRolNombre] = useState('');
-  const [nuevoRolCara,   setNuevoRolCara]   = useState('front');
-  const [mostrarFormRol, setMostrarFormRol] = useState(false);
   const glRef = useRef(null);
 
   const { ancho = 600, alto = 700, profundidad = 550 } = modulo?.dimensiones || {};
@@ -232,7 +229,7 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
   const piezas3D = useMemo(
     () => buildPiezas3D(modulo, costos),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [modulo?.piezas, modulo?.dimensiones, modulo?.material, modulo?.rolesCustom, costos]
+    [modulo?.piezas, modulo?.dimensiones, modulo?.material, costos]
   );
 
   // Selected piece data
@@ -249,13 +246,13 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
     setSelectedIdx(prev => prev === piezaIdx ? null : piezaIdx);
   }, []);
 
-  const handleFuncion = useCallback((rol3d) => {
+  const handleOrientacion = useCallback((orientacion3d) => {
     if (selectedIdx == null || !onActualizar) return;
     const nuevasPiezas = modulo.piezas.map((p, i) =>
-      i === selectedIdx ? { ...p, rol3d, offset3d: undefined, rot3d: undefined } : p
+      i === selectedIdx ? { ...p, orientacion3d, offset3d: undefined, rot3d: undefined } : p
     );
     onActualizar({ ...modulo, piezas: nuevasPiezas });
-    if (rol3d === 'ignorar') setSelectedIdx(null);
+    if (orientacion3d === 'ignorar') setSelectedIdx(null);
   }, [selectedIdx, modulo, onActualizar]);
 
   const handleRotar = useCallback((deg) => {
@@ -284,21 +281,6 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
     );
     onActualizar({ ...modulo, piezas: nuevasPiezas });
   }, [selectedIdx, modulo, onActualizar]);
-
-  const handleAgregarRolCustom = useCallback(() => {
-    if (!nuevoRolNombre.trim() || !onActualizar) return;
-    const newRol = { id: crypto.randomUUID(), label: nuevoRolNombre.trim(), cara: nuevoRolCara };
-    onActualizar({ ...modulo, rolesCustom: [...(modulo.rolesCustom || []), newRol] });
-    setNuevoRolNombre('');
-    setMostrarFormRol(false);
-  }, [nuevoRolNombre, nuevoRolCara, modulo, onActualizar]);
-
-  const handleEliminarRolCustom = useCallback((rolId) => {
-    if (!onActualizar) return;
-    const rolesCustom = (modulo.rolesCustom || []).filter(r => r.id !== rolId);
-    const nuevasPiezas = modulo.piezas.map(p => p.rol3d === rolId ? { ...p, rol3d: undefined } : p);
-    onActualizar({ ...modulo, rolesCustom, piezas: nuevasPiezas });
-  }, [modulo, onActualizar]);
 
   const irACamara = (key) => { setCamView(key); setTargetCam([...CAMARAS[key].pos]); };
 
@@ -375,9 +357,7 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
               const isSelected = selectedIdx === idx;
               const st       = p3d?.status ?? 'unassigned';
               const stColor  = STATUS_COLOR[st];
-              const rolLabel = ROLES_3D.find(r => r.id === p3d?.role)?.label
-                ?? (modulo?.rolesCustom || []).find(r => r.id === p3d?.role)?.label
-                ?? null;
+              const rolLabel = ORIENTACIONES_3D.find(r => r.id === p3d?.role)?.label ?? null;
 
               return (
                 <div
@@ -537,135 +517,30 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
 
               <DIVIDER />
 
-              {/* Función */}
-              <LABEL>Función</LABEL>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, marginBottom: 4 }}>
-                {ROLES_3D.filter(r => r.id !== 'ignorar').map(r => (
+              {/* Orientación 3D */}
+              <LABEL>Orientación 3D</LABEL>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
+                {ORIENTACIONES_3D.map(o => (
                   <button
-                    key={r.id}
-                    onClick={() => handleFuncion(r.id)}
+                    key={o.id}
+                    onClick={() => handleOrientacion(o.id)}
                     style={{
-                      padding: '5px 4px', borderRadius: 4, cursor: 'pointer',
-                      fontSize: 9, fontFamily: "'DM Mono',monospace",
-                      background: currentRol === r.id ? `${STATUS_COLOR['auto']}22` : 'rgba(255,255,255,0.03)',
-                      border: currentRol === r.id ? `1px solid ${STATUS_COLOR['auto']}88` : '1px solid rgba(255,255,255,0.07)',
-                      color: currentRol === r.id ? STATUS_COLOR['auto'] : '#666',
-                      textAlign: 'center', lineHeight: 1.3, transition: 'all 0.1s',
+                      padding: '6px 8px', borderRadius: 4, cursor: 'pointer',
+                      fontSize: 10, fontFamily: "'DM Mono',monospace", textAlign: 'left',
+                      background: currentRol === o.id
+                        ? (o.id === 'ignorar' ? 'rgba(200,60,60,0.12)' : `${STATUS_COLOR['auto']}22`)
+                        : 'rgba(255,255,255,0.03)',
+                      border: currentRol === o.id
+                        ? (o.id === 'ignorar' ? '1px solid rgba(200,60,60,0.35)' : `1px solid ${STATUS_COLOR['auto']}88`)
+                        : '1px solid rgba(255,255,255,0.07)',
+                      color: currentRol === o.id
+                        ? (o.id === 'ignorar' ? '#e07070' : STATUS_COLOR['auto'])
+                        : '#666',
+                      transition: 'all 0.1s',
                     }}
-                  >{r.label}</button>
+                  >{o.label}</button>
                 ))}
               </div>
-
-              {/* Roles personalizados */}
-              {(modulo?.rolesCustom || []).length > 0 && (
-                <>
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', margin: '4px 0' }} />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, marginBottom: 4 }}>
-                    {(modulo.rolesCustom).map(r => (
-                      <div key={r.id} style={{ position: 'relative', display: 'flex' }}>
-                        <button
-                          onClick={() => handleFuncion(r.id)}
-                          style={{
-                            flex: 1, padding: '5px 4px', borderRadius: 4, cursor: 'pointer',
-                            fontSize: 9, fontFamily: "'DM Mono',monospace",
-                            background: currentRol === r.id ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.03)',
-                            border: currentRol === r.id ? '1px solid rgba(212,175,55,0.45)' : '1px solid rgba(255,255,255,0.07)',
-                            color: currentRol === r.id ? '#D4AF37' : '#666',
-                            textAlign: 'center', lineHeight: 1.3, transition: 'all 0.1s',
-                            paddingRight: 14,
-                          }}
-                        >{r.label}</button>
-                        <button
-                          onClick={() => handleEliminarRolCustom(r.id)}
-                          title="Eliminar rol"
-                          style={{
-                            position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)',
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            color: '#555', fontSize: 9, padding: '0 2px', lineHeight: 1,
-                          }}
-                        >×</button>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* Nuevo rol personalizado */}
-              {mostrarFormRol ? (
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '8px 7px', marginBottom: 4 }}>
-                  <input
-                    type="text"
-                    placeholder="Nombre del rol…"
-                    value={nuevoRolNombre}
-                    onChange={e => setNuevoRolNombre(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAgregarRolCustom()}
-                    autoFocus
-                    style={{
-                      width: '100%', boxSizing: 'border-box',
-                      background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
-                      borderRadius: 4, padding: '4px 6px', color: '#ccc',
-                      fontSize: 10, fontFamily: "'DM Mono',monospace", marginBottom: 5,
-                      outline: 'none',
-                    }}
-                  />
-                  <select
-                    value={nuevoRolCara}
-                    onChange={e => setNuevoRolCara(e.target.value)}
-                    style={{
-                      width: '100%', boxSizing: 'border-box',
-                      background: '#1a1c24', border: '1px solid rgba(255,255,255,0.12)',
-                      borderRadius: 4, padding: '4px 6px', color: '#aaa',
-                      fontSize: 10, fontFamily: "'DM Mono',monospace", marginBottom: 6,
-                      outline: 'none', cursor: 'pointer',
-                    }}
-                  >
-                    {CARAS_3D.map(c => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
-                    ))}
-                  </select>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button
-                      onClick={handleAgregarRolCustom}
-                      disabled={!nuevoRolNombre.trim()}
-                      style={{
-                        flex: 1, padding: '4px 0', borderRadius: 4, cursor: nuevoRolNombre.trim() ? 'pointer' : 'default',
-                        background: nuevoRolNombre.trim() ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.03)',
-                        border: nuevoRolNombre.trim() ? '1px solid rgba(212,175,55,0.40)' : '1px solid rgba(255,255,255,0.06)',
-                        color: nuevoRolNombre.trim() ? '#D4AF37' : '#444',
-                        fontSize: 9, fontFamily: "'DM Mono',monospace", transition: 'all 0.1s',
-                      }}
-                    >Agregar</button>
-                    <button
-                      onClick={() => { setMostrarFormRol(false); setNuevoRolNombre(''); }}
-                      style={{
-                        padding: '4px 8px', borderRadius: 4, cursor: 'pointer',
-                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-                        color: '#555', fontSize: 9, fontFamily: "'DM Mono',monospace",
-                      }}
-                    >Cancelar</button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setMostrarFormRol(true)}
-                  style={{
-                    width: '100%', padding: '4px 0', borderRadius: 4, cursor: 'pointer',
-                    fontSize: 9, fontFamily: "'DM Mono',monospace",
-                    background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.10)',
-                    color: '#555', marginBottom: 2, transition: 'all 0.1s',
-                  }}
-                >+ Nuevo rol</button>
-              )}
-
-              <button
-                onClick={() => handleFuncion('ignorar')}
-                style={{
-                  width: '100%', padding: '4px 0', borderRadius: 4, cursor: 'pointer',
-                  fontSize: 9, fontFamily: "'DM Mono',monospace",
-                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
-                  color: '#444', marginBottom: 2, transition: 'all 0.1s',
-                }}
-              >No mostrar</button>
 
               <DIVIDER />
 
