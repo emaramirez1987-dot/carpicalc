@@ -4,7 +4,7 @@ import { useNav } from '../../state/NavContext.jsx';
 import { useUndo } from '../../hooks/useUndo.js';
 import { useTema } from '../../hooks/useTema.js';
 import { Btn, Card, Badge, TextInput, Select, SectionTitle } from '../ui/index.jsx';
-import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarFormula } from '../../utils.js';
+import { fmtPeso, fmtNum, resolverDim, calcularModulo, comprimirImagen, evaluarFormula, resolverVariables } from '../../utils.js';
 import VistaModuloSVG from '../vista-svg/index.js';
 import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT } from '../../constants.js';
 import { guardarPresupuestos, cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
@@ -80,11 +80,7 @@ function DimRowLibre({ titulo, valKey, fp, setFp }) {
 function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMoveDown, onChangeCantidad, dims, espesor, tapacanto, isFirst, isLast, modVars }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const baseVars = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor };
-  const resolvedModVars = {};
-  Object.entries(modVars || {}).forEach(([k, v]) => {
-    resolvedModVars[k] = typeof v === 'number' ? v : (evaluarFormula(String(v), baseVars) ?? parseFloat(String(v)) ?? 0);
-  });
-  const allVars = { ...baseVars, ...resolvedModVars };
+  const allVars = resolverVariables(modVars, baseVars);
   const d1 = pieza.especial
     ? (parseInt(pieza.dimLibre1) || 0)
     : pieza.formula1 != null
@@ -237,11 +233,8 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
   };
 
   const baseVars = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor };
-  const resolvedCustomVars = {};
-  Object.entries(variables || {}).forEach(([k, v]) => {
-    resolvedCustomVars[k] = typeof v === 'number' ? v : (evaluarFormula(String(v), baseVars) ?? parseFloat(String(v)) ?? 0);
-  });
-  const allVars = { ...baseVars, ...resolvedCustomVars };
+  const allVars = resolverVariables(variables, baseVars);
+  const resolvedCustomVars = allVars;
 
   const d1 = fp.especial
     ? (parseInt(fp.dimLibre1) || 0)

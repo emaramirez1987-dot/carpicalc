@@ -82,6 +82,36 @@ export function evaluarFormula(expr, vars = {}) {
 }
 
 /**
+ * Resuelve variables personalizadas de un módulo contra dimensiones base.
+ *
+ * Las variables pueden depender de las dims base (ancho/alto/profundidad/esp)
+ * o de otras variables personalizadas. Se resuelven en pasadas iterativas hasta
+ * que todas queden como números o no haya más progreso (dependencia circular → 0).
+ *
+ * @param {object} rawVars  - Variables del módulo: valores numéricos o strings con fórmulas
+ * @param {object} baseVars - Dims base ya resueltas: { ancho, alto, profundidad, esp }
+ * @returns {object} Todas las variables resueltas como números
+ */
+export function resolverVariables(rawVars, baseVars) {
+  const resolved = { ...baseVars };
+  const pending = Object.entries(rawVars || {});
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [k, v] of pending) {
+      if (resolved[k] !== undefined) continue;
+      const num = typeof v === 'number' ? v : evaluarFormula(String(v), resolved);
+      if (num !== null) { resolved[k] = num; changed = true; }
+    }
+  }
+  // Variables que no pudieron resolverse (dependencia circular o fórmula inválida) → 0
+  for (const [k] of pending) {
+    if (resolved[k] === undefined) resolved[k] = 0;
+  }
+  return resolved;
+}
+
+/**
  * Calcula la dimensión final de una pieza a partir de la dimensión base del módulo.
  *
  * Fórmula: (base + offsetEsp × espesor + offsetMm) / divisor
@@ -124,13 +154,7 @@ export function calcularModulo(modulo, costos) {
   const dimMap = { ancho: ancho || 0, profundidad: profundidad || 0, alto: alto || 0 };
   const esp = matDef.espesor || 18;
   const baseVars = { ...dimMap, esp };
-  // Resolve custom variables: formula strings (e.g. "alto - 32") must be evaluated
-  // against base dims before being used as numeric substitutions in piece formulas.
-  const resolvedCustomVars = {};
-  Object.entries(modulo.variables || {}).forEach(([k, v]) => {
-    resolvedCustomVars[k] = typeof v === 'number' ? v : (evaluarFormula(String(v), baseVars) ?? parseFloat(String(v)) ?? 0);
-  });
-  const modVars = { ...baseVars, ...resolvedCustomVars };
+  const modVars = resolverVariables(modulo.variables, baseVars);
 
   let m2Neto = 0, metrosTapacanto = 0, costoTapacanto = 0;
   const desglosePiezas = [];
