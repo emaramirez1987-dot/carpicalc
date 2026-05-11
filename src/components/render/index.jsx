@@ -16,6 +16,14 @@ Lens: [CAMARA] / Style: [ESTILO]
 
 Soft shadows, realistic reflections, detailed wood grain and textures, precise joinery. Professional high-end product photo, white or light gray seamless background.`;
 
+const DEFAULT_PROMPT_KONTEXT =
+`Convert this 3D furniture render into a professional product photo.
+Preserve the exact materials, colors, finishes, and structure from the input image. Do not change or recolor anything.
+
+Lens: [CAMARA] / Style: [ESTILO]
+
+Plain neutral background. Soft shadows, realistic reflections, detailed textures. Professional high-end product photography.`;
+
 const DEFAULT_SCENE_PROMPT_BASE =
 `Fotografía arquitectónica de interiores premium, alta resolución.
 
@@ -60,7 +68,8 @@ const VARIABLES_CONFIG = [
     opciones: ["sin accesorios", "plantas y objetos decorativos minimalistas", "cafetera y utensilios de cocina", "vajilla y accesorios", "libros y elementos decorativos"] },
 ];
 
-const ESCENA_IDS  = ["fondo", "iluminacion", "perspectiva", "accesorios"];
+const ESCENA_IDS   = ["fondo", "iluminacion", "perspectiva", "accesorios"];
+const KONTEXT_IDS  = ["camara", "estilo"];
 
 // ── Presets de estilo para modo GPT ──────────────────────────────────────────
 const ESTILOS_PRESET_GPT = [
@@ -197,8 +206,9 @@ const ESTILOS_PRESET_GPT = [
     },
   },
 ];
-const VARS_PASO1  = VARIABLES_CONFIG.filter(v => !ESCENA_IDS.includes(v.id));
-const VARS_PASO2  = VARIABLES_CONFIG.filter(v =>  ESCENA_IDS.includes(v.id));
+const VARS_PASO1   = VARIABLES_CONFIG.filter(v => !ESCENA_IDS.includes(v.id));
+const VARS_PASO2   = VARIABLES_CONFIG.filter(v =>  ESCENA_IDS.includes(v.id));
+const VARS_KONTEXT = VARIABLES_CONFIG.filter(v =>  KONTEXT_IDS.includes(v.id));
 
 function ensamblarPrompt(base, variables, varsConfig) {
   let r = base;
@@ -823,6 +833,10 @@ export function RenderIA({
   const [seed1,           setSeed1]           = useState(savedCfg.seed1           ?? "");
   const [presets1,        setPresets1]        = useState(() => leerPromptsRender());
 
+  // Config persistida — Modo Kontext
+  const [promptKontext,    setPromptKontext]    = useState(savedCfg.promptKontext    ?? DEFAULT_PROMPT_KONTEXT);
+  const [variablesKontext, setVariablesKontext] = useState(savedCfg.variablesKontext ?? {});
+
   // Config persistida — Modo GPT (etapa única)
   const [promptGpt,       setPromptGpt]       = useState(savedCfg.promptGpt       ?? DEFAULT_PROMPT_GPT);
   const [variablesGpt,    setVariablesGpt]    = useState(savedCfg.variablesGpt    ?? {});
@@ -844,6 +858,7 @@ export function RenderIA({
   const persistirConfig = (patch) =>
     guardarConfigRender({
       promptBase, variables, guidance, controlStrength, modeloRender, seed1,
+      promptKontext, variablesKontext,
       promptGpt, variablesGpt, estiloActivoGpt,
       promptBaseEscena, variablesEscena, sceneGuidance, seed2,
       presetsEscena: presets2,
@@ -856,6 +871,9 @@ export function RenderIA({
   const actualizarGuidance        = (val) => { setGuidance(val);         persistirConfig({ guidance: val }); };
   const actualizarControlStrength = (val) => { setControlStrength(val);  persistirConfig({ controlStrength: val }); };
   const actualizarModeloRender    = (val) => { setModeloRender(val);     persistirConfig({ modeloRender: val }); };
+  const actualizarPromptKontext    = (val) => { setPromptKontext(val);    persistirConfig({ promptKontext: val }); };
+  const actualizarVariableKontext  = (id, val) => { const v = { ...variablesKontext, [id]: val }; setVariablesKontext(v); persistirConfig({ variablesKontext: v }); };
+
   const actualizarPromptGpt       = (val) => { setPromptGpt(val);        persistirConfig({ promptGpt: val }); };
   const actualizarVariableGpt     = (id, val) => {
     const v = { ...variablesGpt, [id]: val };
@@ -882,9 +900,10 @@ export function RenderIA({
   const guardarPreset2  = (p)  => { const n = [...presets2, p];               setPresets2(n); persistirConfig({ presetsEscena: n }); };
   const eliminarPreset2 = (id) => { const n = presets2.filter(p => p.id !== id); setPresets2(n); persistirConfig({ presetsEscena: n }); };
 
-  const promptCompleto       = ensamblarPrompt(promptBase,      variables,      VARS_PASO1);
-  const promptCompletoEscena = ensamblarPrompt(promptBaseEscena, variablesEscena, VARS_PASO2);
-  const promptCompletoGpt    = ensamblarPrompt(promptGpt,        variablesGpt,   VARIABLES_CONFIG);
+  const promptCompleto        = ensamblarPrompt(promptBase,      variables,        VARS_PASO1);
+  const promptCompletoKontext = ensamblarPrompt(promptKontext,   variablesKontext, VARS_KONTEXT);
+  const promptCompletoEscena  = ensamblarPrompt(promptBaseEscena, variablesEscena, VARS_PASO2);
+  const promptCompletoGpt     = ensamblarPrompt(promptGpt,        variablesGpt,    VARIABLES_CONFIG);
 
   const handleGenerar = async () => {
     if (!wsId) return;
@@ -892,7 +911,9 @@ export function RenderIA({
     try {
       const imageBase64 = imagenRef3D ? imagenRef3D.replace(/^data:image\/\w+;base64,/, '') : null;
       const endpoint = modeloRender === "gpt" ? "/api/generate-render-gpt" : "/api/generate-render";
-      const prompt   = modeloRender === "gpt" ? promptCompletoGpt : promptCompleto;
+      const prompt   = modeloRender === "gpt" ? promptCompletoGpt
+                     : modeloRender === "flux-kontext" ? promptCompletoKontext
+                     : promptCompleto;
       const body = { workspaceId: wsId, prompt, imageBase64 };
       if (modeloRender === "flux-kontext") body.modelType = "flux-kontext";
       if (modeloRender === "flux") { body.guidance = guidance; body.controlStrength = controlStrength; }
@@ -937,9 +958,10 @@ export function RenderIA({
   const hintControl   = controlStrength <= 0.25 ? "ignora estructura" : controlStrength <= 0.55 ? "balance" : "respeta estructura";
   const hintSceneGuidance = sceneGuidance <= 15 ? "muy libre" : sceneGuidance <= 40 ? "balance" : sceneGuidance <= 70 ? "literal" : "muy literal";
 
-  const activasP1  = VARS_PASO1.filter(v => variables[v.id]).length;
-  const activasP2  = VARS_PASO2.filter(v => variablesEscena[v.id]).length;
-  const activasGpt = VARIABLES_CONFIG.filter(v => variablesGpt[v.id]).length;
+  const activasP1      = VARS_PASO1.filter(v => variables[v.id]).length;
+  const activasP2      = VARS_PASO2.filter(v => variablesEscena[v.id]).length;
+  const activasGpt     = VARIABLES_CONFIG.filter(v => variablesGpt[v.id]).length;
+  const activasKontext = VARS_KONTEXT.filter(v => variablesKontext[v.id]).length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1043,6 +1065,22 @@ export function RenderIA({
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {VARIABLES_CONFIG.map(vc => (
                     <VariableItem key={vc.id} config={vc} value={variablesGpt[vc.id] ?? null} onChange={val => actualizarVariableGpt(vc.id, val)} />
+                  ))}
+                </div>
+              </InnerSection>
+            </>
+          ) : modeloRender === "flux-kontext" ? (
+            <>
+              <InnerSection label="Prompt base" icon="📝" badge={promptKontext !== DEFAULT_PROMPT_KONTEXT ? "personalizado" : null}>
+                <PromptSection value={promptKontext} onChange={actualizarPromptKontext} defaultValue={DEFAULT_PROMPT_KONTEXT} />
+              </InnerSection>
+              <InnerSection label="Cámara y estilo" icon="🎨" badge={activasKontext > 0 ? `${activasKontext} activa${activasKontext !== 1 ? "s" : ""}` : null}>
+                <p style={{ margin: "0 0 10px", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                  Kontext preserva el material visual de la imagen 3D. Solo ajustá cámara y estilo.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {VARS_KONTEXT.map(vc => (
+                    <VariableItem key={vc.id} config={vc} value={variablesKontext[vc.id] ?? null} onChange={val => actualizarVariableKontext(vc.id, val)} />
                   ))}
                 </div>
               </InnerSection>
