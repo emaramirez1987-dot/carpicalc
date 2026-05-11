@@ -86,7 +86,7 @@ module.exports = async function handler(req, res) {
       input = {
         prompt,
         input_image:    `data:image/jpeg;base64,${imageBase64}`,
-        aspect_ratio:   "match_input",
+        aspect_ratio:   "match_input_image",
         output_format:  "jpg",
         output_quality: 90,
         safety_tolerance: 2,
