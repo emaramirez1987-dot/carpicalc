@@ -443,7 +443,7 @@ function AppInterna() {
       <GlobalStyles />
       <div style={{ minHeight: "100vh", background: "var(--bg-base)", color: "var(--text-primary)", transition: "background 0.3s" }}>
         <Header tabs={tabs} saveEst={saveEst} tema={tema} toggleTema={toggleTema} />
-        <main className="rsp-main" style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 20px" }}>
+        <main className="rsp-main" style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 20px 100px" }}>
           <div className="tab-view">
 
             {/* ── Vistas que permanecen montadas — display:none preserva estado local ── */}
