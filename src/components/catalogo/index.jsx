@@ -79,7 +79,12 @@ function DimRowLibre({ titulo, valKey, fp, setFp }) {
 
 function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMoveDown, onChangeCantidad, dims, espesor, tapacanto, isFirst, isLast, modVars }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const allVars = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor, ...(modVars || {}) };
+  const baseVars = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor };
+  const resolvedModVars = {};
+  Object.entries(modVars || {}).forEach(([k, v]) => {
+    resolvedModVars[k] = typeof v === 'number' ? v : (evaluarFormula(String(v), baseVars) ?? parseFloat(String(v)) ?? 0);
+  });
+  const allVars = { ...baseVars, ...resolvedModVars };
   const d1 = pieza.especial
     ? (parseInt(pieza.dimLibre1) || 0)
     : pieza.formula1 != null
@@ -1370,9 +1375,10 @@ function FormModulo({
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <button onClick={() => {
                   const cod = datos.codigo.trim().toUpperCase();
-                  onGuardar(cod, datosGuardar());
+                  const moduloActualizado = datosGuardar();
+                  onGuardar(cod, moduloActualizado);
                   // Disparar recálculo en los presupuestos afectados
-                  if (onRecalcularAfectados) onRecalcularAfectados(cod);
+                  if (onRecalcularAfectados) onRecalcularAfectados(cod, null, null, moduloActualizado);
                   setDecisionCatalogo(null);
                 }} style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", fontSize: 12, fontWeight: 700 }}>
                   ✓ Actualizar módulo y recalcular precios
@@ -2299,7 +2305,7 @@ function CatalogoModulos({
             codigoEditar={modo.tipo === "editar" ? modo.codigo : null}
             esDeepLinkPresupuesto={!!origenEdicion && origenEdicion.tipo === "presupuesto"}
             presupuestosRef={presupuestos || {}}
-            onRecalcularAfectados={(cod, pid, itemsReemplazados) => {
+            onRecalcularAfectados={(cod, pid, itemsReemplazados, moduloActualizado) => {
               // Caso 1: reemplazo de items (guardar como nuevo módulo con checkboxes)
               if (pid && itemsReemplazados) {
                 if (onGuardarPresupuestoAfectado) {
@@ -2307,12 +2313,12 @@ function CatalogoModulos({
                 }
                 return;
               }
-              // Caso 2: recalcular precios en todos los presupuestos que usan ese módulo
+              // Caso 2: recalcular precios. Usa moduloActualizado para evitar leer estado React desactualizado.
               const tsAhora = Date.now();
               Object.entries(presupuestos || {}).forEach(([presId, p]) => {
                 if (!(p.items || []).some(it => it.codigo === cod)) return;
                 const nuevoTotal = (p.items || []).reduce((acc, it) => {
-                  const base = modulos[it.codigo];
+                  const base = it.codigo === cod ? (moduloActualizado || modulos[it.codigo]) : modulos[it.codigo];
                   if (!base) return acc;
                   const c = calcularModulo(base, costos);
                   return acc + (c ? c.total * it.cantidad : 0);
