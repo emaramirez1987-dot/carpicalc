@@ -591,6 +591,66 @@ function CatalogoModulos({
     showMsg(`"${cod}" eliminado.`, "warn");
   };
 
+  // 🧪 Ejemplo paramétrico — para probar el ciclo paramétrico end-to-end.
+  // Inserta una "Cajonera (paramétrica)" con 1 parámetro (cajones), 2 zonas
+  // (cuerpo / frentes) y 1 constraint. Las piezas usan repeat para generar
+  // los frentes según `cajones`.
+  const cargarEjemploParametrico = () => {
+    const cod = "MC100001";
+    const yaExiste = !!modulos[cod];
+    const ejemplo = {
+      nombre: "Cajonera (paramétrica)",
+      descripcion: "Ejemplo: cantidad de cajones es ajustable desde el presupuesto",
+      categoria: "otros",
+      material: "melamina",
+      dimensiones: { ancho: 600, alto: 720, profundidad: 550 },
+      tipoVisual: null,
+      imagen: null,
+      variables: {},
+      parametros: [
+        { id: "cajones", nombre: "Cantidad de cajones", tipo: "integer", def: 3, min: 1, max: 6 },
+      ],
+      zonas: [
+        { id: "cuerpo", nombre: "Cuerpo",  material: "melamina" },
+        { id: "frente", nombre: "Frentes", material: "mdf" },
+      ],
+      constraints: [
+        { expr: "alto >= cajones * 80", msg: "El alto no alcanza para tantos cajones" },
+      ],
+      piezas: [
+        { nombre: "Lateral izq", cantidad: 1, zona: "cuerpo", cara3d: "left",
+          formula1: "alto", formula2: "profundidad" },
+        { nombre: "Lateral der", cantidad: 1, zona: "cuerpo", cara3d: "right",
+          formula1: "alto", formula2: "profundidad",
+          posFormulas: { x: "ancho - esp", y: "0", z: "0" } },
+        { nombre: "Base", cantidad: 1, zona: "cuerpo", cara3d: "bottom",
+          formula1: "ancho - 2*esp", formula2: "profundidad",
+          posFormulas: { x: "esp", y: "0", z: "0" } },
+        { nombre: "Tapa", cantidad: 1, zona: "cuerpo", cara3d: "top",
+          formula1: "ancho - 2*esp", formula2: "profundidad",
+          posFormulas: { x: "esp", y: "alto - esp", z: "0" } },
+        { nombre: "Frente cajón #{i}", cantidad: 1, zona: "frente", orientacion3d: "frente",
+          formula1: "(alto - 2*esp) / cajones - 4", formula2: "ancho - 4",
+          posFormulas: {
+            x: "2",
+            y: "(i-1) * ((alto - 2*esp) / cajones) + esp + 2",
+            z: "profundidad",
+          },
+          repeat: { var: "i", from: 1, to: "cajones" } },
+      ],
+      herrajes: [
+        { id: 1, cantidad: "cajones", condition: "cajones > 0" },
+      ],
+      moDeObra: { tipo: "por_modulo", horas: 0 },
+    };
+    const nuevo = { ...modulos, [cod]: ejemplo };
+    setModulos(nuevo);
+    onSave(nuevo);
+    showMsg(yaExiste
+      ? "Cajonera paramétrica actualizada con la última versión."
+      : "Cajonera paramétrica cargada al catálogo.");
+  };
+
   // 💾 LÓGICA DE BACKUP (Exportar/Importar)
   const handleExport = () => {
     const data = {
@@ -722,6 +782,15 @@ function CatalogoModulos({
                 ↑ Import
                 <input type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
               </label>
+              <button
+                onClick={cargarEjemploParametrico}
+                title="Carga una cajonera paramétrica de ejemplo"
+                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,160,42,0.12)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a", transition: "all 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(200,160,42,0.20)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(200,160,42,0.12)"; }}
+              >
+                🧪 Ejemplo paramétrico
+              </button>
               <Btn onClick={() => abrirModo({ tipo: "nuevo" })}>+ Nuevo módulo</Btn>
             </div>
           </div>

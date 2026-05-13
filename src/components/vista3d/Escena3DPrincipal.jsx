@@ -203,6 +203,7 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
         selectedPieza={null}
         onSelectPieza={null}
         texturaDataUrl={texturaDataUrl}
+        parametrosValores={inst.parametrosValores}
       />
 
       {/* Outline de selección — cyan #4D8CFF: halo glow exterior + filo sólido */}

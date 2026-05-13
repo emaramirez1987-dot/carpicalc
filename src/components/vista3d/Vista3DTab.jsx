@@ -4,6 +4,7 @@ import { Canvas } from '@react-three/fiber';
 import { CAMARAS } from '../visor3d/CamaraPresets.js';
 import { PanelModulos3D } from './PanelModulos3D.jsx';
 import { Escena3DPrincipal } from './Escena3DPrincipal.jsx';
+import ConfiguradorParametrico from '../presupuesto/ConfiguradorParametrico.jsx';
 
 // ── Lectura de tema robusta — usa localStorage como fallback cuando
 // data-theme aún no fue seteado por useTema (efecto corre después del primer render)
@@ -232,8 +233,9 @@ export function Vista3DTab({
   modulos,
   costos,
   items = [],
+  setItems,
   dimOverride = {},
-  inlineModulos = {},
+  inlineModulos = {},  // eslint-disable-line no-unused-vars
   presupuestoActivoId,  // eslint-disable-line no-unused-vars
   onCaptura,
   materiales3D = {},
@@ -267,6 +269,39 @@ export function Vista3DTab({
     setColorPiso(isDark ? '#1e2028' : '#e8e9ed');
     setColorPared(isDark ? '#1c1f28' : '#e0e1e5');
   }, [isDark]);
+
+  // ── Sincronizar items del presupuesto → modulosEnEscena (Fase 8 N1+) ──
+  // Cada item del presupuesto se refleja como un inst en la escena.
+  // Los insts manuales (sin itemKey) se mantienen entre renders.
+  // Posición/rotación/textura quedan en el state local (no en el item).
+  // parametrosValores se LEE del item directamente (no se cachea).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const itemsKey = items.map(i => i.id || i.codigo).join('|');
+  useEffect(() => {
+    setModulosEnEscena(prev => {
+      const fromItems = items.map((it, idx) => {
+        const itemKey = it.id || it.codigo;
+        const existing = prev.find(m => m.itemKey === itemKey);
+        if (existing) return { ...existing, codigo: it.codigo, itemIdx: idx };
+        return {
+          instanceId: `pres-${itemKey}`,
+          codigo: it.codigo,
+          posicion: [0, 0, 0],
+          itemIdx: idx,
+          itemKey,
+        };
+      });
+      const manuales = prev.filter(m => !m.itemKey);
+      return [...fromItems, ...manuales];
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemsKey]);
+
+  // Handler para cambiar parámetros de un item del presupuesto
+  const handleSetParametros = (itemIdx, valores) => {
+    if (!setItems || itemIdx == null) return;
+    setItems(items.map((it, i) => i === itemIdx ? { ...it, parametrosValores: valores } : it));
+  };
 
   const irACamara = (key) => { setCamView(key); setCamTarget([...CAMARAS[key].pos]); };
 
@@ -354,6 +389,26 @@ export function Vista3DTab({
             <div style={{ padding: '6px 12px 4px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
               EN ESCENA · {modulosEnEscena.length}
             </div>
+
+              {/* Panel paramétrico — Fase 8 N1+ */}
+              {selectedInst?.itemIdx != null && (() => {
+                const modSel = modulos?.[selectedInst.codigo];
+                if (!modSel) return null;
+                const tieneParams = (modSel.parametros?.length || 0) > 0;
+                if (!tieneParams) return null;
+                return (
+                  <div style={{ borderTop: `1px solid ${T.borderSub}`, padding: '8px 10px 12px' }}>
+                    <div style={{ padding: '0 0 6px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
+                      PARÁMETROS
+                    </div>
+                    <ConfiguradorParametrico
+                      modulo={modSel}
+                      valores={items[selectedInst.itemIdx]?.parametrosValores || {}}
+                      onChange={(v) => handleSetParametros(selectedInst.itemIdx, v)}
+                      costos={costos} />
+                  </div>
+                );
+              })()}
 
               {/* Panel de material del módulo seleccionado */}
               {selectedCod && (
@@ -598,7 +653,11 @@ export function Vista3DTab({
             style={{ background: T.canvasFallbk, width: '100%', height: '100%' }}
           >
             <Escena3DPrincipal
-              modulosEnEscena={modulosEnEscena}
+              modulosEnEscena={modulosEnEscena.map(m => (
+                m.itemIdx != null
+                  ? { ...m, parametrosValores: items[m.itemIdx]?.parametrosValores || {} }
+                  : m
+              ))}
               modulos={modulos}
               costos={costos}
               mostrarPiso={mostrarPiso}

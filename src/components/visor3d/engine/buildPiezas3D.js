@@ -71,7 +71,11 @@ export function buildPiezas3D(modulo, costos, valoresParametros = {}) {
   // Fase 3: módulo paramétrico → módulo concreto antes de renderizar.
   const moduloConcreto = generarPiezas(modulo, valoresParametros, costos);
 
-  const { materialDef: matDef, espesor: espMod, modVars } = resolverContextoModulo(moduloConcreto, costos);
+  // resolverContextoModulo (con valoresParametros) ya mergea parámetros
+  // dentro de modVars, así que las fórmulas de pieza pueden usar `cajones`,
+  // `puertas`, etc. directamente.
+  const { materialDef: matDef, espesor: espMod, modVars } =
+    resolverContextoModulo(moduloConcreto, costos, valoresParametros);
   if (!matDef) return [];
 
   const { ancho = 600, alto = 700, profundidad = 550 } = moduloConcreto.dimensiones || {};
@@ -102,7 +106,10 @@ export function buildPiezas3D(modulo, costos, valoresParametros = {}) {
     const te        = espPieza / M;
     // Si el espesor difiere del módulo, recomputo modVars con el nuevo esp
     // para que las fórmulas que usan `esp` resuelvan al espesor de la pieza.
-    const modVarsP  = espPieza === espMod ? modVars : { ...modVars, esp: espPieza };
+    // Además, si la pieza viene de un repeat, agrego `_repeatVars` (ej: i=2)
+    // para que formula1/formula2/posFormulas resuelvan con el índice.
+    let modVarsP = espPieza === espMod ? modVars : { ...modVars, esp: espPieza };
+    if (p._repeatVars) modVarsP = { ...modVarsP, ...p._repeatVars };
 
     const d1 = p.especial
       ? (parseFloat(p.dimLibre1) || 0)

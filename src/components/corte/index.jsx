@@ -497,7 +497,7 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
     // Fase 7.5: módulo paramétrico → módulo concreto antes de listar piezas.
     // Back-compat: módulos viejos pasan idénticos.
     const modUsado = generarPiezas(getModUsadoEfectivo(item), item.parametrosValores || {}, costos);
-    const { materialDef: matDef, espesor: esp, modVars } = resolverContextoModulo(modUsado, costos);
+    const { materialDef: matDef, espesor: esp, modVars } = resolverContextoModulo(modUsado, costos, item.parametrosValores || {});
     if (!matDef) return;
     const matKey = `${matDef.nombre} (${esp}mm)`;
     if (!grupos[matKey])
@@ -512,15 +512,16 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
       };
 
     modUsado.piezas.forEach((p) => {
+      const piezaVars = p._repeatVars ? { ...modVars, ...p._repeatVars } : modVars;
       const d1 = p.especial
         ? (parseFloat(p.dimLibre1) || 0)
         : p.formula1 != null
-          ? (evaluarFormula(p.formula1, modVars) ?? 0)
+          ? (evaluarFormula(p.formula1, piezaVars) ?? 0)
           : resolverDim(modUsado.dimensiones[p.usaDim], p.offsetEsp, p.offsetMm, p.divisor || 1, esp);
       const d2 = p.especial
         ? (parseFloat(p.dimLibre2) || 0)
         : p.formula2 != null
-          ? (evaluarFormula(p.formula2, modVars) ?? 0)
+          ? (evaluarFormula(p.formula2, piezaVars) ?? 0)
           : resolverDim(modUsado.dimensiones[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, esp);
       const tcDef = costos.tapacanto?.find((t) => t.id === p.tc?.id);
       const cant = p.cantidad * item.cantidad;

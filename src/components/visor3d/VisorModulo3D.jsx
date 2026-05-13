@@ -225,11 +225,13 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
   const { ancho = 600, alto = 700, profundidad = 550 } = modulo?.dimensiones || {};
   const floorY = -(alto / 2 / 1000);
 
-  // Build 3D pieces — recomputes when module changes
+  // Build 3D pieces — recomputes when module changes.
+  // El visor del catálogo no recibe valores de usuario, pero buildPiezas3D
+  // aplica los `def` de cada parámetro automáticamente vía resolverParametros.
   const piezas3D = useMemo(
     () => buildPiezas3D(modulo, costos),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [modulo?.piezas, modulo?.dimensiones, modulo?.material, costos]
+    [modulo?.piezas, modulo?.dimensiones, modulo?.material, modulo?.zonas, modulo?.parametros, costos]
   );
 
   // Selected piece data

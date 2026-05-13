@@ -923,7 +923,7 @@ function FormModulo({
           dims={datos.dimensiones}
           espesor={espesor}
           nombresSugeridos={NOMBRES_SUGERIDOS}
-          variables={datos.variables}
+          variables={{ ...(datos.variables || {}), ...Object.fromEntries((datos.parametros || []).filter(pr => pr.tipo !== 'formula').map(pr => [pr.id, pr.def])) }}
           onVarsUpdate={v => setDatos(d => ({ ...d, variables: v }))}
           piezas={datos.piezas || []}
           zonas={datos.zonas || []}
@@ -989,7 +989,8 @@ function FormModulo({
                     onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, lados2: parseInt(v) || 0 } }))} />
                 </div>
                 {fp.tc.id > 0 && (() => {
-                  const allVars = resolverVariables(datos.variables, { ancho: datos.dimensiones.ancho || 0, alto: datos.dimensiones.alto || 0, profundidad: datos.dimensiones.profundidad || 0, esp: espesor });
+                  const paramDefs = Object.fromEntries((datos.parametros || []).filter(pr => pr.tipo !== 'formula').map(pr => [pr.id, pr.def]));
+                  const allVars = resolverVariables({ ...(datos.variables || {}), ...paramDefs }, { ancho: datos.dimensiones.ancho || 0, alto: datos.dimensiones.alto || 0, profundidad: datos.dimensiones.profundidad || 0, esp: espesor });
                   const d1tc = fp.especial ? (parseInt(fp.dimLibre1) || 0) : fp.formula1 ? (evaluarFormula(fp.formula1, allVars) ?? 0) : resolverDim(datos.dimensiones[fp.usaDim], parseInt(fp.offsetEsp) || 0, parseInt(fp.offsetMm) || 0, parseInt(fp.divisor) || 1, espesor);
                   const d2tc = fp.especial ? (parseInt(fp.dimLibre2) || 0) : fp.formula2 ? (evaluarFormula(fp.formula2, allVars) ?? 0) : resolverDim(datos.dimensiones[fp.usaDim2], parseInt(fp.offsetEsp2) || 0, parseInt(fp.offsetMm2) || 0, parseInt(fp.divisor2) || 1, espesor);
                   return (
@@ -1271,7 +1272,8 @@ function FormModulo({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {piezas.map((p, i) => (
                   <FilaPieza key={i} pieza={p} idx={i} dims={datos.dimensiones} espesor={espesor} tapacanto={costos.tapacanto}
-                    isFirst={i === 0} isLast={i === piezas.length - 1} modVars={datos.variables}
+                    isFirst={i === 0} isLast={i === piezas.length - 1}
+                    modVars={{ ...(datos.variables || {}), ...Object.fromEntries((datos.parametros || []).filter(pr => pr.tipo !== 'formula').map(pr => [pr.id, pr.def])) }}
                     onDelete={(i) => { setPiezas(prev => prev.filter((_, j) => j !== i)); if (editandoPiezaIdx === i) cancelarEdicion(); }}
                     onEdit={editarPieza} onDuplicate={duplicarPieza}
                     onMoveUp={(i) => moverPieza(i, -1)} onMoveDown={(i) => moverPieza(i, 1)}

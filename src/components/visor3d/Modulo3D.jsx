@@ -49,11 +49,11 @@ function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, o
 }
 
 // ── Modulo3D (default export — used in main scene) ────────────────────────────
-export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPieza, onSelectPieza, texturaDataUrl }) {
+export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPieza, onSelectPieza, texturaDataUrl, parametrosValores }) {
   const piezas = useMemo(
-    () => buildPiezas3D(modulo, costos),
+    () => buildPiezas3D(modulo, costos, parametrosValores || {}),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [modulo?.codigo, modulo?.dimensiones, modulo?.material, modulo?.piezas, costos]
+    [modulo?.codigo, modulo?.dimensiones, modulo?.material, modulo?.piezas, costos, parametrosValores]
   );
 
   return (

@@ -117,8 +117,9 @@ export function parsearPresupuesto(raw) {
 //
 // @param {object} modulo - Módulo (debe tener dimensiones, variables, material)
 // @param {object} costos - Tabla de costos (debe tener materiales[])
+// @param {Object=} valoresParametros  Si vienen, se mergean en modVars
 // @returns {{baseVars: object, modVars: object, espesor: number, materialDef: object|null}}
-export function resolverContextoModulo(modulo, costos) {
+export function resolverContextoModulo(modulo, costos, valoresParametros = {}) {
   const materialDef =
     costos?.materiales?.find((m) => m.tipo === modulo?.material) ||
     costos?.materiales?.[0] ||
@@ -126,7 +127,12 @@ export function resolverContextoModulo(modulo, costos) {
   const espesor = materialDef?.espesor || 18;
   const { ancho = 0, alto = 0, profundidad = 0 } = modulo?.dimensiones || {};
   const baseVars = { ancho, alto, profundidad, esp: espesor };
-  const modVars  = resolverVariables(modulo?.variables, baseVars);
+  // modVars combina dims base + variables custom + parámetros (si vienen).
+  // Sin esto, las fórmulas que referencian parámetros (ej: "cajones") no
+  // resuelven y caen a 0. Bug detectado al armar el módulo cajonera de Fase 8.
+  const baseConVars  = resolverVariables(modulo?.variables, baseVars);
+  const paramVals    = resolverParametros(modulo, valoresParametros);
+  const modVars      = { ...baseConVars, ...paramVals };
   return { baseVars, modVars, espesor, materialDef };
 }
 
@@ -251,6 +257,9 @@ export function generarPiezas(modulo, valoresParametros = {}, costos = null) {
           ...rest,
           nombre: _interpolarIndice(p.nombre, i),
           _indice: i,
+          // Vars locales del repeat para que buildPiezas3D pueda evaluar
+          // formula1/formula2/posFormulas con `i` (o el var name del repeat).
+          _repeatVars: { [varName]: i },
         });
       }
       continue;

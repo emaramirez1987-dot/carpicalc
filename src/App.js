@@ -551,6 +551,7 @@ function AppInterna() {
                 modulos={modulos}
                 costos={costos}
                 items={items}
+                setItems={setItems}
                 dimOverride={dimOverride}
                 inlineModulos={inlineModulos}
                 presupuestoActivoId={presupuestoActivoId}

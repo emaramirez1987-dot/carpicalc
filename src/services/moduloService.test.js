@@ -317,6 +317,20 @@ describe("generarPiezas (Fase 3)", () => {
     expect(r.piezas[1].nombre).toBe("Estante 2");
   });
 
+  test("[regresión] piezas expandidas llevan _repeatVars con el índice", () => {
+    // Bug previo: formula1/formula2/posFormulas que usaban `i` no resolvían
+    // porque el contexto de repeat no se propagaba a buildPiezas3D / calcularModulo.
+    const m = { ...moduloBase,
+      piezas: [{ nombre: "P #{i}", cantidad: 1,
+        repeat: { var: "i", from: 1, to: 3 } }],
+    };
+    const r = generarPiezas(m, {});
+    expect(r.piezas).toHaveLength(3);
+    expect(r.piezas[0]._repeatVars).toEqual({ i: 1 });
+    expect(r.piezas[1]._repeatVars).toEqual({ i: 2 });
+    expect(r.piezas[2]._repeatVars).toEqual({ i: 3 });
+  });
+
   test("piezas expandidas no llevan repeat ni condition", () => {
     const m = { ...moduloBase,
       piezas: [{ nombre: "x", cantidad: 1, condition: "1==1",

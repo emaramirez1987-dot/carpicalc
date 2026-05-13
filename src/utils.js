@@ -21,7 +21,7 @@
 //   top-level — solo dentro de funciones que corren después del linking.
 // ════════════════════════════════════════════════════════════════════════════
 
-import { generarPiezas, resolverHerrajes } from './services/moduloService.js';
+import { generarPiezas, resolverHerrajes, resolverParametros } from './services/moduloService.js';
 
 // ════════════════════════════════════════════════════════════════════════════
 // FORMATEO
@@ -268,33 +268,39 @@ export function calcularModulo(modulo, costos, valoresParametros = {}) {
   const dimMap = { ancho: ancho || 0, profundidad: profundidad || 0, alto: alto || 0 };
   const esp = mat.espesor || 18;
   const baseVars = { ...dimMap, esp };
-  const modVars = resolverVariables(moduloConcreto.variables, baseVars);
+  // Fase 5+: incluir parámetros del módulo en el contexto. Sin esto las
+  // fórmulas de pieza que usan `cajones`/`puertas`/etc. resuelven a 0.
+  const baseConVars = resolverVariables(moduloConcreto.variables, baseVars);
+  const paramVals   = resolverParametros(modulo, valoresParametros);
+  const modVars     = { ...baseConVars, ...paramVals };
 
   let m2Neto = 0, metrosTapacanto = 0, costoTapacanto = 0;
   const desglosePiezas = [];
   const piezasNegativas = [];
 
   for (const p of moduloConcreto.piezas) {
+    // Si la pieza viene de un repeat (Fase 3), incluye el índice en el contexto.
+    const piezaVars = p._repeatVars ? { ...modVars, ...p._repeatVars } : modVars;
     // Pieza especial: usa dimensiones libres en lugar de las parametrizadas
     // Si formula1/formula2 están definidas, se usan en lugar de los campos clásicos
     const d1 = p.especial
       ? (parseInt(p.dimLibre1) || 0)
       : p.formula1 != null
-        ? (evaluarFormula(p.formula1, modVars) ?? 0)
+        ? (evaluarFormula(p.formula1, piezaVars) ?? 0)
         : resolverDim(dimMap[p.usaDim],  p.offsetEsp,  p.offsetMm,  p.divisor  || 1, esp);
     const d2 = p.especial
       ? (parseInt(p.dimLibre2) || 0)
       : p.formula2 != null
-        ? (evaluarFormula(p.formula2, modVars) ?? 0)
+        ? (evaluarFormula(p.formula2, piezaVars) ?? 0)
         : resolverDim(dimMap[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, esp);
 
     // Detectar fórmulas o dims que dieron negativo antes del clamp a 0
     if (!p.especial) {
       const raw1 = p.formula1 != null
-        ? evaluarExpresion(p.formula1, modVars)
+        ? evaluarExpresion(p.formula1, piezaVars)
         : (dimMap[p.usaDim] || 0) + (p.offsetEsp || 0) * esp + (p.offsetMm || 0);
       const raw2 = p.formula2 != null
-        ? evaluarExpresion(p.formula2, modVars)
+        ? evaluarExpresion(p.formula2, piezaVars)
         : (dimMap[p.usaDim2] || 0) + (p.offsetEsp2 || 0) * esp + (p.offsetMm2 || 0);
       if ((raw1 !== null && raw1 < 0) || (raw2 !== null && raw2 < 0)) {
         piezasNegativas.push(p.nombre || "pieza");
@@ -542,7 +548,7 @@ export function recalcularTotalPresupuesto(p, modulos, costos) {
   const totalModulos = p.items.reduce((acc, item) => {
     const mod = resolverModuloDesdePresupuesto(p, item, modulos);
     if (!mod) return acc;
-    const calc = calcularModulo(mod, costosEfectivos);
+    const calc = calcularModulo(mod, costosEfectivos, item.parametrosValores || {});
     if (!calc) return acc;
     return acc + calc.total * item.cantidad;
   }, 0);
