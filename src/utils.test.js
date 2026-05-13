@@ -6,6 +6,8 @@
 import {
   evaluarFormula,
   resolverVariables,
+  evaluarExpresion,
+  evaluarCondicion,
   resolverDim,
   calcularModulo,
   recalcularTotalPresupuesto,
@@ -51,6 +53,153 @@ describe("evaluarFormula", () => {
 
   test("paréntesis y multiplicación", () => {
     expect(evaluarFormula("(ancho - 2) * 2", { ancho: 100 })).toBe(196);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// evaluarExpresion / evaluarCondicion (Fase 2 — motor profesional)
+// ════════════════════════════════════════════════════════════════════════════
+
+describe("evaluarExpresion (Fase 2)", () => {
+  test("aritmética básica sin clamp (puede ser negativo)", () => {
+    expect(evaluarExpresion("10 - 500", {})).toBe(-490);
+  });
+
+  test("retorna null para expresión vacía", () => {
+    expect(evaluarExpresion("", {})).toBeNull();
+  });
+
+  test("min y max", () => {
+    expect(evaluarExpresion("min(10, 20)", {})).toBe(10);
+    expect(evaluarExpresion("max(10, 20, 5)", {})).toBe(20);
+  });
+
+  test("round / ceil / floor / abs", () => {
+    expect(evaluarExpresion("round(3.6)", {})).toBe(4);
+    expect(evaluarExpresion("ceil(3.1)", {})).toBe(4);
+    expect(evaluarExpresion("floor(3.9)", {})).toBe(3);
+    expect(evaluarExpresion("abs(-7)", {})).toBe(7);
+  });
+
+  test("ternario simple", () => {
+    expect(evaluarExpresion("a > 5 ? 100 : 50", { a: 10 })).toBe(100);
+    expect(evaluarExpresion("a > 5 ? 100 : 50", { a: 3 })).toBe(50);
+  });
+
+  test("comparaciones retornan boolean", () => {
+    expect(evaluarExpresion("a >= 10", { a: 10 })).toBe(true);
+    expect(evaluarExpresion("a < 5", { a: 10 })).toBe(false);
+    expect(evaluarExpresion("a == 7", { a: 7 })).toBe(true);
+    expect(evaluarExpresion("a != 7", { a: 7 })).toBe(false);
+  });
+
+  test("operadores lógicos && ||", () => {
+    expect(evaluarExpresion("a > 0 && a < 10", { a: 5 })).toBe(true);
+    expect(evaluarExpresion("a < 0 || a > 100", { a: 50 })).toBe(false);
+  });
+
+  test("dot notation: parent.ancho", () => {
+    expect(evaluarExpresion("parent.ancho - 50", { parent: { ancho: 800 } })).toBe(750);
+  });
+
+  test("dot notation: material.espesor", () => {
+    expect(evaluarExpresion("alto - 2 * material.espesor", {
+      alto: 700, material: { espesor: 18 },
+    })).toBe(664);
+  });
+
+  test("vars anidadas profundas", () => {
+    expect(evaluarExpresion("a.b.c + 1", { a: { b: { c: 41 } } })).toBe(42);
+  });
+
+  test("anidadas y planas se combinan", () => {
+    expect(evaluarExpresion("ancho + parent.alto", {
+      ancho: 100, parent: { alto: 50 },
+    })).toBe(150);
+  });
+
+  test("booleano como variable se coerciona a 0/1", () => {
+    expect(evaluarExpresion("flag ? 100 : 0", { flag: true })).toBe(100);
+    expect(evaluarExpresion("flag ? 100 : 0", { flag: false })).toBe(0);
+  });
+
+  test("seguridad: rechaza identificadores no permitidos", () => {
+    // 'window' no es variable conocida ni función permitida
+    expect(evaluarExpresion("window", {})).toBeNull();
+    // funciones no permitidas
+    expect(evaluarExpresion("eval('1+1')", {})).toBeNull();
+    expect(evaluarExpresion("alert(1)", {})).toBeNull();
+  });
+
+  test("seguridad: caracteres no permitidos", () => {
+    expect(evaluarExpresion("a; b", { a: 1, b: 2 })).toBeNull();
+    expect(evaluarExpresion("a[0]", { a: 1 })).toBeNull();
+  });
+
+  test("expresión combinada — caso real de Fase 3", () => {
+    // Cálculo del cajón #i: alto disponible / cantidad - margen
+    const r = evaluarExpresion(
+      "(alto - 2*esp) / cajones - 4",
+      { alto: 700, esp: 18, cajones: 3 }
+    );
+    expect(r).toBeCloseTo((700 - 36) / 3 - 4);
+  });
+
+  test("expresión con index i (para repeat de Fase 3)", () => {
+    // y de la pieza #i: (i-1) * (alto/cajones)
+    const r = evaluarExpresion(
+      "(i - 1) * (alto / cajones)",
+      { i: 2, alto: 600, cajones: 3 }
+    );
+    expect(r).toBe(200);
+  });
+});
+
+describe("evaluarCondicion (Fase 2)", () => {
+  test("número distinto de 0 → true", () => {
+    expect(evaluarCondicion("cajones", { cajones: 3 })).toBe(true);
+    expect(evaluarCondicion("cajones", { cajones: 0 })).toBe(false);
+  });
+
+  test("comparación", () => {
+    expect(evaluarCondicion("cajones > 0", { cajones: 3 })).toBe(true);
+    expect(evaluarCondicion("cajones > 0", { cajones: 0 })).toBe(false);
+  });
+
+  test("expresión inválida → false (no crash)", () => {
+    expect(evaluarCondicion("@@@@", {})).toBe(false);
+  });
+
+  test("expresión vacía → false", () => {
+    expect(evaluarCondicion("", {})).toBe(false);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// evaluarFormula (Fase 2 — sintaxis extendida, retornando dimensión clampeada)
+// ════════════════════════════════════════════════════════════════════════════
+
+describe("evaluarFormula (Fase 2 — sintaxis extendida)", () => {
+  test("acepta funciones min/max", () => {
+    expect(evaluarFormula("min(ancho, 800)", { ancho: 600 })).toBe(600);
+    expect(evaluarFormula("max(ancho, 200)", { ancho: 100 })).toBe(200);
+  });
+
+  test("acepta ternario", () => {
+    expect(evaluarFormula("alto > 600 ? alto - 100 : alto", { alto: 700 })).toBe(600);
+  });
+
+  test("acepta dot notation parent.X", () => {
+    expect(evaluarFormula("parent.ancho - 50", { parent: { ancho: 800 } })).toBe(750);
+  });
+
+  test("clamp a 0 sigue activo (back-compat)", () => {
+    expect(evaluarFormula("ancho - 1000", { ancho: 100 })).toBe(0);
+  });
+
+  test("boolean coercionado a 0/1", () => {
+    expect(evaluarFormula("a > b", { a: 10, b: 5 })).toBe(1);
+    expect(evaluarFormula("a > b", { a: 5, b: 10 })).toBe(0);
   });
 });
 

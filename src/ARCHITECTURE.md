@@ -44,6 +44,45 @@ constants.js            Datos de dominio: MODULO_VACIO, TIPO_MAT, ESTADOS_TRABAJ
 
 ---
 
+## Motor de fórmulas (Fase 2)
+
+`utils.js` expone tres funciones para evaluar expresiones de módulos:
+
+| Función | Retorna | Uso |
+|---|---|---|
+| `evaluarExpresion(expr, vars)` | `number \| boolean \| null` | Núcleo. Sin clamp. |
+| `evaluarFormula(expr, vars)`   | `number \| null` (≥ 0) | Dimensiones de piezas. Wrapper back-compat. |
+| `evaluarCondicion(expr, vars)` | `boolean` | `pieza.condition`, `herraje.condition`, `constraint.expr`. |
+
+### Sintaxis soportada
+
+```
+Aritmética:    +  -  *  /  ( )
+Funciones:     min(a,b,...)  max(...)  round(x)  ceil(x)  floor(x)  abs(x)
+Comparación:   >  <  >=  <=  ==  !=
+Lógicos:       &&  ||
+Ternario:      cond ? a : b
+Variables:     ancho, alto, esp, ...                    (planas)
+               parent.ancho, material.espesor, a.b.c    (dot notation)
+```
+
+### Seguridad
+
+Las expresiones se ejecutan con `new Function()`, pero antes pasan por una whitelist estricta:
+
+1. Sustituye todas las variables conocidas por sus valores numéricos
+2. Reemplaza funciones permitidas (`min/max/...`) por `Math.X`
+3. Verifica que tras eso solo queden caracteres seguros (`\d\s+-*/().,?:<>=!&|`)
+4. Cualquier identificador residual (`window`, `eval`, etc.) → la expresión es rechazada con `null`
+
+### Convenciones de uso
+
+- Una **fórmula de dimensión** (alto/ancho de pieza) → `evaluarFormula`. Clampa a 0.
+- Una **condición** (mostrar pieza, contar herraje) → `evaluarCondicion`. Devuelve boolean.
+- Cualquier otra expresión → `evaluarExpresion`. Sin clamp ni coerción.
+
+---
+
 ## Regla de oro: resolución de fórmulas
 
 **Cualquier código que necesite evaluar fórmulas o variables de un módulo DEBE usar `resolverContextoModulo(modulo, costos)` de `services/moduloService.js`.**

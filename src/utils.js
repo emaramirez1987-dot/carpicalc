@@ -54,31 +54,114 @@ export const fmtFechaLarga = (ts) =>
 // CÁLCULO DE MÓDULOS
 // ════════════════════════════════════════════════════════════════════════════
 
+// ── Motor de fórmulas (Fase 2) ──────────────────────────────────────────────
+//
+// Soporta:
+//   • Aritmética: + - * / con paréntesis
+//   • Funciones: min, max, round, ceil, floor, abs (case-sensitive)
+//   • Comparación: > < >= <= == != (== y != usan == y != de JS)
+//   • Lógicos: && ||
+//   • Ternario: cond ? a : b
+//   • Dot notation: parent.ancho, material.espesor (vars anidadas)
+//
+// Seguridad: tras sustituir variables y aplanar funciones a Math.X, la
+// expresión se valida contra una whitelist estricta. Si queda CUALQUIER
+// carácter o identificador fuera del set permitido, retorna null.
+
+/** Funciones permitidas en fórmulas → mapeo a Math.X */
+export const FUNCIONES_FORMULA = {
+  min: 'Math.min', max: 'Math.max',
+  round: 'Math.round', ceil: 'Math.ceil', floor: 'Math.floor',
+  abs: 'Math.abs',
+};
+
+/** Aplana un objeto anidado en claves dot-notation. {a:{b:1}} → {'a.b':1} */
+function flattenVars(obj, prefix = '', out = {}) {
+  for (const [k, v] of Object.entries(obj || {})) {
+    const key = prefix ? `${prefix}.${k}` : k;
+    if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+      flattenVars(v, key, out);
+    } else if (v !== undefined) {
+      out[key] = v;
+    }
+  }
+  return out;
+}
+
 /**
- * Evalúa una fórmula matemática con variables del módulo.
- * Variables base: ancho, alto, profundidad, esp
- * Variables personalizadas: cualquier clave extra en `vars` (ej: luz, zocalo)
- * Operaciones: + - * / y paréntesis
- * Seguro: sustituye variables por números antes de evaluar.
- * Las variables de mayor longitud se sustituyen primero para evitar
- * coincidencias parciales (ej: "profundidad" antes de "prof").
- * @param {string} expr - Expresión matemática
- * @param {object} vars - Variables disponibles: { ancho, alto, profundidad, esp, ...custom }
+ * Evalúa una expresión sin clampar el resultado.
+ * Retorna number, boolean, o null si la expresión es inválida.
+ * Núcleo del motor — usado por `evaluarFormula` y por `evaluarCondicion`.
+ *
+ * @param {string} expr - Expresión a evaluar
+ * @param {object} vars - Variables disponibles (planas o anidadas)
+ * @returns {number|boolean|null}
+ */
+export function evaluarExpresion(expr, vars = {}) {
+  if (!expr || typeof expr !== 'string') return null;
+  let t = expr.trim();
+
+  // 1) Sustituir variables (incluyendo dot notation). Más largas primero.
+  const flat = flattenVars(vars);
+  const sortedVars = Object.entries(flat).sort((a, b) => b[0].length - a[0].length);
+  for (const [name, val] of sortedVars) {
+    const escaped = name.replace(/\./g, '\\.');
+    const numVal = typeof val === 'boolean' ? (val ? 1 : 0) : (val ?? 0);
+    t = t.replace(new RegExp(`\\b${escaped}\\b`, 'g'), String(numVal));
+  }
+
+  // 2) Mapear funciones permitidas a Math.X (whole word + abre paréntesis)
+  for (const [fn, mathFn] of Object.entries(FUNCIONES_FORMULA)) {
+    t = t.replace(new RegExp(`\\b${fn}\\s*\\(`, 'g'), `${mathFn}(`);
+  }
+
+  // 3) Whitelist: removiendo las strings Math.X y los caracteres seguros
+  //    no debe quedar nada. Cualquier identificador residual es rechazado.
+  const stripped = t
+    .replace(/Math\.(min|max|round|ceil|floor|abs)/g, '')
+    .replace(/[\d\s+\-*/().,?:<>=!&|]/g, '');
+  if (stripped !== '') return null;
+
+  try {
+    // eslint-disable-next-line no-new-func
+    const r = new Function(`return (${t})`)();
+    if (typeof r === 'boolean') return r;
+    if (typeof r === 'number' && isFinite(r)) return r;
+    return null;
+  } catch { return null; }
+}
+
+/**
+ * Evalúa una condición booleana. Wrapper de `evaluarExpresion` que normaliza
+ * el resultado a boolean (números no-cero → true). Pensada para `condition`
+ * de piezas y herrajes y para `constraints` del módulo.
+ * @param {string} expr
+ * @param {object} vars
+ * @returns {boolean}
+ */
+export function evaluarCondicion(expr, vars = {}) {
+  const r = evaluarExpresion(expr, vars);
+  if (r === null) return false;
+  return Boolean(r);
+}
+
+/**
+ * Evalúa una fórmula que retorna una dimensión (mm). Wrapper back-compat:
+ *   • Clampa el resultado a ≥ 0 (las dimensiones no pueden ser negativas).
+ *   • Boolean → 0 o 1.
+ *   • Si la expresión es inválida → null.
+ *
+ * Soporta toda la sintaxis del motor (ver `evaluarExpresion`).
+ *
+ * @param {string} expr
+ * @param {object} vars
  * @returns {number|null} resultado ≥ 0, o null si hay error
  */
 export function evaluarFormula(expr, vars = {}) {
-  if (!expr || typeof expr !== 'string') return null;
-  let tokenized = expr.trim();
-  const sortedVars = Object.entries(vars).sort((a, b) => b[0].length - a[0].length);
-  for (const [name, val] of sortedVars) {
-    tokenized = tokenized.replace(new RegExp(`\\b${name}\\b`, 'g'), String(val ?? 0));
-  }
-  if (!/^[\d\s+\-*/().]+$/.test(tokenized)) return null;
-  try {
-    // eslint-disable-next-line no-new-func
-    const r = new Function(`return (${tokenized})`)();
-    return typeof r === 'number' && isFinite(r) ? Math.max(0, r) : null;
-  } catch { return null; }
+  const r = evaluarExpresion(expr, vars);
+  if (r === null) return null;
+  if (typeof r === 'boolean') return r ? 1 : 0;
+  return Math.max(0, r);
 }
 
 /**
@@ -138,21 +221,9 @@ export function resolverDim(base, offsetEsp, offsetMm, divisor, espesor) {
   return Math.max(0, raw / Math.max(1, divisor || 1));
 }
 
-// Evalúa una fórmula SIN clampar a 0 — solo para detectar resultados negativos.
-function _evalRaw(expr, vars) {
-  if (!expr || typeof expr !== 'string') return null;
-  let t = expr.trim();
-  const sorted = Object.entries(vars).sort((a, b) => b[0].length - a[0].length);
-  for (const [name, val] of sorted) {
-    t = t.replace(new RegExp(`\\b${name}\\b`, 'g'), String(val ?? 0));
-  }
-  if (!/^[\d\s+\-*/().]+$/.test(t)) return null;
-  try {
-    // eslint-disable-next-line no-new-func
-    const r = new Function(`return (${t})`)();
-    return typeof r === 'number' && isFinite(r) ? r : null;
-  } catch { return null; }
-}
+// (Antes existía _evalRaw como versión sin-clamp. Reemplazada por
+// evaluarExpresion del motor de Fase 2, que también soporta funciones,
+// comparaciones, ternarios y dot notation.)
 
 /**
  * Calcula el costo completo de un módulo de carpintería.
@@ -205,10 +276,10 @@ export function calcularModulo(modulo, costos) {
     // Detectar fórmulas o dims que dieron negativo antes del clamp a 0
     if (!p.especial) {
       const raw1 = p.formula1 != null
-        ? _evalRaw(p.formula1, modVars)
+        ? evaluarExpresion(p.formula1, modVars)
         : (dimMap[p.usaDim] || 0) + (p.offsetEsp || 0) * esp + (p.offsetMm || 0);
       const raw2 = p.formula2 != null
-        ? _evalRaw(p.formula2, modVars)
+        ? evaluarExpresion(p.formula2, modVars)
         : (dimMap[p.usaDim2] || 0) + (p.offsetEsp2 || 0) * esp + (p.offsetMm2 || 0);
       if ((raw1 !== null && raw1 < 0) || (raw2 !== null && raw2 < 0)) {
         piezasNegativas.push(p.nombre || "pieza");
