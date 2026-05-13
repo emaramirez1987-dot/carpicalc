@@ -10,7 +10,14 @@
 //   - resolverContextoModulo: integración con resolverVariables
 // ════════════════════════════════════════════════════════════════════════════
 
-import { parsearModulo, parsearPresupuesto, resolverContextoModulo } from "./moduloService.js";
+import {
+  parsearModulo,
+  parsearPresupuesto,
+  resolverContextoModulo,
+  resolverParametros,
+  generarPiezas,
+  evaluarConstraints,
+} from "./moduloService.js";
 
 // ── parsearModulo ──────────────────────────────────────────────────────────
 
@@ -164,5 +171,190 @@ describe("resolverContextoModulo", () => {
     const ctx = resolverContextoModulo(m, { materiales: [] });
     expect(ctx.materialDef).toBeNull();
     expect(ctx.espesor).toBe(18); // default
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// resolverParametros (Fase 3)
+// ════════════════════════════════════════════════════════════════════════════
+
+describe("resolverParametros (Fase 3)", () => {
+  test("módulo sin parametros[] → {}", () => {
+    expect(resolverParametros({}, {})).toEqual({});
+  });
+
+  test("usa def cuando el usuario no provee valor", () => {
+    const m = { parametros: [
+      { id: "cajones", tipo: "integer", def: 3 },
+      { id: "manija",  tipo: "boolean", def: false },
+    ]};
+    expect(resolverParametros(m, {})).toEqual({ cajones: 3, manija: false });
+  });
+
+  test("override del usuario sobre def", () => {
+    const m = { parametros: [{ id: "cajones", tipo: "integer", def: 3 }] };
+    expect(resolverParametros(m, { cajones: 5 })).toEqual({ cajones: 5 });
+  });
+
+  test("parámetro tipo formula se evalúa con los demás", () => {
+    const m = { parametros: [
+      { id: "cajones",  tipo: "integer", def: 3 },
+      { id: "altoCaja", tipo: "formula", expr: "100 + cajones * 10" },
+    ]};
+    const r = resolverParametros(m, { cajones: 4 });
+    expect(r.altoCaja).toBe(140);
+  });
+
+  test("parámetro formula con dependencia circular → 0", () => {
+    const m = { parametros: [
+      { id: "a", tipo: "formula", expr: "b + 1" },
+      { id: "b", tipo: "formula", expr: "a + 1" },
+    ]};
+    const r = resolverParametros(m, {});
+    expect(r.a).toBe(0);
+    expect(r.b).toBe(0);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// generarPiezas (Fase 3)
+// ════════════════════════════════════════════════════════════════════════════
+
+describe("generarPiezas (Fase 3)", () => {
+  const moduloBase = {
+    nombre: "test", piezas: [], dimensiones: { ancho: 600, alto: 700, profundidad: 500 },
+  };
+
+  test("módulo viejo sin parametros → idéntico", () => {
+    const m = { ...moduloBase, piezas: [{ nombre: "Lateral", cantidad: 2 }] };
+    const r = generarPiezas(m, {});
+    expect(r.piezas).toHaveLength(1);
+    expect(r.piezas[0].nombre).toBe("Lateral");
+  });
+
+  test("condition: pieza descartada si false", () => {
+    const m = { ...moduloBase,
+      parametros: [{ id: "tieneTapa", tipo: "boolean", def: false }],
+      piezas: [
+        { nombre: "Lateral", cantidad: 2 },
+        { nombre: "Tapa",    cantidad: 1, condition: "tieneTapa" },
+      ],
+    };
+    const sin = generarPiezas(m, {});
+    expect(sin.piezas).toHaveLength(1);
+    expect(sin.piezas[0].nombre).toBe("Lateral");
+
+    const con = generarPiezas(m, { tieneTapa: true });
+    expect(con.piezas).toHaveLength(2);
+  });
+
+  test("condition con comparación", () => {
+    const m = { ...moduloBase,
+      parametros: [{ id: "cajones", tipo: "integer", def: 0 }],
+      piezas: [{ nombre: "Frente cajón", cantidad: 1, condition: "cajones > 0" }],
+    };
+    expect(generarPiezas(m, { cajones: 0 }).piezas).toHaveLength(0);
+    expect(generarPiezas(m, { cajones: 3 }).piezas).toHaveLength(1);
+  });
+
+  test("repeat con from/to numéricos", () => {
+    const m = { ...moduloBase,
+      piezas: [{ nombre: "Estante", cantidad: 1,
+        repeat: { var: "i", from: 1, to: 3 } }],
+    };
+    const r = generarPiezas(m, {});
+    expect(r.piezas).toHaveLength(3);
+  });
+
+  test("repeat con `to` como fórmula sobre parámetro", () => {
+    const m = { ...moduloBase,
+      parametros: [{ id: "cajones", tipo: "integer", def: 3 }],
+      piezas: [{ nombre: "Frente #{i}", cantidad: 1,
+        repeat: { var: "i", from: 1, to: "cajones" } }],
+    };
+    const r = generarPiezas(m, { cajones: 4 });
+    expect(r.piezas).toHaveLength(4);
+    expect(r.piezas.map(p => p.nombre)).toEqual([
+      "Frente 1", "Frente 2", "Frente 3", "Frente 4",
+    ]);
+  });
+
+  test("repeat con condition por iteración", () => {
+    // Solo iteraciones impares
+    const m = { ...moduloBase,
+      piezas: [{ nombre: "Pieza #{i}", cantidad: 1,
+        condition: "(i / 2) != round(i / 2)",  // i impar
+        repeat: { var: "i", from: 1, to: 5 } }],
+    };
+    const r = generarPiezas(m, {});
+    expect(r.piezas.map(p => p.nombre)).toEqual(["Pieza 1", "Pieza 3", "Pieza 5"]);
+  });
+
+  test("repeat con rango inválido → 0 piezas, no crash", () => {
+    const m = { ...moduloBase,
+      piezas: [{ nombre: "x", cantidad: 1, repeat: { var: "i", from: 5, to: 1 } }],
+    };
+    expect(generarPiezas(m, {}).piezas).toHaveLength(0);
+  });
+
+  test("repeat con `to: 0` (parámetro vacío) → 0 piezas", () => {
+    const m = { ...moduloBase,
+      parametros: [{ id: "cajones", tipo: "integer", def: 0 }],
+      piezas: [{ nombre: "Cajón #{i}", cantidad: 1,
+        repeat: { var: "i", from: 1, to: "cajones" } }],
+    };
+    expect(generarPiezas(m, { cajones: 0 }).piezas).toHaveLength(0);
+  });
+
+  test("interpolación {i} en nombre", () => {
+    const m = { ...moduloBase,
+      piezas: [{ nombre: "Estante {i}", cantidad: 1,
+        repeat: { var: "i", from: 1, to: 2 } }],
+    };
+    const r = generarPiezas(m, {});
+    expect(r.piezas[0].nombre).toBe("Estante 1");
+    expect(r.piezas[1].nombre).toBe("Estante 2");
+  });
+
+  test("piezas expandidas no llevan repeat ni condition", () => {
+    const m = { ...moduloBase,
+      piezas: [{ nombre: "x", cantidad: 1, condition: "1==1",
+        repeat: { var: "i", from: 1, to: 1 } }],
+    };
+    const r = generarPiezas(m, {});
+    expect(r.piezas[0].repeat).toBeUndefined();
+    expect(r.piezas[0].condition).toBeUndefined();
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// evaluarConstraints (Fase 3)
+// ════════════════════════════════════════════════════════════════════════════
+
+describe("evaluarConstraints (Fase 3)", () => {
+  test("sin constraints → []", () => {
+    expect(evaluarConstraints({}, {})).toEqual([]);
+  });
+
+  test("constraint que pasa", () => {
+    const m = {
+      dimensiones: { ancho: 600, alto: 700, profundidad: 500 },
+      parametros:  [{ id: "cajones", tipo: "integer", def: 3 }],
+      constraints: [{ expr: "alto >= cajones * 80", msg: "Alto insuficiente" }],
+    };
+    const r = evaluarConstraints(m, { cajones: 3 });
+    expect(r).toHaveLength(1);
+    expect(r[0].ok).toBe(true);
+  });
+
+  test("constraint que falla retorna ok=false con su msg", () => {
+    const m = {
+      dimensiones: { ancho: 600, alto: 200, profundidad: 500 },
+      parametros:  [{ id: "cajones", tipo: "integer", def: 5 }],
+      constraints: [{ expr: "alto >= cajones * 80", msg: "Alto insuficiente" }],
+    };
+    const r = evaluarConstraints(m, { cajones: 5 });
+    expect(r[0].ok).toBe(false);
+    expect(r[0].msg).toBe("Alto insuficiente");
   });
 });

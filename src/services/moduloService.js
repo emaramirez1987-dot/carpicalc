@@ -15,7 +15,7 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import { MODULO_VACIO } from "../constants.js";
-import { resolverVariables } from "../utils.js";
+import { resolverVariables, evaluarExpresion, evaluarCondicion, evaluarFormula } from "../utils.js";
 
 // ── Tipos del schema paramétrico (JSDoc) ──────────────────────────────────
 
@@ -128,4 +128,159 @@ export function resolverContextoModulo(modulo, costos) {
   const baseVars = { ancho, alto, profundidad, esp: espesor };
   const modVars  = resolverVariables(modulo?.variables, baseVars);
   return { baseVars, modVars, espesor, materialDef };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Generador paramétrico (Fase 3)
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Capa anterior a buildPiezas3D. Toma un módulo paramétrico + los valores
+// elegidos por el usuario y produce un "módulo concreto" cuyas piezas ya
+// están expandidas (repeat) y filtradas (condition). Ese módulo concreto
+// se le pasa a buildPiezas3D sin cambios.
+//
+//   modulo paramétrico + valores → generarPiezas → modulo concreto → buildPiezas3D
+//
+// Back-compat: un módulo sin `parametros[]` pasa idéntico (no hay
+// repeat ni condition que evaluar).
+
+/**
+ * Resuelve los valores efectivos de los parámetros del módulo.
+ * Combina los defaults con los valores elegidos por el usuario y resuelve
+ * los parámetros tipo "formula" (computados, no editables).
+ *
+ * @param {Object}  modulo
+ * @param {Object=} valoresParametros  Overrides del usuario { [paramId]: valor }
+ * @returns {Object} { [paramId]: valorResuelto } — siempre números, booleans o strings
+ */
+export function resolverParametros(modulo, valoresParametros = {}) {
+  const params = Array.isArray(modulo?.parametros) ? modulo.parametros : [];
+  const out = {};
+  // 1) Defaults + override del usuario, ignorando los tipo "formula"
+  for (const p of params) {
+    if (p.tipo === "formula") continue;
+    const userVal = valoresParametros?.[p.id];
+    out[p.id] = userVal !== undefined ? userVal : p.def;
+  }
+  // 2) Resolver parámetros tipo "formula" (pueden depender de los anteriores)
+  //    Pasada iterativa similar a resolverVariables (deps cruzadas → 0)
+  const formulaParams = params.filter((p) => p.tipo === "formula");
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const p of formulaParams) {
+      if (out[p.id] !== undefined) continue;
+      const v = evaluarExpresion(p.expr, out);
+      if (v !== null) { out[p.id] = v; changed = true; }
+    }
+  }
+  // 3) Formulas no resolubles → 0 (consistente con resolverVariables)
+  for (const p of formulaParams) {
+    if (out[p.id] === undefined) out[p.id] = 0;
+  }
+  return out;
+}
+
+/**
+ * Construye el contexto de variables para evaluar fórmulas dentro del
+ * generador. Mezcla dims base, variables custom del módulo y los valores
+ * de los parámetros. El espesor base es el del material default del módulo.
+ * @returns {Object} variables planas listas para evaluarFormula/evaluarCondicion
+ */
+function _contextoParametrico(modulo, valoresParametros, costos) {
+  const ctx = costos ? resolverContextoModulo(modulo, costos) : null;
+  const espesor = ctx?.espesor ?? 18;
+  const { ancho = 0, alto = 0, profundidad = 0 } = modulo?.dimensiones || {};
+  const baseVars = { ancho, alto, profundidad, esp: espesor };
+  const modVars  = resolverVariables(modulo?.variables, baseVars);
+  const paramVals = resolverParametros(modulo, valoresParametros);
+  // Los parámetros tienen prioridad sobre variables, las cuales tienen
+  // prioridad sobre dims base. Si hay colisión gana el más específico.
+  return { ...modVars, ...paramVals };
+}
+
+/** Sustituye {i} y #{i} en una string por el índice. */
+function _interpolarIndice(str, i) {
+  if (typeof str !== "string") return str;
+  return str.replace(/#?\{i\}/g, String(i));
+}
+
+/**
+ * Expande las piezas del módulo aplicando `condition` y `repeat`.
+ * Devuelve una copia del módulo con `piezas[]` resueltas.
+ *
+ * Forma de las piezas extendidas:
+ *   {
+ *     ...campos previos,
+ *     zona?:      string,                   // referencia a modulo.zonas[*].id
+ *     condition?: string,                   // expr booleana — pieza solo si truthy
+ *     repeat?:    { var: "i", from, to },   // genera N piezas con var en contexto
+ *   }
+ *
+ * `from` y `to` pueden ser números o strings (fórmulas). Si `to < from`
+ * o el rango es inválido, no se generan piezas.
+ *
+ * @param {Object}  modulo
+ * @param {Object=} valoresParametros
+ * @param {Object=} costos              Opcional: si viene, esp se toma del material
+ * @returns {Object} módulo concreto con piezas expandidas
+ */
+export function generarPiezas(modulo, valoresParametros = {}, costos = null) {
+  if (!modulo) return modulo;
+  const piezasIn = Array.isArray(modulo.piezas) ? modulo.piezas : [];
+  const ctxBase  = _contextoParametrico(modulo, valoresParametros, costos);
+
+  const out = [];
+  for (const p of piezasIn) {
+    // ── Repeat ──────────────────────────────────────────────────────────
+    if (p.repeat && typeof p.repeat === "object") {
+      const varName = p.repeat.var || "i";
+      const from = typeof p.repeat.from === "number"
+        ? p.repeat.from
+        : Math.round(evaluarFormula(String(p.repeat.from ?? "0"), ctxBase) ?? 0);
+      const to = typeof p.repeat.to === "number"
+        ? p.repeat.to
+        : Math.round(evaluarFormula(String(p.repeat.to ?? "0"), ctxBase) ?? 0);
+      if (!Number.isFinite(from) || !Number.isFinite(to) || to < from) continue;
+
+      for (let i = from; i <= to; i++) {
+        const ctxI = { ...ctxBase, [varName]: i };
+        if (p.condition && !evaluarCondicion(p.condition, ctxI)) continue;
+        const { repeat: _r, condition: _c, ...rest } = p;
+        out.push({
+          ...rest,
+          nombre: _interpolarIndice(p.nombre, i),
+          _indice: i,
+        });
+      }
+      continue;
+    }
+
+    // ── Sin repeat ──────────────────────────────────────────────────────
+    if (p.condition && !evaluarCondicion(p.condition, ctxBase)) continue;
+    const { condition: _c, ...rest } = p;
+    out.push(rest);
+  }
+
+  return { ...modulo, piezas: out };
+}
+
+/**
+ * Evalúa todas las constraints del módulo contra los valores de parámetros.
+ * Retorna un array con el resultado de cada constraint para mostrar al usuario.
+ *
+ * @param {Object}  modulo
+ * @param {Object=} valoresParametros
+ * @param {Object=} costos
+ * @returns {Array<{expr: string, msg: string, ok: boolean}>}
+ */
+export function evaluarConstraints(modulo, valoresParametros = {}, costos = null) {
+  const constraints = Array.isArray(modulo?.constraints) ? modulo.constraints : [];
+  if (constraints.length === 0) return [];
+  const ctx = _contextoParametrico(modulo, valoresParametros, costos);
+  return constraints.map((c) => ({
+    expr: c.expr,
+    msg:  c.msg,
+    ok:   evaluarCondicion(c.expr, ctx),
+  }));
 }

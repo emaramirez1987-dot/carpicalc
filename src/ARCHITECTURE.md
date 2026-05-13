@@ -44,6 +44,43 @@ constants.js            Datos de dominio: MODULO_VACIO, TIPO_MAT, ESTADOS_TRABAJ
 
 ---
 
+## Generador paramétrico (Fase 3)
+
+`services/moduloService.js` agrega tres funciones que actúan como **capa anterior** al motor 3D:
+
+```
+modulo paramétrico + valores → generarPiezas → modulo concreto → buildPiezas3D
+modulo viejo (sin parametros)                                  → buildPiezas3D directo
+```
+
+| Función | Retorna | Uso |
+|---|---|---|
+| `resolverParametros(modulo, valores)` | `{ [paramId]: valor }` | Defaults + overrides + parámetros tipo `formula` |
+| `generarPiezas(modulo, valores, costos?)` | `modulo` (con `piezas[]` expandidas) | Aplica `condition` y `repeat`. Pasa idéntico si no hay parámetros. |
+| `evaluarConstraints(modulo, valores, costos?)` | `[{expr, msg, ok}]` | Evalúa cada constraint del módulo |
+
+### Sintaxis nueva en `pieza`
+
+```js
+{
+  ...campos previos,
+  zona?:      string,                   // referencia a modulo.zonas[*].id (Fase 4)
+  condition?: string,                   // expr booleana — pieza solo si truthy
+  repeat?:    { var: "i", from, to },   // genera N piezas
+}
+```
+
+- `from`/`to` pueden ser números o fórmulas (`"cajones"`, `"max(1, 3)"`)
+- `nombre` interpola `{i}` o `#{i}` con el índice de iteración
+- `condition` se evalúa POR ITERACIÓN cuando hay `repeat` (se puede filtrar dentro del loop)
+- Las piezas resueltas no llevan `repeat` ni `condition` (ya están aplicados)
+
+### Back-compat
+
+Un módulo sin `parametros[]`, sin `condition` y sin `repeat` pasa idéntico por `generarPiezas`. La integración con `buildPiezas3D` (Fase 4+) será transparente para módulos viejos.
+
+---
+
 ## Motor de fórmulas (Fase 2)
 
 `utils.js` expone tres funciones para evaluar expresiones de módulos:
