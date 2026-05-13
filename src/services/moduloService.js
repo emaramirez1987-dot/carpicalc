@@ -266,6 +266,44 @@ export function generarPiezas(modulo, valoresParametros = {}, costos = null) {
 }
 
 /**
+ * Resuelve los herrajes efectivos del módulo aplicando `condition` y
+ * fórmulas de `cantidad`. Retorna un array listo para sumar al costo.
+ *
+ * Soporta:
+ *   • `condition`: si la expr es falsy, el herraje se omite.
+ *   • `cantidad` como número: se usa directo.
+ *   • `cantidad` como string: se evalúa como fórmula y se redondea.
+ *
+ * Back-compat: un herraje viejo `{ id, cantidad: number }` sin condition
+ * pasa idéntico (no se filtra, cantidad numérica intacta).
+ *
+ * @param {Object}  modulo
+ * @param {Object=} valoresParametros
+ * @param {Object=} costos
+ * @returns {Array<{id, cantidad: number}>}
+ */
+export function resolverHerrajes(modulo, valoresParametros = {}, costos = null) {
+  const herrajes = Array.isArray(modulo?.herrajes) ? modulo.herrajes : [];
+  if (herrajes.length === 0) return [];
+  const ctx = _contextoParametrico(modulo, valoresParametros, costos);
+  const out = [];
+  for (const h of herrajes) {
+    if (h.condition && !evaluarCondicion(h.condition, ctx)) continue;
+    let cantidad;
+    if (typeof h.cantidad === "number") {
+      cantidad = h.cantidad;
+    } else if (typeof h.cantidad === "string") {
+      const v = evaluarFormula(h.cantidad, ctx);
+      cantidad = v !== null ? Math.round(v) : 0;
+    } else {
+      cantidad = 1;
+    }
+    if (cantidad > 0) out.push({ id: h.id, cantidad });
+  }
+  return out;
+}
+
+/**
  * Evalúa todas las constraints del módulo contra los valores de parámetros.
  * Retorna un array con el resultado de cada constraint para mostrar al usuario.
  *

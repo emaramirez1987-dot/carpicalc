@@ -17,6 +17,7 @@ import {
   resolverParametros,
   generarPiezas,
   evaluarConstraints,
+  resolverHerrajes,
 } from "./moduloService.js";
 
 // ── parsearModulo ──────────────────────────────────────────────────────────
@@ -330,6 +331,78 @@ describe("generarPiezas (Fase 3)", () => {
 // ════════════════════════════════════════════════════════════════════════════
 // evaluarConstraints (Fase 3)
 // ════════════════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════════════════
+// resolverHerrajes (Fase 5)
+// ════════════════════════════════════════════════════════════════════════════
+
+describe("resolverHerrajes (Fase 5)", () => {
+  test("módulo sin herrajes → []", () => {
+    expect(resolverHerrajes({}, {})).toEqual([]);
+  });
+
+  test("herraje viejo { id, cantidad: number } pasa idéntico", () => {
+    const m = { herrajes: [{ id: 7, cantidad: 4 }] };
+    expect(resolverHerrajes(m, {})).toEqual([{ id: 7, cantidad: 4 }]);
+  });
+
+  test("herraje con cantidad como fórmula sobre parámetro", () => {
+    const m = {
+      parametros: [{ id: "cajones", tipo: "integer", def: 3 }],
+      herrajes:   [{ id: 1, cantidad: "cajones" }],
+    };
+    expect(resolverHerrajes(m, { cajones: 5 })).toEqual([{ id: 1, cantidad: 5 }]);
+  });
+
+  test("herraje con cantidad como fórmula compleja", () => {
+    const m = {
+      parametros: [{ id: "puertas", tipo: "integer", def: 2 }],
+      herrajes:   [{ id: 1, cantidad: "puertas * 2" }],
+    };
+    expect(resolverHerrajes(m, { puertas: 3 })).toEqual([{ id: 1, cantidad: 6 }]);
+  });
+
+  test("condition false → herraje omitido", () => {
+    const m = {
+      parametros: [{ id: "cajones", tipo: "integer", def: 0 }],
+      herrajes:   [{ id: 1, cantidad: "cajones", condition: "cajones > 0" }],
+    };
+    expect(resolverHerrajes(m, { cajones: 0 })).toEqual([]);
+    expect(resolverHerrajes(m, { cajones: 3 })).toEqual([{ id: 1, cantidad: 3 }]);
+  });
+
+  test("cantidad redondeada al entero más cercano", () => {
+    const m = { herrajes: [{ id: 1, cantidad: "3.6" }] };
+    expect(resolverHerrajes(m, {})).toEqual([{ id: 1, cantidad: 4 }]);
+  });
+
+  test("cantidad 0 → herraje omitido", () => {
+    const m = { herrajes: [{ id: 1, cantidad: 0 }, { id: 2, cantidad: "0" }] };
+    expect(resolverHerrajes(m, {})).toEqual([]);
+  });
+
+  test("cantidad-fórmula inválida → 0 → omitido", () => {
+    const m = { herrajes: [{ id: 1, cantidad: "no_existe + 5" }] };
+    expect(resolverHerrajes(m, {})).toEqual([]);
+  });
+
+  test("mix: viejos y condicionales conviven", () => {
+    const m = {
+      parametros: [{ id: "puertas", tipo: "integer", def: 0 }],
+      herrajes: [
+        { id: 1, cantidad: 4 },                                           // viejo
+        { id: 2, cantidad: "puertas * 2", condition: "puertas > 0" },     // condicional
+        { id: 3, cantidad: "puertas",     condition: "puertas > 0" },     // condicional
+      ],
+    };
+    const r = resolverHerrajes(m, { puertas: 2 });
+    expect(r).toEqual([
+      { id: 1, cantidad: 4 },
+      { id: 2, cantidad: 4 },
+      { id: 3, cantidad: 2 },
+    ]);
+  });
+});
 
 describe("evaluarConstraints (Fase 3)", () => {
   test("sin constraints → []", () => {

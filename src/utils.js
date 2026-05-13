@@ -13,7 +13,15 @@
 //
 // IMPORTANTE: Este archivo NO importa React.
 // Se puede testear en Node.js sin montar ningún componente.
+//
+// Nota sobre el ciclo utils.js ↔ services/moduloService.js:
+//   calcularModulo() usa generarPiezas y resolverHerrajes de moduloService.
+//   moduloService importa evaluarFormula, evaluarExpresion, etc. de utils.
+//   El ciclo se resuelve porque ninguno invoca al otro en evaluación
+//   top-level — solo dentro de funciones que corren después del linking.
 // ════════════════════════════════════════════════════════════════════════════
+
+import { generarPiezas, resolverHerrajes } from './services/moduloService.js';
 
 // ════════════════════════════════════════════════════════════════════════════
 // FORMATEO
@@ -229,17 +237,20 @@ export function resolverDim(base, offsetEsp, offsetMm, divisor, espesor) {
  * Calcula el costo completo de un módulo de carpintería.
  *
  * Flujo de cálculo:
+ *   0. (Fase 3+) Si vienen valoresParametros, el módulo pasa primero por
+ *      generarPiezas() para expandir repeat/condition.
  *   1. Para cada pieza: calcular dimensiones reales → área neta → metros de tapacanto
  *   2. Aplicar % de desperdicio al área total
  *   3. Calcular costo de material (m² × precio/m²)
- *   4. Calcular costo de tapacanto, mano de obra y herrajes
+ *   4. Calcular costo de tapacanto, mano de obra y herrajes (Fase 5: condicionales)
  *   5. Sumar costo base y aplicar % de ganancia (gastosGenerales)
  *
- * @param {object} modulo  - Módulo del catálogo (con piezas, herrajes, material, dimensiones)
- * @param {object} costos  - Tabla de costos del taller (materiales, herrajes, tapacanto, etc.)
- * @returns {object|null}  - Desglose completo o null si faltan datos
+ * @param {object} modulo             - Módulo del catálogo
+ * @param {object} costos             - Tabla de costos del taller
+ * @param {object=} valoresParametros - Overrides de parámetros (Fase 3+)
+ * @returns {object|null}             - Desglose completo o null si faltan datos
  */
-export function calcularModulo(modulo, costos) {
+export function calcularModulo(modulo, costos, valoresParametros = {}) {
   if (!modulo?.piezas || !costos?.materiales) return null;
 
   const matDef = costos.materiales.find((m) => m.tipo === modulo.material);
@@ -250,16 +261,20 @@ export function calcularModulo(modulo, costos) {
   const { ancho, profundidad, alto } = modulo.dimensiones || {};
   if (!ancho && !profundidad && !alto) return null;
 
+  // Fase 3: módulo paramétrico → módulo concreto antes de calcular costos.
+  // Back-compat: módulos viejos pasan idénticos.
+  const moduloConcreto = generarPiezas(modulo, valoresParametros, costos);
+
   const dimMap = { ancho: ancho || 0, profundidad: profundidad || 0, alto: alto || 0 };
   const esp = mat.espesor || 18;
   const baseVars = { ...dimMap, esp };
-  const modVars = resolverVariables(modulo.variables, baseVars);
+  const modVars = resolverVariables(moduloConcreto.variables, baseVars);
 
   let m2Neto = 0, metrosTapacanto = 0, costoTapacanto = 0;
   const desglosePiezas = [];
   const piezasNegativas = [];
 
-  for (const p of modulo.piezas) {
+  for (const p of moduloConcreto.piezas) {
     // Pieza especial: usa dimensiones libres en lugar de las parametrizadas
     // Si formula1/formula2 están definidas, se usan en lugar de los campos clásicos
     const d1 = p.especial
@@ -313,11 +328,14 @@ export function calcularModulo(modulo, costos) {
       ? moItem.precio
       : moItem.precio * (modulo.moDeObra.horas || 0);
 
-  // Herrajes: suma unitaria según catálogo
+  // Herrajes: suma unitaria según catálogo.
+  // Fase 5: resolverHerrajes aplica condition y resuelve cantidad-fórmula.
+  // Back-compat: herrajes viejos { id, cantidad: number } pasan idénticos.
   let costoHerrajes = 0;
-  for (const h of modulo.herrajes || []) {
+  const herrajesResueltos = resolverHerrajes(moduloConcreto, valoresParametros, costos);
+  for (const h of herrajesResueltos) {
     const herr = costos.herrajes?.find((x) => x.id === h.id);
-    if (herr) costoHerrajes += herr.precio * (h.cantidad || 1);
+    if (herr) costoHerrajes += herr.precio * h.cantidad;
   }
 
   const costoBase = costoMaterial + costoTapacanto + costoMO + costoHerrajes;
