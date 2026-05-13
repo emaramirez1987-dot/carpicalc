@@ -34,6 +34,41 @@ export const PERFIL_VACIO = {
   condiciones:   "",     // condiciones comerciales al pie del PDF
 };
 
+// ── Contrato formal del objeto Módulo ────────────────────────────────────
+//
+// MODULO_VACIO es la plantilla canónica. Todo módulo en el catálogo
+// sigue esta forma. Úsala como base al crear módulos nuevos y como
+// referencia para entender qué campos existen.
+//
+// Campos:
+//   nombre      — etiqueta legible, obligatorio
+//   descripcion — texto libre opcional
+//   categoria   — id de CATEGORIAS_DEFAULT
+//   material    — clave de TIPO_MAT
+//   dimensiones — { ancho, alto, profundidad } en mm
+//   piezas      — PiezaModulo[] (ver roles en ROLES_PIEZA_DEFAULT)
+//   variables   — Variable[] { nombre, formula } para cálculos encadenados
+//   herrajes    — { id, cantidad }[] referenciando costos.herrajes
+//   moDeObra    — { tipo: "por_modulo"|"por_hora", horas }
+//   imagen      — base64 string | null
+//   tipoVisual  — preset de layout SVG ("bajo"|"aereo"|null)
+//   parametros  — Parametro3D[] reservado para el editor 3D paramétrico
+//
+export const MODULO_VACIO = {
+  nombre:      "",
+  descripcion: "",
+  categoria:   "otros",
+  material:    "melamina",
+  dimensiones: { ancho: 600, alto: 720, profundidad: 550 },
+  piezas:      [],
+  variables:   [],
+  herrajes:    [],
+  moDeObra:    { tipo: "por_modulo", horas: 0 },
+  imagen:      null,
+  tipoVisual:  null,
+  parametros:  [],
+};
+
 // ── Tipos de material (clave → etiqueta legible) ──────────────────────────
 // Usado en selects y para mostrar el material de cada módulo.
 export const TIPO_MAT = {

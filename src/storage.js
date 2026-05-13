@@ -17,24 +17,7 @@
 
 import { modulosIniciales, costoIniciales, PERFIL_VACIO } from "./constants.js";
 import { supabase } from "./lib/supabase.js";
-
-// ── Validación de schema ──────────────────────────────────────────────────
-// Descarta silenciosamente filas corruptas en lugar de propagar errores.
-function _validarModulo(d) {
-  return (
-    d !== null && typeof d === "object" &&
-    typeof d.nombre === "string" &&
-    Array.isArray(d.piezas) &&
-    d.dimensiones !== null && typeof d.dimensiones === "object"
-  );
-}
-
-function _validarPresupuesto(d) {
-  return (
-    d !== null && typeof d === "object" &&
-    Array.isArray(d.items)
-  );
-}
+import { parsearModulo, parsearPresupuesto } from "./services/moduloService.js";
 
 // ── Escritura localStorage (datos locales/efímeros) ───────────────────────
 export const _save = async (key, data) => {
@@ -87,16 +70,18 @@ export async function cargarDatos() {
       supabase.from("perfil_taller").select("datos").eq("workspace_id", wsId).maybeSingle(),
     ]);
 
-    // Reconstruir { [codigo]: datos } — descartar filas con schema inválido
+    // Reconstruir { [codigo]: datos } — parsearModulo normaliza y descarta corruptos
     const modulos = (modulosRows || []).reduce((acc, row) => {
-      if (_validarModulo(row.datos)) acc[row.codigo] = row.datos;
+      const m = parsearModulo(row.datos);
+      if (m) acc[row.codigo] = m;
       else console.warn("storage: módulo descartado por schema inválido:", row.codigo);
       return acc;
     }, {});
 
-    // Reconstruir { [id]: datos } — descartar filas con schema inválido
+    // Reconstruir { [id]: datos } — parsearPresupuesto normaliza y descarta corruptos
     const presupuestos = (presupuestosRows || []).reduce((acc, row) => {
-      if (_validarPresupuesto(row.datos)) acc[row.id] = row.datos;
+      const p = parsearPresupuesto(row.datos);
+      if (p) acc[row.id] = p;
       else console.warn("storage: presupuesto descartado por schema inválido:", row.id);
       return acc;
     }, {});
