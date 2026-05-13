@@ -19,6 +19,7 @@ import { imprimirPresupuesto, generarFichaObra } from './imprimirPresupuesto.js'
 
 import { SeccionCostosDirectos, SeccionAdicionales } from './SeccionesPresupuesto.jsx';
 import GestorPresupuestos from './GestorPresupuestos.jsx';
+import AcordeonEdicionItem from './AcordeonEdicionItem.jsx';
 
 // ── Presupuesto (componente principal del editor) ─────────────────
 function Presupuesto({
@@ -768,84 +769,17 @@ function Presupuesto({
                   </div>
                 </div>
 
-                {/* Acordeón de edición por instancia */}
+                {/* Acordeón de edición por instancia — Nivel 2 */}
                 {estaEditando && modalEdicion && (
-                  <div style={{ borderTop: "1px solid var(--border)", padding: "10px 14px 12px", background: "var(--bg-subtle)" }}>
-
-                    {/* Badge */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                      <span style={{
-                        fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                        textTransform: "uppercase", letterSpacing: "0.08em", borderRadius: 4, padding: "2px 7px",
-                        background: modalEdicion.item?.codigo?.startsWith("TEMP_") ? "var(--accent-soft)" : "rgba(120,180,100,0.12)",
-                        border: `1px solid ${modalEdicion.item?.codigo?.startsWith("TEMP_") ? "var(--accent-border)" : "rgba(120,180,100,0.35)"}`,
-                        color: modalEdicion.item?.codigo?.startsWith("TEMP_") ? "var(--accent)" : "#4a9e5c",
-                      }}>
-                        {modalEdicion.item?.codigo?.startsWith("TEMP_") ? "VARIANTE" : "SOLO PRESUPUESTO"}
-                      </span>
-                      <span style={{ fontSize: 11, color: "var(--text-secondary)", fontFamily: "'DM Mono',monospace" }}>
-                        {modalEdicion.item?.codigo?.startsWith("TEMP_") ? "módulo temporal" : "catálogo sin cambios · ▲ aplica"}
-                      </span>
-                    </div>
-
-                    {/* Dims + Material compactos */}
-                    <div style={{ display: "flex", gap: 5, alignItems: "flex-end", marginBottom: 8 }}>
-                      {[["A", "ancho"], ["P", "profundidad"], ["H", "alto"]].map(([label, key]) => (
-                        <div key={key} style={{ flex: 1 }}>
-                          <div style={{ fontSize: 11, color: "var(--text-secondary)", textAlign: "center", marginBottom: 3, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
-                          <input type="number" min="1"
-                            value={modalEdicion.dims[key]}
-                            onChange={e => setModalEdicion(m => ({ ...m, dims: { ...m.dims, [key]: parseInt(e.target.value) || 0 } }))}
-                            style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: "5px 4px", textAlign: "center", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", outline: "none" }}
-                            onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
-                            onBlur={e => { e.target.style.borderColor = "var(--border)"; aplicarDims(); }} />
-                        </div>
-                      ))}
-                      <div style={{ flex: 1.8 }}>
-                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 3, fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>Mat.</div>
-                        <select value={modalEdicion.material}
-                          onChange={e => {
-                            const newMat = e.target.value;
-                            setModalEdicion(m => ({ ...m, material: newMat }));
-                            if (modalEdicion && !modalEdicion.item.codigo.startsWith("TEMP_")) {
-                              const keyId = modalEdicion.item.id || modalEdicion.item.codigo;
-                              const base = modulos[modalEdicion.origenCodigo];
-                              const bd = base?.dimensiones || {};
-                              const d = modalEdicion.dims;
-                              const difiere = d.ancho !== bd.ancho || d.profundidad !== bd.profundidad || d.alto !== bd.alto || newMat !== (base?.material ?? "melamina");
-                              setDimOverride(prev => { const n = { ...prev }; if (difiere) n[keyId] = { ...d, material: newMat }; else delete n[keyId]; return n; });
-                            }
-                          }}
-                          style={{ width: "100%", padding: "5px 4px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-base)", color: "var(--text-primary)", fontFamily: "'DM Mono',monospace", fontSize: 11, outline: "none" }}>
-                          {Object.entries(TIPO_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Acciones compactas */}
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={aplicarDims}
-                        style={{ padding: "5px 12px", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
-                        ✓ Actualizar
-                      </button>
-                      <button
-                        onClick={() => {
-                          const modInicial = getModUsado(item) || modulos[item.codigo];
-                          if (!modInicial) return;
-                          setModalModulo({ item, modInicial });
-                        }}
-                        style={{ flex: 1, padding: "6px 0", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, background: "var(--bg-subtle)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", transition: "all 0.15s" }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "var(--accent-soft)"; e.currentTarget.style.borderColor = "var(--accent-border)"; e.currentTarget.style.color = "var(--accent)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-subtle)"; e.currentTarget.style.borderColor = "var(--border-strong)"; e.currentTarget.style.color = "var(--text-primary)"; }}>
-                        ✏ Piezas/herrajes
-                      </button>
-                      <button onClick={() => setModalEdicion(null)}
-                        style={{ padding: "5px 14px", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, background: "transparent", border: "1px solid rgba(200,60,60,0.28)", color: "#e07070" }}>
-                        ✕
-                      </button>
-                    </div>
-
-                  </div>
+                  <AcordeonEdicionItem
+                    modalEdicion={modalEdicion}
+                    setModalEdicion={setModalEdicion}
+                    aplicarDims={aplicarDims}
+                    modulos={modulos}
+                    setDimOverride={setDimOverride}
+                    setModalModulo={setModalModulo}
+                    getModUsado={getModUsado}
+                  />
                 )}
               </div>
             );
