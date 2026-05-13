@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { ORIENTACIONES_3D, buildPiezas3D } from './Modulo3D.jsx';
+import { ORIENTACIONES_3D, buildPiezas3D } from './engine/buildPiezas3D.js';
 import { getMaterialProps } from './useMaterial3D.js';
 import { CAMARAS } from './CamaraPresets.js';
 

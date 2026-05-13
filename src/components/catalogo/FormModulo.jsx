@@ -3,7 +3,7 @@ import { Btn, TextInput, Select } from '../ui/index.jsx';
 import { fmtPeso, fmtNum, resolverDim, calcularModulo, evaluarFormula, resolverVariables } from '../../utils.js';
 import { CATEGORIAS_DEFAULT } from '../../constants.js';
 import { cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
-import { ORIENTACIONES_3D } from '../visor3d/Modulo3D.jsx';
+import { ORIENTACIONES_3D } from '../visor3d/engine/buildPiezas3D.js';
 import { useTema } from '../../hooks/useTema.js';
 import FilaPieza from './FilaPieza.jsx';
 import VistaModuloSVG from '../vista-svg/index.js';
