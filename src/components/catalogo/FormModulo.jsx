@@ -96,9 +96,12 @@ function piezasQueUsanVar(varName, piezas) {
   });
 }
 
-function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSugeridos, variables, onVarsUpdate, piezas }) {
+function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSugeridos, variables, onVarsUpdate, piezas, zonas = [], parametros = [] }) {
   const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
   const [avanzado, setAvanzado] = useState(false);
+  const [parametricoAbierto, setParametricoAbierto] = useState(
+    !!(fp.zona || fp.condition || fp.repeat),
+  );
   const tienePos3d = !!(fp.posFormulas?.x || fp.posFormulas?.y || fp.posFormulas?.z);
   const [pos3dAbierto, setPos3dAbierto] = useState(() => tienePos3d);
   const [varsAbierto, setVarsAbierto] = useState(false);
@@ -533,6 +536,61 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                     </div>
                   </div>
                 )}
+
+                {/* Parametrización (Fase 6.5) — zona, condition, repeat */}
+                {(zonas.length > 0 || parametros.length > 0 || fp.zona || fp.condition || fp.repeat) && (
+                  <>
+                    <button onClick={() => setParametricoAbierto(v => !v)}
+                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em" }}>
+                      <span style={{ transition: "transform 0.2s", display: "inline-block", transform: parametricoAbierto ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
+                      ⚙ Parametrización (zona · condición · repetición)
+                    </button>
+                    {parametricoAbierto && (
+                      <div style={{ background: "rgba(0,0,0,0.12)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                        {/* Zona */}
+                        <div>
+                          <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>
+                            Zona — material por grupo
+                          </div>
+                          <select value={fp.zona || ""} onChange={e => setFp(p => ({ ...p, zona: e.target.value || undefined }))}
+                            style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "6px 8px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", outline: "none", boxSizing: "border-box" }}>
+                            <option value="">(usa material del módulo)</option>
+                            {zonas.map(z => <option key={z.id} value={z.id}>{z.nombre || z.id} — {z.material}</option>)}
+                          </select>
+                        </div>
+                        {/* Condition */}
+                        <div>
+                          <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>
+                            Condición — la pieza solo se crea si la expresión es verdadera
+                          </div>
+                          <input value={fp.condition || ""} placeholder="ej: cajones > 0  ó  manija == true"
+                            onChange={e => setFp(p => ({ ...p, condition: e.target.value || undefined }))}
+                            style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "6px 8px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", outline: "none", boxSizing: "border-box" }} />
+                        </div>
+                        {/* Repeat */}
+                        <div>
+                          <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>
+                            Repetición — generar N piezas con índice <code>i</code> (deja vacío para una sola)
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr", gap: 6 }}>
+                            <input value={fp.repeat?.var || ""} placeholder="var (i)"
+                              onChange={e => setFp(p => ({ ...p, repeat: e.target.value ? { ...(p.repeat || { from: 1, to: 1 }), var: e.target.value } : (p.repeat?.from || p.repeat?.to ? { ...p.repeat, var: undefined } : undefined) }))}
+                              style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "6px 8px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", outline: "none", boxSizing: "border-box" }} />
+                            <input value={fp.repeat?.from ?? ""} placeholder="from (número o fórmula)"
+                              onChange={e => setFp(p => ({ ...p, repeat: e.target.value !== "" ? { var: "i", to: 1, ...(p.repeat || {}), from: e.target.value } : (p.repeat?.var || p.repeat?.to ? { ...p.repeat, from: undefined } : undefined) }))}
+                              style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "6px 8px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", outline: "none", boxSizing: "border-box" }} />
+                            <input value={fp.repeat?.to ?? ""} placeholder="to (ej: cajones)"
+                              onChange={e => setFp(p => ({ ...p, repeat: e.target.value !== "" ? { var: "i", from: 1, ...(p.repeat || {}), to: e.target.value } : (p.repeat?.var || p.repeat?.from ? { ...p.repeat, to: undefined } : undefined) }))}
+                              style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "6px 8px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", outline: "none", boxSizing: "border-box" }} />
+                          </div>
+                          <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
+                            Usá <code>{"{i}"}</code> o <code>#{"{i}"}</code> en el nombre para insertar el índice (ej: "Cajón #{"{i}"}").
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </>
             )}
 
@@ -868,6 +926,8 @@ function FormModulo({
           variables={datos.variables}
           onVarsUpdate={v => setDatos(d => ({ ...d, variables: v }))}
           piezas={datos.piezas || []}
+          zonas={datos.zonas || []}
+          parametros={datos.parametros || []}
         />
 
         {/* Columna derecha: Acordeones */}
@@ -1025,31 +1085,74 @@ function FormModulo({
           {/* Herrajes */}
           <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
             {secHdr('🔩', 'Herrajes',
-              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)' }}>{herrajes.reduce((a, h) => a + h.cantidad, 0)} uds</span>,
+              <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)' }}>{herrajes.reduce((a, h) => a + (typeof h.cantidad === 'number' ? h.cantidad : 0), 0)} uds{herrajes.some(h => typeof h.cantidad === 'string') ? ' + fx' : ''}</span>,
               secs.her, () => toggleSec('her'))}
             {secs.her && (
               <div style={{ padding: '12px 16px', background: 'var(--bg-surface)' }}>
                 {costos.herrajes.map((h) => {
                   const item = herrajes.find((x) => x.id === h.id);
                   const cant = item?.cantidad || 0;
+                  const esFormula = typeof item?.cantidad === 'string';
+                  const tieneCondition = !!item?.condition;
+                  const activo = !!item && (cant > 0 || esFormula || tieneCondition);
+                  const setItem = (patch) => setHerrajes((prev) => {
+                    const idx = prev.findIndex((x) => x.id === h.id);
+                    if (idx < 0) return [...prev, { id: h.id, cantidad: 1, ...patch }];
+                    const n = [...prev];
+                    n[idx] = { ...n[idx], ...patch };
+                    return n;
+                  });
+                  const quitarItem = () => setHerrajes((prev) => prev.filter((x) => x.id !== h.id));
                   return (
-                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                      <div>
-                        <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{h.nombre}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{fmtPeso(h.precio)}/{h.unidad}</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {[
-                          ['−', () => setHerrajes((prev) => { const idx = prev.findIndex((x) => x.id === h.id); if (cant <= 1) return prev.filter((x) => x.id !== h.id); const n = [...prev]; n[idx].cantidad--; return n; })],
-                          ['+', () => setHerrajes((prev) => { const idx = prev.findIndex((x) => x.id === h.id); if (idx < 0) return [...prev, { id: h.id, cantidad: 1 }]; const n = [...prev]; n[idx].cantidad++; return n; })],
-                        ].map(([lbl, fn]) => (
-                          <button key={lbl} onClick={fn}
-                            style={{ width: 28, height: 28, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)', borderRadius: 5, cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {lbl}
+                    <div key={h.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{h.nombre}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{fmtPeso(h.precio)}/{h.unidad}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <button onClick={() => {
+                            if (esFormula || tieneCondition) {
+                              // Pasar a numérico (1) y limpiar fórmula/condition
+                              setItem({ cantidad: 1, condition: undefined });
+                            } else {
+                              // Activar modo fórmula con la cantidad actual o "1"
+                              setItem({ cantidad: String(cant || 1) });
+                            }
+                          }}
+                            title={esFormula ? 'Volver a número' : 'Cantidad como fórmula / condición'}
+                            style={{ width: 28, height: 28, background: (esFormula || tieneCondition) ? 'var(--accent)' : 'var(--bg-subtle)', border: '1px solid var(--accent-border)', color: (esFormula || tieneCondition) ? '#0a0a0a' : 'var(--text-muted)', borderRadius: 5, cursor: 'pointer', fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono',monospace" }}>
+                            fx
                           </button>
-                        ))}
-                        <span style={{ fontFamily: "'DM Mono',monospace", width: 24, textAlign: 'center', color: cant > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>{cant}</span>
+                          {!esFormula && (
+                            <>
+                              <button onClick={() => { if (cant <= 1) quitarItem(); else setItem({ cantidad: cant - 1 }); }}
+                                style={{ width: 28, height: 28, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)', borderRadius: 5, cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                              <button onClick={() => setItem({ cantidad: (cant || 0) + 1 })}
+                                style={{ width: 28, height: 28, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)', borderRadius: 5, cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                            </>
+                          )}
+                          <span style={{ fontFamily: "'DM Mono',monospace", minWidth: 24, textAlign: 'center', color: activo ? 'var(--accent)' : 'var(--text-muted)' }}>{esFormula ? 'fx' : cant}</span>
+                        </div>
                       </div>
+                      {(esFormula || tieneCondition) && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 6 }}>
+                          <div>
+                            <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Cantidad (fórmula)</div>
+                            <input value={typeof item.cantidad === 'string' ? item.cantidad : String(item.cantidad || '')}
+                              placeholder="ej: cajones · puertas * 2"
+                              onChange={e => setItem({ cantidad: e.target.value })}
+                              style={{ width: '100%', fontFamily: "'DM Mono',monospace", fontSize: 11, padding: '5px 7px', background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Condición (opcional)</div>
+                            <input value={item.condition || ''}
+                              placeholder="ej: cajones > 0"
+                              onChange={e => setItem({ condition: e.target.value || undefined })}
+                              style={{ width: '100%', fontFamily: "'DM Mono',monospace", fontSize: 11, padding: '5px 7px', background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }} />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
