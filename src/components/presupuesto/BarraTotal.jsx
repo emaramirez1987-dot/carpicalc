@@ -77,7 +77,7 @@ export function ResumenPresupuesto({
             const modBase = modulos[item.codigo];
             if (!modBase) return null;
             const modUsado = getModUsado(item);
-            const calc = calcularModulo(modUsado, costos);
+            const calc = calcularModulo(modUsado, costos, item.parametrosValores || {});
             if (!calc) return null;
             const over = modUsado.dimensiones;
             const dimDif = over.ancho !== modBase.dimensiones.ancho || over.profundidad !== modBase.dimensiones.profundidad || over.alto !== modBase.dimensiones.alto;

@@ -13,6 +13,7 @@
 
 import React from 'react';
 import { TIPO_MAT } from '../../constants.js';
+import ConfiguradorParametrico from './ConfiguradorParametrico.jsx';
 
 export default function AcordeonEdicionItem({
   modalEdicion,
@@ -22,9 +23,13 @@ export default function AcordeonEdicionItem({
   setDimOverride,
   setModalModulo,
   getModUsado,
+  costos,
+  parametrosValores,
+  setParametrosValores,
 }) {
   const item   = modalEdicion.item;
   const isTemp = item?.codigo?.startsWith("TEMP_");
+  const modUsado = getModUsado ? getModUsado(item) : (modulos?.[item?.codigo] || null);
 
   return (
     <div style={{ borderTop: "1px solid var(--border)", padding: "10px 14px 12px", background: "var(--bg-subtle)" }}>
@@ -90,6 +95,15 @@ export default function AcordeonEdicionItem({
           </select>
         </div>
       </div>
+
+      {/* Configurador paramétrico (Fase 7) — solo si el módulo tiene parámetros */}
+      {modUsado && setParametrosValores && (
+        <ConfiguradorParametrico
+          modulo={modUsado}
+          valores={parametrosValores || {}}
+          onChange={setParametrosValores}
+          costos={costos} />
+      )}
 
       {/* Acciones */}
       <div style={{ display: "flex", gap: 6 }}>

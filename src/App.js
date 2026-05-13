@@ -300,7 +300,7 @@ function AppInterna() {
   const totalModulos = !costos ? 0 : items.reduce((acc, it) => {
     const m = getModUsado(it);
     if (!m) return acc;
-    const c = calcularModulo(m, costos);
+    const c = calcularModulo(m, costos, it.parametrosValores || {});
     if (!c) return acc;
     return acc + c.total * it.cantidad;
   }, 0);

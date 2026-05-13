@@ -779,6 +779,9 @@ function Presupuesto({
                     setDimOverride={setDimOverride}
                     setModalModulo={setModalModulo}
                     getModUsado={getModUsado}
+                    costos={costos}
+                    parametrosValores={items[idx]?.parametrosValores || {}}
+                    setParametrosValores={(valores) => setItems(items.map((it, i) => i === idx ? { ...it, parametrosValores: valores } : it))}
                   />
                 )}
               </div>
