@@ -15,6 +15,7 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import { MODULO_VACIO } from "../constants.js";
+import { resolverVariables } from "../utils.js";
 
 // ── parsearModulo ─────────────────────────────────────────────────────────
 // Recibe datos crudos (Supabase, localStorage, importación JSON).
@@ -62,4 +63,31 @@ export function parsearPresupuesto(raw) {
     costosDirectos:Array.isArray(raw.costosDirectos) ? raw.costosDirectos : [],
     cobros:        Array.isArray(raw.cobros)         ? raw.cobros         : [],
   };
+}
+
+// ── resolverContextoModulo ────────────────────────────────────────────────
+// Punto único de verdad para evaluar fórmulas de un módulo.
+//
+// Retorna { baseVars, modVars, espesor, materialDef } a partir del módulo
+// y la tabla de costos. Toda la app debe consumir esta función para
+// resolver variables — está PROHIBIDO reimplementar la lógica inline.
+//
+// Por qué existe: tres archivos (corte, visor3d, FormModulo preview)
+// reimplementaban inline el resuelvo de variables, y cada copia tenía
+// bugs distintos (una sola pasada → deps inversas a 0, override de dims,
+// errores comidos por `?? 0`). Centralizando acá, imposible reimplementar mal.
+//
+// @param {object} modulo - Módulo (debe tener dimensiones, variables, material)
+// @param {object} costos - Tabla de costos (debe tener materiales[])
+// @returns {{baseVars: object, modVars: object, espesor: number, materialDef: object|null}}
+export function resolverContextoModulo(modulo, costos) {
+  const materialDef =
+    costos?.materiales?.find((m) => m.tipo === modulo?.material) ||
+    costos?.materiales?.[0] ||
+    null;
+  const espesor = materialDef?.espesor || 18;
+  const { ancho = 0, alto = 0, profundidad = 0 } = modulo?.dimensiones || {};
+  const baseVars = { ancho, alto, profundidad, esp: espesor };
+  const modVars  = resolverVariables(modulo?.variables, baseVars);
+  return { baseVars, modVars, espesor, materialDef };
 }

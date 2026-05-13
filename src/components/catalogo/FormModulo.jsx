@@ -918,7 +918,7 @@ function FormModulo({
                     onChange={(v) => setFp((p) => ({ ...p, tc: { ...p.tc, lados2: parseInt(v) || 0 } }))} />
                 </div>
                 {fp.tc.id > 0 && (() => {
-                  const allVars = { ancho: datos.dimensiones.ancho || 0, alto: datos.dimensiones.alto || 0, profundidad: datos.dimensiones.profundidad || 0, esp: espesor, ...(datos.variables || {}) };
+                  const allVars = resolverVariables(datos.variables, { ancho: datos.dimensiones.ancho || 0, alto: datos.dimensiones.alto || 0, profundidad: datos.dimensiones.profundidad || 0, esp: espesor });
                   const d1tc = fp.especial ? (parseInt(fp.dimLibre1) || 0) : fp.formula1 ? (evaluarFormula(fp.formula1, allVars) ?? 0) : resolverDim(datos.dimensiones[fp.usaDim], parseInt(fp.offsetEsp) || 0, parseInt(fp.offsetMm) || 0, parseInt(fp.divisor) || 1, espesor);
                   const d2tc = fp.especial ? (parseInt(fp.dimLibre2) || 0) : fp.formula2 ? (evaluarFormula(fp.formula2, allVars) ?? 0) : resolverDim(datos.dimensiones[fp.usaDim2], parseInt(fp.offsetEsp2) || 0, parseInt(fp.offsetMm2) || 0, parseInt(fp.divisor2) || 1, espesor);
                   return (

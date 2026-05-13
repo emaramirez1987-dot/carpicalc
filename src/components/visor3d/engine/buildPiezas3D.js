@@ -6,13 +6,15 @@
 // piezas con su geometría, posición y metadatos de render.
 //
 // REGLA: este archivo NO importa React, three.js, ni nada del DOM.
-// Solo depende de utils.js (resolverDim, evaluarFormula).
+// Puede depender de utils.js y de funciones puras de services/
+// (ej: resolverContextoModulo) — todas sin side effects.
 //
 // Es el corazón del motor 3D. El editor paramétrico va a extender este
 // archivo (ej: aplicarParametros) sin tocar componentes UI.
 // ════════════════════════════════════════════════════════════════════════════
 
 import { resolverDim, evaluarFormula } from '../../../utils.js';
+import { resolverContextoModulo } from '../../../services/moduloService.js';
 
 // ── Orientaciones 3D ──────────────────────────────────────────────────────────
 // Solo 3 orientaciones + ignorar. La posición exacta siempre viene de posFormulas.
@@ -57,21 +59,11 @@ function getOrientacion(pieza) {
 export function buildPiezas3D(modulo, costos) {
   if (!modulo?.piezas || !costos?.materiales) return [];
 
-  const matDef = costos.materiales.find(m => m.tipo === modulo.material) || costos.materiales[0];
+  const { materialDef: matDef, espesor: esp, modVars } = resolverContextoModulo(modulo, costos);
   if (!matDef) return [];
 
   const { ancho = 600, alto = 700, profundidad = 550 } = modulo.dimensiones || {};
-  const esp = matDef.espesor || 18;
-  const M   = 1000;
-
-  const dimBase = { ancho, alto, profundidad, esp };
-  const customVarsResolved = {};
-  Object.entries(modulo.variables || {}).forEach(([k, v]) => {
-    customVarsResolved[k] = typeof v === 'number'
-      ? v
-      : (evaluarFormula(String(v), dimBase) ?? parseFloat(String(v)) ?? 0);
-  });
-  const modVars = { ...dimBase, ...customVarsResolved };
+  const M = 1000;
 
   const hw = ancho       / 2 / M;
   const hh = alto        / 2 / M;

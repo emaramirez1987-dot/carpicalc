@@ -44,6 +44,29 @@ constants.js            Datos de dominio: MODULO_VACIO, TIPO_MAT, ESTADOS_TRABAJ
 
 ---
 
+## Regla de oro: resolución de fórmulas
+
+**Cualquier código que necesite evaluar fórmulas o variables de un módulo DEBE usar `resolverContextoModulo(modulo, costos)` de `services/moduloService.js`.**
+
+```js
+import { resolverContextoModulo } from 'services/moduloService.js';
+
+const { baseVars, modVars, espesor, materialDef } = resolverContextoModulo(modulo, costos);
+// usar modVars con evaluarFormula(p.formula1, modVars)
+```
+
+**Reimplementar la lógica inline está PROHIBIDO.** Razón histórica: tres archivos (`corte/index.jsx`, `visor3d/buildPiezas3D.js`, `FormModulo` preview) reimplementaron el resuelvo inline y cada copia tenía bugs distintos:
+
+- Una sola pasada → variables con dependencias en orden inverso resolvían a 0
+- Spread `...variables` → una variable custom llamada `ancho` pisaba la dim base
+- `?? 0` después de `evaluarFormula` → fórmulas inválidas se silenciaban a 0
+
+Todos esos bugs se manifestaban al cambiar dimensiones. La función centralizada los resuelve todos y `resolverVariables` además rechaza colisiones con dims base con warning en consola.
+
+**Excepción permitida:** `engine/` puede importar de `services/` siempre que la función importada sea pura (sin React, sin three.js, sin DOM). `resolverContextoModulo` cumple esa condición.
+
+---
+
 ## Contrato formal del módulo
 
 Definido en `constants.js → MODULO_VACIO`.
@@ -260,5 +283,6 @@ Reglas: piezas más grandes que la placa estándar, corredores que no entran, et
 | Motor puro en `engine/` sin React | Motor dentro del componente | Testeable, importable desde cualquier lugar |
 | `parsearModulo` retorna objeto o null | `validarModulo` retorna boolean | Un solo paso: validar + normalizar + completar |
 | `parametros[]` en el schema desde Fase 0 | Agregar después | Módulos viejos no rompen; simplemente tienen `[]` |
+| `resolverContextoModulo` único punto de verdad | Reimplementar inline donde se necesite | 3 reimplementaciones produjeron 3 bugs al cambiar dimensiones |
 | Zustand diferido | Instalar ahora | El 3D editor necesita su propio estado nuevo, no migrar App.js |
 | `AcordeonEdicionItem` como archivo separado | Inline en index.jsx | Punto de integración limpio para el editor 3D |

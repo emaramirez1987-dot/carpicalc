@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, Badge, SectionTitle } from '../ui/index.jsx';
 import { fmtNum, fmtPeso, resolverDim, evaluarFormula, recalcularTotalPresupuesto } from '../../utils.js';
+import { resolverContextoModulo } from '../../services/moduloService.js';
 import { OptimizerButton } from './OptimizerButton.jsx';
 import * as optimizerService from '../../services/optimizerService.js';
 import { ResumenOptimizado } from './ResumenOptimizado.jsx';
@@ -494,11 +495,8 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
     const modBase = modulos[item.codigo];
     if (!modBase) return;
     const modUsado = getModUsadoEfectivo(item);
-    const matDef =
-      costos.materiales.find((m) => m.tipo === modUsado.material) ||
-      costos.materiales[0];
+    const { materialDef: matDef, espesor: esp, modVars } = resolverContextoModulo(modUsado, costos);
     if (!matDef) return;
-    const esp = matDef.espesor || 18;
     const matKey = `${matDef.nombre} (${esp}mm)`;
     if (!grupos[matKey])
       grupos[matKey] = {
@@ -510,11 +508,6 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
         areaNetaM2: 0,
         piezas: []
       };
-    const { ancho = 0, alto = 0, profundidad = 0 } = modUsado.dimensiones || {};
-    const modVars = { ancho, alto, profundidad, esp };
-    Object.entries(modUsado.variables || {}).forEach(([k, v]) => {
-      modVars[k] = typeof v === 'number' ? v : (evaluarFormula(String(v), modVars) ?? parseFloat(String(v)) ?? 0);
-    });
 
     modUsado.piezas.forEach((p) => {
       const d1 = p.especial

@@ -94,7 +94,17 @@ export function evaluarFormula(expr, vars = {}) {
  */
 export function resolverVariables(rawVars, baseVars) {
   const resolved = { ...baseVars };
-  const pending = Object.entries(rawVars || {});
+  // Defensa: una variable custom NUNCA puede pisar una dim base (ancho, alto, profundidad, esp).
+  // Si existe colisión, se ignora la variable y se loguea warning. Las dims son la verdad.
+  const baseKeys = new Set(Object.keys(baseVars || {}));
+  const pending = Object.entries(rawVars || {}).filter(([k]) => {
+    if (baseKeys.has(k)) {
+      // eslint-disable-next-line no-console
+      console.warn(`[resolverVariables] Variable custom "${k}" colisiona con dim base — ignorada.`);
+      return false;
+    }
+    return true;
+  });
   let changed = true;
   while (changed) {
     changed = false;

@@ -96,6 +96,43 @@ describe("resolverVariables", () => {
     expect(r.alto).toBe(700);
     expect(r.esp).toBe(18);
   });
+
+  // ── Regresión: bugs detectados en reimplementaciones inline ──────────────
+  // Hist: corte/index.jsx, visor3d/buildPiezas3D.js y FormModulo preview
+  // tenían cada uno una versión inline que rompía estos casos. Estos tests
+  // garantizan que no vuelva a pasar al cambiar dimensiones.
+
+  test("[regresión] variable con string vacío no rompe ni propaga NaN", () => {
+    const r = resolverVariables({ vacia: "" }, baseVars);
+    expect(r.vacia).toBe(0);
+    expect(r.ancho).toBe(800); // base intacta
+  });
+
+  test("[regresión] variable B → A (orden inverso) se resuelve por iteración", () => {
+    // En reimplementación de una pasada, B = 0 si venía antes que A.
+    const r = resolverVariables(
+      { b_depende_a: "a_simple + 10", a_simple: "ancho / 2" },
+      baseVars
+    );
+    expect(r.a_simple).toBe(400);
+    expect(r.b_depende_a).toBe(410);
+  });
+
+  test("[regresión] variable custom con nombre de dim base es ignorada (no pisa la dim)", () => {
+    const spy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const r = resolverVariables({ ancho: "" }, baseVars);
+    expect(r.ancho).toBe(800); // dim base intacta
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  test("[regresión] fórmula con identificador inexistente → 0, no NaN", () => {
+    // evaluarFormula no resuelve identificadores desconocidos: la expresión
+    // queda con letras y falla el regex de validación → null → 0.
+    const r = resolverVariables({ x: "no_existe + 5" }, baseVars);
+    expect(r.x).toBe(0);
+    expect(Number.isNaN(r.x)).toBe(false);
+  });
 });
 
 // ════════════════════════════════════════════════════════════════════════════
