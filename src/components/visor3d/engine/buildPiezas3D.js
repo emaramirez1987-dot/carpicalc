@@ -14,7 +14,7 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import { resolverDim, evaluarFormula } from '../../../utils.js';
-import { resolverContextoModulo } from '../../../services/moduloService.js';
+import { resolverContextoModulo, generarPiezas } from '../../../services/moduloService.js';
 
 // ── Orientaciones 3D ──────────────────────────────────────────────────────────
 // Solo 3 orientaciones + ignorar. La posición exacta siempre viene de posFormulas.
@@ -56,37 +56,65 @@ function getOrientacion(pieza) {
 }
 
 // ── buildPiezas3D ─────────────────────────────────────────────────────────────
-export function buildPiezas3D(modulo, costos) {
+//
+// Soporte paramétrico (Fase 3+4):
+//   • Si vienen `valoresParametros`, el módulo pasa primero por
+//     generarPiezas() (expansión de repeat + filtro condition).
+//   • Si una pieza tiene `zona`, su material y espesor se toman de
+//     modulo.zonas[*]; sino, del modulo.material (back-compat).
+//
+// Back-compat: módulos viejos (sin parametros, sin zonas) pasan por la
+// misma ruta y producen el mismo output que antes de Fase 4.
+export function buildPiezas3D(modulo, costos, valoresParametros = {}) {
   if (!modulo?.piezas || !costos?.materiales) return [];
 
-  const { materialDef: matDef, espesor: esp, modVars } = resolverContextoModulo(modulo, costos);
+  // Fase 3: módulo paramétrico → módulo concreto antes de renderizar.
+  const moduloConcreto = generarPiezas(modulo, valoresParametros, costos);
+
+  const { materialDef: matDef, espesor: espMod, modVars } = resolverContextoModulo(moduloConcreto, costos);
   if (!matDef) return [];
 
-  const { ancho = 600, alto = 700, profundidad = 550 } = modulo.dimensiones || {};
+  const { ancho = 600, alto = 700, profundidad = 550 } = moduloConcreto.dimensiones || {};
   const M = 1000;
 
   const hw = ancho       / 2 / M;
   const hh = alto        / 2 / M;
   const hd = profundidad / 2 / M;
-  const te = esp / M;
+
+  // Mapa de zonas para lookup rápido por id (Fase 4)
+  const zonaMap = new Map();
+  for (const z of (moduloConcreto.zonas || [])) zonaMap.set(z.id, z);
 
   const result = [];
 
-  modulo.piezas.forEach((p, piezaIdx) => {
+  moduloConcreto.piezas.forEach((p, piezaIdx) => {
     const orientacion = getOrientacion(p);
     if (orientacion === 'ignorar') return;
+
+    // ── Material y espesor por zona (Fase 4) ─────────────────────────────
+    // Si la pieza pertenece a una zona, usamos el material y espesor de
+    // esa zona. Sino, los del módulo (back-compat).
+    const zonaPieza = p.zona ? zonaMap.get(p.zona) : null;
+    const matPieza  = zonaPieza
+      ? (costos.materiales.find((m) => m.tipo === zonaPieza.material) || matDef)
+      : matDef;
+    const espPieza  = (zonaPieza?.espesor) ?? matPieza?.espesor ?? espMod;
+    const te        = espPieza / M;
+    // Si el espesor difiere del módulo, recomputo modVars con el nuevo esp
+    // para que las fórmulas que usan `esp` resuelvan al espesor de la pieza.
+    const modVarsP  = espPieza === espMod ? modVars : { ...modVars, esp: espPieza };
 
     const d1 = p.especial
       ? (parseFloat(p.dimLibre1) || 0)
       : p.formula1 != null
-        ? (evaluarFormula(p.formula1, modVars) ?? 0)
-        : resolverDim({ ancho, alto, profundidad }[p.usaDim], p.offsetEsp, p.offsetMm, p.divisor  || 1, esp);
+        ? (evaluarFormula(p.formula1, modVarsP) ?? 0)
+        : resolverDim({ ancho, alto, profundidad }[p.usaDim], p.offsetEsp, p.offsetMm, p.divisor  || 1, espPieza);
 
     const d2 = p.especial
       ? (parseFloat(p.dimLibre2) || 0)
       : p.formula2 != null
-        ? (evaluarFormula(p.formula2, modVars) ?? 0)
-        : resolverDim({ ancho, alto, profundidad }[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, esp);
+        ? (evaluarFormula(p.formula2, modVarsP) ?? 0)
+        : resolverDim({ ancho, alto, profundidad }[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, espPieza);
 
     const cantidad = p.cantidad || 1;
 
@@ -123,7 +151,7 @@ export function buildPiezas3D(modulo, costos) {
       //   Z: 0 = fondo      →  profundidad = frente
       if (p.posFormulas) {
         const pf      = p.posFormulas;
-        const posVars = { ...modVars, d1, d2 };
+        const posVars = { ...modVarsP, d1, d2 };
         if (pf.x != null && pf.x !== '') { const v = evaluarFormula(String(pf.x), posVars); if (v !== null) autoPos[0] = v / 1000 + size[0] / 2 - hw; }
         if (pf.y != null && pf.y !== '') { const v = evaluarFormula(String(pf.y), posVars); if (v !== null) autoPos[1] = v / 1000 + size[1] / 2 - hh; }
         if (pf.z != null && pf.z !== '') { const v = evaluarFormula(String(pf.z), posVars); if (v !== null) autoPos[2] = v / 1000 + size[2] / 2 - hd; }
@@ -154,7 +182,8 @@ export function buildPiezas3D(modulo, costos) {
         offset3d,
         rot3d,
         status,
-        materialTipo: modulo.material || 'melamina',
+        materialTipo: matPieza?.tipo || moduloConcreto.material || 'melamina',
+        zona:         p.zona || null,
         isHandle:     false,
         hasManualPos: hasOffset,
       });
