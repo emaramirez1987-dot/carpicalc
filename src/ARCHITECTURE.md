@@ -76,15 +76,59 @@ Definido en `constants.js → MODULO_VACIO`.
   nombre:      string,      // obligatorio
   descripcion: string,
   categoria:   string,      // id de CATEGORIAS_DEFAULT
-  material:    string,      // clave de TIPO_MAT
+  material:    string,      // clave de TIPO_MAT (default cuando una pieza no tiene zona)
   dimensiones: { ancho, alto, profundidad },  // mm
   piezas:      PiezaModulo[],
   variables:   Variable[],
-  herrajes:    { id, cantidad }[],
+  herrajes:    Herraje[],   // { id, cantidad: number|string, condition?: string }
   moDeObra:    { tipo, horas },
   imagen:      base64 | null,
   tipoVisual:  string | null,
-  parametros:  Parametro3D[],   // ← reservado para editor 3D paramétrico
+
+  // ── Schema paramétrico (Fase 1) ───────────────────────────────────────
+  parametros:  Parametro[],   // lo que el usuario edita por instancia
+  zonas:       Zona[],        // agrupación de piezas con material propio
+  constraints: Constraint[],  // validaciones del módulo
+}
+```
+
+### Tipos del schema paramétrico
+
+```js
+// Parametro — un input editable por el usuario en el configurador
+{
+  id:       string,    // identificador (válido como variable JS)
+  nombre:   string,    // etiqueta UI
+  tipo:     "number" | "integer" | "boolean" | "choice" | "formula",
+  def:      number | boolean | string,
+  min?:     number,    // number/integer
+  max?:     number,    // number/integer
+  opciones?:string[],  // choice
+  expr?:    string,    // formula (calculado, no editable)
+  unidad?:  string,
+}
+
+// Zona — agrupación de piezas con material propio (libre, definida por el autor)
+//   Ejemplos típicos: cuerpo, frente, fondos, interiores, respaldo, patas
+//   Una pieza apunta a su zona vía `pieza.zona`. Sin zona → hereda modulo.material.
+{
+  id:        string,
+  nombre:    string,
+  material:  string,   // clave de TIPO_MAT
+  espesor?:  number,   // override opcional
+}
+
+// Constraint — validación del módulo paramétrico
+{
+  expr: string,  // fórmula booleana (ej: "alto >= cajones * 80")
+  msg:  string,  // mensaje al usuario si expr es false
+}
+
+// Herraje — extendido con cantidad-fórmula y condition
+{
+  id:         number | string,
+  cantidad:   number | string,  // puede ser fórmula
+  condition?: string,           // herraje incluido solo si truthy
 }
 ```
 
@@ -284,5 +328,13 @@ Reglas: piezas más grandes que la placa estándar, corredores que no entran, et
 | `parsearModulo` retorna objeto o null | `validarModulo` retorna boolean | Un solo paso: validar + normalizar + completar |
 | `parametros[]` en el schema desde Fase 0 | Agregar después | Módulos viejos no rompen; simplemente tienen `[]` |
 | `resolverContextoModulo` único punto de verdad | Reimplementar inline donde se necesite | 3 reimplementaciones produjeron 3 bugs al cambiar dimensiones |
+
+---
+
+## Deuda técnica registrada
+
+| Ítem | Detalle |
+|---|---|
+| `modulo.variables` shape inconsistente | `parsearModulo` lo valida como `Array`, pero `FormModulo`, `corte/`, `visor3d/` y `resolverVariables` lo tratan como objeto `{ key: formula }`. Resolver: unificar a objeto en el parser y todos los callsites, o explicitar conversión. Bloquea limpieza del schema antes de Fase 6. |
 | Zustand diferido | Instalar ahora | El 3D editor necesita su propio estado nuevo, no migrar App.js |
 | `AcordeonEdicionItem` como archivo separado | Inline en index.jsx | Punto de integración limpio para el editor 3D |

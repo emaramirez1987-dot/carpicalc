@@ -17,6 +17,42 @@
 import { MODULO_VACIO } from "../constants.js";
 import { resolverVariables } from "../utils.js";
 
+// ── Tipos del schema paramétrico (JSDoc) ──────────────────────────────────
+
+/**
+ * @typedef {Object} Parametro
+ * @property {string} id            Identificador único (válido como variable JS)
+ * @property {string} nombre        Etiqueta para UI
+ * @property {("number"|"integer"|"boolean"|"choice"|"formula")} tipo
+ * @property {(number|boolean|string)} def  Valor por defecto
+ * @property {number=}   min         Solo para number/integer
+ * @property {number=}   max         Solo para number/integer
+ * @property {string[]=} opciones    Solo para choice
+ * @property {string=}   expr        Solo para formula (calculado, no editable)
+ * @property {string=}   unidad      Para UI: "mm", "cm", etc.
+ */
+
+/**
+ * @typedef {Object} Zona
+ * @property {string}  id        Identificador único (válido como referencia)
+ * @property {string}  nombre    Etiqueta para UI
+ * @property {string}  material  Clave de TIPO_MAT
+ * @property {number=} espesor   Override opcional del espesor del material
+ */
+
+/**
+ * @typedef {Object} Constraint
+ * @property {string} expr  Fórmula que debe evaluar a truthy (ej: "alto >= cajones * 80")
+ * @property {string} msg   Mensaje al usuario si expr es false
+ */
+
+/**
+ * @typedef {Object} Herraje
+ * @property {(number|string)} id        ID del herraje en costos.herrajes
+ * @property {(number|string)} cantidad  Numero fijo o fórmula (ej: "cajones")
+ * @property {string=}         condition Fórmula booleana — herraje solo se incluye si true
+ */
+
 // ── parsearModulo ─────────────────────────────────────────────────────────
 // Recibe datos crudos (Supabase, localStorage, importación JSON).
 // Retorna null si el dato es fundamentalmente corrupto (no se puede usar).
@@ -38,7 +74,9 @@ export function parsearModulo(raw) {
     piezas:     Array.isArray(raw.piezas)     ? raw.piezas     : [],
     variables:  Array.isArray(raw.variables)  ? raw.variables  : [],
     herrajes:   Array.isArray(raw.herrajes)   ? raw.herrajes   : [],
-    parametros: Array.isArray(raw.parametros) ? raw.parametros : [],
+    parametros:  Array.isArray(raw.parametros)  ? raw.parametros  : [],
+    zonas:       Array.isArray(raw.zonas)       ? raw.zonas       : [],
+    constraints: Array.isArray(raw.constraints) ? raw.constraints : [],
   };
 }
 

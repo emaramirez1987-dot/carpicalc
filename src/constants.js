@@ -48,11 +48,27 @@ export const PERFIL_VACIO = {
 //   dimensiones — { ancho, alto, profundidad } en mm
 //   piezas      — PiezaModulo[] (ver roles en ROLES_PIEZA_DEFAULT)
 //   variables   — Variable[] { nombre, formula } para cálculos encadenados
-//   herrajes    — { id, cantidad }[] referenciando costos.herrajes
+//   herrajes    — Herraje[] referenciando costos.herrajes
+//                 { id, cantidad: number|string, condition?: string }
+//                 cantidad puede ser fórmula; condition habilita/oculta
 //   moDeObra    — { tipo: "por_modulo"|"por_hora", horas }
 //   imagen      — base64 string | null
 //   tipoVisual  — preset de layout SVG ("bajo"|"aereo"|null)
-//   parametros  — Parametro3D[] reservado para el editor 3D paramétrico
+//
+//   ── Schema paramétrico (Fase 1 del editor 3D) ─────────────────────────
+//   parametros  — Parametro[]: lo que el usuario edita por instancia
+//                 { id, nombre, tipo, def, min?, max?, opciones?, expr?, unidad? }
+//                 tipo: "number" | "integer" | "boolean" | "choice" | "formula"
+//                 - choice: usa `opciones: string[]`
+//                 - formula: usa `expr: string` (calculado, no editable)
+//   zonas       — Zona[]: agrupación lógica de piezas con material propio
+//                 { id, nombre, material, espesor? }
+//                 Las piezas apuntan a una zona vía `pieza.zona`. Si una pieza
+//                 no tiene zona, hereda `modulo.material` (back-compat).
+//                 Ejemplos: cuerpo, frente, fondos, interiores, respaldo, patas.
+//   constraints — Constraint[]: validaciones del módulo paramétrico
+//                 { expr: string, msg: string }
+//                 Si expr es false al evaluar, msg se muestra al usuario.
 //
 export const MODULO_VACIO = {
   nombre:      "",
@@ -66,7 +82,10 @@ export const MODULO_VACIO = {
   moDeObra:    { tipo: "por_modulo", horas: 0 },
   imagen:      null,
   tipoVisual:  null,
+  // Schema paramétrico — back-compatible (módulos viejos = arrays vacíos)
   parametros:  [],
+  zonas:       [],
+  constraints: [],
 };
 
 // ── Tipos de material (clave → etiqueta legible) ──────────────────────────
