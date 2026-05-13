@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, Badge, SectionTitle } from '../ui/index.jsx';
 import { fmtNum, fmtPeso, resolverDim, evaluarFormula, recalcularTotalPresupuesto } from '../../utils.js';
-import { resolverContextoModulo } from '../../services/moduloService.js';
+import { resolverContextoModulo, generarPiezas } from '../../services/moduloService.js';
 import { OptimizerButton } from './OptimizerButton.jsx';
 import * as optimizerService from '../../services/optimizerService.js';
 import { ResumenOptimizado } from './ResumenOptimizado.jsx';
@@ -494,7 +494,9 @@ function ListaCorte({ items, modulos, costos, getModUsado, presupuestos, presupu
   itemsEfectivos.forEach((item) => {
     const modBase = modulos[item.codigo];
     if (!modBase) return;
-    const modUsado = getModUsadoEfectivo(item);
+    // Fase 7.5: módulo paramétrico → módulo concreto antes de listar piezas.
+    // Back-compat: módulos viejos pasan idénticos.
+    const modUsado = generarPiezas(getModUsadoEfectivo(item), item.parametrosValores || {}, costos);
     const { materialDef: matDef, espesor: esp, modVars } = resolverContextoModulo(modUsado, costos);
     if (!matDef) return;
     const matKey = `${matDef.nombre} (${esp}mm)`;

@@ -115,7 +115,7 @@ function Presupuesto({
       const totalNuevo = nuevoItems.reduce((acc, item) => {
         const base = modulos[item.codigo]; if (!base) return acc;
         const d = nuevoDimOverride[item.id || item.codigo] || base.dimensiones;
-        const calc = calcularModulo({ ...base, dimensiones: d }, costos);
+        const calc = calcularModulo({ ...base, dimensiones: d }, costos, item.parametrosValores || {});
         return acc + (calc ? calc.total * item.cantidad : 0);
       }, 0);
       onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, {
@@ -610,7 +610,7 @@ function Presupuesto({
             const keyId = item.id || item.codigo;
             const modUsado = getModUsado(item);
             if (!modUsado) return null;
-            const calc = calcularModulo(modUsado, costos);
+            const calc = calcularModulo(modUsado, costos, item.parametrosValores || {});
             if (!calc) return null;
             const modBase = modulos[item.codigo];
             const over = modUsado.dimensiones;

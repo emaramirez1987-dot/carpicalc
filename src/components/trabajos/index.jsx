@@ -238,7 +238,7 @@ function TabPresupuestoTrabajo({ p, modulos, costos }) {
         if (!modBase) return null;
         const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
         const modUsado = { ...modBase, dimensiones: dims };
-        const calc = calcularModulo(modUsado, costos);
+        const calc = calcularModulo(modUsado, costos, item.parametrosValores || {});
         return (
           <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "var(--bg-subtle)", borderRadius: 8, gap: 12 }}>
             <div style={{ minWidth: 0 }}>

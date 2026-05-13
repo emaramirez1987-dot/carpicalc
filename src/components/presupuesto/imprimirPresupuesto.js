@@ -144,7 +144,7 @@ function imprimirPresupuesto(
       const modBase = modulos[item.codigo];
       if (!modBase) return "";
       const modUsado = getModUsado(item);
-      const calc = calcularModulo(modUsado, costos);
+      const calc = calcularModulo(modUsado, costos, item.parametrosValores || {});
       if (!calc) return "";
       const over = modUsado.dimensiones;
       const dimDif =
@@ -380,7 +380,7 @@ function generarFichaObra(id, p, modulos, costos, perfil = {}) {
       if (!modBase) return;
       const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
       const modUsado = { ...modBase, dimensiones: dims };
-      const calc = calcularModulo(modUsado, costos);
+      const calc = calcularModulo(modUsado, costos, item.parametrosValores || {});
       if (!calc) return;
       const key = modUsado.material;
       if (!matMap[key]) matMap[key] = { nombre: costos.materiales.find(m => m.tipo === key)?.nombre || key, m2: 0, espesor: costos.materiales.find(m => m.tipo === key)?.espesor || 18, placaL: costos.materiales.find(m => m.tipo === key)?.placaLargo || 2750, placaA: costos.materiales.find(m => m.tipo === key)?.placaAncho || 1830 };
@@ -399,7 +399,7 @@ function generarFichaObra(id, p, modulos, costos, perfil = {}) {
       if (!modBase) return;
       const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || modBase.dimensiones;
       const modUsado = { ...modBase, dimensiones: dims };
-      const calc = calcularModulo(modUsado, costos);
+      const calc = calcularModulo(modUsado, costos, item.parametrosValores || {});
       if (!calc) return;
       modUsado.piezas.forEach(pz => {
         if (!pz.tc?.id) return;

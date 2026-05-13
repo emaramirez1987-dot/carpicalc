@@ -28,7 +28,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
       const base = modulos[item.codigo];
       if (!base) return acc;
       const dims = (p.dimOverride && p.dimOverride[item.id || item.codigo]) || base.dimensiones;
-      const calc = calcularModulo({ ...base, dimensiones: dims }, costos);
+      const calc = calcularModulo({ ...base, dimensiones: dims }, costos, item.parametrosValores || {});
       if (!calc) return acc;
       return acc + calc.costoBase * item.cantidad; // solo costo sin ganancia
     }, 0));

@@ -95,7 +95,7 @@ function ListaItemsVP({ items, modulos, costos, dimOverride, composicionOverride
         const dims   = (dimOverride && dimOverride[keyId]) || base?.dimensiones;
         const comp   = composicionOverride?.[keyId];
         const modUsado = { ...base, dimensiones: dims, vistaConfig: comp?.vistaConfig ?? base?.vistaConfig };
-        const calc   = calcularModulo(modUsado, costos);
+        const calc   = calcularModulo(modUsado, costos, item.parametrosValores || {});
         if (!calc) return null;
         const esOculto = itemsOcultos.includes(keyId);
 
@@ -593,7 +593,7 @@ function VistaPrevia({
                     const dims = presSel.dimOverride?.[keyVP] || base?.dimensiones;
                     const compVP = presSel.composicionOverride?.[keyVP];
                     const modUsado = { ...base, dimensiones: dims, vistaConfig: compVP?.vistaConfig ?? base?.vistaConfig };
-                    const calc = calcularModulo(modUsado, costos);
+                    const calc = calcularModulo(modUsado, costos, item.parametrosValores || {});
                     if (!calc) return null;
                     return (
                       <div key={item.id || item.codigo} style={{ display: "grid", gridTemplateColumns: "38px 52px 1fr 76px 38px 32px 78px", gap: 6, padding: "7px 4px", borderBottom: `1px solid ${P.border}`, background: rowIdx % 2 === 1 ? `${P.rowAlt}80` : "transparent", alignItems: "center" }}>
@@ -642,7 +642,7 @@ function VistaPrevia({
                     {mostrarPrecioUnitario && itemsVisiblesPaper.map(item => {
                       const base = modulos[item.codigo];
                       const dims = presSel.dimOverride?.[item.id || item.codigo] || base?.dimensiones;
-                      const calc = calcularModulo({ ...base, dimensiones: dims }, costos);
+                      const calc = calcularModulo({ ...base, dimensiones: dims }, costos, item.parametrosValores || {});
                       if (!calc || item.cantidad <= 1) return null;
                       return (
                         <div key={item.id} style={{ fontSize: 9, color: P.muted, fontFamily: "'DM Mono', monospace" }}>
