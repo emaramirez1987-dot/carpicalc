@@ -517,6 +517,59 @@ export default function VisorModulo3D({ modulo, costos, onClose, onActualizar })
 
               <DIVIDER />
 
+              {/* Parametrización (Nivel 1 — Fase 8) ────────────────────── */}
+              {(() => {
+                const tieneAlgo = selectedPieza?.zona || selectedPieza?.condition || selectedPieza?.repeat;
+                if (!tieneAlgo && !(modulo?.zonas?.length > 0)) return null;
+                const zonaDef = selectedPieza?.zona
+                  ? (modulo?.zonas || []).find(z => z.id === selectedPieza.zona)
+                  : null;
+                return (
+                  <>
+                    <LABEL>Parametrización</LABEL>
+                    <div style={{
+                      fontSize: 10, fontFamily: "'DM Mono',monospace",
+                      display: 'flex', flexDirection: 'column', gap: 4,
+                      marginBottom: 8, padding: '8px 10px',
+                      background: 'rgba(200,160,42,0.07)',
+                      border: '1px solid rgba(200,160,42,0.20)',
+                      borderRadius: 4,
+                    }}>
+                      {selectedPieza?.zona ? (
+                        <div>
+                          <span style={{ color: '#888' }}>Zona: </span>
+                          <span style={{ color: '#d0b85a' }}>
+                            {zonaDef?.nombre || selectedPieza.zona}
+                          </span>
+                          {zonaDef?.material && (
+                            <span style={{ color: '#666' }}> · {zonaDef.material}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ color: '#666' }}>
+                          Sin zona — usa material del módulo
+                        </div>
+                      )}
+                      {selectedPieza?.condition && (
+                        <div>
+                          <span style={{ color: '#888' }}>Si: </span>
+                          <span style={{ color: '#d0b85a' }}>{selectedPieza.condition}</span>
+                        </div>
+                      )}
+                      {selectedPieza?.repeat && (
+                        <div>
+                          <span style={{ color: '#888' }}>Repite: </span>
+                          <span style={{ color: '#d0b85a' }}>
+                            {selectedPieza.repeat.var || 'i'} de {String(selectedPieza.repeat.from)} a {String(selectedPieza.repeat.to)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <DIVIDER />
+                  </>
+                );
+              })()}
+
               {/* Orientación 3D */}
               <LABEL>Orientación 3D</LABEL>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
