@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import EditorParametrico from './EditorParametrico.jsx';
 import { Btn, TextInput, Select } from '../ui/index.jsx';
 import { fmtPeso, fmtNum, resolverDim, calcularModulo, evaluarFormula, resolverVariables } from '../../utils.js';
 import { CATEGORIAS_DEFAULT } from '../../constants.js';
@@ -639,6 +640,7 @@ function FormModulo({
   // "actualizando" | "nuevo" | null
   const [nombreNuevoCatalogo, setNombreNuevoCatalogo] = useState("");
   const [listaPiezasAbierta, setListaPiezasAbierta] = useState(false);
+  const [paramAbierto, setParamAbierto] = useState(false);
   const [datos, setDatos] = useState(() =>
     moduloBase
       ? {
@@ -649,7 +651,10 @@ function FormModulo({
           material: moduloBase.material,
           categoria: moduloBase.categoria || "otros",
           tipoVisual: moduloBase.tipoVisual || null,
-          variables: moduloBase.variables ? { ...moduloBase.variables } : {}
+          variables: moduloBase.variables ? { ...moduloBase.variables } : {},
+          parametros:  Array.isArray(moduloBase.parametros)  ? moduloBase.parametros  : [],
+          zonas:       Array.isArray(moduloBase.zonas)       ? moduloBase.zonas       : [],
+          constraints: Array.isArray(moduloBase.constraints) ? moduloBase.constraints : [],
         }
       : (_draft?.datos || {
           codigo: "",
@@ -659,7 +664,10 @@ function FormModulo({
           material: "melamina",
           categoria: "otros",
           tipoVisual: null,
-          variables: {}
+          variables: {},
+          parametros:  [],
+          zonas:       [],
+          constraints: [],
         })
   );
   const [piezas, setPiezas] = useState(() =>
@@ -786,6 +794,9 @@ function FormModulo({
     categoria:   datos.categoria || "otros",
     tipoVisual:  datos.tipoVisual || null,
     variables:   datos.variables || {},
+    parametros:  datos.parametros  || [],
+    zonas:       datos.zonas       || [],
+    constraints: datos.constraints || [],
     piezas,
     herrajes,
     moDeObra
@@ -1165,6 +1176,32 @@ function FormModulo({
                 ))}
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Panel paramétrico (Fase 6) — full width, debajo de las dos columnas ── */}
+      <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+        <div onClick={() => setParamAbierto(v => !v)}
+          style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.10)', borderBottom: paramAbierto ? '1px solid rgba(200,160,42,0.25)' : 'none', borderLeft: '3px solid rgba(200,160,42,0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}>
+          <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#c8a02a' }}>
+            ⚙ Parametrizar este módulo
+            <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 10, fontWeight: 400, textTransform: 'none', letterSpacing: '0.02em' }}>
+              {(datos.parametros?.length || 0) + (datos.zonas?.length || 0) + (datos.constraints?.length || 0) > 0
+                ? `${datos.parametros?.length || 0} param · ${datos.zonas?.length || 0} zonas · ${datos.constraints?.length || 0} reglas`
+                : "opcional · permite configurar el módulo desde el presupuesto"}
+            </span>
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', transition: 'transform 0.2s', display: 'inline-block', transform: paramAbierto ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        </div>
+        {paramAbierto && (
+          <div style={{ padding: 14, background: 'var(--bg-surface)' }}>
+            <EditorParametrico
+              parametros={datos.parametros || []}
+              zonas={datos.zonas || []}
+              constraints={datos.constraints || []}
+              onChange={({ parametros, zonas, constraints }) =>
+                setDatos(d => ({ ...d, parametros, zonas, constraints }))} />
           </div>
         )}
       </div>
