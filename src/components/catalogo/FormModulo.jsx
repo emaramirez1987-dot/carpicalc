@@ -659,6 +659,8 @@ function FormModulo({
               zonas={datos.zonas || []}
               constraints={datos.constraints || []}
               subComponentes={datos.subComponentes || []}
+              moduloPreview={{ ...datos, piezas, herrajes, moDeObra }}
+              costos={costos}
               onChange={({ parametros, zonas, constraints, subComponentes }) =>
                 setDatos(d => ({ ...d, parametros, zonas, constraints, subComponentes }))} />
           </div>

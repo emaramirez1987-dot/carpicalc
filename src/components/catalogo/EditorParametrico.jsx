@@ -11,10 +11,13 @@
 // guarda esto en su `datos` y lo persiste en datosGuardar().
 // ════════════════════════════════════════════════════════════════════════════
 
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { TIPO_MAT } from '../../constants.js';
 import { inspeccionarFormula } from '../../utils.js';
 import EditorSubComponente from './EditorSubComponente.jsx';
+// Lazy: el MiniVisor3D arrastra three.js (~220 kB). Solo se carga cuando
+// el usuario abre el panel paramétrico Y tiene el preview activado.
+const MiniVisor3D = lazy(() => import('./MiniVisor3D.jsx'));
 
 // Variables que siempre están disponibles para fórmulas dentro de un módulo:
 // dims base + esp + raíces de dot notation comunes.
@@ -357,11 +360,15 @@ function ListaSubComponentes({ subComponentes, onChange }) {
 // EditorParametrico (default export)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function EditorParametrico({ parametros, zonas, constraints, subComponentes = [], onChange }) {
+export default function EditorParametrico({ parametros, zonas, constraints, subComponentes = [], onChange, moduloPreview, costos }) {
   const [secs, setSecs] = useState({ params: true, zonas: false, constraints: false, subs: false });
+  const [previewAbierto, setPreviewAbierto] = useState(true);
   const toggleSec = k => setSecs(p => ({ ...p, [k]: !p[k] }));
 
-  return (
+  // Si tenemos datos para previsualizar Y el preview está abierto → layout 2 cols
+  const mostrarPreview = previewAbierto && !!moduloPreview && !!costos;
+
+  const editor = (
     <div style={{
       borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)",
       background: "var(--bg-subtle)", display: "flex", flexDirection: "column", gap: 1,
@@ -390,6 +397,54 @@ export default function EditorParametrico({ parametros, zonas, constraints, subC
         {subSecHdr("🧩", "Sub-componentes (módulos hijos)", subComponentes.length, secs.subs, () => toggleSec("subs"))}
         {secs.subs && <ListaSubComponentes subComponentes={subComponentes}
           onChange={(s) => onChange({ parametros, zonas, constraints, subComponentes: s })} />}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* Toggle del preview */}
+      {moduloPreview && costos && (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={() => setPreviewAbierto(v => !v)}
+            style={{
+              padding: "4px 10px", borderRadius: 6, cursor: "pointer",
+              fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700,
+              background: previewAbierto ? "rgba(212,175,55,0.15)" : "transparent",
+              border: `1px solid ${previewAbierto ? "rgba(212,175,55,0.45)" : "var(--border)"}`,
+              color: previewAbierto ? "var(--accent)" : "var(--text-muted)",
+            }}>
+            {previewAbierto ? "◀ Ocultar preview 3D" : "▶ Mostrar preview 3D"}
+          </button>
+        </div>
+      )}
+
+      <div style={{
+        display: mostrarPreview ? "grid" : "block",
+        gridTemplateColumns: mostrarPreview ? "1fr 360px" : undefined,
+        gap: 12,
+      }}>
+        {editor}
+        {mostrarPreview && (
+          <div style={{ position: "sticky", top: 10, alignSelf: "start" }}>
+            <Suspense fallback={
+              <div style={{
+                height: 320, background: "var(--bg-base)", borderRadius: 8,
+                border: "1px solid var(--border)", display: "flex",
+                alignItems: "center", justifyContent: "center",
+                color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace",
+              }}>Cargando 3D…</div>
+            }>
+              <MiniVisor3D modulo={moduloPreview} costos={costos} />
+            </Suspense>
+            <div style={{
+              marginTop: 6, fontSize: 10, color: "var(--text-muted)",
+              fontFamily: "'DM Mono',monospace", textAlign: "center",
+            }}>
+              Preview con valores por defecto
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

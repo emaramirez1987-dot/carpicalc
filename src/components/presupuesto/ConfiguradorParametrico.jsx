@@ -26,6 +26,32 @@ const inputBase = {
   width: "100%", boxSizing: "border-box",
 };
 
+// ── Input numérico con slider opcional ─────────────────────────────────────
+// Slider visible solo si el parámetro tiene min y max definidos.
+// Drag del slider = cambio en vivo (3D, costo, etc. se actualizan).
+function NumberConSlider({ p, val, onChange }) {
+  const tieneRango = typeof p.min === "number" && typeof p.max === "number" && p.max > p.min;
+  const parse = (v) => v === "" ? p.def : (p.tipo === "integer" ? parseInt(v) : parseFloat(v));
+  const setN = (v) => { const n = parse(v); if (Number.isFinite(n)) onChange(n); };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <input type="number" value={val ?? ""}
+        min={p.min} max={p.max}
+        step={p.tipo === "integer" ? 1 : "any"}
+        onChange={e => setN(e.target.value)}
+        style={inputBase} />
+      {tieneRango && (
+        <input type="range"
+          min={p.min} max={p.max}
+          step={p.tipo === "integer" ? 1 : "any"}
+          value={val ?? p.def ?? p.min}
+          onChange={e => setN(e.target.value)}
+          style={{ width: "100%", accentColor: "#d4af37", cursor: "pointer" }} />
+      )}
+    </div>
+  );
+}
+
 function ConfiguradorParametrico({ modulo, valores, onChange, costos }) {
   const params      = Array.isArray(modulo?.parametros)  ? modulo.parametros  : [];
   const constraints = Array.isArray(modulo?.constraints) ? modulo.constraints : [];
@@ -86,14 +112,7 @@ function ConfiguradorParametrico({ modulo, valores, onChange, costos }) {
                   <input value={p.expr || ""} disabled
                     style={{ ...inputBase, color: "var(--text-muted)", background: "var(--bg-subtle)" }} />
                 ) : (
-                  <input type="number" value={val ?? ""}
-                    min={p.min} max={p.max}
-                    step={p.tipo === "integer" ? 1 : "any"}
-                    onChange={e => {
-                      const n = e.target.value === "" ? p.def : (p.tipo === "integer" ? parseInt(e.target.value) : parseFloat(e.target.value));
-                      setValor(p.id, Number.isFinite(n) ? n : p.def);
-                    }}
-                    style={inputBase} />
+                  <NumberConSlider p={p} val={val} onChange={(n) => setValor(p.id, n)} />
                 )}
               </div>
             );
