@@ -15,7 +15,7 @@ import React from 'react';
 import { TIPO_MAT } from '../../constants.js';
 import ConfiguradorParametrico from './ConfiguradorParametrico.jsx';
 
-export default function AcordeonEdicionItem({
+function AcordeonEdicionItem({
   modalEdicion,
   setModalEdicion,
   aplicarDims,
@@ -133,3 +133,6 @@ export default function AcordeonEdicionItem({
     </div>
   );
 }
+
+// React.memo evita re-render cuando los props no cambian.
+export default React.memo(AcordeonEdicionItem);

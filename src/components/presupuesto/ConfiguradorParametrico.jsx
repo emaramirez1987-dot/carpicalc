@@ -26,7 +26,7 @@ const inputBase = {
   width: "100%", boxSizing: "border-box",
 };
 
-export default function ConfiguradorParametrico({ modulo, valores, onChange, costos }) {
+function ConfiguradorParametrico({ modulo, valores, onChange, costos }) {
   const params      = Array.isArray(modulo?.parametros)  ? modulo.parametros  : [];
   const constraints = Array.isArray(modulo?.constraints) ? modulo.constraints : [];
 
@@ -118,3 +118,8 @@ export default function ConfiguradorParametrico({ modulo, valores, onChange, cos
     </div>
   );
 }
+
+// React.memo evita re-render cuando los props no cambian — al tipear
+// dimensiones en AcordeonEdicionItem, el configurador no se re-renderiza
+// si los parámetros del módulo no cambiaron.
+export default React.memo(ConfiguradorParametrico);

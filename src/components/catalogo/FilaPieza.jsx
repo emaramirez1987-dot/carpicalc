@@ -116,4 +116,6 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
   );
 }
 
-export default FilaPieza;
+// React.memo evita re-render cuando los props no cambian — al editar
+// una pieza, solo esa fila se re-renderiza, no las otras 4-10 filas.
+export default React.memo(FilaPieza);
