@@ -53,6 +53,30 @@ import { resolverVariables, evaluarExpresion, evaluarCondicion, evaluarFormula }
  * @property {string=}         condition Fórmula booleana — herraje solo se incluye si true
  */
 
+/**
+ * @typedef {Object} SubComponente
+ *
+ * Un subcomponente es un mini-módulo dentro del módulo padre, con su propio
+ * eje local (0,0,0 = esquina inferior-izquierda-fondo del subcomp). Su origen
+ * en coords del padre se define con `origen.x/y/z` (fórmulas que pueden usar
+ * vars del padre y el índice `i` del repeat).
+ *
+ * Las piezas del subcomp se diseñan en coords LOCALES — el motor las traslada
+ * automáticamente a coords del padre al expandir.
+ *
+ * @property {string}                 id
+ * @property {string}                 nombre
+ * @property {Object=}                repeat       { var, from, to } — opcional
+ * @property {string=}                condition    Fórmula booleana — solo si truthy
+ * @property {{x: string, y: string, z: string}=} origen
+ *   Origen del subcomp en coords del padre (mm). Default: (0,0,0).
+ * @property {{ancho: (string|number), alto: (string|number), profundidad: (string|number)}} dimensiones
+ *   Dimensiones LOCALES del subcomp (pueden ser fórmulas que usan vars del padre)
+ * @property {Parametro[]=}           parametros   Parámetros propios del subcomp
+ * @property {Object[]}               piezas       Piezas en coords LOCALES
+ * @property {Herraje[]=}             herrajes     Herrajes propios
+ */
+
 // ── parsearModulo ─────────────────────────────────────────────────────────
 // Recibe datos crudos (Supabase, localStorage, importación JSON).
 // Retorna null si el dato es fundamentalmente corrupto (no se puede usar).
@@ -74,9 +98,10 @@ export function parsearModulo(raw) {
     piezas:     Array.isArray(raw.piezas)     ? raw.piezas     : [],
     variables:  Array.isArray(raw.variables)  ? raw.variables  : [],
     herrajes:   Array.isArray(raw.herrajes)   ? raw.herrajes   : [],
-    parametros:  Array.isArray(raw.parametros)  ? raw.parametros  : [],
-    zonas:       Array.isArray(raw.zonas)       ? raw.zonas       : [],
-    constraints: Array.isArray(raw.constraints) ? raw.constraints : [],
+    parametros:     Array.isArray(raw.parametros)     ? raw.parametros     : [],
+    zonas:          Array.isArray(raw.zonas)          ? raw.zonas          : [],
+    constraints:    Array.isArray(raw.constraints)    ? raw.constraints    : [],
+    subComponentes: Array.isArray(raw.subComponentes) ? raw.subComponentes : [],
   };
 }
 
@@ -212,6 +237,170 @@ function _interpolarIndice(str, i) {
 }
 
 /**
+ * Resuelve una dimensión que puede venir como número o como string-fórmula.
+ * @private
+ */
+function _resolverDimSubcomp(valor, ctx, defaultVal = 0) {
+  if (typeof valor === "number") return valor;
+  if (typeof valor === "string") {
+    const v = evaluarFormula(valor, ctx);
+    return v !== null ? v : defaultVal;
+  }
+  return defaultVal;
+}
+
+/**
+ * Expande los subcomponentes del módulo en piezas y herrajes "concretos"
+ * con coordenadas ya traducidas al sistema del padre.
+ *
+ * Estrategia:
+ *   1. Por cada subcomponente, resolver repeat → N instancias
+ *   2. Por cada instancia:
+ *      - Resolver origen (en coords del padre)
+ *      - Resolver dimensiones LOCALES del subcomp
+ *      - Resolver parámetros propios
+ *      - Expandir las piezas del subcomp en su contexto LOCAL
+ *      - Convertir cada pieza a "pieza especial" con dimLibre1/dimLibre2
+ *        y posFormulas precalculadas en coords del padre
+ *      - Resolver herrajes del subcomp y agregarlos al pool
+ *
+ * Las piezas del subcomp resultantes se marcan con _subComponente y _instancia
+ * para trazabilidad.
+ *
+ * @param {Object}  modulo
+ * @param {Object=} valoresParametros  Valores del PADRE
+ * @param {Object=} costos
+ * @returns {Object} módulo con piezas/herrajes extras del expandido
+ */
+export function expandirSubComponentes(modulo, valoresParametros = {}, costos = null) {
+  const subs = Array.isArray(modulo?.subComponentes) ? modulo.subComponentes : [];
+  if (subs.length === 0) return modulo;
+
+  const ctxPadre = _contextoParametrico(modulo, valoresParametros, costos);
+  const espPadre = ctxPadre.esp ?? 18;
+
+  const piezasExtras   = [];
+  const herrajesExtras = [];
+
+  for (const sub of subs) {
+    // Decidir cuántas instancias
+    let indices = [];
+    if (sub.repeat && typeof sub.repeat === "object") {
+      const varName = sub.repeat.var || "i";
+      const from = typeof sub.repeat.from === "number"
+        ? sub.repeat.from
+        : Math.round(evaluarFormula(String(sub.repeat.from ?? "0"), ctxPadre) ?? 0);
+      const to = typeof sub.repeat.to === "number"
+        ? sub.repeat.to
+        : Math.round(evaluarFormula(String(sub.repeat.to ?? "0"), ctxPadre) ?? 0);
+      if (Number.isFinite(from) && Number.isFinite(to) && to >= from) {
+        for (let i = from; i <= to; i++) {
+          const ctxIter = { ...ctxPadre, [varName]: i };
+          if (sub.condition && !evaluarCondicion(sub.condition, ctxIter)) continue;
+          indices.push({ i, varName });
+        }
+      }
+    } else {
+      // Sin repeat → instancia única
+      if (!sub.condition || evaluarCondicion(sub.condition, ctxPadre)) {
+        indices.push({ i: 0, varName: "i" });
+      }
+    }
+
+    for (const { i, varName } of indices) {
+      const ctxIter = { ...ctxPadre, [varName]: i };
+
+      // Resolver dimensiones LOCALES del subcomp
+      const dims = sub.dimensiones || {};
+      const anchoLoc = _resolverDimSubcomp(dims.ancho,       ctxIter, 100);
+      const altoLoc  = _resolverDimSubcomp(dims.alto,        ctxIter, 100);
+      const profLoc  = _resolverDimSubcomp(dims.profundidad, ctxIter, 100);
+
+      // Resolver parámetros propios del subcomp (sin overrides — futuro)
+      const paramValsSub = resolverParametros(sub, {});
+
+      // Contexto LOCAL para las piezas del subcomp
+      const ctxLocal = {
+        ancho: anchoLoc, alto: altoLoc, profundidad: profLoc,
+        esp: espPadre,
+        ...paramValsSub,
+      };
+
+      // Resolver origen en coords del padre
+      const ox = evaluarFormula(String(sub.origen?.x ?? "0"), ctxIter) ?? 0;
+      const oy = evaluarFormula(String(sub.origen?.y ?? "0"), ctxIter) ?? 0;
+      const oz = evaluarFormula(String(sub.origen?.z ?? "0"), ctxIter) ?? 0;
+
+      // Expandir las piezas del subcomp (con su propio repeat/condition interno)
+      const subModuloVirtual = {
+        ...sub,
+        material: modulo.material,
+        zonas: modulo.zonas,
+        variables: modulo.variables,
+        dimensiones: { ancho: anchoLoc, alto: altoLoc, profundidad: profLoc },
+        subComponentes: [],  // V1: sin anidamiento (evita recursión)
+      };
+      const subConcreto = generarPiezas(subModuloVirtual, paramValsSub, costos);
+
+      // Trasladar cada pieza del subcomp a coords del padre
+      for (const p of subConcreto.piezas) {
+        const piezaCtx = p._repeatVars ? { ...ctxLocal, ...p._repeatVars } : ctxLocal;
+        // d1 / d2 en contexto local
+        const d1 = p.especial
+          ? (parseFloat(p.dimLibre1) || 0)
+          : p.formula1 != null
+            ? (evaluarFormula(p.formula1, piezaCtx) ?? 0)
+            : 0;
+        const d2 = p.especial
+          ? (parseFloat(p.dimLibre2) || 0)
+          : p.formula2 != null
+            ? (evaluarFormula(p.formula2, piezaCtx) ?? 0)
+            : 0;
+        // pos local
+        let px = 0, py = 0, pz = 0;
+        if (p.posFormulas) {
+          const posCtx = { ...piezaCtx, d1, d2 };
+          px = evaluarFormula(String(p.posFormulas.x ?? "0"), posCtx) ?? 0;
+          py = evaluarFormula(String(p.posFormulas.y ?? "0"), posCtx) ?? 0;
+          pz = evaluarFormula(String(p.posFormulas.z ?? "0"), posCtx) ?? 0;
+        }
+        // pieza precalculada en coords del padre
+        piezasExtras.push({
+          nombre: `${sub.nombre || sub.id}${i ? " #" + i : ""} · ${p.nombre}`,
+          especial: true,
+          dimLibre1: d1,
+          dimLibre2: d2,
+          cantidad: p.cantidad || 1,
+          cara3d: p.cara3d,
+          orientacion3d: p.orientacion3d,
+          rol3d: p.rol3d,
+          zona: p.zona,
+          posFormulas: {
+            x: String(ox + px),
+            y: String(oy + py),
+            z: String(oz + pz),
+          },
+          _subComponente: sub.id,
+          _instancia: i,
+        });
+      }
+
+      // Herrajes del subcomp en contexto local
+      const subHerrajes = resolverHerrajes(subModuloVirtual, paramValsSub, costos);
+      for (const h of subHerrajes) {
+        herrajesExtras.push({ id: h.id, cantidad: h.cantidad });
+      }
+    }
+  }
+
+  return {
+    ...modulo,
+    piezas:   [...(modulo.piezas || []),   ...piezasExtras],
+    herrajes: [...(modulo.herrajes || []), ...herrajesExtras],
+  };
+}
+
+/**
  * Expande las piezas del módulo aplicando `condition` y `repeat`.
  * Devuelve una copia del módulo con `piezas[]` resueltas.
  *
@@ -233,8 +422,16 @@ function _interpolarIndice(str, i) {
  */
 export function generarPiezas(modulo, valoresParametros = {}, costos = null) {
   if (!modulo) return modulo;
-  const piezasIn = Array.isArray(modulo.piezas) ? modulo.piezas : [];
-  const ctxBase  = _contextoParametrico(modulo, valoresParametros, costos);
+
+  // Fase Subcomponentes: si el módulo tiene subComponentes[], primero
+  // los expandimos a piezas/herrajes concretas en coords del padre.
+  // El resto del flujo (repeat/condition de piezas del padre) sigue igual.
+  const moduloExpandido = (Array.isArray(modulo.subComponentes) && modulo.subComponentes.length > 0)
+    ? expandirSubComponentes(modulo, valoresParametros, costos)
+    : modulo;
+
+  const piezasIn = Array.isArray(moduloExpandido.piezas) ? moduloExpandido.piezas : [];
+  const ctxBase  = _contextoParametrico(moduloExpandido, valoresParametros, costos);
 
   const out = [];
   for (const p of piezasIn) {
@@ -271,7 +468,7 @@ export function generarPiezas(modulo, valoresParametros = {}, costos = null) {
     out.push(rest);
   }
 
-  return { ...modulo, piezas: out };
+  return { ...moduloExpandido, piezas: out };
 }
 
 /**

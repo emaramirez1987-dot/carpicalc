@@ -18,6 +18,7 @@ import {
   generarPiezas,
   evaluarConstraints,
   resolverHerrajes,
+  expandirSubComponentes,
 } from "./moduloService.js";
 
 // ── parsearModulo ──────────────────────────────────────────────────────────
@@ -415,6 +416,137 @@ describe("resolverHerrajes (Fase 5)", () => {
       { id: 2, cantidad: 4 },
       { id: 3, cantidad: 2 },
     ]);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// expandirSubComponentes (Fase Subcomponentes)
+// ════════════════════════════════════════════════════════════════════════════
+
+describe("expandirSubComponentes", () => {
+  const moduloPadre = {
+    nombre: "Cajonera",
+    material: "melamina",
+    dimensiones: { ancho: 600, alto: 720, profundidad: 550 },
+    variables: {},
+    piezas: [
+      { nombre: "Base", cantidad: 1, formula1: "ancho", formula2: "profundidad", cara3d: "bottom" },
+    ],
+    herrajes: [],
+    parametros: [{ id: "cajones", tipo: "integer", def: 3, min: 1, max: 6 }],
+  };
+
+  test("módulo sin subComponentes → idéntico", () => {
+    const r = expandirSubComponentes(moduloPadre, {});
+    expect(r.piezas).toHaveLength(1);
+    expect(r.piezas[0].nombre).toBe("Base");
+  });
+
+  test("subcomp con repeat genera N instancias × M piezas internas", () => {
+    const m = {
+      ...moduloPadre,
+      subComponentes: [{
+        id: "cajon",
+        nombre: "Cajón",
+        repeat: { var: "i", from: 1, to: "cajones" },
+        origen: { x: "esp", y: "(i-1) * 100", z: "0" },
+        dimensiones: { ancho: "ancho - 2*esp", alto: "80", profundidad: "profundidad - 20" },
+        piezas: [
+          { nombre: "Frente",   cantidad: 1, formula1: "alto",  formula2: "ancho", cara3d: "front" },
+          { nombre: "Base caja",cantidad: 1, formula1: "ancho", formula2: "profundidad", cara3d: "bottom" },
+        ],
+        herrajes: [{ id: 99, cantidad: 2 }],
+      }],
+    };
+    const r = expandirSubComponentes(m, { cajones: 3 });
+    // 1 base del padre + 3 instancias × 2 piezas = 7
+    expect(r.piezas).toHaveLength(7);
+    // 3 instancias × 2 herrajes
+    expect(r.herrajes).toEqual([
+      { id: 99, cantidad: 2 },
+      { id: 99, cantidad: 2 },
+      { id: 99, cantidad: 2 },
+    ]);
+  });
+
+  test("piezas expandidas llevan _subComponente y _instancia para traza", () => {
+    const m = {
+      ...moduloPadre,
+      subComponentes: [{
+        id: "cajon", nombre: "Cajón",
+        repeat: { var: "i", from: 1, to: 2 },
+        dimensiones: { ancho: 100, alto: 80, profundidad: 100 },
+        piezas: [{ nombre: "Frente", cantidad: 1, formula1: "alto", formula2: "ancho", cara3d: "front" }],
+      }],
+    };
+    const r = expandirSubComponentes(m, {});
+    const delSub = r.piezas.filter(p => p._subComponente === "cajon");
+    expect(delSub).toHaveLength(2);
+    expect(delSub[0]._instancia).toBe(1);
+    expect(delSub[1]._instancia).toBe(2);
+  });
+
+  test("subcomp sin repeat genera 1 instancia", () => {
+    const m = {
+      ...moduloPadre,
+      subComponentes: [{
+        id: "puerta", nombre: "Puerta",
+        dimensiones: { ancho: "ancho - 4", alto: "alto - 4", profundidad: 18 },
+        piezas: [{ nombre: "Frente", cantidad: 1, formula1: "alto", formula2: "ancho", cara3d: "front" }],
+      }],
+    };
+    const r = expandirSubComponentes(m, {});
+    expect(r.piezas).toHaveLength(2); // base del padre + 1 frente del subcomp
+  });
+
+  test("subcomp con condition: si false, no se expande", () => {
+    const m = {
+      ...moduloPadre,
+      subComponentes: [{
+        id: "puerta", nombre: "Puerta",
+        condition: "cajones > 5",
+        dimensiones: { ancho: 100, alto: 100, profundidad: 18 },
+        piezas: [{ nombre: "Frente", cantidad: 1, formula1: "alto", formula2: "ancho", cara3d: "front" }],
+      }],
+    };
+    const r = expandirSubComponentes(m, { cajones: 3 });
+    expect(r.piezas).toHaveLength(1); // solo la base del padre
+  });
+
+  test("piezas del subcomp tienen posición en coords del PADRE (origen + pos local)", () => {
+    const m = {
+      ...moduloPadre,
+      subComponentes: [{
+        id: "cajon", nombre: "Cajón",
+        repeat: { var: "i", from: 1, to: 2 },
+        origen: { x: "10", y: "(i-1) * 200 + 50", z: "5" },
+        dimensiones: { ancho: 100, alto: 80, profundidad: 100 },
+        piezas: [{
+          nombre: "Frente", cantidad: 1, formula1: "alto", formula2: "ancho", cara3d: "front",
+          posFormulas: { x: "20", y: "30", z: "40" },
+        }],
+      }],
+    };
+    const r = expandirSubComponentes(m, {});
+    const frentes = r.piezas.filter(p => p._subComponente === "cajon");
+    // i=1: origen (10, 50, 5) + pos local (20, 30, 40) = (30, 80, 45)
+    expect(frentes[0].posFormulas).toEqual({ x: "30", y: "80", z: "45" });
+    // i=2: origen (10, 250, 5) + pos local (20, 30, 40) = (30, 280, 45)
+    expect(frentes[1].posFormulas).toEqual({ x: "30", y: "280", z: "45" });
+  });
+
+  test("integración: generarPiezas dispara expandirSubComponentes automáticamente", () => {
+    const m = {
+      ...moduloPadre,
+      subComponentes: [{
+        id: "cajon", nombre: "Cajón",
+        repeat: { var: "i", from: 1, to: 3 },
+        dimensiones: { ancho: 100, alto: 80, profundidad: 100 },
+        piezas: [{ nombre: "Frente", cantidad: 1, formula1: "alto", formula2: "ancho", cara3d: "front" }],
+      }],
+    };
+    const r = generarPiezas(m, {});
+    expect(r.piezas).toHaveLength(1 + 3); // base + 3 frentes del subcomp
   });
 });
 

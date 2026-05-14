@@ -83,9 +83,10 @@ export const MODULO_VACIO = {
   imagen:      null,
   tipoVisual:  null,
   // Schema paramétrico — back-compatible (módulos viejos = arrays vacíos)
-  parametros:  [],
-  zonas:       [],
-  constraints: [],
+  parametros:    [],
+  zonas:         [],
+  constraints:   [],
+  subComponentes: [],  // sub-módulos con su propio eje local (Fase Subcomp)
 };
 
 // ── Tipos de material (clave → etiqueta legible) ──────────────────────────
