@@ -19,6 +19,7 @@ import { useTema } from "./hooks/useTema.js";
 import { useAtajosTeclado } from "./hooks/useAtajosTeclado.js";
 import { useToastErrores } from "./hooks/useToastErrores.js";
 import ModalAtajos from "./components/ui/ModalAtajos.jsx";
+import AvisoTrial from "./components/suscripcion/AvisoTrial.jsx";
 import {
   crearPresupuesto,
   eliminarPresupuesto,
@@ -490,6 +491,15 @@ function AppInterna() {
     <>
       <GlobalStyles />
       <div style={{ minHeight: "100vh", background: "var(--bg-base)", color: "var(--text-primary)", transition: "background 0.3s" }}>
+        {/* Banner de trial (si quedan ≤5 días) — arriba del header */}
+        {suscripcion && suscripcion.app_role !== "admin" && suscripcion.estado === "trialing"
+          && suscripcion.trial_ends_at
+          && Math.ceil((new Date(suscripcion.trial_ends_at) - new Date()) / 86400000) > 0
+          && Math.ceil((new Date(suscripcion.trial_ends_at) - new Date()) / 86400000) <= 5 && (
+          <AvisoTrial
+            suscripcion={suscripcion}
+            onIrASuscripcion={() => dispatch({ type: "CAMBIAR_VISTA", payload: { vista: "config" } })} />
+        )}
         <Header tabs={tabs} saveEst={saveEst} tema={tema} toggleTema={toggleTema} />
         <main className="rsp-main" style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 20px 100px" }}>
           <div className="tab-view">
@@ -722,6 +732,17 @@ function AppInterna() {
 
           </div>
         </main>
+        {/* Paywall del trial cuando vence (overlay bloqueante). El banner
+            de "te quedan X días" va arriba del header (más arriba en el JSX). */}
+        {suscripcion && suscripcion.app_role !== "admin" && (() => {
+          const e = suscripcion.estado;
+          const dias = suscripcion.trial_ends_at
+            ? Math.ceil((new Date(suscripcion.trial_ends_at) - new Date()) / 86400000)
+            : null;
+          const vencido = (e === "trialing" && dias !== null && dias <= 0)
+            || e === "past_due" || e === "canceled" || e === "unpaid";
+          return vencido ? <AvisoTrial suscripcion={suscripcion} /> : null;
+        })()}
         {/* Modal de atajos de teclado — se abre con "?" */}
         {mostrarAtajos && <ModalAtajos onClose={() => setMostrarAtajos(false)} />}
         {/* Hint flotante — solo se muestra una vez */}

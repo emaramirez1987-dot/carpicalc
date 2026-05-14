@@ -218,12 +218,19 @@ export async function cargarSuscripcion() {
   try {
     const wsId = await getWorkspaceId();
     if (!wsId) return null;
-    const { data } = await supabase
-      .from("subscriptions")
-      .select("estado, trial_ends_at, current_period_end, plan_id, mp_preapproval_id, renders_usados, renders_reset_at")
-      .eq("workspace_id", wsId)
-      .single();
-    return data || null;
+    const [{ data: sub }, { data: prof }] = await Promise.all([
+      supabase
+        .from("subscriptions")
+        .select("estado, trial_ends_at, current_period_end, plan_id, mp_preapproval_id, renders_usados, renders_reset_at")
+        .eq("workspace_id", wsId)
+        .single(),
+      supabase
+        .from("profiles")
+        .select("app_role")
+        .eq("id", (await supabase.auth.getUser()).data.user?.id)
+        .single(),
+    ]);
+    return { ...(sub || {}), app_role: prof?.app_role || "user" };
   } catch {
     return null;
   }
