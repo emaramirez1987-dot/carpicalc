@@ -83,7 +83,7 @@ function TarjetaKanban({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, 
         </div>
       )}
       <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", marginBottom: 10, paddingLeft: 15, fontWeight: 300 }}>
-        {fmtFecha(parseInt(id))} · {p.items.length} mód.
+        {p.creadoEn ? fmtFecha(p.creadoEn) : "—"} · {p.items.length} mód.
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 700, color: "var(--color-positive)" }}>{fmtPeso(p.total)}</span>
@@ -141,7 +141,7 @@ function FilaLista({ id, p, onCambiarEstado, onEliminar, onCargar, modulos, cost
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
           </div>
           <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 300 }}>
-            {fmtFecha(parseInt(id))} · {p.items.length} mód.
+            {p.creadoEn ? fmtFecha(p.creadoEn) : "—"} · {p.items.length} mód.
             {p.cliente?.nombre && <span> · 👤 {p.cliente.nombre}</span>}
           </div>
           {/* Mobile row */}

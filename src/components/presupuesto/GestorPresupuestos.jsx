@@ -38,7 +38,9 @@ function GestorPresupuestos({
   // en re-renders por hover, búsqueda u otros estados locales.
   const entries = useMemo(() => {
     return Object.entries(presupuestos)
-      .sort((a, b) => b[0] - a[0])
+      // Ordenar por fecha de creación (más reciente primero). Antes se usaba
+      // el id como número (cuando IDs eran Date.now()), pero hoy son UUIDs.
+      .sort((a, b) => (b[1]?.creadoEn || 0) - (a[1]?.creadoEn || 0))
       .filter(([, p]) => {
         if (!busquedaPres.trim()) return true;
         const q = busquedaPres.toLowerCase();
@@ -139,7 +141,7 @@ function GestorPresupuestos({
                         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
                       </div>
                       <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, fontFamily: "'DM Mono',monospace" }}>
-                        {fmtFecha(parseInt(id))} · {p.items?.length || 0} mód.
+                        {p.creadoEn ? fmtFecha(p.creadoEn) : "—"} · {p.items?.length || 0} mód.
                         {p.cliente?.nombre && <span> · 👤 {p.cliente.nombre}</span>}
                         <span style={{ color: "var(--color-positive)", fontWeight: 700, marginLeft: 8 }}>{fmtPeso(p.total)}</span>
                       </div>

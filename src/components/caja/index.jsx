@@ -116,7 +116,7 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
             {p.cliente?.nombre && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>· 👤 {p.cliente.nombre}</span>}
           </div>
           <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontWeight: 300 }}>
-            {fmtFecha(parseInt(id))} · {p.items.length} mód.
+            {p.creadoEn ? fmtFecha(p.creadoEn) : "—"} · {p.items.length} mód.
           </div>
         </div>
 
@@ -480,12 +480,12 @@ function FilaCaja({ id, p, onActualizar, modulos, costos, autoAbrir = false }) {
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                   <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Creado</span>
-                  <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", color: "var(--text-secondary)" }}>{fmtFecha(parseInt(id))}</span>
+                  <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", color: "var(--text-secondary)" }}>{p.creadoEn ? fmtFecha(p.creadoEn) : "—"}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
                   <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Vencimiento</span>
                   <span style={{ fontSize: 12, fontFamily: "'DM Mono',monospace", color: vencido ? "#e07070" : porVencer ? "#c8a02a" : "var(--text-secondary)", fontWeight: 700 }}>
-                    {fmtFecha(parseInt(id) + (p.diasVigencia || 15) * 86400000)}
+                    {p.creadoEn ? fmtFecha(p.creadoEn + (p.diasVigencia || 15) * 86400000) : "—"}
                   </span>
                 </div>
                 {estadoVigencia && (
@@ -643,7 +643,8 @@ function PanelCaja({ presupuestos, onActualizar, modulos, costos, cajaPresId, on
   }, 0);
   const vencidos = entries.filter(([id, p]) => {
     if (p.estado !== "enviado" && p.estado !== "nuevo") return false;
-    const dias = Math.floor((Date.now() - parseInt(id)) / 86400000);
+    if (!p.creadoEn) return false;
+    const dias = Math.floor((Date.now() - p.creadoEn) / 86400000);
     return dias > (p.diasVigencia || 15);
   }).length;
 

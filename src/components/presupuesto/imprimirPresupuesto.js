@@ -337,7 +337,7 @@ function imprimirPresupuesto(
 // ── Ficha de Obra ─────────────────────────────────────────────────
 function generarFichaObra(id, p, modulos, costos, perfil = {}) {
   const fecha = fmtFechaLarga(Date.now());
-  const creacion = fmtFechaLarga(parseInt(id));
+  const creacion = p.creadoEn ? fmtFechaLarga(p.creadoEn) : fmtFechaLarga(Date.now());
   const cobros = p.cobros || [];
   const totalCobrado = cobros.reduce((a, c) => a + c.monto, 0);
   const saldo = p.total - totalCobrado;
