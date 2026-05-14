@@ -248,6 +248,9 @@ function AppInterna() {
   }, [dispatch]);
 
   // ── Autosave de borrador ──────────────────────────────────────────────────
+  // Trackea timestamp del último guardado para mostrar feedback visible
+  // tipo "Guardado · hace 3s" en el editor del presupuesto.
+  const [lastBorradorSave, setLastBorradorSave] = useState(null);
   useEffect(() => {
     if (items.length > 0) {
       try {
@@ -255,10 +258,12 @@ function AppInterna() {
           items, dimOverride, composicionOverride, inlineModulos,
           ...(presupuestoActivoId ? { presupuestoActivoId } : {}),
         }));
+        setLastBorradorSave(Date.now());
       }
       catch {}
     } else {
       localStorage.removeItem("carpicalc:borrador");
+      setLastBorradorSave(null);
     }
   }, [items, dimOverride, composicionOverride, inlineModulos, presupuestoActivoId]);
 
@@ -503,6 +508,7 @@ function AppInterna() {
                 presupuestoParaEditar={nav.presupuestoParaEditar}
                 onPresupuestoEditarConsumed={() => dispatch({ type: "PRESUPUESTO_PARA_EDITAR_CONSUMIDO" })}
                 borradorRecuperado={borradorRecuperado}
+                lastBorradorSave={lastBorradorSave}
                 onDismissBorrador={() => setBorradorRecuperado(false)}
                 onGuardarExtraFrecuente={handleGuardarExtraFrecuente}
                 setModulos={setModulos}

@@ -21,6 +21,37 @@ import { SeccionCostosDirectos, SeccionAdicionales } from './SeccionesPresupuest
 import GestorPresupuestos from './GestorPresupuestos.jsx';
 import AcordeonEdicionItem from './AcordeonEdicionItem.jsx';
 
+// ── IndicadorAutosave ─────────────────────────────────────────────
+// Muestra "✓ Guardado · hace Xs" debajo del banner. Se auto-refresca
+// cada segundo para que el "hace X" siga vivo aunque el state no cambie.
+function IndicadorAutosave({ timestamp }) {
+  const [now, setNow] = React.useState(Date.now());
+  React.useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const segundos = Math.max(0, Math.floor((now - timestamp) / 1000));
+  const label =
+    segundos < 3   ? "ahora" :
+    segundos < 60  ? `hace ${segundos}s` :
+    segundos < 3600 ? `hace ${Math.floor(segundos/60)}m` :
+                      `hace ${Math.floor(segundos/3600)}h`;
+  return (
+    <div style={{
+      padding: "4px 20px", borderBottom: "1px solid var(--border)",
+      fontSize: 10, fontFamily: "'DM Mono',monospace",
+      color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6,
+    }}>
+      <span style={{
+        width: 6, height: 6, borderRadius: "50%",
+        background: "rgba(120,180,100,0.85)",
+        boxShadow: "0 0 4px rgba(120,180,100,0.6)",
+      }} />
+      Borrador guardado · {label}
+    </div>
+  );
+}
+
 // ── Presupuesto (componente principal del editor) ─────────────────
 function Presupuesto({
   modulos,
@@ -41,6 +72,7 @@ function Presupuesto({
   hSaveModulos,
   onGuardarModuloCatalogo,
   borradorRecuperado = false,
+  lastBorradorSave = null,
   onDismissBorrador
 }) {
   // Estado del editor activo: viene del contexto en lugar de props.
@@ -333,6 +365,11 @@ function Presupuesto({
             <button onClick={() => onDismissBorrador && onDismissBorrador()}
               style={{ fontSize: 11, background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>✕</button>
           </div>
+        )}
+
+        {/* Indicador de autosave del borrador */}
+        {items.length > 0 && lastBorradorSave && (
+          <IndicadorAutosave timestamp={lastBorradorSave} />
         )}
 
         {/* Header con nombre del trabajo */}
