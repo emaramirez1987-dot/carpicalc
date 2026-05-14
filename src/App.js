@@ -16,6 +16,8 @@ import {
   leerVersionCostos, leerMateriales3D, guardarMateriales3D,
 } from "./storage.js";
 import { useTema } from "./hooks/useTema.js";
+import { useAtajosTeclado } from "./hooks/useAtajosTeclado.js";
+import ModalAtajos from "./components/ui/ModalAtajos.jsx";
 import {
   crearPresupuesto,
   eliminarPresupuesto,
@@ -141,6 +143,26 @@ function AppInterna() {
   useEffect(() => {
     setTabsVisitadas(prev => prev.has(nav.vista) ? prev : new Set([...prev, nav.vista]));
   }, [nav.vista]);
+
+  // Atajos de teclado globales — Ctrl+1..9 cambia tab, ? muestra ayuda
+  const [mostrarAtajos, setMostrarAtajos] = useState(false);
+  const atajos = useMemo(() => {
+    const irA = (vista) => () => dispatch({ type: "CAMBIAR_VISTA", payload: { vista } });
+    return {
+      "?":      () => setMostrarAtajos(v => !v),
+      "Escape": () => setMostrarAtajos(false),
+      "ctrl+1": irA("presupuesto"),
+      "ctrl+2": irA("preview"),
+      "ctrl+3": irA("corte"),
+      "ctrl+4": irA("vista3d"),
+      "ctrl+5": irA("render"),
+      "ctrl+6": irA("trabajos"),
+      "ctrl+7": irA("caja"),
+      "ctrl+8": irA("catalogo"),
+      "ctrl+9": irA("costos"),
+    };
+  }, [dispatch]);
+  useAtajosTeclado(atajos);
 
   // ── Estado de dominio (no es navegación — queda aquí) ────────────────────
   const [modulos,        setModulos]        = useState(null);
@@ -690,9 +712,42 @@ function AppInterna() {
 
           </div>
         </main>
+        {/* Modal de atajos de teclado — se abre con "?" */}
+        {mostrarAtajos && <ModalAtajos onClose={() => setMostrarAtajos(false)} />}
+        {/* Hint flotante — solo se muestra una vez */}
+        <HintAtajos />
       </div>
     </>
     </PresupuestoContext.Provider>
+  );
+}
+
+// Mini hint que aparece la primera vez (después se oculta — usa localStorage)
+function HintAtajos() {
+  const [visible, setVisible] = useState(() => !localStorage.getItem("carpicalc:hint_atajos_visto"));
+  if (!visible) return null;
+  const ocultar = () => {
+    localStorage.setItem("carpicalc:hint_atajos_visto", "1");
+    setVisible(false);
+  };
+  return (
+    <div style={{
+      position: "fixed", bottom: 16, right: 16, zIndex: 999,
+      padding: "8px 14px", borderRadius: 8,
+      background: "rgba(8,10,13,0.92)",
+      border: "1px solid rgba(212,175,55,0.40)",
+      backdropFilter: "blur(4px)",
+      boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+      fontSize: 11, fontFamily: "'DM Mono',monospace",
+      color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 10,
+    }}>
+      <span>Apretá <kbd style={{ padding: "2px 6px", borderRadius: 3, background: "var(--bg-surface)", border: "1px solid var(--border)", color: "#d4af37" }}>?</kbd> para ver atajos</span>
+      <button onClick={ocultar} style={{
+        padding: "2px 8px", borderRadius: 4, cursor: "pointer",
+        background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
+        color: "var(--text-muted)", fontSize: 10,
+      }}>OK</button>
+    </div>
   );
 }
 
