@@ -710,9 +710,10 @@ function FormModulo({
           categoria: moduloBase.categoria || "otros",
           tipoVisual: moduloBase.tipoVisual || null,
           variables: moduloBase.variables ? { ...moduloBase.variables } : {},
-          parametros:  Array.isArray(moduloBase.parametros)  ? moduloBase.parametros  : [],
-          zonas:       Array.isArray(moduloBase.zonas)       ? moduloBase.zonas       : [],
-          constraints: Array.isArray(moduloBase.constraints) ? moduloBase.constraints : [],
+          parametros:     Array.isArray(moduloBase.parametros)     ? moduloBase.parametros     : [],
+          zonas:          Array.isArray(moduloBase.zonas)          ? moduloBase.zonas          : [],
+          constraints:    Array.isArray(moduloBase.constraints)    ? moduloBase.constraints    : [],
+          subComponentes: Array.isArray(moduloBase.subComponentes) ? moduloBase.subComponentes : [],
         }
       : (_draft?.datos || {
           codigo: "",
@@ -723,9 +724,10 @@ function FormModulo({
           categoria: "otros",
           tipoVisual: null,
           variables: {},
-          parametros:  [],
-          zonas:       [],
-          constraints: [],
+          parametros:     [],
+          zonas:          [],
+          constraints:    [],
+          subComponentes: [],
         })
   );
   const [piezas, setPiezas] = useState(() =>
@@ -852,9 +854,10 @@ function FormModulo({
     categoria:   datos.categoria || "otros",
     tipoVisual:  datos.tipoVisual || null,
     variables:   datos.variables || {},
-    parametros:  datos.parametros  || [],
-    zonas:       datos.zonas       || [],
-    constraints: datos.constraints || [],
+    parametros:     datos.parametros     || [],
+    zonas:          datos.zonas          || [],
+    constraints:    datos.constraints    || [],
+    subComponentes: datos.subComponentes || [],
     piezas,
     herrajes,
     moDeObra
@@ -1292,8 +1295,8 @@ function FormModulo({
           <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#c8a02a' }}>
             ⚙ Parametrizar este módulo
             <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 10, fontWeight: 400, textTransform: 'none', letterSpacing: '0.02em' }}>
-              {(datos.parametros?.length || 0) + (datos.zonas?.length || 0) + (datos.constraints?.length || 0) > 0
-                ? `${datos.parametros?.length || 0} param · ${datos.zonas?.length || 0} zonas · ${datos.constraints?.length || 0} reglas`
+              {(datos.parametros?.length || 0) + (datos.zonas?.length || 0) + (datos.constraints?.length || 0) + (datos.subComponentes?.length || 0) > 0
+                ? `${datos.parametros?.length || 0} param · ${datos.zonas?.length || 0} zonas · ${datos.constraints?.length || 0} reglas · ${datos.subComponentes?.length || 0} subcomp`
                 : "opcional · permite configurar el módulo desde el presupuesto"}
             </span>
           </span>
@@ -1305,8 +1308,9 @@ function FormModulo({
               parametros={datos.parametros || []}
               zonas={datos.zonas || []}
               constraints={datos.constraints || []}
-              onChange={({ parametros, zonas, constraints }) =>
-                setDatos(d => ({ ...d, parametros, zonas, constraints }))} />
+              subComponentes={datos.subComponentes || []}
+              onChange={({ parametros, zonas, constraints, subComponentes }) =>
+                setDatos(d => ({ ...d, parametros, zonas, constraints, subComponentes }))} />
           </div>
         )}
       </div>

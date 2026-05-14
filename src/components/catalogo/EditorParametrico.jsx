@@ -14,6 +14,7 @@
 import React, { useState } from 'react';
 import { TIPO_MAT } from '../../constants.js';
 import { inspeccionarFormula } from '../../utils.js';
+import EditorSubComponente from './EditorSubComponente.jsx';
 
 // Variables que siempre están disponibles para fórmulas dentro de un módulo:
 // dims base + esp + raíces de dot notation comunes.
@@ -310,11 +311,54 @@ function ListaConstraints({ constraints, onChange, paramsConocidos = [] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ListaSubComponentes
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ListaSubComponentes({ subComponentes, onChange }) {
+  const update = (idx, sub) => onChange(subComponentes.map((s, i) => i === idx ? sub : s));
+  const remove = (idx) => onChange(subComponentes.filter((_, i) => i !== idx));
+  const add = () => onChange([...subComponentes, {
+    id: `sub${subComponentes.length + 1}`,
+    nombre: "",
+    repeat: { var: "i", from: 1, to: 1 },
+    origen: { x: "0", y: "0", z: "0" },
+    dimensiones: { ancho: "ancho", alto: "alto", profundidad: "profundidad" },
+    parametros: [],
+    piezas: [],
+    herrajes: [],
+  }]);
+
+  if (subComponentes.length === 0) {
+    return (
+      <div style={{ padding: "20px 14px", textAlign: "center" }}>
+        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10, fontFamily: "'DM Mono',monospace" }}>
+          Sin subcomponentes — útil para agrupar piezas que se replican juntas (ej: cajón completo, puerta con marco).
+        </div>
+        <button onClick={add} style={btnAdd}>+ Agregar subcomponente</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+      {subComponentes.map((sub, idx) => (
+        <EditorSubComponente
+          key={idx}
+          subcomp={sub}
+          onChange={(s) => update(idx, s)}
+          onDelete={() => remove(idx)} />
+      ))}
+      <button onClick={add} style={btnAdd}>+ Agregar subcomponente</button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // EditorParametrico (default export)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function EditorParametrico({ parametros, zonas, constraints, onChange }) {
-  const [secs, setSecs] = useState({ params: true, zonas: false, constraints: false });
+export default function EditorParametrico({ parametros, zonas, constraints, subComponentes = [], onChange }) {
+  const [secs, setSecs] = useState({ params: true, zonas: false, constraints: false, subs: false });
   const toggleSec = k => setSecs(p => ({ ...p, [k]: !p[k] }));
 
   return (
@@ -326,20 +370,26 @@ export default function EditorParametrico({ parametros, zonas, constraints, onCh
       <div>
         {subSecHdr("🎚", "Parámetros configurables", parametros.length, secs.params, () => toggleSec("params"))}
         {secs.params && <ListaParametros parametros={parametros}
-          onChange={(p) => onChange({ parametros: p, zonas, constraints })} />}
+          onChange={(p) => onChange({ parametros: p, zonas, constraints, subComponentes })} />}
       </div>
       {/* Sub-acordeón: Zonas */}
       <div>
         {subSecHdr("🎨", "Zonas (material por grupo de piezas)", zonas.length, secs.zonas, () => toggleSec("zonas"))}
         {secs.zonas && <ListaZonas zonas={zonas}
-          onChange={(z) => onChange({ parametros, zonas: z, constraints })} />}
+          onChange={(z) => onChange({ parametros, zonas: z, constraints, subComponentes })} />}
       </div>
       {/* Sub-acordeón: Constraints */}
       <div>
         {subSecHdr("⚠", "Reglas de validación", constraints.length, secs.constraints, () => toggleSec("constraints"))}
         {secs.constraints && <ListaConstraints constraints={constraints}
           paramsConocidos={parametros.map(p => p.id).filter(Boolean)}
-          onChange={(c) => onChange({ parametros, zonas, constraints: c })} />}
+          onChange={(c) => onChange({ parametros, zonas, constraints: c, subComponentes })} />}
+      </div>
+      {/* Sub-acordeón: Subcomponentes */}
+      <div>
+        {subSecHdr("🧩", "Sub-componentes (módulos hijos)", subComponentes.length, secs.subs, () => toggleSec("subs"))}
+        {secs.subs && <ListaSubComponentes subComponentes={subComponentes}
+          onChange={(s) => onChange({ parametros, zonas, constraints, subComponentes: s })} />}
       </div>
     </div>
   );
