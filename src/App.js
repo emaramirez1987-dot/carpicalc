@@ -1,21 +1,12 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo, Suspense, lazy } from "react";
 import {
   LogoIsotipo, GlobalStyles, SaveIndicator
 } from "./components/ui/index.jsx";
-import { HojaCostos } from "./components/costos/index.jsx";
-import { CatalogoModulos, EditorVistaSVG } from "./components/catalogo/index.jsx";
+// Eager: vistas que necesito al primer render (Presupuesto es default).
 import { Presupuesto } from "./components/presupuesto/index.jsx";
-import { VistaPrevia } from "./components/vista-previa/index.jsx";
-import { ListaCorte } from "./components/corte/index.jsx";
-import { TableroKanban } from "./components/trabajos/index.jsx";
-import { PanelCaja } from "./components/caja/index.jsx";
+import { LoginScreen } from "./components/auth/LoginScreen.jsx";
 import { NavProvider, useNav } from "./state/NavContext.jsx";
 import { PresupuestoContext } from "./state/PresupuestoContext.jsx";
-import { LoginScreen } from "./components/auth/LoginScreen.jsx";
-import { PanelPerfil } from "./components/perfil/PanelPerfil.jsx";
-import { RenderIA } from "./components/render/index.jsx";
-import { Vista3DTab } from "./components/vista3d/Vista3DTab.jsx";
-
 import { PERFIL_VACIO } from "./constants.js";
 import { supabase } from "./lib/supabase.js";
 import { calcularModulo } from "./utils.js";
@@ -33,6 +24,19 @@ import {
   migrarTempEnPresupuestos,
   migrarDimOverridePresupuestos,
 } from "./services/presupuestoService.js";
+
+// Lazy: el resto se descarga en chunks separados al primer click de su tab.
+// Code splitting reduce el bundle inicial de ~441 kB a ~150-200 kB.
+const HojaCostos     = lazy(() => import("./components/costos/index.jsx").then(m => ({ default: m.HojaCostos })));
+const CatalogoModulos = lazy(() => import("./components/catalogo/index.jsx").then(m => ({ default: m.CatalogoModulos })));
+const EditorVistaSVG  = lazy(() => import("./components/catalogo/index.jsx").then(m => ({ default: m.EditorVistaSVG })));
+const VistaPrevia    = lazy(() => import("./components/vista-previa/index.jsx").then(m => ({ default: m.VistaPrevia })));
+const ListaCorte     = lazy(() => import("./components/corte/index.jsx").then(m => ({ default: m.ListaCorte })));
+const TableroKanban  = lazy(() => import("./components/trabajos/index.jsx").then(m => ({ default: m.TableroKanban })));
+const PanelCaja      = lazy(() => import("./components/caja/index.jsx").then(m => ({ default: m.PanelCaja })));
+const PanelPerfil    = lazy(() => import("./components/perfil/PanelPerfil.jsx").then(m => ({ default: m.PanelPerfil })));
+const RenderIA       = lazy(() => import("./components/render/index.jsx").then(m => ({ default: m.RenderIA })));
+const Vista3DTab     = lazy(() => import("./components/vista3d/Vista3DTab.jsx").then(m => ({ default: m.Vista3DTab })));
 
 // ─── Header ──────────────────────────────────────────────────────────────────
 function Header({ tabs, saveEst, tema, toggleTema }) {
@@ -129,6 +133,14 @@ function Header({ tabs, saveEst, tema, toggleTema }) {
 function AppInterna() {
   const { tema, toggleTema } = useTema();
   const { nav, dispatch } = useNav();
+
+  // Code splitting — mount-on-visit. Cada tab visitada queda montada
+  // (display:none preserva su estado al cambiar). Las nunca visitadas
+  // no descargan su chunk hasta el primer click.
+  const [tabsVisitadas, setTabsVisitadas] = useState(() => new Set(["presupuesto"]));
+  useEffect(() => {
+    setTabsVisitadas(prev => prev.has(nav.vista) ? prev : new Set([...prev, nav.vista]));
+  }, [nav.vista]);
 
   // ── Estado de dominio (no es navegación — queda aquí) ────────────────────
   const [modulos,        setModulos]        = useState(null);
@@ -493,7 +505,9 @@ function AppInterna() {
               />
             </div>
 
+            {tabsVisitadas.has("preview") && (
             <div style={{ display: nav.vista === "preview" ? undefined : "none" }}>
+              <Suspense fallback={null}>
               <VistaPrevia
                 items={items}
                 modulos={modulos}
@@ -514,9 +528,13 @@ function AppInterna() {
                   dispatch({ type: "EDITAR_PRESUPUESTO", payload: { id, p } });
                 }}
               />
+              </Suspense>
             </div>
+            )}
 
+            {tabsVisitadas.has("corte") && (
             <div style={{ display: nav.vista === "corte" ? undefined : "none" }}>
+              <Suspense fallback={null}>
               <ListaCorte
                 items={items}
                 modulos={modulos}
@@ -526,9 +544,13 @@ function AppInterna() {
                 presupuestoActivoId={presupuestoActivoId}
                 onActualizarPresupuesto={handleActualizarPresupuesto}
               />
+              </Suspense>
             </div>
+            )}
 
+            {tabsVisitadas.has("render") && (
             <div style={{ display: nav.vista === "render" ? undefined : "none" }}>
+              <Suspense fallback={null}>
               <RenderIA
                 modulos={modulos}
                 composicionOverride={composicionOverride}
@@ -544,9 +566,13 @@ function AppInterna() {
                 onGuardarMaterial3D={handleGuardarMaterial3D}
                 onEliminarMaterial3D={handleEliminarMaterial3D}
               />
+              </Suspense>
             </div>
+            )}
 
+            {tabsVisitadas.has("vista3d") && (
             <div style={{ display: nav.vista === "vista3d" ? undefined : "none" }}>
+              <Suspense fallback={null}>
               <Vista3DTab
                 modulos={modulos}
                 costos={costos}
@@ -558,9 +584,13 @@ function AppInterna() {
                 onCaptura={(base64) => setImagenRef3D(base64)}
                 materiales3D={materiales3D}
               />
+              </Suspense>
             </div>
+            )}
 
+            {tabsVisitadas.has("catalogo") && (
             <div style={{ display: nav.vista === "catalogo" ? undefined : "none" }}>
+              <Suspense fallback={null}>
               <CatalogoModulos
                 modulos={modulos}
                 setModulos={setModulos}
@@ -590,11 +620,14 @@ function AppInterna() {
                     : null)
                 }
               />
+              </Suspense>
             </div>
+            )}
 
             {/* ── Vistas utilitarias — se montan solo cuando están activas ── */}
 
             {nav.vista === "trabajos" && (
+              <Suspense fallback={null}>
               <TableroKanban
                 presupuestos={presupuestos}
                 onCambiarEstado={handleCambiarEstado}
@@ -607,9 +640,11 @@ function AppInterna() {
                 costos={costos}
                 onActualizarPresupuesto={handleActualizarPresupuesto}
               />
+              </Suspense>
             )}
 
             {nav.vista === "caja" && (
+              <Suspense fallback={null}>
               <PanelCaja
                 presupuestos={presupuestos}
                 onActualizar={handleActualizarPresupuesto}
@@ -618,21 +653,27 @@ function AppInterna() {
                 cajaPresId={nav.cajaPresId}
                 onClearCajaPresId={() => dispatch({ type: "CAJA_PRES_ID_CONSUMIDO" })}
               />
+              </Suspense>
             )}
 
             {nav.vista === "costos" && (
-              <HojaCostos costos={costos} setCostos={setCostos} onSave={hSaveC} />
+              <Suspense fallback={null}>
+                <HojaCostos costos={costos} setCostos={setCostos} onSave={hSaveC} />
+              </Suspense>
             )}
 
             {nav.vista === "config" && (
+              <Suspense fallback={null}>
               <PanelPerfil
                 perfil={perfil}
                 onGuardar={(nuevo) => { setPerfil(nuevo); withSave(() => guardarPerfil(nuevo)); }}
                 suscripcion={suscripcion}
               />
+              </Suspense>
             )}
 
             {nav.vista === "editor_vista" && nav.editorVistaCod && modulos?.[nav.editorVistaCod] && (
+              <Suspense fallback={null}>
               <EditorVistaSVG
                 modulo={modulos[nav.editorVistaCod]}
                 onGuardar={(vistaConfig) => {
@@ -644,6 +685,7 @@ function AppInterna() {
                 }}
                 onCerrar={() => dispatch({ type: "EDITOR_VISTA_CERRADO" })}
               />
+              </Suspense>
             )}
 
           </div>
