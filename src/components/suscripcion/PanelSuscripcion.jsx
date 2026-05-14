@@ -10,7 +10,8 @@ export function PanelSuscripcion({ suscripcion }) {
 
   if (!suscripcion) return null;
 
-  const { estado, trial_ends_at, current_period_end, plan_id, mp_preapproval_id, renders_usados } = suscripcion;
+  const { estado, trial_ends_at, current_period_end, plan_id, mp_preapproval_id, renders_usados, app_role } = suscripcion;
+  const esAdmin = app_role === "admin";
 
   const planKey    = estado === "trialing" ? "trialing" : (plan_id || "plata");
   const planInfo   = PLANES_RENDER[planKey] ?? PLANES_RENDER.plata;
@@ -85,7 +86,20 @@ export function PanelSuscripcion({ suscripcion }) {
         💳 Suscripción
       </div>
 
-      {estado === "trialing" && diasTrial !== null && diasTrial > 0 && (
+      {/* Cuenta de administrador — acceso ilimitado, exento de pagos */}
+      {esAdmin && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {badge("ADMINISTRADOR", "#d4af37")}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }}>
+            Acceso completo a la app sin restricción de tiempo ni cobros.
+            Cuenta de dueño con privilegios totales.
+          </div>
+        </div>
+      )}
+
+      {!esAdmin && estado === "trialing" && diasTrial !== null && diasTrial > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {badge("Prueba gratuita", "var(--accent)")}
@@ -100,14 +114,14 @@ export function PanelSuscripcion({ suscripcion }) {
         </div>
       )}
 
-      {estado === "trialing" && (diasTrial === null || diasTrial <= 0) && (
+      {!esAdmin && estado === "trialing" && (diasTrial === null || diasTrial <= 0) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {badge("Prueba vencida", "#e07070")}
           {btnSuscribir("Suscribirme — $35.000/mes")}
         </div>
       )}
 
-      {estado === "active" && (
+      {!esAdmin && estado === "active" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {badge("Activa", "#7ecf8a")}
@@ -139,14 +153,14 @@ export function PanelSuscripcion({ suscripcion }) {
         </div>
       )}
 
-      {estado === "past_due" && (
+      {!esAdmin && estado === "past_due" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {badge("Pago pendiente", "#e0a070")}
           <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Hubo un problema con tu pago. Actualizá tu método de pago en MercadoPago.</span>
         </div>
       )}
 
-      {estado === "canceled" && (
+      {!esAdmin && estado === "canceled" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {badge("Cancelada", "#e07070")}
           {btnSuscribir("Reactivar — $35.000/mes")}
@@ -154,7 +168,18 @@ export function PanelSuscripcion({ suscripcion }) {
       )}
 
       {error && <div style={{ fontSize: 11, color: "#e07070", fontFamily: "'DM Mono',monospace", marginTop: 8 }}>⚠ {error}</div>}
-      {["trialing", "active"].includes(estado) && (
+      {/* Renders del admin — sin límite */}
+      {esAdmin && (
+        <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 8, background: "var(--bg-base)", border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 6 }}>
+            Renders IA — Acceso admin
+          </div>
+          <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-secondary)" }}>
+            {usados} usados · ∞ ilimitado
+          </span>
+        </div>
+      )}
+      {!esAdmin && ["trialing", "active"].includes(estado) && (
         <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 8, background: "var(--bg-base)", border: "1px solid var(--border)" }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 6 }}>
             Renders IA — {planInfo.nombre}

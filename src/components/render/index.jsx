@@ -397,7 +397,11 @@ function Panel3DRef({ imagenRef3D, compact = false }) {
 
 function calcularCreditos(suscripcion) {
   if (!suscripcion) return { usados: 0, limite: 0, restantes: 0, bloqueado: true };
-  const { estado, plan_id, renders_usados } = suscripcion;
+  const { estado, plan_id, renders_usados, app_role } = suscripcion;
+  // Admin: renders ilimitados, nunca bloqueado
+  if (app_role === "admin") {
+    return { usados: renders_usados || 0, limite: null, restantes: Infinity, bloqueado: false, admin: true };
+  }
   if (!["trialing", "active"].includes(estado)) return { usados: 0, limite: 0, restantes: 0, bloqueado: true };
   const planKey   = estado === "trialing" ? "trialing" : (plan_id || "plata");
   const plan      = PLANES_RENDER[planKey] ?? PLANES_RENDER.plata;
