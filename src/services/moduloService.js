@@ -105,6 +105,17 @@ export function parsearModulo(raw) {
   };
 }
 
+// ── piezasQueUsanVar ──────────────────────────────────────────────────────
+// Devuelve las piezas que referencian `varName` en alguna de sus fórmulas.
+// Útil para advertir al usuario cuando elimina una variable.
+export function piezasQueUsanVar(varName, piezas) {
+  const re = new RegExp(`\\b${varName}\\b`);
+  return (piezas || []).filter(p => {
+    const campos = [p.formula1, p.formula2, p.posFormulas?.x, p.posFormulas?.y, p.posFormulas?.z];
+    return campos.some(f => typeof f === 'string' && re.test(f));
+  });
+}
+
 // ── parsearPresupuesto ────────────────────────────────────────────────────
 // Mismo patrón: null si irrecuperable, objeto normalizado si no.
 export function parsearPresupuesto(raw) {
