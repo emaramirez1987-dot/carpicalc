@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { Canvas } from '@react-three/fiber';
 import { CAMARAS } from '../visor3d/CamaraPresets.js';
 import { PanelModulos3D } from './PanelModulos3D.jsx';
 import { Escena3DPrincipal } from './Escena3DPrincipal.jsx';
 import ConfiguradorParametrico from '../presupuesto/ConfiguradorParametrico.jsx';
+import { calcularModulo, fmtPeso } from '../../utils.js';
 
 // ── Lectura de tema robusta — usa localStorage como fallback cuando
 // data-theme aún no fue seteado por useTema (efecto corre después del primer render)
@@ -302,6 +303,21 @@ export function Vista3DTab({
     if (!setItems || itemIdx == null) return;
     setItems(items.map((it, i) => i === itemIdx ? { ...it, parametrosValores: valores } : it));
   };
+
+  // Total del presupuesto (módulos) — se recalcula cuando cambian items,
+  // costos o parametrosValores. Para ver el cambio en vivo al editar params.
+  const totalPresupuesto = useMemo(() => {
+    if (!costos || !modulos || items.length === 0) return 0;
+    return items.reduce((acc, it) => {
+      const base = modulos[it.codigo];
+      if (!base) return acc;
+      const dims = (dimOverride && dimOverride[it.id || it.codigo]) || base.dimensiones;
+      const mat  = (dimOverride && dimOverride[it.id || it.codigo]?.material) || base.material;
+      const calc = calcularModulo({ ...base, dimensiones: dims, material: mat }, costos, it.parametrosValores || {});
+      if (!calc) return acc;
+      return acc + calc.total * (it.cantidad || 1);
+    }, 0);
+  }, [items, modulos, costos, dimOverride]);
 
   const irACamara = (key) => { setCamView(key); setCamTarget([...CAMARAS[key].pos]); };
 
@@ -644,6 +660,39 @@ export function Vista3DTab({
 
         {/* ── Canvas R3F ── */}
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+          {/* Badge de total del presupuesto — overlay sobre el canvas */}
+          {items.length > 0 && (
+            <div style={{
+              position: 'absolute', top: 12, right: 12, zIndex: 10,
+              padding: '8px 14px', borderRadius: 8,
+              background: 'rgba(8, 10, 13, 0.85)',
+              border: '1px solid rgba(212,175,55,0.40)',
+              backdropFilter: 'blur(6px)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+              pointerEvents: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2,
+            }}>
+              <span style={{
+                fontSize: 9, fontFamily: "'DM Mono',monospace",
+                textTransform: 'uppercase', letterSpacing: '0.10em',
+                color: '#9a8540',
+              }}>
+                Total presupuesto
+              </span>
+              <span style={{
+                fontSize: 16, fontWeight: 700, fontFamily: "'DM Mono',monospace",
+                color: '#d4af37',
+              }}>
+                {fmtPeso(totalPresupuesto)}
+              </span>
+              <span style={{
+                fontSize: 9, fontFamily: "'DM Mono',monospace",
+                color: '#5a5d68', marginTop: 1,
+              }}>
+                {items.length} módulo{items.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
           <Canvas
             shadows
             camera={{ position: CAMARAS.iso.pos, fov: 45, near: 0.01, far: 100 }}

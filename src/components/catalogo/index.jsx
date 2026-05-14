@@ -9,6 +9,7 @@ import VistaModuloSVG from '../vista-svg/index.js';
 import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT } from '../../constants.js';
 import { guardarPresupuestos, cargarBorradorModulo } from '../../storage.js';
 import FormModulo from './FormModulo.jsx';
+import GuiaParametricaModal from './GuiaParametricaModal.jsx';
 
 const VisorModulo3D = lazy(() => import('../visor3d/VisorModulo3D.jsx'));
 
@@ -591,6 +592,9 @@ function CatalogoModulos({
     showMsg(`"${cod}" eliminado.`, "warn");
   };
 
+  // 📖 Guía paramétrica modal — abre overlay con la guía de uso
+  const [guiaAbierta, setGuiaAbierta] = useState(false);
+
   // 🧪 Ejemplo paramétrico — para probar el ciclo paramétrico end-to-end.
   // Inserta una "Cajonera (paramétrica)" con 1 parámetro (cajones), 2 zonas
   // (cuerpo / frentes) y 1 constraint. Las piezas usan repeat para generar
@@ -782,6 +786,15 @@ function CatalogoModulos({
                 ↑ Import
                 <input type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
               </label>
+              <button
+                onClick={() => setGuiaAbierta(true)}
+                title="Abrir guía de uso del sistema paramétrico"
+                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", transition: "all 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--text-muted)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+              >
+                📖 Guía
+              </button>
               <button
                 onClick={cargarEjemploParametrico}
                 title="Carga una cajonera paramétrica de ejemplo"
@@ -1010,6 +1023,10 @@ function CatalogoModulos({
             }}
           />
         </Suspense>,
+        document.body
+      )}
+      {guiaAbierta && ReactDOM.createPortal(
+        <GuiaParametricaModal onClose={() => setGuiaAbierta(false)} />,
         document.body
       )}
     </div>

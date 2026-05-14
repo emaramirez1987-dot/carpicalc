@@ -1,0 +1,364 @@
+# Guía — Módulos paramétricos
+
+Cómo configurar un módulo del catálogo para que se pueda **personalizar al usarlo en un presupuesto**: cambiar cantidad de cajones, agregar/quitar puertas, elegir tipo de frente, etc., sin tener que duplicar el módulo.
+
+---
+
+## El concepto en una línea
+
+> Un módulo paramétrico es un molde. El usuario del presupuesto elige los valores de los parámetros y el sistema arma las piezas, calcula los costos y dibuja el 3D solo.
+
+---
+
+## Las 4 piezas del rompecabezas
+
+Todo módulo paramétrico tiene cuatro componentes que tenés que configurar en orden:
+
+| # | Componente | Para qué sirve |
+|---|---|---|
+| 1 | **Parámetros** | Lo que el usuario va a poder ajustar (ej: cantidad de cajones, manija sí/no) |
+| 2 | **Zonas** | Agrupar piezas que comparten material (ej: "cuerpo" en melamina, "frentes" en MDF) |
+| 3 | **Piezas paramétricas** | Cómo cambia cada pieza según los parámetros (aparece/desaparece, se repite, cambia tamaño) |
+| 4 | **Reglas** *(opcional)* | Validaciones (ej: "el alto no alcanza para tantos cajones") |
+
+---
+
+## Workflow general
+
+```
+1. Crear el módulo en el catálogo (forma básica)
+2. Definir parámetros, zonas, reglas
+3. Asignar a cada pieza su zona, condición y/o repetición
+4. Asignar a cada herraje su cantidad-fórmula y/o condición
+5. Guardar el módulo
+6. En el presupuesto: cargar el módulo y ajustar parámetros
+```
+
+---
+
+## Paso 1 — Definir los parámetros
+
+**Catálogo → editar módulo → al final del formulario hay un panel colapsable:**
+
+> **⚙ PARAMETRIZAR ESTE MÓDULO** ▼
+
+Abrilo y vas a tres sub-secciones. La primera es **🎚 Parámetros configurables**.
+
+Para cada parámetro definís:
+
+| Campo | Qué es |
+|---|---|
+| **ID** | Nombre interno usable en fórmulas (ej: `cajones`, `puertas`). Solo letras, números y `_`. |
+| **Nombre visible** | Lo que ve el usuario (ej: "Cantidad de cajones") |
+| **Tipo** | `Número entero` · `Número decimal` · `Sí/No` · `Opción de lista` · `Fórmula calculada` |
+| **Default** | Valor inicial cuando se carga el módulo |
+| **Min / Max** | Solo para números — restringe el rango |
+| **Opciones** | Solo para "Opción de lista" — los valores separados por coma |
+| **Expresión** | Solo para "Fórmula calculada" — fórmula que se evalúa automáticamente |
+
+### Tipos de parámetro — cuándo usar cada uno
+
+- **Número entero** → cantidad de cosas (cajones, puertas, estantes)
+- **Número decimal** → medidas con coma (raro)
+- **Sí/No** → tiene/no tiene algo (manija, puerta vidriada, retro-iluminación)
+- **Opción de lista** → variantes con nombres (tipo de frente: liso/manija/gola)
+- **Fórmula calculada** → valor derivado que el usuario no edita pero que se usa en otras fórmulas (ej: `altoUtil = alto - 2*esp`)
+
+---
+
+## Paso 2 — Definir las zonas
+
+Sub-sección **🎨 Zonas (material por grupo de piezas)**.
+
+Una zona es una agrupación lógica de piezas con material propio. Los nombres son **libres** — vos decidís.
+
+Ejemplo típico de cocina:
+
+| Zona | Material | Para qué |
+|---|---|---|
+| `cuerpo` | melamina 18mm | Laterales, base, tapa |
+| `frentes` | MDF lacado 18mm | Puertas, frentes de cajón |
+| `fondos` | fibrofácil 5mm | Fondo del módulo |
+| `interiores` | melamina 15mm | Estantes interiores |
+
+Para cada zona:
+
+| Campo | Qué es |
+|---|---|
+| **ID** | Nombre interno (ej: `frente`) |
+| **Nombre** | Etiqueta visible |
+| **Material** | De la lista de materiales de la app |
+| **Espesor** *(opcional)* | Override — sino usa el del material |
+
+> **Si no definís zonas:** todas las piezas usan el material del módulo. No es obligatorio definir zonas, solo si querés mezclar materiales.
+
+---
+
+## Paso 3 — Conectar las piezas a los parámetros
+
+Cuando editás una pieza (sea nueva o existente) en **FormPieza**, abajo de "Configuración avanzada" aparece un nuevo panel:
+
+> **⚙ PARAMETRIZACIÓN (ZONA · CONDICIÓN · REPETICIÓN)** ▼
+
+Tres campos opcionales:
+
+### 3.1 — Zona
+
+Asigna la pieza a una de las zonas que definiste en el Paso 2. Si no asignás, la pieza usa el material del módulo (legacy).
+
+### 3.2 — Condición *(opcional)*
+
+Una **expresión booleana**. Si da `false`, la pieza **no se crea** (no aparece en 3D ni en el costo).
+
+Ejemplos:
+
+| Expresión | Significado |
+|---|---|
+| `cajones > 0` | La pieza solo existe si hay cajones |
+| `tieneTapa` | La pieza solo existe si el booleano `tieneTapa` es Sí |
+| `frente == 'aluminio'` | La pieza solo si el frente elegido es "aluminio" |
+| `cajones >= 3 && puertas == 0` | Más de 3 cajones Y sin puertas |
+
+### 3.3 — Repetición *(opcional)*
+
+Hace que la pieza se **multiplique** según un valor. Tres campos:
+
+| Campo | Qué es | Ejemplos |
+|---|---|---|
+| **Variable** | Nombre del índice (default `i`) | `i`, `n`, `idx` |
+| **Desde** | Primer valor (suele ser 1) | `1` |
+| **Hasta** | Último valor — puede ser fórmula | `cajones`, `puertas`, `5` |
+
+Dentro de las fórmulas (formula1/formula2/posFormulas) podés usar `i` para diferenciar cada copia.
+
+En el **nombre** podés usar `{i}` o `#{i}` para que cada copia tenga su número:
+- `Frente cajón #{i}` → "Frente cajón 1", "Frente cajón 2", ...
+
+---
+
+## Paso 4 — Conectar los herrajes a los parámetros
+
+En el acordeón de **Herrajes** del módulo, cada fila tiene un botón **"fx"**.
+
+- **Modo normal:** cantidad numérica (ej: 4 bisagras)
+- **Modo fx (fórmula):** cantidad calculada por fórmula (ej: `cajones`)
+
+En modo fx aparecen dos campos:
+
+| Campo | Qué es |
+|---|---|
+| **Cantidad (fórmula)** | Cuántos herrajes — puede ser fórmula |
+| **Condición** *(opcional)* | Si es false, no se incluye el herraje |
+
+### Ejemplos
+
+| Herraje | Cantidad | Condición |
+|---|---|---|
+| Corredera de cajón | `cajones` | `cajones > 0` |
+| Bisagra de cazoleta | `puertas * 2` | `puertas > 0` |
+| Perfil aluminio H | `puertas` | `frente == 'aluminio'` |
+| Manija | `puertas + cajones` | `manija == true` |
+
+---
+
+## Sintaxis de fórmulas
+
+Tanto en parámetros tipo "fórmula" como en `condition`, `repeat.to`, `cantidad` de herraje, `formula1/2` de pieza y `posFormulas` se usa la misma sintaxis.
+
+### Variables disponibles
+
+| Variable | Qué es |
+|---|---|
+| `ancho`, `alto`, `profundidad` | Dimensiones del módulo (mm) |
+| `esp` | Espesor del material de la pieza (mm) |
+| Cualquier `parametro.id` | Valor actual del parámetro |
+| Cualquier `variable` custom | Definida en el panel "Variables" del módulo |
+| `i` (en fórmulas de pieza con `repeat`) | Índice actual |
+| `parent.X`, `material.X` | Notación con punto (avanzado) |
+
+### Operadores
+
+```
+Aritmética:    +  -  *  /  ( )
+Comparación:   >  <  >=  <=  ==  !=
+Lógicos:       &&  ||
+Ternario:      cond ? a : b
+```
+
+### Funciones
+
+```
+min(a, b, ...)  max(a, b, ...)
+round(x)        ceil(x)        floor(x)
+abs(x)
+```
+
+### Ejemplos prácticos
+
+```js
+// Alto del cajón = (alto disponible / cantidad) - margen
+(alto - 2*esp) / cajones - 4
+
+// Ancho de la pieza con margen
+ancho - 4
+
+// Cantidad de herraje según parámetro booleano
+manija ? puertas + cajones : 0
+
+// Constraint de validación
+alto >= cajones * 80
+```
+
+---
+
+## Paso 5 — Reglas de validación *(opcional)*
+
+Sub-sección **⚠ Reglas de validación** del panel paramétrico.
+
+Cada regla tiene:
+
+| Campo | Qué es |
+|---|---|
+| **Condición que debe ser verdadera** | Fórmula booleana |
+| **Mensaje al usuario** | Lo que aparece si la condición falla |
+
+Ejemplos:
+
+| Condición | Mensaje |
+|---|---|
+| `alto >= cajones * 80` | "El alto no alcanza para tantos cajones (mínimo 80mm cada uno)" |
+| `ancho <= 1200` | "Excede el ancho máximo de placa (1200mm)" |
+| `cajones + puertas <= 8` | "Demasiados elementos para este módulo" |
+
+Si una regla falla, el usuario verá el mensaje **en rojo** debajo del configurador, pero el módulo sigue funcionando (es un warning, no un bloqueo).
+
+---
+
+## Cómo lo usa el usuario del presupuesto
+
+Una vez guardado el módulo paramétrico, hay **dos lugares** donde el usuario puede cambiar los parámetros:
+
+### Lugar 1 — Panel inline del item del presupuesto
+
+1. Click en el módulo en la lista del presupuesto
+2. Se expande el panel inline (dims/material)
+3. Debajo aparece **⚙ Configuración paramétrica** con un control por parámetro
+4. Cambiar cualquier valor recalcula al instante: 3D, costo, total, lista de cortes
+
+### Lugar 2 — Vista 3D del presupuesto
+
+1. Tab **Vista 3D**
+2. Los módulos del presupuesto aparecen automáticamente en la escena
+3. Click en un módulo en la escena
+4. Panel lateral derecho muestra **PARÁMETROS** con los mismos controles
+5. Mismo comportamiento: todo se actualiza en vivo
+
+Ambos lugares son **bidireccionales** — cambias en uno, se refleja en el otro.
+
+---
+
+## Cómo afecta al resto de la app
+
+Cuando el usuario cambia un parámetro:
+
+| Componente | Qué se actualiza |
+|---|---|
+| Modelo 3D | Piezas se generan/eliminan, dimensiones cambian |
+| Costo del módulo | Materiales (m² de cada zona), tapacanto, herrajes |
+| Total del presupuesto | Suma actualizada |
+| Lista de cortes | Cantidad y dimensiones de cada pieza |
+| Vista previa / PDF | Refleja el costo y la cantidad de items |
+| Caja | Costo automático para cálculo de ganancia |
+| Trabajos (kanban) | Costo del item |
+
+Todo automático — vos solo definís el módulo bien, el resto sale solo.
+
+---
+
+## Ejemplo guiado — Cajonera con N cajones
+
+> Si querés ver el resultado final ya armado, en el catálogo hay un botón **🧪 Ejemplo paramétrico** que carga esta cajonera de una.
+
+### Diseño
+
+- Módulo: 600 × 720 × 550 mm
+- Cuerpo: 2 laterales + base + tapa (melamina 18mm)
+- Frentes: N cajones apilados (MDF lacado 18mm)
+- 1 corredera por cajón
+- Validación: el alto debe alcanzar para todos los cajones (80mm mínimo c/u)
+
+### Configuración paso a paso
+
+**1. Crear el módulo** con dims 600×720×550, material melamina.
+
+**2. Parámetro:**
+
+| Campo | Valor |
+|---|---|
+| ID | `cajones` |
+| Nombre | Cantidad de cajones |
+| Tipo | Número entero |
+| Default | 3 |
+| Min | 1 |
+| Max | 6 |
+
+**3. Zonas:**
+
+| ID | Nombre | Material |
+|---|---|---|
+| `cuerpo` | Cuerpo | melamina |
+| `frente` | Frentes | mdf |
+
+**4. Regla:**
+
+| Condición | Mensaje |
+|---|---|
+| `alto >= cajones * 80` | El alto no alcanza para tantos cajones |
+
+**5. Piezas:**
+
+| Nombre | Cantidad | Zona | Cara | Fórmula1 | Fórmula2 | Repeat |
+|---|---|---|---|---|---|---|
+| Lateral izq | 1 | cuerpo | left | `alto` | `profundidad` | — |
+| Lateral der | 1 | cuerpo | right | `alto` | `profundidad` | — |
+| Base | 1 | cuerpo | bottom | `ancho - 2*esp` | `profundidad` | — |
+| Tapa | 1 | cuerpo | top | `ancho - 2*esp` | `profundidad` | — |
+| `Frente cajón #{i}` | 1 | frente | frente | `(alto - 2*esp) / cajones - 4` | `ancho - 4` | `i` de `1` a `cajones` |
+
+**6. Herrajes:**
+
+| Herraje | Cantidad | Condición |
+|---|---|---|
+| Corredera | `cajones` | `cajones > 0` |
+
+### Resultado
+
+- Por defecto: 3 cajones, costo X
+- Usuario cambia a 5 → automáticamente: 5 frentes en 3D, 5 correderas, alto/cajón se reajusta, costo cambia, lista de cortes muestra 5 frentes
+- Usuario cambia a 6 con módulo bajo (alto=400) → aparece warning: "El alto no alcanza para tantos cajones"
+
+---
+
+## Tips y trucos
+
+- **Empezá simple.** Hacé andar el módulo sin parametros primero, después agregás uno por vez.
+- **Usá el visor 3D del editor** mientras armás el módulo — los defaults de los parámetros se aplican y ves el resultado en vivo.
+- **Los nombres de parámetros son sensibles a mayúsculas/minúsculas.** `Cajones` y `cajones` son distintos.
+- **Si una fórmula da `0` y no entendés por qué:** revisá que las variables que usás existan (que el parámetro esté definido, que la zona tenga material, etc.). Probá en el visor 3D del editor — si la pieza no aparece o tiene tamaño raro, la fórmula está mal.
+- **Las constraints son warnings, no bloqueos.** El usuario puede ignorarlas si quiere.
+- **Para borrar un parámetro/zona/regla** usá el botón ✕ Quitar de cada fila.
+- **El botón "🧪 Ejemplo paramétrico"** del catálogo se puede apretar varias veces — actualiza el módulo a la última versión.
+
+---
+
+## Glosario rápido
+
+| Término | Significado |
+|---|---|
+| Parámetro | Variable que el usuario del presupuesto puede ajustar |
+| Zona | Grupo de piezas con material común (cuerpo, frente, etc.) |
+| Condition | Expresión booleana que decide si una pieza/herraje existe |
+| Repeat | Multiplicación automática de una pieza según un valor |
+| Constraint | Regla de validación con mensaje al usuario |
+| Default | Valor inicial de un parámetro |
+| Fórmula | Expresión matemática que combina variables, parámetros y operadores |
