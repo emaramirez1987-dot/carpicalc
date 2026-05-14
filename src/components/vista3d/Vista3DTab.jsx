@@ -263,6 +263,13 @@ export function Vista3DTab({
   const [mostrarParedIzq,  setMostrarParedIzq]  = useState(false);
   const [mostrarParedDer,  setMostrarParedDer]  = useState(false);
   const [maximizado,       setMaximizado]       = useState(false);
+  // Contornos / aristas — toggle + color + grosor de línea
+  const [mostrarContornos, setMostrarContornos] = useState(false);
+  const [colorContornos,   setColorContornos]   = useState("#000000");
+  const [grosorContornos,  setGrosorContornos]  = useState(1);
+  const contornosConfig = mostrarContornos
+    ? { color: colorContornos, linewidth: grosorContornos }
+    : null;
 
   // Sincronizar colores de piso/pared con el tema — igual que VisorModulo3D
   // El usuario puede personalizar con el color picker, pero al cambiar tema se resetean
@@ -319,7 +326,33 @@ export function Vista3DTab({
     }, 0);
   }, [items, modulos, costos, dimOverride]);
 
-  const irACamara = (key) => { setCamView(key); setCamTarget([...CAMARAS[key].pos]); };
+  // Centro del bbox de los módulos en escena (en metros, espacio Three.js).
+  // Coincide con cómo useAutoLayout3D los posiciona: módulos arrancando en
+  // x=0 y crecen hacia la derecha. El centro X = totalAncho/2.
+  // El centro Y = promedio de alturas (los módulos están con su piso en y=0).
+  const sceneCenter = useMemo(() => {
+    if (modulosEnEscena.length === 0) return [0, 0.5, 0];
+    let totalAncho = 0;
+    let maxAlto = 0;
+    for (const inst of modulosEnEscena) {
+      const mod = modulos?.[inst.codigo];
+      if (!mod) continue;
+      const dims = mod.dimensiones || {};
+      totalAncho += (dims.ancho || 600) / 1000;
+      maxAlto = Math.max(maxAlto, (dims.alto || 700) / 1000);
+    }
+    return [totalAncho / 2, maxAlto / 2, 0];
+  }, [modulosEnEscena, modulos]);
+
+  // Aplica un preset: posiciona la cámara relativa al centro de la escena.
+  // Los offsets vienen de CAMARAS[key].pos — se interpretan como dirección
+  // relativa al centro, no como posición absoluta.
+  const irACamara = (key) => {
+    setCamView(key);
+    const offset = CAMARAS[key].pos;
+    const [cx, cy, cz] = sceneCenter;
+    setCamTarget([cx + offset[0], cy + offset[1], cz + offset[2]]);
+  };
 
   const handleAgregar = ({ codigo, dimsOverride }) => {
     const instanceId = `${codigo}-${crypto.randomUUID()}`;
@@ -546,6 +579,28 @@ export function Vista3DTab({
           {/* Piso */}
           <ColorToggle value={mostrarPiso} onToggle={() => setMostrarPiso(v => !v)} color={colorPiso} onColor={setColorPiso} label="Piso" />
 
+          {/* Contornos — aristas resaltadas en los módulos */}
+          <Dropdown label="Contornos" active={mostrarContornos}>
+            <DropItem active={mostrarContornos} onClick={() => setMostrarContornos(v => !v)}>
+              {mostrarContornos ? '✓ ' : ''}Mostrar contornos
+            </DropItem>
+            {mostrarContornos && (
+              <>
+                <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
+                <div style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: T.text }}>Color</span>
+                  <input type="color" value={colorContornos}
+                    onChange={e => setColorContornos(e.target.value)}
+                    style={{ width: 28, height: 22, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }} />
+                </div>
+                <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
+                {[[1, 'Fino    · 1px'],[2, 'Medio   · 2px'],[3, 'Grueso  · 3px']].map(([g, lbl]) => (
+                  <DropItem key={g} active={grosorContornos === g} onClick={() => setGrosorContornos(g)}>{lbl}</DropItem>
+                ))}
+              </>
+            )}
+          </Dropdown>
+
           {/* Grilla */}
           <Dropdown label="Grilla" active={mostrarGrilla}>
             <DropItem active={mostrarGrilla} onClick={() => setMostrarGrilla(v => !v)}>
@@ -724,6 +779,8 @@ export function Vista3DTab({
               shadowIntensidad={shadowIntensidad}
               shadowAngle={shadowAngle}
               mostrarGrilla={mostrarGrilla}
+              contornos={contornosConfig}
+              camLookAt={sceneCenter}
               divisionesGrilla={divisionesGrilla}
               mostrarParedIzq={mostrarParedIzq}
               mostrarParedDer={mostrarParedDer}

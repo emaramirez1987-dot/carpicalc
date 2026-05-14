@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { OrbitControls, Html } from '@react-three/drei';
-import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useThree, useFrame } from '@react-three/fiber';
 import Modulo3D from '../visor3d/Modulo3D.jsx';
 import { useAutoLayout3D } from './useAutoLayout3D.js';
 
@@ -24,14 +24,17 @@ function EntornoEscena({ isDark }) {
 }
 
 // ── CamaraController ──────────────────────────────────────────────────────────
-function CamaraController({ targetPos }) {
+// Acepta posición de cámara y target (a dónde mira). Si target no viene,
+// usa (0,0,0) — back-compat.
+function CamaraController({ targetPos, lookAt }) {
   const { camera, controls } = useThree();
   React.useEffect(() => {
     if (!targetPos) return;
+    const tgt = lookAt || [0, 0, 0];
     camera.position.set(...targetPos);
-    camera.lookAt(0, 0, 0);
-    if (controls) controls.target.set(0, 0, 0);
-  }, [targetPos, camera, controls]);
+    camera.lookAt(...tgt);
+    if (controls) controls.target.set(...tgt);
+  }, [targetPos, lookAt, camera, controls]);
   return null;
 }
 
@@ -61,7 +64,7 @@ function resolveCollision(proposedX, proposedZ, hw, hd, selfId, livePositions) {
 
 // ── ModuloEnEscena ────────────────────────────────────────────────────────────
 // Props >8 justificados: escena 3D con controles flotantes integrados
-function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, texturaDataUrl, onRotar90, onEliminarModulo }) {
+function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, texturaDataUrl, onRotar90, onEliminarModulo, contornos }) {
   const groupRef   = useRef();
   const isDragging = useRef(false);
   const [hovered, setHovered] = useState(false);
@@ -180,6 +183,9 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
       position={[x, y, z]}
       rotation={[0, inst.rotacionY || 0, 0]}
       onPointerDown={(e) => {
+        // Solo agarrar el módulo con botón izquierdo. Botón derecho/medio
+        // dejan que OrbitControls maneje (pan / dolly).
+        if (e.button !== 0) return;
         e.stopPropagation();
         isDragging.current = true;
         if (orbitRef.current) orbitRef.current.enabled = false;
@@ -204,6 +210,7 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
         onSelectPieza={null}
         texturaDataUrl={texturaDataUrl}
         parametrosValores={inst.parametrosValores}
+        contornos={contornos}
       />
 
       {/* Outline de selección — cyan #4D8CFF: halo glow exterior + filo sólido */}
@@ -360,6 +367,8 @@ export function Escena3DPrincipal({
   mostrarGrilla = true, divisionesGrilla = 50,
   onRotar90, onEliminarModulo,
   mostrarParedIzq = false, mostrarParedDer = false,
+  contornos = null,
+  camLookAt = null,
 }) {
   const orbitRef       = useRef();
   const livePositions  = useRef({}); // { [instanceId]: { x, z, hw, hd } }
@@ -370,8 +379,17 @@ export function Escena3DPrincipal({
 
   return (
     <>
-      <CamaraController targetPos={camTarget} />
-      <OrbitControls ref={orbitRef} makeDefault enableDamping dampingFactor={0.08} />
+      <CamaraController targetPos={camTarget} lookAt={camLookAt} />
+      <OrbitControls
+        ref={orbitRef}
+        makeDefault
+        enableDamping
+        dampingFactor={0.08}
+        mouseButtons={{
+          LEFT:   THREE.MOUSE.ROTATE,
+          MIDDLE: THREE.MOUSE.DOLLY,
+          RIGHT:  THREE.MOUSE.PAN,
+        }} />
 
       <EntornoEscena isDark={isDark} />
       {/* Luces idénticas a VisorModulo3D — sin HDRI */}
@@ -439,6 +457,7 @@ export function Escena3DPrincipal({
             livePositions={livePositions}
             onRotar90={onRotar90}
             onEliminarModulo={onEliminarModulo}
+            contornos={contornos}
             texturaDataUrl={texturaDataUrl}
           />
         );

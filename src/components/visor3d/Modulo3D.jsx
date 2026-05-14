@@ -8,11 +8,12 @@
 
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
+import { Edges } from '@react-three/drei';
 import { getMaterialProps } from './useMaterial3D.js';
 import { buildPiezas3D } from './engine/buildPiezas3D.js';
 
 // ── Pieza ─────────────────────────────────────────────────────────────────────
-function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, onClick, texturaDataUrl, rotY = 0 }) {
+function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, onClick, texturaDataUrl, rotY = 0, contornos = null }) {
   const matProps = getMaterialProps(materialTipo);
   const ep       = explodeFactor * 0.35;
   const finalPos = [
@@ -43,13 +44,21 @@ function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, o
           transparent={selected}
           opacity={selected ? 0.9 : 1}
         />
+        {/* Contornos opcionales — aristas resaltadas para mejor contraste */}
+        {contornos && (
+          <Edges
+            scale={1.001}
+            threshold={15}
+            color={contornos.color || '#000000'}
+            linewidth={contornos.linewidth || 1} />
+        )}
       </mesh>
     </group>
   );
 }
 
 // ── Modulo3D (default export — used in main scene) ────────────────────────────
-export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPieza, onSelectPieza, texturaDataUrl, parametrosValores }) {
+export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPieza, onSelectPieza, texturaDataUrl, parametrosValores, contornos = null }) {
   const piezas = useMemo(
     () => buildPiezas3D(modulo, costos, parametrosValores || {}),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,6 +82,7 @@ export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPi
             onSelectPieza?.({ id: p.id, piezaIdx: p.piezaIdx, nombre: p.nombre, role: p.role, size: p.size, pos: p.pos });
           }}
           texturaDataUrl={texturaDataUrl}
+          contornos={contornos}
         />
       ))}
     </group>
