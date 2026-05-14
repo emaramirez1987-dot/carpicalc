@@ -76,6 +76,33 @@ export const fmtFechaLarga = (ts) =>
 // expresión se valida contra una whitelist estricta. Si queda CUALQUIER
 // carácter o identificador fuera del set permitido, retorna null.
 
+/**
+ * Detecta variables desconocidas en una expresión.
+ * Útil para validación al escribir: si el usuario tipea `altzocalo` y no
+ * existe, retornarlo en `desconocidas` para mostrar warning.
+ *
+ * @param {string} expr        Expresión a inspeccionar
+ * @param {string[]} conocidas Lista de identificadores permitidos
+ * @returns {{ ok: boolean, desconocidas: string[] }}
+ */
+export function inspeccionarFormula(expr, conocidas = []) {
+  if (!expr || typeof expr !== 'string') return { ok: true, desconocidas: [] };
+  const FUNCIONES = new Set(['min', 'max', 'round', 'ceil', 'floor', 'abs']);
+  const OK = new Set(conocidas);
+  // Extraer todos los identificadores (incluyendo dot notation: parent.ancho)
+  const matches = expr.match(/\b[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*\b/g) || [];
+  const desconocidas = [];
+  for (const id of matches) {
+    if (FUNCIONES.has(id)) continue;
+    if (OK.has(id)) continue;
+    // Para dot notation: si la raíz es conocida (ej: "parent" o "material"), aceptamos
+    const raiz = id.split('.')[0];
+    if (OK.has(raiz)) continue;
+    if (!desconocidas.includes(id)) desconocidas.push(id);
+  }
+  return { ok: desconocidas.length === 0, desconocidas };
+}
+
 /** Funciones permitidas en fórmulas → mapeo a Math.X */
 export const FUNCIONES_FORMULA = {
   min: 'Math.min', max: 'Math.max',

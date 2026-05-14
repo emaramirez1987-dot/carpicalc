@@ -8,6 +8,7 @@ import {
   resolverVariables,
   evaluarExpresion,
   evaluarCondicion,
+  inspeccionarFormula,
   resolverDim,
   calcularModulo,
   recalcularTotalPresupuesto,
@@ -152,6 +153,27 @@ describe("evaluarExpresion (Fase 2)", () => {
       { i: 2, alto: 600, cajones: 3 }
     );
     expect(r).toBe(200);
+  });
+});
+
+describe("inspeccionarFormula", () => {
+  test("expr vacía → ok", () => {
+    expect(inspeccionarFormula("", ['ancho'])).toEqual({ ok: true, desconocidas: [] });
+  });
+  test("expr con variables conocidas → ok", () => {
+    expect(inspeccionarFormula("ancho - 2*esp", ['ancho', 'esp'])).toEqual({ ok: true, desconocidas: [] });
+  });
+  test("variable desconocida → reportada", () => {
+    expect(inspeccionarFormula("alto - altzocalo", ['alto', 'esp']))
+      .toEqual({ ok: false, desconocidas: ['altzocalo'] });
+  });
+  test("funciones permitidas no se reportan", () => {
+    expect(inspeccionarFormula("min(ancho, max(alto, 100))", ['ancho', 'alto']))
+      .toEqual({ ok: true, desconocidas: [] });
+  });
+  test("dot notation: si la raíz es conocida acepta el path", () => {
+    expect(inspeccionarFormula("parent.ancho - 50", ['parent']))
+      .toEqual({ ok: true, desconocidas: [] });
   });
 });
 

@@ -13,6 +13,35 @@
 
 import React, { useState } from 'react';
 import { TIPO_MAT } from '../../constants.js';
+import { inspeccionarFormula } from '../../utils.js';
+
+// Variables que siempre están disponibles para fórmulas dentro de un módulo:
+// dims base + esp + raíces de dot notation comunes.
+const VARS_BASE = ['ancho', 'alto', 'profundidad', 'esp', 'i', 'parent', 'material'];
+
+// Componente input que muestra warning en rojo cuando la fórmula tiene
+// identificadores no reconocidos. Recibe la lista de IDs de parámetros del
+// módulo para sumarlos a las vars conocidas.
+function InputFormula({ value, onChange, placeholder, paramsConocidos = [] }) {
+  const conocidas = [...VARS_BASE, ...paramsConocidos];
+  const { ok, desconocidas } = inspeccionarFormula(value, conocidas);
+  const tieneError = !ok && (value || '').trim() !== '';
+  return (
+    <>
+      <input value={value || ''} placeholder={placeholder}
+        onChange={e => onChange(e.target.value)}
+        style={{ ...inputBase, width: "100%", boxSizing: "border-box",
+          border: `1px solid ${tieneError ? "rgba(224,112,112,0.55)" : "var(--border)"}`,
+        }} />
+      {tieneError && (
+        <div style={{ fontSize: 9, color: "#e07070", marginTop: 3,
+          fontFamily: "'DM Mono',monospace", letterSpacing: "0.02em" }}>
+          ⚠ desconocida{desconocidas.length > 1 ? 's' : ''}: {desconocidas.join(', ')}
+        </div>
+      )}
+    </>
+  );
+}
 
 const TIPOS_PARAM = [
   { id: "number",  label: "Número decimal" },
@@ -66,6 +95,7 @@ const subSecHdr = (icon, title, count, isOpen, onToggle) => (
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ListaParametros({ parametros, onChange }) {
+  const otrosParams = parametros.map(p => p.id).filter(Boolean);
   const update = (idx, patch) => onChange(parametros.map((p, i) => i === idx ? { ...p, ...patch } : p));
   const remove = (idx) => onChange(parametros.filter((_, i) => i !== idx));
   const add = () => onChange([...parametros, {
@@ -113,9 +143,9 @@ function ListaParametros({ parametros, onChange }) {
           {p.tipo === "formula" ? (
             <div style={{ gridColumn: "span 2" }}>
               <div style={lbl}>Expresión</div>
-              <input value={p.expr || ""} placeholder="ej: alto - 2*esp"
-                onChange={e => update(idx, { expr: e.target.value })}
-                style={{ ...inputBase, width: "100%", boxSizing: "border-box" }} />
+              <InputFormula value={p.expr} placeholder="ej: alto - 2*esp"
+                onChange={(v) => update(idx, { expr: v })}
+                paramsConocidos={otrosParams.filter(id => id !== p.id)} />
             </div>
           ) : p.tipo === "choice" ? (
             <div style={{ gridColumn: "span 2" }}>
@@ -233,7 +263,7 @@ function ListaZonas({ zonas, onChange }) {
 // ListaConstraints
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ListaConstraints({ constraints, onChange }) {
+function ListaConstraints({ constraints, onChange, paramsConocidos = [] }) {
   const update = (idx, patch) => onChange(constraints.map((c, i) => i === idx ? { ...c, ...patch } : c));
   const remove = (idx) => onChange(constraints.filter((_, i) => i !== idx));
   const add = () => onChange([...constraints, { expr: "", msg: "" }]);
@@ -261,9 +291,9 @@ function ListaConstraints({ constraints, onChange }) {
         }}>
           <div>
             <div style={lbl}>Condición que debe ser verdadera</div>
-            <input value={c.expr} placeholder="ej: alto >= cajones * 80"
-              onChange={e => update(idx, { expr: e.target.value })}
-              style={{ ...inputBase, width: "100%", boxSizing: "border-box", fontFamily: "'DM Mono',monospace" }} />
+            <InputFormula value={c.expr} placeholder="ej: alto >= cajones * 80"
+              onChange={(v) => update(idx, { expr: v })}
+              paramsConocidos={paramsConocidos} />
           </div>
           <div>
             <div style={lbl}>Mensaje al usuario si falla</div>
@@ -308,6 +338,7 @@ export default function EditorParametrico({ parametros, zonas, constraints, onCh
       <div>
         {subSecHdr("⚠", "Reglas de validación", constraints.length, secs.constraints, () => toggleSec("constraints"))}
         {secs.constraints && <ListaConstraints constraints={constraints}
+          paramsConocidos={parametros.map(p => p.id).filter(Boolean)}
           onChange={(c) => onChange({ parametros, zonas, constraints: c })} />}
       </div>
     </div>
