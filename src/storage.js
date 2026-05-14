@@ -18,6 +18,7 @@
 import { modulosIniciales, costoIniciales, PERFIL_VACIO } from "./constants.js";
 import { supabase } from "./lib/supabase.js";
 import { parsearModulo, parsearPresupuesto } from "./services/moduloService.js";
+import { notificarError } from "./hooks/useToastErrores.js";
 
 // ── Escritura localStorage (datos locales/efímeros) ───────────────────────
 export const _save = async (key, data) => {
@@ -141,7 +142,7 @@ export const guardarModulos = async (modulosObj, ts) => {
     }
     return true;
   } catch (e) {
-    console.error("guardarModulos:", e);
+    notificarError("No se pudieron guardar los módulos. Verificá tu conexión.", e);
     return false;
   }
 };
@@ -170,7 +171,7 @@ export const guardarPresupuestos = async (presupuestosObj) => {
     }
     return true;
   } catch (e) {
-    console.error("guardarPresupuestos:", e);
+    notificarError("No se pudieron guardar los presupuestos. Verificá tu conexión.", e);
     return false;
   }
 };
@@ -189,7 +190,7 @@ export const guardarPerfil = async (perfil) => {
     if (error) { console.error("guardarPerfil:", error); return false; }
     return true;
   } catch (e) {
-    console.error("guardarPerfil:", e);
+    notificarError("No se pudo guardar el perfil del taller.", e);
     return false;
   }
 };
@@ -207,7 +208,7 @@ export const guardarCostos = async (costos) => {
     if (error) { console.error("guardarCostos:", error); return false; }
     return true;
   } catch (e) {
-    console.error("guardarCostos:", e);
+    notificarError("No se pudieron guardar los costos.", e);
     return false;
   }
 };

@@ -17,6 +17,7 @@ import {
 } from "./storage.js";
 import { useTema } from "./hooks/useTema.js";
 import { useAtajosTeclado } from "./hooks/useAtajosTeclado.js";
+import { useToastErrores } from "./hooks/useToastErrores.js";
 import ModalAtajos from "./components/ui/ModalAtajos.jsx";
 import {
   crearPresupuesto,
@@ -163,6 +164,9 @@ function AppInterna() {
     };
   }, [dispatch]);
   useAtajosTeclado(atajos);
+
+  // Toasts de errores globales (Supabase, etc.)
+  const { toasts: toastsError, dismiss: dismissToast } = useToastErrores();
 
   // ── Estado de dominio (no es navegación — queda aquí) ────────────────────
   const [modulos,        setModulos]        = useState(null);
@@ -722,6 +726,34 @@ function AppInterna() {
         {mostrarAtajos && <ModalAtajos onClose={() => setMostrarAtajos(false)} />}
         {/* Hint flotante — solo se muestra una vez */}
         <HintAtajos />
+        {/* Toasts de errores globales (Supabase, save, etc.) */}
+        {toastsError.length > 0 && (
+          <div style={{
+            position: "fixed", top: 70, right: 20, zIndex: 1500,
+            display: "flex", flexDirection: "column", gap: 8,
+            maxWidth: 360,
+          }}>
+            {toastsError.map(t => (
+              <div key={t.id} style={{
+                padding: "10px 14px", borderRadius: 8,
+                background: "rgba(40, 12, 12, 0.96)",
+                border: "1px solid rgba(200,60,60,0.45)",
+                boxShadow: "0 6px 20px rgba(0,0,0,0.45)",
+                display: "flex", alignItems: "flex-start", gap: 10,
+                color: "#ffbcbc", fontFamily: "'Bricolage Grotesque',sans-serif",
+                fontSize: 13, lineHeight: 1.4,
+              }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
+                <span style={{ flex: 1 }}>{t.mensaje}</span>
+                <button onClick={() => dismissToast(t.id)} style={{
+                  padding: "0 6px", borderRadius: 4, cursor: "pointer",
+                  background: "transparent", border: "none",
+                  color: "#ffbcbc", fontSize: 14, lineHeight: 1,
+                }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
     </PresupuestoContext.Provider>

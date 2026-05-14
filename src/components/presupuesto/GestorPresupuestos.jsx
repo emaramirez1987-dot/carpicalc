@@ -42,7 +42,14 @@ function GestorPresupuestos({
       .filter(([, p]) => {
         if (!busquedaPres.trim()) return true;
         const q = busquedaPres.toLowerCase();
-        return p.nombre?.toLowerCase().includes(q) || p.cliente?.nombre?.toLowerCase().includes(q);
+        const campos = [
+          p.nombre,
+          p.cliente?.nombre,
+          p.cliente?.tel,
+          p.cliente?.dir,
+          p.nota,
+        ];
+        return campos.some(c => c && c.toLowerCase().includes(q));
       })
       .map(([id, p]) => {
         const tieneRecalculable = (p.items || []).length > 0 || (p.costosDirectos || []).length > 0;
@@ -87,16 +94,21 @@ function GestorPresupuestos({
       {abierto && (
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderTop: "1px solid var(--separator)", borderRadius: "0 0 10px 10px", overflow: "visible" }}>
 
-          {/* Buscador — solo con más de 3 */}
-          {totalEntries > 3 && (
+          {/* Buscador — visible desde 3+ presupuestos */}
+          {totalEntries > 2 && (
             <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--separator)" }}>
               <div style={{ position: "relative" }}>
                 <span style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-muted)", pointerEvents: "none" }}>🔍</span>
                 <input value={busquedaPres} onChange={e => setBusquedaPres(e.target.value)}
-                  placeholder="Buscar por nombre o cliente..."
-                  style={{ width: "100%", paddingLeft: 28, paddingRight: 10, paddingTop: 6, paddingBottom: 6, fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 12, background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 6, outline: "none" }}
+                  placeholder="Buscar por nombre, cliente, teléfono, dirección o nota..."
+                  style={{ width: "100%", paddingLeft: 28, paddingRight: busquedaPres ? 70 : 10, paddingTop: 6, paddingBottom: 6, fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 12, background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 6, outline: "none" }}
                   onFocus={e => e.target.style.borderColor = "var(--accent-border)"}
                   onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                {busquedaPres && (
+                  <span style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", pointerEvents: "none" }}>
+                    {entries.length}/{totalEntries}
+                  </span>
+                )}
               </div>
             </div>
           )}

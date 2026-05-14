@@ -792,9 +792,39 @@ function Presupuesto({
                       style={{ padding: "4px 10px", borderRadius: 5, border: `1px solid ${estaEditando ? "var(--accent-border)" : "var(--border)"}`, background: estaEditando ? "var(--accent-soft)" : "transparent", color: estaEditando ? "var(--accent)" : "var(--text-muted)", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.15s" }}>
                       {estaEditando ? "▲" : "✎"}
                     </button>
+                    {/* Botón duplicar — crea una copia del item con nuevo id */}
+                    <button onClick={() => {
+                      const newId = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+                      const oldKey = item.id || item.codigo;
+                      const newItem = { ...item, id: newId };
+                      setItems(its => {
+                        const next = [...its];
+                        next.splice(idx + 1, 0, newItem);
+                        return next;
+                      });
+                      if (dimOverride?.[oldKey]) {
+                        setDimOverride(prev => ({ ...prev, [newId]: { ...prev[oldKey] } }));
+                      }
+                      if (composicionOverride?.[oldKey]) {
+                        setComposicionOverride(prev => ({ ...prev, [newId]: { ...prev[oldKey] } }));
+                      }
+                      if (inlineModulos?.[oldKey]) {
+                        setInlineModulos(prev => ({ ...prev, [newId]: { ...prev[oldKey] } }));
+                      }
+                    }}
+                      title="Duplicar este ítem"
+                      style={{ padding: "4px 8px", borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, transition: "all 0.15s" }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent-border)"; e.currentTarget.style.color = "var(--accent)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
+                      ⧉
+                    </button>
                     {confirmDelModulo === keyId ? (
                       <div style={{ display: "flex", gap: 4 }}>
-                        <button onClick={() => { setItems(its => its.filter((_, i) => i !== idx)); if (estaEditando) setModalEdicion(null); setConfirmDelModulo(null); }}
+                        <button onClick={() => {
+                          setItems(its => its.filter((_, i) => i !== idx));
+                          if (estaEditando) setModalEdicion(null);
+                          setConfirmDelModulo(null);
+                        }}
                           style={{ padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(200,60,60,0.15)", border: "1px solid rgba(200,60,60,0.40)", color: "#e07070", fontFamily: "'DM Mono',monospace" }}>✓</button>
                         <button onClick={() => setConfirmDelModulo(null)}
                           style={{ padding: "4px 7px", borderRadius: 5, cursor: "pointer", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>✕</button>
@@ -1200,7 +1230,6 @@ function Presupuesto({
           </div>
         );
       })()}
-
     </div>
   );
 }
