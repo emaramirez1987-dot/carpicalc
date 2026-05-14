@@ -194,8 +194,8 @@ export default function GuiaParametricaModal({ onClose }) {
             <P dim>Tip: empezá simple. Hacé andar el módulo sin parámetros primero, después agregás uno por vez.</P>
           </Seccion>
 
-          {/* Las 4 piezas */}
-          <Seccion icon="🧩" titulo="Las 4 piezas del rompecabezas" defaultOpen>
+          {/* Las 5 piezas */}
+          <Seccion icon="🧩" titulo="Las 5 piezas del rompecabezas" defaultOpen>
             <Tabla
               headers={["Componente", "Para qué sirve"]}
               rows={[
@@ -203,6 +203,7 @@ export default function GuiaParametricaModal({ onClose }) {
                 ["Zonas",      "Agrupar piezas que comparten material (cuerpo en melamina, frentes en MDF)"],
                 ["Piezas paramétricas", "Cómo cambia cada pieza según los parámetros (aparece, se repite, cambia tamaño)"],
                 ["Reglas",     "Validaciones opcionales (ej: 'el alto no alcanza para tantos cajones')"],
+                ["Sub-componentes", "Mini-módulos dentro del módulo (ej: 'cajón armado'), cada uno con su propio mundo y replicable N veces"],
               ]}
             />
           </Seccion>
@@ -375,6 +376,82 @@ alto >= cajones * 80`}</Codeline>
               ]}
             />
             <P dim>Si una regla falla, el usuario verá el mensaje <b style={{color: C.warn}}>en rojo</b> debajo del configurador, pero el módulo sigue funcionando (es un warning, no un bloqueo).</P>
+          </Seccion>
+
+          {/* Paso 6 — Subcomponentes */}
+          <Seccion icon="🧩" titulo="Paso 6 — Sub-componentes (opcional pero potente)" defaultOpen>
+            <P>Un sub-componente es un <b>mini-módulo dentro del módulo padre</b>. Tiene su propio eje 0,0,0 local, sus dimensiones, sus piezas, sus herrajes y sus parámetros.</P>
+            <Quote>
+              Ideal para "cajón armado completo" (5 piezas + correderas + tirador), "puerta con marco perimetral", "compartimento con tapa", etc. Lo que se replica junto se diseña junto.
+            </Quote>
+
+            <H>Cuándo usar uno vs. usar repeat de pieza</H>
+            <Tabla
+              headers={["Caso", "Solución"]}
+              rows={[
+                ["Solo se replica el frente del cajón", <code style={codeStyle}>pieza.repeat</code>],
+                ["Cajón armado completo (5+ piezas relacionadas)", <code style={codeStyle}>subComponente</code>],
+                ["Puerta con marco (4 piezas perimetrales)", <code style={codeStyle}>subComponente</code>],
+              ]}
+            />
+            <P dim><b>Regla rápida:</b> si lo que se replica son ≥3 piezas relacionadas, usá subcomponente. Si es 1-2 piezas, alcanza con <code style={codeStyle}>pieza.repeat</code>.</P>
+
+            <H>Los dos pasos para diseñar un subcomp</H>
+            <P><b>1. Armarlo "en su mundo":</b> las piezas se diseñan como si fuera un módulo aislado. Las fórmulas usan <code style={codeStyle}>ancho</code> / <code style={codeStyle}>alto</code> / <code style={codeStyle}>profundidad</code> del SUBCOMP (no del padre).</P>
+            <P><b>2. Ubicarlo en el padre:</b> el campo <b>Origen (x/y/z)</b> dice dónde va a parar el (0,0,0) del subcomp dentro del padre. Acá las fórmulas usan vars del padre y el índice <code style={codeStyle}>i</code> del repeat.</P>
+
+            <H>Campos del editor</H>
+            <Tabla
+              headers={["Bloque", "Campos"]}
+              rows={[
+                ["Identificación", "ID, nombre, ✕ Quitar"],
+                ["Repetición", "var (default 'i'), desde, hasta (núm o fórmula), condición opc"],
+                ["📐 Dimensiones LOCALES", "ancho / alto / profundidad — pueden ser fórmulas con vars del padre"],
+                ["📍 Origen en el padre", "x / y / z — fórmulas que ubican el (0,0,0) del subcomp"],
+                ["🪵 Piezas", "Lista propia. Fórmulas usan vars LOCALES del subcomp"],
+                ["🔩 Herrajes", "id, cantidad (núm o fórmula), condición opc"],
+              ]}
+            />
+
+            <H>Ejemplo: cajón armado completo</H>
+            <P>Cajonera con N cajones donde cada cajón se replica entero:</P>
+            <Codeline>{`Subcomponente "cajón":
+  ID: cajon
+  Repeat:  var i, desde 1, hasta cajones
+  Origen:  x: esp
+           y: (i-1) * ((alto - 2*esp) / cajones) + esp
+           z: 0
+  Dim local ancho:       ancho - 2*esp
+  Dim local alto:        (alto - 2*esp) / cajones - 4
+  Dim local profundidad: profundidad - 20`}</Codeline>
+            <Tabla
+              headers={["Pieza", "Fórmula 1", "Fórmula 2", "Cara"]}
+              rows={[
+                ["Frente cajón",    "alto", "ancho", "front"],
+                ["Lateral izq caja","alto", "profundidad", "left"],
+                ["Lateral der caja","alto", "profundidad", "right"],
+                ["Trasera caja",    "alto", "ancho", "back"],
+                ["Base caja",       "ancho","profundidad","bottom"],
+              ]}
+            />
+            <Tabla
+              headers={["Herraje del subcomp", "Cantidad"]}
+              rows={[
+                ["Corredera", "2"],
+                ["Tirador",   "1"],
+              ]}
+            />
+            <P>Resultado: un solo parámetro <code style={codeStyle}>cajones</code> en el padre genera todos los cajones armados completos, posicionados automáticamente. <code style={codeStyle}>cajones=3 → 5</code> y aparecen 2 cajones más con todas sus piezas + correderas + tiradores.</P>
+
+            <H>Vars disponibles dentro de un subcomp</H>
+            <Tabla
+              headers={["Dónde la usás", "Qué vars hay"]}
+              rows={[
+                ["repeat.to / origen / condition", "Vars del padre + parámetros del padre + i"],
+                ["dimensiones del subcomp",        "Vars del padre + parámetros del padre + i"],
+                ["Fórmulas dentro del subcomp",    "Vars LOCALES (ancho/alto/prof del subcomp) + parámetros propios + esp"],
+              ]}
+            />
           </Seccion>
 
           {/* Cómo lo usa el usuario */}

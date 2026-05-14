@@ -10,9 +10,9 @@ Cómo configurar un módulo del catálogo para que se pueda **personalizar al us
 
 ---
 
-## Las 4 piezas del rompecabezas
+## Las 5 piezas del rompecabezas
 
-Todo módulo paramétrico tiene cuatro componentes que tenés que configurar en orden:
+Todo módulo paramétrico tiene cinco componentes que podés configurar:
 
 | # | Componente | Para qué sirve |
 |---|---|---|
@@ -20,6 +20,7 @@ Todo módulo paramétrico tiene cuatro componentes que tenés que configurar en 
 | 2 | **Zonas** | Agrupar piezas que comparten material (ej: "cuerpo" en melamina, "frentes" en MDF) |
 | 3 | **Piezas paramétricas** | Cómo cambia cada pieza según los parámetros (aparece/desaparece, se repite, cambia tamaño) |
 | 4 | **Reglas** *(opcional)* | Validaciones (ej: "el alto no alcanza para tantos cajones") |
+| 5 | **Sub-componentes** *(opcional)* | Mini-módulos dentro del módulo, cada uno con su propio mundo (eje, dims, piezas, herrajes, parámetros). Ideal para "cajón armado", "puerta con marco", etc. |
 
 ---
 
@@ -231,6 +232,98 @@ Ejemplos:
 | `cajones + puertas <= 8` | "Demasiados elementos para este módulo" |
 
 Si una regla falla, el usuario verá el mensaje **en rojo** debajo del configurador, pero el módulo sigue funcionando (es un warning, no un bloqueo).
+
+---
+
+## Paso 6 — Sub-componentes *(opcional pero potente)*
+
+Sub-sección **🧩 Sub-componentes (módulos hijos)** del panel paramétrico.
+
+### Qué son
+
+Un sub-componente es un **mini-módulo dentro del módulo padre**. Tiene:
+
+- **Su propio eje 0,0,0 local** (esquina inferior-izquierda-fondo del subcomp)
+- **Sus propias dimensiones** locales (pueden ser fórmulas que usan vars del padre)
+- **Sus propios parámetros**
+- **Sus propias piezas** (diseñadas en coords locales — más fácil mentalmente)
+- **Sus propios herrajes**
+- **Un origen `{x, y, z}`** que ancla ese (0,0,0) en el padre
+- **Repeat opcional** — N instancias por subcomp (ej: `to: "cajones"`)
+- **Condition opcional** — el subcomp solo existe si truthy
+
+### Cuándo usar uno
+
+| Caso | Usar `pieza.repeat`? | Usar `subComponente.repeat`? |
+|---|---|---|
+| Solo se replica el frente del cajón | ✅ | ❌ (overkill) |
+| Cajón armado completo (5 piezas + 2 correderas + tirador) | ❌ (sería 8 piezas con repeat separadas) | ✅ |
+| Puerta con marco perimetral | depende | ✅ si tiene 4+ piezas que dependen de la puerta |
+| Estantes interiores apilados | ✅ si es solo 1 pieza | ✅ si lleva soportes adicionales |
+
+Regla rápida: **si lo que se replica son ≥ 3 piezas relacionadas, usá subcomponente**. Si es 1-2 piezas, alcanza con `pieza.repeat`.
+
+### Los dos pasos para diseñar un subcomp
+
+**Paso 6.1 — Armarlo "en su mundo":**
+Las piezas del subcomp se diseñan como si fuera un módulo aislado. Las fórmulas usan `ancho` / `alto` / `profundidad` del SUBCOMP (no del padre). Y `posFormulas` ubican las piezas dentro del subcomp con origen en (0,0,0).
+
+**Paso 6.2 — Ubicarlo en el padre:**
+El campo **Origen** (x/y/z) dice dónde va a parar ese (0,0,0) del subcomp dentro del módulo padre. Acá las fórmulas usan vars del padre y el índice `i` del repeat.
+
+### Campos del editor
+
+| Bloque | Campos |
+|---|---|
+| Identificación | ID (válido como variable), nombre, ✕ Quitar |
+| Repetición | `var` (default "i"), `desde`, `hasta` (núm o fórmula), `condición` opcional |
+| 📐 Dimensiones LOCALES | `ancho` / `alto` / `profundidad` — fórmulas que pueden usar vars del padre |
+| 📍 Origen en el padre | `x` / `y` / `z` — fórmulas que pueden usar vars del padre + `i` |
+| 🪵 Piezas | Lista propia. Las fórmulas usan vars LOCALES (`ancho`, `alto`, `profundidad` = del subcomp) |
+| 🔩 Herrajes | id, cantidad (núm o fórmula), condición opcional |
+
+### Ejemplo: cajón armado completo
+
+Caso real: una cajonera donde cada cajón debe replicarse entero (no solo el frente).
+
+**Subcomponente "cajón":**
+
+| Campo | Valor |
+|---|---|
+| ID | `cajon` |
+| Nombre | `Cajón armado` |
+| Repeat var / desde / hasta | `i` / `1` / `cajones` |
+| Origen x / y / z | `esp` / `(i-1) * ((alto - 2*esp) / cajones) + esp` / `0` |
+| Dim local ancho | `ancho - 2*esp` |
+| Dim local alto | `(alto - 2*esp) / cajones - 4` |
+| Dim local profundidad | `profundidad - 20` |
+
+**Piezas del cajón** (todas en coords locales):
+
+| Nombre | Fórmula 1 | Fórmula 2 | Cara | Zona |
+|---|---|---|---|---|
+| Frente cajón | `alto` | `ancho` | front | frente |
+| Lateral izq caja | `alto` | `profundidad` | left | cajon |
+| Lateral der caja | `alto` | `profundidad` | right | cajon |
+| Trasera caja | `alto` | `ancho` | back | cajon |
+| Base caja | `ancho` | `profundidad` | bottom | cajon |
+
+**Herrajes del cajón:**
+
+| Herraje | Cantidad | Condición |
+|---|---|---|
+| Corredera | `2` | — |
+| Tirador | `1` | — |
+
+**Resultado:** un solo parámetro `cajones` en el padre genera todos los cajones armados completos, posicionados automáticamente. Cambias `cajones=3` a `cajones=5` y aparecen 2 cajones más con todas sus piezas + correderas + tiradores.
+
+### Vars disponibles dentro de un subcomp
+
+| Donde la usás | Qué vars hay |
+|---|---|
+| `repeat.to`, `origen.x/y/z`, `condition` del subcomp | Vars del padre + parámetros del padre + `i` |
+| `dimensiones` del subcomp | Vars del padre + parámetros del padre + `i` |
+| Fórmulas de piezas/herrajes DENTRO del subcomp | Vars LOCALES (`ancho`, `alto`, `profundidad` = del subcomp), parámetros propios del subcomp, `esp` |
 
 ---
 
