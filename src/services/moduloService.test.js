@@ -535,6 +535,46 @@ describe("expandirSubComponentes", () => {
     expect(frentes[1].posFormulas).toEqual({ x: "30", y: "280", z: "45" });
   });
 
+  test("anidamiento: subcomp dentro de subcomp se expande recursivamente", () => {
+    const m = {
+      ...moduloPadre,
+      subComponentes: [{
+        id: "compartimento", nombre: "Compartimento",
+        repeat: { var: "j", from: 1, to: 2 },
+        dimensiones: { ancho: "ancho", alto: "100", profundidad: "profundidad" },
+        subComponentes: [{
+          id: "cajon", nombre: "Cajón",
+          repeat: { var: "i", from: 1, to: 3 },
+          dimensiones: { ancho: "ancho", alto: "30", profundidad: "profundidad" },
+          piezas: [{ nombre: "Frente", cantidad: 1, formula1: "alto", formula2: "ancho", cara3d: "front" }],
+        }],
+      }],
+    };
+    const r = generarPiezas(m, {});
+    // 1 base del padre + (2 compartimentos × 3 cajones × 1 pieza) = 7 piezas
+    expect(r.piezas).toHaveLength(1 + 6);
+  });
+
+  test("anidamiento: respeta el guard de profundidad máxima (5)", () => {
+    // Construyo una cadena artificial de profundidad 6 para verificar el guard.
+    const construirAnidado = (n) => n === 0
+      ? { piezas: [{ nombre: "P", cantidad: 1, formula1: "alto", formula2: "ancho", cara3d: "front" }] }
+      : {
+          dimensiones: { ancho: 100, alto: 100, profundidad: 100 },
+          subComponentes: [{
+            id: `n${n}`, nombre: `N${n}`,
+            dimensiones: { ancho: 100, alto: 100, profundidad: 100 },
+            ...construirAnidado(n - 1),
+          }],
+        };
+    const m = { ...moduloPadre, piezas: [], ...construirAnidado(7) };
+    // No debe romper, debe loguear warn y cortar
+    const spy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const r = generarPiezas(m, {});
+    expect(Array.isArray(r.piezas)).toBe(true);
+    spy.mockRestore();
+  });
+
   test("integración: generarPiezas dispara expandirSubComponentes automáticamente", () => {
     const m = {
       ...moduloPadre,

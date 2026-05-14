@@ -276,6 +276,51 @@ export default function EditorSubComponente({ subcomp, onChange, onDelete }) {
         <EditorHerrajesSubcomp herrajes={subcomp.herrajes || []}
           onChange={(h) => patch({ herrajes: h })} />
       </SubAcordeon>
+
+      {/* Sub-acordeón: Sub-subcomponentes (anidamiento) */}
+      <SubAcordeon icon="🧩" titulo="Subcomponentes anidados" count={(subcomp.subComponentes || []).length}>
+        <ListaSubSubComponentes subComponentes={subcomp.subComponentes || []}
+          onChange={(s) => patch({ subComponentes: s })} />
+      </SubAcordeon>
+    </div>
+  );
+}
+
+// Lista de subcomponentes anidados (dentro de otro subcomp). Recursivamente
+// renderiza EditorSubComponente para cada uno. El motor permite hasta 5
+// niveles de profundidad (MAX_SUBCOMP_DEPTH).
+function ListaSubSubComponentes({ subComponentes, onChange }) {
+  const update = (idx, sub) => onChange(subComponentes.map((s, i) => i === idx ? sub : s));
+  const remove = (idx) => onChange(subComponentes.filter((_, i) => i !== idx));
+  const add = () => onChange([...subComponentes, {
+    id: `sub${subComponentes.length + 1}`,
+    nombre: "",
+    repeat: { var: "i", from: 1, to: 1 },
+    origen: { x: "0", y: "0", z: "0" },
+    dimensiones: { ancho: "ancho", alto: "alto", profundidad: "profundidad" },
+    parametros: [], piezas: [], herrajes: [], subComponentes: [],
+  }]);
+
+  if (subComponentes.length === 0) {
+    return (
+      <div style={{ padding: "10px 0", textAlign: "center" }}>
+        <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 8, fontFamily: M }}>
+          Sin subcomponentes anidados — útil para casos complejos (cajón con compartimentos internos, etc.)
+        </div>
+        <button onClick={add} style={btnAdd}>+ Anidar subcomponente</button>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {subComponentes.map((sub, idx) => (
+        <EditorSubComponente
+          key={idx}
+          subcomp={sub}
+          onChange={(s) => update(idx, s)}
+          onDelete={() => remove(idx)} />
+      ))}
+      <button onClick={add} style={btnAdd}>+ Anidar subcomponente</button>
     </div>
   );
 }

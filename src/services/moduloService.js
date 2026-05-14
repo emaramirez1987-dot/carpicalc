@@ -283,9 +283,17 @@ function _resolverDimSubcomp(valor, ctx, defaultVal = 0) {
  * @param {Object=} costos
  * @returns {Object} módulo con piezas/herrajes extras del expandido
  */
-export function expandirSubComponentes(modulo, valoresParametros = {}, costos = null) {
+const MAX_SUBCOMP_DEPTH = 5;
+
+export function expandirSubComponentes(modulo, valoresParametros = {}, costos = null, _profundidad = 0) {
   const subs = Array.isArray(modulo?.subComponentes) ? modulo.subComponentes : [];
   if (subs.length === 0) return modulo;
+  // Guard contra recursión accidental (ciclos por mala config).
+  if (_profundidad >= MAX_SUBCOMP_DEPTH) {
+    // eslint-disable-next-line no-console
+    console.warn(`[expandirSubComponentes] Profundidad máxima (${MAX_SUBCOMP_DEPTH}) alcanzada — subcomps anidados ignorados.`);
+    return modulo;
+  }
 
   const ctxPadre = _contextoParametrico(modulo, valoresParametros, costos);
   const espPadre = ctxPadre.esp ?? 18;
@@ -342,16 +350,18 @@ export function expandirSubComponentes(modulo, valoresParametros = {}, costos = 
       const oy = evaluarFormula(String(sub.origen?.y ?? "0"), ctxIter) ?? 0;
       const oz = evaluarFormula(String(sub.origen?.z ?? "0"), ctxIter) ?? 0;
 
-      // Expandir las piezas del subcomp (con su propio repeat/condition interno)
+      // Expandir las piezas del subcomp (con su propio repeat/condition interno).
+      // Anidamiento: si el subcomp tiene sub-subcomps adentro, se procesan
+      // recursivamente. El guard MAX_SUBCOMP_DEPTH limita la profundidad.
       const subModuloVirtual = {
         ...sub,
         material: modulo.material,
         zonas: modulo.zonas,
         variables: modulo.variables,
         dimensiones: { ancho: anchoLoc, alto: altoLoc, profundidad: profLoc },
-        subComponentes: [],  // V1: sin anidamiento (evita recursión)
+        subComponentes: Array.isArray(sub.subComponentes) ? sub.subComponentes : [],
       };
-      const subConcreto = generarPiezas(subModuloVirtual, paramValsSub, costos);
+      const subConcreto = generarPiezasInternal(subModuloVirtual, paramValsSub, costos, _profundidad + 1);
 
       // Trasladar cada pieza del subcomp a coords del padre
       for (const p of subConcreto.piezas) {
@@ -432,13 +442,19 @@ export function expandirSubComponentes(modulo, valoresParametros = {}, costos = 
  * @returns {Object} módulo concreto con piezas expandidas
  */
 export function generarPiezas(modulo, valoresParametros = {}, costos = null) {
+  return generarPiezasInternal(modulo, valoresParametros, costos, 0);
+}
+
+// Versión interna que acepta profundidad de recursión (para anidamiento
+// de subcomponentes). El callsite público generarPiezas siempre arranca en 0.
+function generarPiezasInternal(modulo, valoresParametros, costos, profundidad) {
   if (!modulo) return modulo;
 
   // Fase Subcomponentes: si el módulo tiene subComponentes[], primero
   // los expandimos a piezas/herrajes concretas en coords del padre.
   // El resto del flujo (repeat/condition de piezas del padre) sigue igual.
   const moduloExpandido = (Array.isArray(modulo.subComponentes) && modulo.subComponentes.length > 0)
-    ? expandirSubComponentes(modulo, valoresParametros, costos)
+    ? expandirSubComponentes(modulo, valoresParametros, costos, profundidad)
     : modulo;
 
   const piezasIn = Array.isArray(moduloExpandido.piezas) ? moduloExpandido.piezas : [];
