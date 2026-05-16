@@ -11,13 +11,11 @@
 // guarda esto en su `datos` y lo persiste en datosGuardar().
 // ════════════════════════════════════════════════════════════════════════════
 
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState } from 'react';
 import { TIPO_MAT } from '../../constants.js';
 import { inspeccionarFormula } from '../../utils.js';
-import EditorSubComponente from './EditorSubComponente.jsx';
-// Lazy: el MiniVisor3D arrastra three.js (~220 kB). Solo se carga cuando
-// el usuario abre el panel paramétrico Y tiene el preview activado.
-const MiniVisor3D = lazy(() => import('./MiniVisor3D.jsx'));
+import { generarPiezas } from '../../services/moduloService.js';
+import ConfiguradorParametrico from '../presupuesto/ConfiguradorParametrico.jsx';
 
 // Variables que siempre están disponibles para fórmulas dentro de un módulo:
 // dims base + esp + raíces de dot notation comunes.
@@ -62,9 +60,9 @@ const inputBase = {
   borderRadius: 6, color: "var(--text-primary)", outline: "none",
 };
 const lbl = {
-  fontSize: 10, fontFamily: "'DM Mono',monospace",
+  fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
   color: "var(--text-muted)", textTransform: "uppercase",
-  letterSpacing: "0.06em", marginBottom: 3,
+  letterSpacing: "0.08em", marginBottom: 4,
 };
 const btnAdd = {
   padding: "8px 14px", borderRadius: 8, cursor: "pointer",
@@ -80,16 +78,16 @@ const btnDel = {
 };
 const subSecHdr = (icon, title, count, isOpen, onToggle) => (
   <div onClick={onToggle} style={{
-    padding: "8px 12px", background: "rgba(255,255,255,0.05)",
-    borderLeft: "2px solid rgba(200,160,42,0.4)",
+    padding: "9px 14px", background: "rgba(200,160,42,0.06)",
+    borderLeft: "2px solid rgba(200,160,42,0.45)",
     display: "flex", justifyContent: "space-between", alignItems: "center",
     cursor: "pointer", userSelect: "none",
   }}>
-    <span style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
       textTransform: "uppercase", letterSpacing: "0.10em", color: "#c8a02a" }}>
-      {icon} {title} <span style={{ color: "var(--text-muted)", marginLeft: 6 }}>({count})</span>
+      {icon} {title} <span style={{ color: "var(--text-muted)", marginLeft: 6, fontWeight: 400 }}>({count})</span>
     </span>
-    <span style={{ fontSize: 10, color: "var(--text-muted)", transition: "transform 0.2s",
+    <span style={{ fontSize: 9, color: "var(--text-muted)", transition: "transform 0.2s",
       display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
   </div>
 );
@@ -314,138 +312,143 @@ function ListaConstraints({ constraints, onChange, paramsConocidos = [] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ListaSubComponentes
+// EditorParametrico (default export)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Edita parámetros, zonas y reglas de validación del módulo padre — lo que
+// el cliente del presupuesto puede configurar en vivo. Los subcomponentes
+// (hijos) se editan desde su propia pestaña del FormModulo, no acá.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ListaSubComponentes({ subComponentes, onChange }) {
-  const update = (idx, sub) => onChange(subComponentes.map((s, i) => i === idx ? sub : s));
-  const remove = (idx) => onChange(subComponentes.filter((_, i) => i !== idx));
-  const add = () => onChange([...subComponentes, {
-    id: `sub${subComponentes.length + 1}`,
-    nombre: "",
-    repeat: { var: "i", from: 1, to: 1 },
-    origen: { x: "0", y: "0", z: "0" },
-    dimensiones: { ancho: "ancho", alto: "alto", profundidad: "profundidad" },
-    parametros: [],
-    piezas: [],
-    herrajes: [],
-  }]);
+export default function EditorParametrico({
+  parametros, zonas, constraints, onChange,
+  moduloPreview, costos, valoresPrueba, onValoresPruebaChange,
+}) {
+  const [secs, setSecs] = useState({ params: true, zonas: false, constraints: false });
+  const toggleSec = k => setSecs(p => ({ ...p, [k]: !p[k] }));
 
-  if (subComponentes.length === 0) {
-    return (
-      <div style={{ padding: "20px 14px", textAlign: "center" }}>
-        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10, fontFamily: "'DM Mono',monospace" }}>
-          Sin subcomponentes — útil para agrupar piezas que se replican juntas (ej: cajón completo, puerta con marco).
-        </div>
-        <button onClick={add} style={btnAdd}>+ Agregar subcomponente</button>
-      </div>
-    );
+  const puedeProbar = !!moduloPreview && !!costos
+    && (parametros.length > 0 || constraints.length > 0);
+
+  // Readout: cuántas piezas activan los valores actuales vs el total de
+  // piezas con `condition` declaradas (las que pueden ser ocultadas).
+  let resumenPiezas = null;
+  if (puedeProbar) {
+    try {
+      const generadas = generarPiezas(moduloPreview, valoresPrueba || {}, costos);
+      const condicionales = (moduloPreview.piezas || []).filter(p => p.condition);
+      // Generadas filtra por condition y expande repeat; queremos saber
+      // qué declaraciones aparecen al menos una vez. Comparamos por nombre+condition.
+      const declaracionesActivas = new Set(generadas.map(p => p.nombre));
+      const inactivas = condicionales.filter(p => !declaracionesActivas.has(p.nombre));
+      resumenPiezas = {
+        totalGeneradas: generadas.length,
+        totalDefinidas: (moduloPreview.piezas || []).length,
+        inactivas,
+      };
+    } catch (_e) {
+      resumenPiezas = null;
+    }
   }
 
   return (
-    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-      {subComponentes.map((sub, idx) => (
-        <EditorSubComponente
-          key={idx}
-          subcomp={sub}
-          onChange={(s) => update(idx, s)}
-          onDelete={() => remove(idx)} />
-      ))}
-      <button onClick={add} style={btnAdd}>+ Agregar subcomponente</button>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EditorParametrico (default export)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export default function EditorParametrico({ parametros, zonas, constraints, subComponentes = [], onChange, moduloPreview, costos }) {
-  const [secs, setSecs] = useState({ params: true, zonas: false, constraints: false, subs: false });
-  const [previewAbierto, setPreviewAbierto] = useState(true);
-  const toggleSec = k => setSecs(p => ({ ...p, [k]: !p[k] }));
-
-  // Si tenemos datos para previsualizar Y el preview está abierto → layout 2 cols
-  const mostrarPreview = previewAbierto && !!moduloPreview && !!costos;
-
-  const editor = (
-    <div style={{
-      borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)",
-      background: "var(--bg-subtle)", display: "flex", flexDirection: "column", gap: 1,
-    }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 10 }}>
       {/* Sub-acordeón: Parámetros */}
-      <div>
-        {subSecHdr("🎚", "Parámetros configurables", parametros.length, secs.params, () => toggleSec("params"))}
+      <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
+        {subSecHdr("🎚", "Parámetros configurables por el cliente", parametros.length, secs.params, () => toggleSec("params"))}
         {secs.params && <ListaParametros parametros={parametros}
-          onChange={(p) => onChange({ parametros: p, zonas, constraints, subComponentes })} />}
+          onChange={(p) => onChange({ parametros: p, zonas, constraints })} />}
       </div>
       {/* Sub-acordeón: Zonas */}
-      <div>
+      <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
         {subSecHdr("🎨", "Zonas (material por grupo de piezas)", zonas.length, secs.zonas, () => toggleSec("zonas"))}
         {secs.zonas && <ListaZonas zonas={zonas}
-          onChange={(z) => onChange({ parametros, zonas: z, constraints, subComponentes })} />}
+          onChange={(z) => onChange({ parametros, zonas: z, constraints })} />}
       </div>
       {/* Sub-acordeón: Constraints */}
-      <div>
+      <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
         {subSecHdr("⚠", "Reglas de validación", constraints.length, secs.constraints, () => toggleSec("constraints"))}
         {secs.constraints && <ListaConstraints constraints={constraints}
           paramsConocidos={parametros.map(p => p.id).filter(Boolean)}
-          onChange={(c) => onChange({ parametros, zonas, constraints: c, subComponentes })} />}
+          onChange={(c) => onChange({ parametros, zonas, constraints: c })} />}
       </div>
-      {/* Sub-acordeón: Subcomponentes */}
-      <div>
-        {subSecHdr("🧩", "Sub-componentes (módulos hijos)", subComponentes.length, secs.subs, () => toggleSec("subs"))}
-        {secs.subs && <ListaSubComponentes subComponentes={subComponentes}
-          onChange={(s) => onChange({ parametros, zonas, constraints, subComponentes: s })} />}
-      </div>
-    </div>
-  );
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {/* Toggle del preview */}
-      {moduloPreview && costos && (
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={() => setPreviewAbierto(v => !v)}
-            style={{
-              padding: "4px 10px", borderRadius: 6, cursor: "pointer",
-              fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700,
-              background: previewAbierto ? "rgba(212,175,55,0.15)" : "transparent",
-              border: `1px solid ${previewAbierto ? "rgba(212,175,55,0.45)" : "var(--border)"}`,
-              color: previewAbierto ? "var(--accent)" : "var(--text-muted)",
-            }}>
-            {previewAbierto ? "◀ Ocultar preview 3D" : "▶ Mostrar preview 3D"}
-          </button>
-        </div>
-      )}
-
-      <div style={{
-        display: mostrarPreview ? "grid" : "block",
-        gridTemplateColumns: mostrarPreview ? "1fr 360px" : undefined,
-        gap: 12,
-      }}>
-        {editor}
-        {mostrarPreview && (
-          <div style={{ position: "sticky", top: 10, alignSelf: "start" }}>
-            <Suspense fallback={
-              <div style={{
-                height: 320, background: "var(--bg-base)", borderRadius: 8,
-                border: "1px solid var(--border)", display: "flex",
-                alignItems: "center", justifyContent: "center",
-                color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace",
-              }}>Cargando 3D…</div>
-            }>
-              <MiniVisor3D modulo={moduloPreview} costos={costos} />
-            </Suspense>
+      {/* ────────────────────────────────────────────────────────────────
+          Panel de prueba: simula lo que verá el cliente en el presupuesto.
+          Los valores se reflejan en el preview 3D de la derecha en vivo.
+          ──────────────────────────────────────────────────────────────── */}
+      {puedeProbar && (
+        <div style={{
+          marginTop: 4, borderRadius: 8, border: "1px solid rgba(212,175,55,0.30)",
+          background: "rgba(212,175,55,0.04)", overflow: "hidden",
+        }}>
+          <div style={{
+            padding: "9px 14px", display: "flex", alignItems: "center", justifyContent: "space-between",
+            background: "rgba(212,175,55,0.06)", borderBottom: "1px solid rgba(212,175,55,0.20)",
+          }}>
             <div style={{
-              marginTop: 6, fontSize: 10, color: "var(--text-muted)",
-              fontFamily: "'DM Mono',monospace", textAlign: "center",
+              fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
+              textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--accent)",
             }}>
-              Preview con valores por defecto
+              👁 Vista previa del configurador del cliente
+            </div>
+            {Object.keys(valoresPrueba || {}).length > 0 && (
+              <button onClick={() => onValoresPruebaChange({})}
+                style={{
+                  padding: "3px 9px", borderRadius: 5, cursor: "pointer",
+                  fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 500,
+                  background: "transparent", border: "1px solid var(--border)",
+                  color: "var(--text-muted)",
+                }}>
+                ↺ Restaurar defaults
+              </button>
+            )}
+          </div>
+
+          <div style={{ padding: "10px 14px 14px" }}>
+            <ConfiguradorParametrico
+              modulo={moduloPreview}
+              valores={valoresPrueba || {}}
+              onChange={onValoresPruebaChange}
+              costos={costos}
+            />
+
+            {/* Readout: piezas que aparecen / desaparecen con estos valores */}
+            {resumenPiezas && (
+              <div style={{
+                marginTop: 10, padding: "8px 12px", borderRadius: 6,
+                background: "var(--bg-base)", border: "1px solid var(--border)",
+                fontFamily: "'DM Mono',monospace", fontSize: 11,
+                display: "flex", flexDirection: "column", gap: 4,
+              }}>
+                <div style={{ color: "var(--text-secondary)" }}>
+                  Piezas generadas: <span style={{ color: "var(--accent)", fontWeight: 700 }}>{resumenPiezas.totalGeneradas}</span>
+                  {resumenPiezas.totalDefinidas !== resumenPiezas.totalGeneradas && (
+                    <span style={{ color: "var(--text-muted)" }}> · {resumenPiezas.totalDefinidas} declaradas</span>
+                  )}
+                </div>
+                {resumenPiezas.inactivas.length > 0 && (
+                  <div style={{ color: "var(--text-muted)", fontSize: 10 }}>
+                    Ocultas: {resumenPiezas.inactivas.map(p => (
+                      <span key={p.nombre} title={`condition: ${p.condition}`}
+                        style={{ color: "#e08080", marginRight: 8 }}>
+                        ✕ {p.nombre || "(sin nombre)"}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{
+              marginTop: 8, fontSize: 10, color: "var(--text-muted)",
+              fontFamily: "'DM Mono',monospace", lineHeight: 1.5,
+            }}>
+              Estos valores no se guardan — solo prueban cómo reacciona el módulo. El preview 3D de la derecha se actualiza en vivo.
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

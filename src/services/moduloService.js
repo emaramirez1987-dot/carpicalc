@@ -396,6 +396,10 @@ export function expandirSubComponentes(modulo, valoresParametros = {}, costos = 
           orientacion3d: p.orientacion3d,
           rol3d: p.rol3d,
           zona: p.zona,
+          // Preservar tapacanto y material override de la pieza del subcomp.
+          // Sin esto las piezas del hijo perdían su tapacanto al expandirse.
+          tc: p.tc,
+          material: p.material,
           posFormulas: {
             x: String(ox + px),
             y: String(oy + py),

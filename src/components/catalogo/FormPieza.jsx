@@ -18,11 +18,29 @@ import { TextInput } from '../ui/index.jsx';
 import { fmtNum, resolverDim, evaluarFormula, resolverVariables } from '../../utils.js';
 import { ORIENTACIONES_3D } from '../visor3d/engine/buildPiezas3D.js';
 import { piezasQueUsanVar } from '../../services/moduloService.js';
-import { DimRow, DimRowLibre } from './DimRowEditor.jsx';
+import { DimRowLibre } from './DimRowEditor.jsx';
 
-function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSugeridos, variables, onVarsUpdate, piezas, zonas = [], parametros = [] }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Defaults canónicos de D1/D2 según orientación 3D — convención del editor:
+//   horizontal (base, techo, estante): D1 va sobre eje X (= ancho), D2 sobre eje Z (= profundidad)
+//   vertical   (laterales, divisores): D1 va sobre eje Y (= alto),  D2 sobre eje Z (= profundidad)
+//   frente     (puertas, cajones):     D1 va sobre eje Y (= alto),  D2 sobre eje X (= ancho)
+// Las etiquetas se muestran junto al input para que el autor no se confunda.
+// ─────────────────────────────────────────────────────────────────────────────
+const FORMULAS_POR_ORIENT = {
+  horizontal: { f1: "ancho", f2: "profundidad", l1: "Largo (= ancho del módulo)", l2: "Profundidad" },
+  vertical:   { f1: "alto",  f2: "profundidad", l1: "Alto (= alto del módulo)",   l2: "Profundidad" },
+  frente:     { f1: "alto",  f2: "ancho",       l1: "Alto (= alto del módulo)",   l2: "Ancho (= ancho del módulo)" },
+};
+// Una fórmula se considera "canónica" (auto-reemplazable al cambiar orientación)
+// si está vacía o coincide exactamente con uno de los nombres de variable base.
+const ES_FORMULA_CANONICA = (v) => {
+  const t = (v ?? "").trim();
+  return t === "" || ["ancho", "alto", "profundidad"].includes(t);
+};
+
+function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, dims, espesor, nombresSugeridos, variables, onVarsUpdate, piezas, zonas = [], parametros = [] }) {
   const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
-  const [avanzado, setAvanzado] = useState(false);
   const [parametricoAbierto, setParametricoAbierto] = useState(
     !!(fp.zona || fp.condition || fp.repeat),
   );
@@ -34,6 +52,24 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
   const [confirmDeleteVar, setConfirmDeleteVar] = useState(null); // nombre de var pendiente de confirmación
   const [editandoVar, setEditandoVar] = useState(null); // nombre de var en modo edición (null = todas en lectura)
   const [valorEditando, setValorEditando] = useState(""); // valor temporal mientras edita
+
+  // Click en una tile de orientación: toggle + auto-completar fórmulas si
+  // están vacías o son canónicas (no editadas a mano).
+  const aplicarOrientacion = (orientId) => {
+    setFp(p => {
+      const eraActiva = p.orientacion3d === orientId;
+      const nueva = eraActiva ? undefined : orientId;
+      if (!nueva || nueva === 'ignorar') return { ...p, orientacion3d: nueva };
+      const def = FORMULAS_POR_ORIENT[nueva];
+      if (!def) return { ...p, orientacion3d: nueva };
+      return {
+        ...p,
+        orientacion3d: nueva,
+        formula1: ES_FORMULA_CANONICA(p.formula1) ? def.f1 : p.formula1,
+        formula2: ES_FORMULA_CANONICA(p.formula2) ? def.f2 : p.formula2,
+      };
+    });
+  };
 
   // ── Click-to-insert: ref al input activo ────────────────────────────────
   const activeInputEl = useRef(null);
@@ -81,7 +117,6 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
           flex: 1, display: "flex", flexDirection: "column",
           borderRadius: 12, overflow: "hidden",
           border: editando ? "1px solid var(--accent-border)" : "1px solid var(--border)",
-          boxShadow: editando ? "0 0 28px rgba(212,175,55,0.18), 0 4px 20px rgba(0,0,0,0.35)" : "0 4px 20px rgba(0,0,0,0.3)",
         }}>
           {/* Header */}
           <div style={{
@@ -96,9 +131,16 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
             </span>
             <div style={{ display: "flex", gap: 6 }}>
               {editando && (
-                <button onClick={onCancelar} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", background: "rgba(200,60,60,0.12)", border: "1px solid rgba(200,60,60,0.35)", color: "#e08080" }}>
-                  ✕ Cancelar
-                </button>
+                <>
+                  <button onClick={onCancelar} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", background: "rgba(200,60,60,0.12)", border: "1px solid rgba(200,60,60,0.35)", color: "#e08080" }}>
+                    ✕ Cancelar
+                  </button>
+                  {onConfirmar && (
+                    <button onClick={onConfirmar} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", background: "rgba(200,160,42,0.18)", border: "1px solid rgba(200,160,42,0.50)", color: "#c8a02a" }}>
+                      ✓ Actualizar
+                    </button>
+                  )}
+                </>
               )}
               <button onClick={() => setFp(p => ({ ...p, especial: !p.especial }))}
                 style={{ padding: "4px 12px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Mono',monospace", transition: "all 0.15s", background: fp.especial ? "rgba(212,175,55,0.18)" : "var(--bg-subtle)", border: `1px solid ${fp.especial ? "var(--accent-border)" : "var(--border)"}`, color: fp.especial ? "var(--accent)" : "var(--text-muted)" }}>
@@ -106,8 +148,8 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
               </button>
             </div>
           </div>
-          <div style={{ flex: 1, background: "var(--bg-surface)", padding: "16px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ flex: 1, background: "var(--bg-surface)", padding: "18px 18px 20px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
             {/* Nombre + Cantidad */}
             <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
@@ -129,7 +171,7 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                 )}
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>Cantidad</div>
+                <div style={{ fontSize: 9, fontWeight: 500, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.10em", fontFamily: "'DM Mono',monospace", opacity: 0.75 }}>Cantidad</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   <button onClick={() => setFp(p => ({ ...p, cantidad: Math.max(1, (parseInt(p.cantidad) || 1) - 1) }))}
                     style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
@@ -143,21 +185,19 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
             </div>
 
             {/* Orientación 3D */}
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                Orientación 3D
-              </div>
-              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", flex: 1 }}>
                 {ORIENTACIONES_3D.map(o => {
                   const isActive = fp.orientacion3d === o.id;
                   const isDanger = o.id === 'ignorar';
                   return (
                     <button
                       key={o.id}
-                      onClick={() => setFp(p => ({ ...p, orientacion3d: isActive ? undefined : o.id }))}
+                      onClick={() => aplicarOrientacion(o.id)}
                       style={{
-                        padding: "5px 14px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                        padding: "4px 13px", borderRadius: 16, fontSize: 10, fontWeight: 500,
                         fontFamily: "'DM Mono',monospace", cursor: "pointer", transition: "all 0.15s",
+                        letterSpacing: "0.04em",
                         background: isActive
                           ? (isDanger ? "rgba(200,60,60,0.15)" : "rgba(212,175,55,0.18)")
                           : "var(--bg-subtle)",
@@ -174,6 +214,9 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                     </button>
                   );
                 })}
+              </div>
+              <div style={{ fontSize: 9, fontWeight: 500, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.10em", fontFamily: "'DM Mono',monospace", opacity: 0.75, whiteSpace: "nowrap" }}>
+                Orientación 3D
               </div>
             </div>
 
@@ -363,50 +406,106 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                   );
                 })()}
 
-                {/* Fórmulas D1 y D2 */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[
-                    { label: "D1 — Largo", key: "formula1", valida: f1Valida, resultado: d1 },
-                    { label: "D2 — Ancho", key: "formula2", valida: f2Valida, resultado: d2 },
-                  ].map(({ label, key, valida, resultado }) => (
-                    <div key={key} style={{ background: "transparent", border: "1px solid rgba(200,160,42,0.15)", borderRadius: 8, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--text-secondary)", marginBottom: 6 }}>{label}</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <input
-                          value={fp[key] || ""}
-                          onChange={e => setFp(p => ({ ...p, [key]: e.target.value }))}
-                          onFocus={e => { activeInputEl.current = e.target; }}
-                          placeholder="ej: alto - 2 * esp"
-                          style={{
-                            flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 600,
-                            padding: "7px 11px", background: "var(--bg-base)", color: "var(--text-primary)",
-                            border: `1px solid ${!valida ? "rgba(224,112,112,0.6)" : "var(--border)"}`,
-                            borderRadius: 7, outline: "none", letterSpacing: "0.02em",
-                          }}
-                        />
-                        <div style={{ textAlign: "right", minWidth: 70 }}>
-                          {valida ? (
-                            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 18, fontWeight: 900, color: "var(--color-positive)", letterSpacing: "-0.02em" }}>
-                              {Math.round(resultado)}
-                              <span style={{ fontSize: 10, fontWeight: 400, color: "var(--text-muted)", marginLeft: 3 }}>mm</span>
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: 10, color: "#e07070", fontFamily: "'DM Mono',monospace" }}>⚠ inválida</span>
-                          )}
-                        </div>
-                      </div>
+                {/* Fórmulas D1 y D2 — un solo recuadro, filas separadas por línea interna.
+                    Las etiquetas y la sugerencia de "var esperada" dependen de la orientación
+                    elegida arriba (horizontal / vertical / frente) — ver FORMULAS_POR_ORIENT. */}
+                {(() => {
+                  const orient = fp.orientacion3d;
+                  const def = orient ? FORMULAS_POR_ORIENT[orient] : null;
+                  // Warning: la fórmula no incluye la variable esperada para la orientación.
+                  const advertir = (val, esperada) => {
+                    if (!def || !esperada || !val) return null;
+                    const t = String(val);
+                    if (t.includes(esperada)) return null;
+                    return `Para ${orient}, el D1/D2 suele usar "${esperada}"`;
+                  };
+                  const filas = [
+                    { key: "formula1", valida: f1Valida, resultado: d1, label: def?.l1 || "D1 — Largo",  esperada: def?.f1 },
+                    { key: "formula2", valida: f2Valida, resultado: d2, label: def?.l2 || "D2 — Ancho",  esperada: def?.f2 },
+                  ];
+                  return (
+                    <div style={{ border: "1px solid rgba(200,160,42,0.15)", borderRadius: 8, overflow: "hidden" }}>
+                      {filas.map(({ key, valida, resultado, label, esperada }, idx) => {
+                        const warning = advertir(fp[key], esperada);
+                        return (
+                          <div key={key} style={{
+                            padding: "8px 14px",
+                            borderTop: idx > 0 ? "1px solid rgba(200,160,42,0.10)" : "none",
+                          }}>
+                            {/* Etiqueta dinámica según orientación */}
+                            <div style={{
+                              fontSize: 9, fontWeight: 500, color: "var(--text-muted)",
+                              textTransform: "uppercase", letterSpacing: "0.10em",
+                              fontFamily: "'DM Mono',monospace", opacity: 0.75,
+                              marginBottom: 4,
+                            }}>{label}</div>
+                            {/* Input + valor evaluado */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <input
+                                value={fp[key] || ""}
+                                onChange={e => setFp(p => ({ ...p, [key]: e.target.value }))}
+                                onFocus={e => { activeInputEl.current = e.target; }}
+                                placeholder={esperada ? `ej: ${esperada}` : "ej: alto - 2 * esp"}
+                                style={{
+                                  flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 400,
+                                  padding: "6px 10px", background: "var(--bg-base)", color: "var(--text-primary)",
+                                  border: `1px solid ${!valida ? "rgba(224,112,112,0.6)" : "var(--border)"}`,
+                                  borderRadius: 7, outline: "none", letterSpacing: "0.02em",
+                                }}
+                              />
+                              <div style={{ textAlign: "right", minWidth: 58 }}>
+                                {valida ? (
+                                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 500, color: "var(--color-positive)", letterSpacing: "-0.01em" }}>
+                                    {Math.round(resultado)}<span style={{ fontSize: 9, fontWeight: 400, color: "var(--text-muted)", marginLeft: 2 }}>mm</span>
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: 10, color: "#e07070", fontFamily: "'DM Mono',monospace" }}>⚠ inv.</span>
+                                )}
+                              </div>
+                            </div>
+                            {/* Chips de variables — un click inserta en el input enfocado */}
+                            <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
+                              {["ancho", "alto", "profundidad", "esp"].map(v => (
+                                <button key={v}
+                                  onMouseDown={(e) => insertarVariable(e, v)}
+                                  title={`Insertar "${v}" en el input enfocado`}
+                                  style={{
+                                    padding: "1px 7px", borderRadius: 10, cursor: "pointer",
+                                    fontFamily: "'DM Mono',monospace", fontSize: 9, fontWeight: 500,
+                                    background: v === esperada ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)",
+                                    border: `1px solid ${v === esperada ? "rgba(212,175,55,0.40)" : "var(--border)"}`,
+                                    color: v === esperada ? "var(--accent)" : "var(--text-muted)",
+                                    letterSpacing: "0.04em",
+                                  }}>
+                                  + {v}
+                                </button>
+                              ))}
+                            </div>
+                            {/* Warning sutil de inconsistencia con la orientación */}
+                            {warning && (
+                              <div style={{
+                                marginTop: 5, fontSize: 9, color: "#c89530",
+                                fontFamily: "'DM Mono',monospace", letterSpacing: "0.02em",
+                                opacity: 0.85,
+                              }}>
+                                ⚠ {warning}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
 
                 {/* Preview resultado */}
                 {(d1 > 0 || d2 > 0) && (
-                  <div style={{ padding: "10px 14px", background: "rgba(126,207,138,0.07)", border: "1px solid rgba(126,207,138,0.18)", borderRadius: 8, display: "flex", gap: 20, alignItems: "center" }}>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: "var(--color-positive-muted)" }}>
-                      Medida real: <strong style={{ color: "var(--color-positive)", fontSize: 15 }}>{Math.round(d1)} × {Math.round(d2)} mm</strong>
+                  <div style={{ padding: "9px 14px", background: "rgba(126,207,138,0.07)", border: "1px solid rgba(126,207,138,0.18)", borderRadius: 8, display: "flex", gap: 20, alignItems: "center" }}>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "var(--color-positive-muted)" }}>
+                      Medida real: <span style={{ color: "var(--color-positive)", fontWeight: 500 }}>{Math.round(d1)} × {Math.round(d2)} mm</span>
                     </span>
                     <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--text-muted)" }}>
-                      Área: <strong>{fmtNum((d1 * d2 * (parseInt(fp.cantidad) || 1)) / 1_000_000)} m²</strong>
+                      Área: <span style={{ fontWeight: 500 }}>{fmtNum((d1 * d2 * (parseInt(fp.cantidad) || 1)) / 1_000_000)} m²</span>
                     </span>
                   </div>
                 )}
@@ -491,25 +590,6 @@ function FormPieza({ fp, setFp, onCancelar, editando, dims, espesor, nombresSuge
                     </div>
                   )}
                 </div>
-
-                {/* Toggle configuración avanzada */}
-                <button onClick={() => setAvanzado(v => !v)}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em" }}>
-                  <span style={{ transition: "transform 0.2s", display: "inline-block", transform: avanzado ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
-                  ⚙ Configuración avanzada
-                </button>
-
-                {avanzado && (
-                  <div style={{ background: "rgba(0,0,0,0.12)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                    <DimRow titulo="Dim 1 (altura)" dimKey="usaDim" espKey="offsetEsp" mmKey="offsetMm" divKey="divisor"
-                      resultado={resolverDim(dims[fp.usaDim], parseInt(fp.offsetEsp) || 0, parseInt(fp.offsetMm) || 0, parseInt(fp.divisor) || 1, espesor)} fp={fp} setFp={setFp} espesor={espesor} />
-                    <DimRow titulo="Dim 2 (ancho)" dimKey="usaDim2" espKey="offsetEsp2" mmKey="offsetMm2" divKey="divisor2"
-                      resultado={resolverDim(dims[fp.usaDim2], parseInt(fp.offsetEsp2) || 0, parseInt(fp.offsetMm2) || 0, parseInt(fp.divisor2) || 1, espesor)} fp={fp} setFp={setFp} espesor={espesor} />
-                    <div style={{ fontSize: 10, color: "var(--text-muted)", padding: "4px 0" }}>
-                      Los campos avanzados se usan como fallback si no hay fórmula arriba.
-                    </div>
-                  </div>
-                )}
 
                 {/* Parametrización (Fase 6.5) — zona, condition, repeat */}
                 {(zonas.length > 0 || parametros.length > 0 || fp.zona || fp.condition || fp.repeat) && (

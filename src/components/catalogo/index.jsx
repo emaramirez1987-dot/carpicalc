@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { useNav } from '../../state/NavContext.jsx';
 import { useUndo } from '../../hooks/useUndo.js';
@@ -10,8 +10,6 @@ import { PERFIL_VACIO, TIPO_MAT, CATEGORIAS_DEFAULT } from '../../constants.js';
 import { guardarPresupuestos, cargarBorradorModulo } from '../../storage.js';
 import FormModulo from './FormModulo.jsx';
 import GuiaParametricaModal from './GuiaParametricaModal.jsx';
-
-const VisorModulo3D = lazy(() => import('../visor3d/VisorModulo3D.jsx'));
 
 // ══════════════════════════════════════════════════════════════════
 // ── CatalogoModulos ───────────────────────────────────────────────
@@ -475,7 +473,6 @@ function CatalogoModulos({
   onGuardarPresupuestoAfectado = null, // (id, cambios) recalcula presupuesto afectado
 }) {
   const { dispatch } = useNav();
-  const [visor3D, setVisor3D] = useState(null); // { cod, mod }
   const [modo, setModo] = useState(() => {
     // Si hay un borrador de módulo nuevo en progreso, reabrir el formulario automáticamente
     const draft = cargarBorradorModulo();
@@ -595,66 +592,6 @@ function CatalogoModulos({
   // 📖 Guía paramétrica modal — abre overlay con la guía de uso
   const [guiaAbierta, setGuiaAbierta] = useState(false);
 
-  // 🧪 Ejemplo paramétrico — para probar el ciclo paramétrico end-to-end.
-  // Inserta una "Cajonera (paramétrica)" con 1 parámetro (cajones), 2 zonas
-  // (cuerpo / frentes) y 1 constraint. Las piezas usan repeat para generar
-  // los frentes según `cajones`.
-  const cargarEjemploParametrico = () => {
-    const cod = "MC100001";
-    const yaExiste = !!modulos[cod];
-    const ejemplo = {
-      nombre: "Cajonera (paramétrica)",
-      descripcion: "Ejemplo: cantidad de cajones es ajustable desde el presupuesto",
-      categoria: "otros",
-      material: "melamina",
-      dimensiones: { ancho: 600, alto: 720, profundidad: 550 },
-      tipoVisual: null,
-      imagen: null,
-      variables: {},
-      parametros: [
-        { id: "cajones", nombre: "Cantidad de cajones", tipo: "integer", def: 3, min: 1, max: 6 },
-      ],
-      zonas: [
-        { id: "cuerpo", nombre: "Cuerpo",  material: "melamina" },
-        { id: "frente", nombre: "Frentes", material: "mdf" },
-      ],
-      constraints: [
-        { expr: "alto >= cajones * 80", msg: "El alto no alcanza para tantos cajones" },
-      ],
-      piezas: [
-        { nombre: "Lateral izq", cantidad: 1, zona: "cuerpo", cara3d: "left",
-          formula1: "alto", formula2: "profundidad" },
-        { nombre: "Lateral der", cantidad: 1, zona: "cuerpo", cara3d: "right",
-          formula1: "alto", formula2: "profundidad",
-          posFormulas: { x: "ancho - esp", y: "0", z: "0" } },
-        { nombre: "Base", cantidad: 1, zona: "cuerpo", cara3d: "bottom",
-          formula1: "ancho - 2*esp", formula2: "profundidad",
-          posFormulas: { x: "esp", y: "0", z: "0" } },
-        { nombre: "Tapa", cantidad: 1, zona: "cuerpo", cara3d: "top",
-          formula1: "ancho - 2*esp", formula2: "profundidad",
-          posFormulas: { x: "esp", y: "alto - esp", z: "0" } },
-        { nombre: "Frente cajón #{i}", cantidad: 1, zona: "frente", orientacion3d: "frente",
-          formula1: "(alto - 2*esp) / cajones - 4", formula2: "ancho - 4",
-          posFormulas: {
-            x: "2",
-            y: "(i-1) * ((alto - 2*esp) / cajones) + esp + 2",
-            z: "profundidad",
-          },
-          repeat: { var: "i", from: 1, to: "cajones" } },
-      ],
-      herrajes: [
-        { id: 1, cantidad: "cajones", condition: "cajones > 0" },
-      ],
-      moDeObra: { tipo: "por_modulo", horas: 0 },
-    };
-    const nuevo = { ...modulos, [cod]: ejemplo };
-    setModulos(nuevo);
-    onSave(nuevo);
-    showMsg(yaExiste
-      ? "Cajonera paramétrica actualizada con la última versión."
-      : "Cajonera paramétrica cargada al catálogo.");
-  };
-
   // 💾 LÓGICA DE BACKUP (Exportar/Importar)
   const handleExport = () => {
     const data = {
@@ -710,12 +647,6 @@ function CatalogoModulos({
     e.target.value = "";
   };
 
-  const tituloForm = () => {
-    if (!modo) return "";
-    if (modo.tipo === "editar") return `Editando: ${modo.codigo}`;
-    if (modo.tipo === "duplicar") return `Duplicando: ${modo.codigoSugerido}`;
-    return "Nuevo módulo";
-  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -795,15 +726,6 @@ function CatalogoModulos({
               >
                 📖 Guía
               </button>
-              <button
-                onClick={cargarEjemploParametrico}
-                title="Carga una cajonera paramétrica de ejemplo"
-                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", fontWeight: 700, background: "rgba(200,160,42,0.12)", border: "1px solid rgba(200,160,42,0.40)", color: "#c8a02a", transition: "all 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(200,160,42,0.20)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(200,160,42,0.12)"; }}
-              >
-                🧪 Ejemplo paramétrico
-              </button>
               <Btn onClick={() => abrirModo({ tipo: "nuevo" })}>+ Nuevo módulo</Btn>
             </div>
           </div>
@@ -838,30 +760,7 @@ function CatalogoModulos({
 
       {modo && (
         <div id="catalogo-form" ref={formRef}>
-        <Card className="rsp-card" highlight style={{ padding: 24 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 20
-            }}
-          >
-            <h3
-              style={{
-                fontFamily: "'Playfair Display',serif",
-                fontSize: 18,
-                fontWeight: 700,
-                color: "var(--accent)"
-              }}
-            >
-              {tituloForm()}
-            </h3>
-            {modo.tipo === "duplicar" && (
-              <Badge color="#7090b0">⧉ Copia — asigná un código nuevo</Badge>
-            )}
-            {modo.tipo === "editar" && <Badge color="#d4a040">Edición</Badge>}
-          </div>
+        <Card className="rsp-card" highlight style={{ padding: 12 }}>
           <FormModulo
             costos={costos}
             onGuardar={guardar}
@@ -966,7 +865,6 @@ function CatalogoModulos({
                         onEliminar={() => eliminar(cod)}
                         onDuplicar={() => abrirModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
                         onAbrirVista={() => dispatch({ type: "ABRIR_EDITOR_VISTA", payload: { cod } })}
-                        on3D={() => setVisor3D({ cod, mod })}
                         onImagenChange={handleImagenChange}
                         presupuestosAfectados={presupuestosQueUsan(cod)} />;
                     })}
@@ -981,7 +879,6 @@ function CatalogoModulos({
                         onEliminar={() => eliminar(cod)}
                         onDuplicar={() => abrirModo({ tipo: "duplicar", modulo: mod, codigoSugerido: cod })}
                         onAbrirVista={() => dispatch({ type: "ABRIR_EDITOR_VISTA", payload: { cod } })}
-                        on3D={() => setVisor3D({ cod, mod })}
                         onImagenChange={handleImagenChange}
                         presupuestosAfectados={presupuestosQueUsan(cod)} />;
                     })}
@@ -1005,26 +902,6 @@ function CatalogoModulos({
       )}
       <ToastContainer />
 
-      {/* ── Visor 3D — Portal: se monta en document.body para evitar
-           que transforms/animations de ancestros creen un containing block
-           que limite position:fixed al div del catálogo en vez del viewport ── */}
-      {visor3D && ReactDOM.createPortal(
-        <Suspense fallback={null}>
-          <VisorModulo3D
-            modulo={visor3D.mod}
-            costos={costos}
-            onClose={() => setVisor3D(null)}
-            onActualizar={(nuevoMod) => {
-              const cod        = visor3D.cod;
-              const nuevosMods = { ...modulos, [cod]: nuevoMod };
-              setModulos(nuevosMods);
-              onSave(nuevosMods);
-              setVisor3D({ cod, mod: nuevoMod });
-            }}
-          />
-        </Suspense>,
-        document.body
-      )}
       {guiaAbierta && ReactDOM.createPortal(
         <GuiaParametricaModal onClose={() => setGuiaAbierta(false)} />,
         document.body

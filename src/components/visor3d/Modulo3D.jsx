@@ -13,7 +13,7 @@ import { getMaterialProps } from './useMaterial3D.js';
 import { buildPiezas3D } from './engine/buildPiezas3D.js';
 
 // ── Pieza ─────────────────────────────────────────────────────────────────────
-function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, onClick, texturaDataUrl, rotY = 0, contornos = null }) {
+function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, onClick, texturaDataUrl, texturaRepeat = 2, rotY = 0, contornos = null }) {
   const matProps = getMaterialProps(materialTipo);
   const ep       = explodeFactor * 0.35;
   const finalPos = [
@@ -27,9 +27,9 @@ function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, o
     const tex = new THREE.TextureLoader().load(texturaDataUrl);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(2, 2);
+    tex.repeat.set(texturaRepeat, texturaRepeat);
     return tex;
-  }, [texturaDataUrl, materialTipo]);
+  }, [texturaDataUrl, materialTipo, texturaRepeat]);
 
   return (
     <group position={finalPos} rotation={[0, rotY * Math.PI / 180, 0]} onClick={onClick}>
@@ -58,7 +58,7 @@ function Pieza({ size, pos, explodeVec, explodeFactor, materialTipo, selected, o
 }
 
 // ── Modulo3D (default export — used in main scene) ────────────────────────────
-export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPieza, onSelectPieza, texturaDataUrl, parametrosValores, contornos = null }) {
+export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPieza, onSelectPieza, texturaDataUrl, texturaRepeat, parametrosValores, contornos = null }) {
   const piezas = useMemo(
     () => buildPiezas3D(modulo, costos, parametrosValores || {}),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,6 +82,7 @@ export default function Modulo3D({ modulo, costos, explodeFactor = 0, selectedPi
             onSelectPieza?.({ id: p.id, piezaIdx: p.piezaIdx, nombre: p.nombre, role: p.role, size: p.size, pos: p.pos });
           }}
           texturaDataUrl={texturaDataUrl}
+          texturaRepeat={texturaRepeat}
           contornos={contornos}
         />
       ))}

@@ -267,6 +267,36 @@ export function Vista3DTab({
   const [mostrarContornos, setMostrarContornos] = useState(false);
   const [colorContornos,   setColorContornos]   = useState("#000000");
   const [grosorContornos,  setGrosorContornos]  = useState(1);
+  // Escala de textura — cuántas veces se repite la imagen PNG sobre cada pieza
+  // Bajo (0.5) = textura grande sin uniones; alto (4) = más repeticiones
+  const [texturaRepeat,    setTexturaRepeat]    = useState(1);
+  // Key de remount de la escena 3D. Cualquier cambio en `modulos` (detectado
+  // por hash completo de dimensiones + piezas + variables + parámetros) o un
+  // click del usuario en "Actualizar" incrementa este número y fuerza un
+  // remount limpio de Escena3DPrincipal, garantizando que helpers,
+  // livePositions y closures de R3F arranquen de cero con los datos nuevos.
+  const [escenaVersion, setEscenaVersion] = useState(0);
+  const modulosHash = useMemo(() => {
+    if (!modulos) return '';
+    return Object.entries(modulos)
+      .map(([k, m]) => {
+        const d = m?.dimensiones || {};
+        const piezasFp = (m?.piezas || []).map(p =>
+          `${p.nombre}|${p.formula1}|${p.formula2}|${p.cantidad}|${p.orientacion3d}|${p.rot3d}|${p.offset3d?.x}|${p.offset3d?.y}|${p.offset3d?.z}|${p.posFormulas?.x}|${p.posFormulas?.y}|${p.posFormulas?.z}`
+        ).join(';');
+        const varsFp = JSON.stringify(m?.variables || {});
+        const paramsFp = JSON.stringify(m?.parametros || []);
+        return `${k}:${d.ancho}:${d.alto}:${d.profundidad}:${m?.material}::${piezasFp}::${varsFp}::${paramsFp}`;
+      })
+      .join('||');
+  }, [modulos]);
+  const hashRef = useRef(modulosHash);
+  useEffect(() => {
+    if (hashRef.current !== modulosHash) {
+      hashRef.current = modulosHash;
+      setEscenaVersion(v => v + 1);
+    }
+  }, [modulosHash]);
   const contornosConfig = mostrarContornos
     ? { color: colorContornos, linewidth: grosorContornos }
     : null;
@@ -465,6 +495,22 @@ export function Vista3DTab({
                   <div style={{ padding: '6px 12px 4px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
                     MATERIAL
                   </div>
+                  {/* Escala de textura — controla cuántas veces se repite la imagen PNG en cada pieza */}
+                  {texturaCodActual && (
+                    <div style={{ padding: '0 12px 8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.text, marginBottom: 4 }}>
+                        <span>Escala de textura</span>
+                        <span style={{ color: '#D4AF37' }}>×{texturaRepeat.toFixed(1)}</span>
+                      </div>
+                      <input type="range" min={0.3} max={5} step={0.1}
+                        value={texturaRepeat}
+                        onChange={e => setTexturaRepeat(parseFloat(e.target.value))}
+                        style={{ width: '100%', accentColor: '#d4af37', cursor: 'pointer' }} />
+                      <div style={{ fontSize: 8, fontFamily: "'DM Mono',monospace", color: T.text, opacity: 0.5, marginTop: 2 }}>
+                        bajo = grande sin uniones · alto = repeticiones
+                      </div>
+                    </div>
+                  )}
                   <div style={{ padding: '0 10px 10px', maxHeight: 200, overflowY: 'auto' }}>
                     {materialesKeys.length === 0 ? (
                       <p style={{
@@ -630,6 +676,15 @@ export function Vista3DTab({
 
           <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
 
+          {/* Actualizar — fuerza remount limpio de la escena 3D */}
+          <BTN
+            onClick={() => setEscenaVersion(v => v + 1)}
+            title="Recargar la escena 3D con los datos actuales del catálogo">
+            ↻ Actualizar
+          </BTN>
+
+          <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
+
           {/* Luz */}
           <Dropdown label="Luz" active={false}>
             <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 170 }}>
@@ -757,6 +812,7 @@ export function Vista3DTab({
             style={{ background: T.canvasFallbk, width: '100%', height: '100%' }}
           >
             <Escena3DPrincipal
+              key={escenaVersion}
               modulosEnEscena={modulosEnEscena.map(m => (
                 m.itemIdx != null
                   ? { ...m, parametrosValores: items[m.itemIdx]?.parametrosValores || {} }
@@ -781,6 +837,7 @@ export function Vista3DTab({
               mostrarGrilla={mostrarGrilla}
               contornos={contornosConfig}
               camLookAt={sceneCenter}
+              texturaRepeat={texturaRepeat}
               divisionesGrilla={divisionesGrilla}
               mostrarParedIzq={mostrarParedIzq}
               mostrarParedDer={mostrarParedDer}

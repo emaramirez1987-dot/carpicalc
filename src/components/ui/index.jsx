@@ -460,12 +460,13 @@ function Field({ label, children }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <label
         style={{
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: "0.12em",
+          fontSize: 9,
+          fontWeight: 500,
+          letterSpacing: "0.10em",
           textTransform: "uppercase",
           fontFamily: "'DM Mono',monospace",
           color: "var(--text-muted)",
+          opacity: 0.75,
           display: "block"
         }}
       >
@@ -480,11 +481,13 @@ function TextInput({
   value,
   onChange,
   onBlur,
+  onFocus,
   placeholder,
   type = "text",
   suffix,
   small,
-  disabled
+  disabled,
+  autoFocus,
 }) {
   return (
     <Field label={label}>
@@ -494,6 +497,7 @@ function TextInput({
           value={value}
           disabled={disabled}
           placeholder={placeholder}
+          autoFocus={autoFocus}
           onChange={(e) => onChange(e.target.value)}
           style={{
             width: "100%",
@@ -512,6 +516,7 @@ function TextInput({
           }}
           onFocus={(e) => {
             if (!disabled) e.target.style.borderColor = "var(--accent)";
+            onFocus && onFocus(e);
           }}
           onBlur={(e) => {
             e.target.style.borderColor = "var(--border)";

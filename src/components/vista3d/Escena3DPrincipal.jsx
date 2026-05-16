@@ -64,9 +64,11 @@ function resolveCollision(proposedX, proposedZ, hw, hd, selfId, livePositions) {
 
 // ── ModuloEnEscena ────────────────────────────────────────────────────────────
 // Props >8 justificados: escena 3D con controles flotantes integrados
-function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, texturaDataUrl, onRotar90, onEliminarModulo, contornos }) {
+function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, texturaDataUrl, texturaRepeat, onRotar90, onEliminarModulo, contornos }) {
   const groupRef   = useRef();
   const isDragging = useRef(false);
+  const dragStarted = useRef(false); // true cuando el mouse superó el threshold
+  const dragOrigin  = useRef({ x: 0, y: 0 }); // pos del mouse al apretar click
   const [hovered, setHovered] = useState(false);
   const { camera, gl } = useThree();
 
@@ -114,6 +116,15 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
 
     const onMove = (e) => {
       if (!isDragging.current) return;
+      // Threshold: solo arrastrar de verdad si el mouse se movió más de 5px
+      // desde el click. Esto evita que un click suelto teletransporte el
+      // módulo a donde está el cursor.
+      if (!dragStarted.current) {
+        const dx = e.clientX - dragOrigin.current.x;
+        const dy = e.clientY - dragOrigin.current.y;
+        if (Math.hypot(dx, dy) < 5) return;
+        dragStarted.current = true;
+      }
       const rect = canvas.getBoundingClientRect();
       const nx = ((e.clientX - rect.left) / rect.width)  *  2 - 1;
       const ny = -((e.clientY - rect.top)  / rect.height) *  2 + 1;
@@ -135,10 +146,14 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
 
     const onUp = () => {
       if (!isDragging.current) return;
+      const huboDrag = dragStarted.current;
       isDragging.current = false;
+      dragStarted.current = false;
       if (orbitRef.current) orbitRef.current.enabled = true;
       canvas.style.cursor = 'auto';
-      if (groupRef.current) {
+      // Solo persistir la nueva posición si realmente se arrastró.
+      // Sin esto, un click puro modificaba la posición a donde estuviera el cursor.
+      if (huboDrag && groupRef.current) {
         const p = groupRef.current.position;
         latestRef.current.onUpdatePosicion(latestRef.current.instanceId, [p.x, latestRef.current.y, p.z]);
       }
@@ -188,6 +203,8 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
         if (e.button !== 0) return;
         e.stopPropagation();
         isDragging.current = true;
+        dragStarted.current = false;
+        dragOrigin.current = { x: e.clientX, y: e.clientY };
         if (orbitRef.current) orbitRef.current.enabled = false;
         gl.domElement.style.cursor = 'grabbing';
         onSelect();
@@ -209,6 +226,7 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
         selectedPieza={null}
         onSelectPieza={null}
         texturaDataUrl={texturaDataUrl}
+        texturaRepeat={texturaRepeat}
         parametrosValores={inst.parametrosValores}
         contornos={contornos}
       />
@@ -301,7 +319,9 @@ function GrillaFloor({ colorPiso, isDark, mostrarGrilla, divisiones }) {
 
   return (
     <>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      {/* Piso ligeramente por debajo de y=0 para evitar que tape las aristas
+          inferiores de los módulos (los Edges quedaban cortados por z-fighting). */}
+      <mesh position={[0, -0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[10, 10]} />
         <meshStandardMaterial color={colorPiso} roughness={0.92} metalness={0.01} />
       </mesh>
@@ -314,6 +334,12 @@ const MESADA_THICKNESS = 0.04;
 const MESADA_DEPTH     = 0.62;
 
 // ── Mesada — sigue las posiciones vivas de los módulos bajos ──────────────────
+// Las dimensiones (hw/hd) se leen DIRECTAMENTE de `modulos[inst.codigo]` en
+// lugar de `livePositions.current[id].hw/hd`. Esto evita un bug donde la mesada
+// quedaba con el ancho viejo aunque el módulo se hubiera editado en el catálogo:
+// el cache de livePositions se escribe en el useFrame de ModuloEnEscena cuya
+// closure podía retener el halfWidth viejo durante un tiempo, especialmente si
+// el tab estaba oculto (display:none) al momento del save.
 function Mesada({ livePositions, modulosEnEscena, modulos, color }) {
   const meshRef = useRef();
 
@@ -329,13 +355,25 @@ function Mesada({ livePositions, modulosEnEscena, modulos, color }) {
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxH = 0;
     for (const inst of bajos) {
       const live = livePositions.current[inst.instanceId];
-      if (!live) continue;
-      const h = (modulos[inst.codigo]?.dimensiones?.alto || 700) / 1000;
-      minX = Math.min(minX, live.x - live.hw);
-      maxX = Math.max(maxX, live.x + live.hw);
-      minZ = Math.min(minZ, live.z - live.hd);
-      maxZ = Math.max(maxZ, live.z + live.hd);
-      maxH = Math.max(maxH, h);
+      const m = modulos?.[inst.codigo];
+      if (!m) continue;
+      const ancho = (m.dimensiones?.ancho       || 600) / 1000;
+      const prof  = (m.dimensiones?.profundidad || 550) / 1000;
+      const alto  = (m.dimensiones?.alto        || 700) / 1000;
+      // Aplicar rotación (0 / 90 / 180 / 270) — al rotar 90°/270° se
+      // intercambian ancho ↔ profundidad para el bounding box.
+      const rotSteps = Math.round((inst.rotacionY || 0) / (Math.PI / 2)) % 2;
+      const hw = (rotSteps !== 0 ? prof  : ancho) / 2;
+      const hd = (rotSteps !== 0 ? ancho : prof)  / 2;
+      // Posición: usar livePositions si está disponible (refleja drag/snap),
+      // si no aún cargó, caer al worldPos del layout.
+      const x = live?.x ?? inst.worldPos?.[0] ?? 0;
+      const z = live?.z ?? inst.worldPos?.[2] ?? 0;
+      minX = Math.min(minX, x - hw);
+      maxX = Math.max(maxX, x + hw);
+      minZ = Math.min(minZ, z - hd);
+      maxZ = Math.max(maxZ, z + hd);
+      maxH = Math.max(maxH, alto);
     }
 
     if (minX === Infinity) { meshRef.current.visible = false; return; }
@@ -344,7 +382,6 @@ function Mesada({ livePositions, modulosEnEscena, modulos, color }) {
     meshRef.current.position.x = (minX + maxX) / 2;
     meshRef.current.position.y = maxH + MESADA_THICKNESS / 2;
     meshRef.current.position.z = (minZ + maxZ) / 2;
-    // scale.x sobre una geometría de ancho=1 equivale al ancho real
     meshRef.current.scale.x    = maxX - minX;
   });
 
@@ -369,6 +406,7 @@ export function Escena3DPrincipal({
   mostrarParedIzq = false, mostrarParedDer = false,
   contornos = null,
   camLookAt = null,
+  texturaRepeat = 2,
 }) {
   const orbitRef       = useRef();
   const livePositions  = useRef({}); // { [instanceId]: { x, z, hw, hd } }
@@ -406,7 +444,9 @@ export function Escena3DPrincipal({
       )}
 
       {mostrarPared && (
-        <mesh position={[0, 1.5, WALL_Z]}>
+        // Pared trasera 2mm más atrás de WALL_Z para no tapar las aristas
+        // posteriores de los módulos (z-fighting con Edges).
+        <mesh position={[0, 1.5, WALL_Z - 0.002]}>
           <planeGeometry args={[10, 3]} />
           <meshStandardMaterial color={colorPared} roughness={0.82} metalness={0.0} side={2} />
         </mesh>
@@ -414,7 +454,7 @@ export function Escena3DPrincipal({
 
       {/* Pared lateral izquierda */}
       {mostrarParedIzq && (
-        <mesh position={[-5, 1.5, WALL_Z + 3]} rotation={[0, Math.PI / 2, 0]}>
+        <mesh position={[-5.002, 1.5, WALL_Z + 3]} rotation={[0, Math.PI / 2, 0]}>
           <planeGeometry args={[6, 3]} />
           <meshStandardMaterial color={colorPared} roughness={0.82} metalness={0.0} side={2} />
         </mesh>
@@ -422,7 +462,7 @@ export function Escena3DPrincipal({
 
       {/* Pared lateral derecha */}
       {mostrarParedDer && (
-        <mesh position={[5, 1.5, WALL_Z + 3]} rotation={[0, -Math.PI / 2, 0]}>
+        <mesh position={[5.002, 1.5, WALL_Z + 3]} rotation={[0, -Math.PI / 2, 0]}>
           <planeGeometry args={[6, 3]} />
           <meshStandardMaterial color={colorPared} roughness={0.82} metalness={0.0} side={2} />
         </mesh>
@@ -459,6 +499,7 @@ export function Escena3DPrincipal({
             onEliminarModulo={onEliminarModulo}
             contornos={contornos}
             texturaDataUrl={texturaDataUrl}
+            texturaRepeat={texturaRepeat}
           />
         );
       })}
@@ -466,7 +507,7 @@ export function Escena3DPrincipal({
       {mostrarMesada && (
         <Mesada
           livePositions={livePositions}
-          modulosEnEscena={modulosEnEscena}
+          modulosEnEscena={layoutItems}
           modulos={modulos}
           color={colorMesada}
         />
