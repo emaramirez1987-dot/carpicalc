@@ -101,7 +101,7 @@ export function PanelModulos3D({ items, modulos, inlineModulos, dimOverride, onA
               // Si pasamos `dims` (con todas las dimensiones rellenadas desde el módulo),
               // cualquier edición posterior del módulo en el catálogo queda enmascarada
               // porque el "override" siempre gana sobre `modBase.dimensiones`.
-              onClick={() => onAgregar?.({ codigo: item.codigo, cantidad: item.cantidad, dimsOverride: over })}
+              onClick={() => onAgregar?.({ itemId: keyId, codigo: item.codigo, dimsOverride: over })}
               title="Agregar a la escena"
               style={{
                 width: 26, height: 26, borderRadius: 5, cursor: 'pointer', flexShrink: 0,

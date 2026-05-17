@@ -237,7 +237,7 @@ export function Vista3DTab({
   setItems,
   dimOverride = {},
   inlineModulos = {},  // eslint-disable-line no-unused-vars
-  presupuestoActivoId,  // eslint-disable-line no-unused-vars
+  presupuestoActivoId,
   onCaptura,
   materiales3D = {},
 }) {
@@ -308,26 +308,42 @@ export function Vista3DTab({
     setColorPared(isDark ? '#1c1f28' : '#e0e1e5');
   }, [isDark]);
 
+  // ── Limpiar escena al cambiar de presupuesto (o cerrar) ──────────────
+  // presupuestoActivoId cambia cuando el usuario abre otro presupuesto o
+  // vuelve al gestor. Limpiamos todo para que la escena arranque vacía.
+  useEffect(() => {
+    setModulosEnEscena([]);
+    setSelectedCod(null);
+  }, [presupuestoActivoId]);
+
   // ── Sincronizar items del presupuesto → modulosEnEscena (Fase 8 N1+) ──
-  // Cada item del presupuesto se refleja como un inst en la escena.
-  // Los insts manuales (sin itemKey) se mantienen entre renders.
+  // Un item con cantidad N genera N instancias en la escena (instKey = itemKey#k).
+  // Las instancias manuales (sin itemKey) se mantienen entre renders.
   // Posición/rotación/textura quedan en el state local (no en el item).
   // parametrosValores se LEE del item directamente (no se cachea).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const itemsKey = items.map(i => i.id || i.codigo).join('|');
+  const itemsKey = items.map(i => `${i.id || i.codigo}:${i.cantidad || 1}`).join('|');
   useEffect(() => {
     setModulosEnEscena(prev => {
-      const fromItems = items.map((it, idx) => {
+      const fromItems = [];
+      items.forEach((it, idx) => {
         const itemKey = it.id || it.codigo;
-        const existing = prev.find(m => m.itemKey === itemKey);
-        if (existing) return { ...existing, codigo: it.codigo, itemIdx: idx };
-        return {
-          instanceId: `pres-${itemKey}`,
-          codigo: it.codigo,
-          posicion: [0, 0, 0],
-          itemIdx: idx,
-          itemKey,
-        };
+        const cantidad = it.cantidad || 1;
+        for (let k = 0; k < cantidad; k++) {
+          const instKey = `${itemKey}#${k}`;
+          const existing = prev.find(m => m.instKey === instKey);
+          fromItems.push(existing
+            ? { ...existing, codigo: it.codigo, itemIdx: idx }
+            : {
+                instanceId: `pres-${instKey}`,
+                instKey,
+                codigo: it.codigo,
+                posicion: [0, 0, 0],
+                itemIdx: idx,
+                itemKey,
+              }
+          );
+        }
       });
       const manuales = prev.filter(m => !m.itemKey);
       return [...fromItems, ...manuales];
@@ -384,9 +400,20 @@ export function Vista3DTab({
     setCamTarget([cx + offset[0], cy + offset[1], cz + offset[2]]);
   };
 
-  const handleAgregar = ({ codigo, dimsOverride }) => {
-    const instanceId = `${codigo}-${crypto.randomUUID()}`;
-    setModulosEnEscena(prev => [...prev, { instanceId, codigo, posicion: [0, 0, 0], dimsOverride }]);
+  const handleAgregar = ({ itemId, codigo, dimsOverride }) => {
+    if (itemId && setItems) {
+      // Incrementar cantidad del item en el presupuesto.
+      // El efecto de sync se encarga de crear la instancia extra en la escena.
+      setItems(prev => prev.map(it =>
+        (it.id || it.codigo) === itemId
+          ? { ...it, cantidad: (it.cantidad || 1) + 1 }
+          : it
+      ));
+    } else {
+      // Instancia manual sin item en presupuesto (caso edge)
+      const instanceId = `${codigo}-${crypto.randomUUID()}`;
+      setModulosEnEscena(prev => [...prev, { instanceId, codigo, posicion: [0, 0, 0], dimsOverride }]);
+    }
   };
 
   const handleUpdatePosicion = (instanceId, newPos) =>
@@ -411,7 +438,20 @@ export function Vista3DTab({
 
   const handleLimpiarEscena = () => { setModulosEnEscena([]); setSelectedCod(null); };
   const handleEliminarModulo = (instanceId) => {
-    setModulosEnEscena(prev => prev.filter(m => m.instanceId !== instanceId));
+    const inst = modulosEnEscena.find(m => m.instanceId === instanceId);
+    if (inst?.itemKey && setItems) {
+      // Es una instancia del presupuesto: decrementar cantidad del item.
+      // Si llega a 0 el efecto de sync la elimina de la escena automáticamente.
+      setItems(prev => prev.map(it => {
+        const key = it.id || it.codigo;
+        if (key !== inst.itemKey) return it;
+        const nuevaCantidad = (it.cantidad || 1) - 1;
+        return nuevaCantidad > 0 ? { ...it, cantidad: nuevaCantidad } : it;
+      }));
+    } else {
+      // Instancia manual: filtrar del state local directamente
+      setModulosEnEscena(prev => prev.filter(m => m.instanceId !== instanceId));
+    }
     setSelectedCod(null);
   };
   const handleAsignarTextura = (texturaCode) => {
@@ -773,7 +813,7 @@ export function Vista3DTab({
           {/* Badge de total del presupuesto — overlay sobre el canvas */}
           {items.length > 0 && (
             <div style={{
-              position: 'absolute', top: 12, right: 12, zIndex: 10,
+              position: 'absolute', bottom: 12, right: 12, zIndex: 10,
               padding: '8px 14px', borderRadius: 8,
               background: 'rgba(8, 10, 13, 0.85)',
               border: '1px solid rgba(212,175,55,0.40)',

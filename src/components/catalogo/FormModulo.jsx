@@ -1,8 +1,9 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import EditorParametrico from './EditorParametrico.jsx';
 import { Btn, TextInput, Select } from '../ui/index.jsx';
-import { fmtPeso, calcularModulo } from '../../utils.js';
+import { fmtPeso, calcularModulo, resolverVariables } from '../../utils.js';
 import { CATEGORIAS_DEFAULT } from '../../constants.js';
+import { piezasQueUsanVar } from '../../services/moduloService.js';
 import { cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
 import FilaPieza from './FilaPieza.jsx';
 import FormPieza from './FormPieza.jsx';
@@ -27,6 +28,24 @@ const PIEZA_VACIA = {
   tc: { id: 1, lados1: 1, lados2: 0 },
   especial: false, dimLibre1: "", dimLibre2: ""
 };
+function SubTabBar({ tabs, active, onSelect }) {
+  return (
+    <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      {tabs.map(t => (
+        <button key={t.id} onMouseDown={e => e.preventDefault()} onClick={() => onSelect(t.id)} style={{
+          background: 'none', border: 'none', padding: '8px 14px', cursor: 'pointer',
+          fontSize: 10, fontFamily: "'DM Mono',monospace",
+          fontWeight: active === t.id ? 700 : 400,
+          letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+          borderBottom: active === t.id ? '2px solid var(--accent)' : '2px solid transparent',
+          color: active === t.id ? 'var(--accent)' : 'var(--text-muted)',
+          marginBottom: -1, transition: 'color 0.12s',
+        }}>{t.label}</button>
+      ))}
+    </div>
+  );
+}
+
 function FormModulo({
   costos,
   onGuardar,
@@ -43,10 +62,15 @@ function FormModulo({
   // Tab activa del editor (rediseño tipo ficha). Se elige el tab inicial
   // según contexto: módulo nuevo arranca en "identificacion" (faltan datos
   // básicos), edición arranca en "piezas" (lo más usado).
-  const [tabActiva, setTabActiva] = useState(() => moduloBase ? "piezas" : "identificacion");
-  // Acordeones colapsables dentro del tab "Datos generales" — todos cerrados por defecto
-  const [accAbierto, setAccAbierto] = useState({ clasif: false, mo: false, herr: false });
-  const toggleAcc = (k) => setAccAbierto(p => ({ ...p, [k]: !p[k] }));
+  const [tabActiva, setTabActiva] = useState(() => moduloBase ? "piezas" : "datos");
+  // Sub-tab dentro de "datos"
+  const [subTabDatos, setSubTabDatos] = useState('identificacion');
+  // Estado CRUD variables del módulo (usado en Piezas > Variables)
+  const [modVarsAgregando, setModVarsAgregando] = useState(false);
+  const [modVarsNuevoNombre, setModVarsNuevoNombre] = useState('');
+  const [modVarsConfirmDelete, setModVarsConfirmDelete] = useState(null);
+  const [modVarsEditando, setModVarsEditando] = useState(null);
+  const [modVarsValorEditando, setModVarsValorEditando] = useState('');
   // Modal de decisión: aparece al guardar desde Nivel 3
   // null = cerrado, "pidiendo" = mostrando opciones, "nombre" = ingresando nombre para catálogo
   const [modalDecision, setModalDecision] = useState(null);
@@ -128,6 +152,33 @@ function FormModulo({
   const [fpError, setFpError] = useState("");
   // Edición de pieza existente: idx !== null = modo edición
   const [editandoPiezaIdx, setEditandoPiezaIdx] = useState(null);
+  // Sub-tab dentro de "piezas": 'editor' | 'lista'
+  const [subTabPiezas, setSubTabPiezas] = useState('editor');
+
+  // Piezas que se pasan al preview 3D en tiempo real.
+  // Incluye `fp` en curso si tiene al menos una fórmula o es modo libre con medidas.
+  // En modo edición reemplaza la pieza en su posición; en modo nueva la agrega al final.
+  const piezasPreview = useMemo(() => {
+    // El nombre es el gate: sin nombre el usuario aún no empezó a definir la pieza,
+    // así que no mostramos nada en el preview para evitar piezas fantasma al abrir.
+    const fpVisible = fp.nombre.trim() && (fp.especial
+      ? (parseInt(fp.dimLibre1) > 0 || parseInt(fp.dimLibre2) > 0)
+      : (fp.formula1?.trim() || fp.formula2?.trim()));
+    if (!fpVisible) return piezas;
+    const fpNorm = {
+      ...fp,
+      cantidad: Math.max(1, parseInt(fp.cantidad) || 1),
+      offsetEsp: parseInt(fp.offsetEsp) || 0,  offsetMm: parseInt(fp.offsetMm) || 0,
+      divisor:   Math.max(1, parseInt(fp.divisor) || 1),
+      offsetEsp2: parseInt(fp.offsetEsp2) || 0, offsetMm2: parseInt(fp.offsetMm2) || 0,
+      divisor2:  Math.max(1, parseInt(fp.divisor2) || 1),
+      tc: { id: parseInt(fp.tc?.id) || 0, lados1: parseInt(fp.tc?.lados1) || 0, lados2: parseInt(fp.tc?.lados2) || 0 },
+    };
+    if (editandoPiezaIdx !== null) {
+      return piezas.map((p, i) => i === editandoPiezaIdx ? fpNorm : p);
+    }
+    return [...piezas, fpNorm];
+  }, [fp, piezas, editandoPiezaIdx]);
   // Nombres sugeridos para autocompletado rápido
   const NOMBRES_SUGERIDOS = ["Lateral", "Base", "Techo", "Fondo", "Puerta", "Entrepaño", "Zarpa", "Zócalo", "Cajón"];
   const matDef =
@@ -167,8 +218,7 @@ function FormModulo({
   const editarPieza = (idx) => {
     setFp({ ...piezas[idx] });
     setEditandoPiezaIdx(idx);
-    // Scroll al formulario
-    setTimeout(() => document.getElementById("form-pieza")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    setSubTabPiezas('editor');
   };
 
   const cancelarEdicion = () => {
@@ -354,7 +404,7 @@ function FormModulo({
           activeId={tabActiva}
           onChange={setTabActiva}
           tabs={[
-            { id: "identificacion", icon: "◈", label: "General",
+            { id: "datos", icon: "◈", label: "Datos",
               badge: (datos.codigo && datos.nombre
                 && datos.dimensiones?.ancho && datos.dimensiones?.alto && datos.dimensiones?.profundidad) ? "ok" : "warn" },
             { id: "piezas",         icon: "▤", label: piezas.length > 0 ? `Piezas · ${piezas.length}` : "Piezas",
@@ -387,15 +437,22 @@ function FormModulo({
         {/* Columna izquierda: contenido de la tab activa */}
         <div style={{ padding: 14, overflowY: "auto", maxHeight: "78vh" }}>
 
-          {tabActiva === "identificacion" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 10 }}>
-              {/* Bloque Identificación */}
-              <div>
-                <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "#c8a02a", marginBottom: 10 }}>
-                  📌 Identificación
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: 8 }}>
+          {tabActiva === "datos" && (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <SubTabBar
+                tabs={[
+                  { id: 'identificacion', label: 'Identificación' },
+                  { id: 'dims_clasif',    label: 'Dims. y clasif.' },
+                  { id: 'mo',             label: '🔨 Mano de obra' },
+                  { id: 'herrajes',       label: `🔩 Herrajes${herrajes.length > 0 ? ` · ${herrajes.length}` : ''}` },
+                ]}
+                active={subTabDatos}
+                onSelect={setSubTabDatos}
+              />
+
+              {subTabDatos === 'identificacion' && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: 8 }}>
                     <TextInput label="Código" placeholder="MC003" value={datos.codigo} small
                       onChange={(v) => setDatos(d => ({ ...d, codigo: v.toUpperCase() }))}
                       disabled={esEdicion} autoFocus={!esEdicion} />
@@ -410,256 +467,329 @@ function FormModulo({
                   <TextInput label="Descripción (opcional)" value={datos.descripcion} small
                     onChange={(v) => setDatos(d => ({ ...d, descripcion: v }))} />
                 </div>
-              </div>
+              )}
 
-              <div style={{ height: 1, background: "var(--border)" }} />
-
-              {/* Bloque Dimensiones y material */}
-              <div>
-                <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "#c8a02a", marginBottom: 10 }}>
-                  📐 Dimensiones y material
-                </div>
-                <div className="rsp-grid-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1.4fr", gap: 8 }}>
-                  <TextInput label="Ancho (mm)" type="number" suffix="mm" value={datos.dimensiones.ancho} small
-                    onChange={(v) => setDatos(d => ({ ...d, dimensiones: { ...d.dimensiones, ancho: parseInt(v) || 0 } }))} />
-                  <TextInput label="Profund. (mm)" type="number" suffix="mm" value={datos.dimensiones.profundidad} small
-                    onChange={(v) => setDatos(d => ({ ...d, dimensiones: { ...d.dimensiones, profundidad: parseInt(v) || 0 } }))} />
-                  <TextInput label="Alto (mm)" type="number" suffix="mm" value={datos.dimensiones.alto} small
-                    onChange={(v) => setDatos(d => ({ ...d, dimensiones: { ...d.dimensiones, alto: parseInt(v) || 0 } }))} />
-                  <Select label="Material" value={datos.material} small
-                    onChange={(v) => setDatos(d => ({ ...d, material: v }))}
-                    options={costos.materiales.map((m) => ({ value: m.tipo, label: `${m.nombre} (${m.espesor}mm)` }))} />
-                </div>
-                {matDef && (
-                  <div style={{ marginTop: 6, padding: "5px 10px", borderRadius: 6, fontSize: 11, background: "rgba(212,175,55,0.08)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
-                    ▶ {matDef.nombre} · {matDef.espesor}mm
-                  </div>
-                )}
-              </div>
-
-              <div style={{ height: 1, background: "var(--border)" }} />
-
-              {/* ── Acordeón: Clasificación ── */}
-              <div>
-                <button onClick={() => toggleAcc("clasif")} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: "none", cursor: "pointer", padding: "6px 0", gap: 8 }}>
-                  <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "#c8a02a" }}>
-                    🏷 Clasificación
-                  </span>
-                  <span style={{ fontSize: 11, color: "var(--text-muted)", transition: "transform 0.15s", display: "inline-block", transform: accAbierto.clasif ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
-                </button>
-                {accAbierto.clasif && (
-                  <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <div>
-                      <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 5 }}>Categoría</div>
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                        {CATEGORIAS_DEFAULT.map(cat => {
-                          const activa = datos.categoria === cat.id;
-                          return (
-                            <button key={cat.id} onClick={() => setDatos(d => ({ ...d, categoria: cat.id }))}
-                              style={{ padding: "4px 9px", borderRadius: 16, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", gap: 4, background: activa ? `${cat.color}22` : "var(--bg-subtle)", border: `1px solid ${activa ? cat.color : "var(--border)"}`, color: activa ? cat.color : "var(--text-muted)" }}>
-                              {cat.icon} {cat.label}
-                            </button>
-                          );
-                        })}
-                      </div>
+              {subTabDatos === 'dims_clasif' && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 14 }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "#c8a02a", marginBottom: 8 }}>📐 Dimensiones y material</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1.4fr", gap: 8 }}>
+                      <TextInput label="Ancho (mm)" type="number" suffix="mm" value={datos.dimensiones.ancho} small
+                        onChange={(v) => setDatos(d => ({ ...d, dimensiones: { ...d.dimensiones, ancho: parseInt(v) || 0 } }))} />
+                      <TextInput label="Profund. (mm)" type="number" suffix="mm" value={datos.dimensiones.profundidad} small
+                        onChange={(v) => setDatos(d => ({ ...d, dimensiones: { ...d.dimensiones, profundidad: parseInt(v) || 0 } }))} />
+                      <TextInput label="Alto (mm)" type="number" suffix="mm" value={datos.dimensiones.alto} small
+                        onChange={(v) => setDatos(d => ({ ...d, dimensiones: { ...d.dimensiones, alto: parseInt(v) || 0 } }))} />
+                      <Select label="Material" value={datos.material} small
+                        onChange={(v) => setDatos(d => ({ ...d, material: v }))}
+                        options={costos.materiales.map((m) => ({ value: m.tipo, label: `${m.nombre} (${m.espesor}mm)` }))} />
                     </div>
-                    <div>
-                      <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 5 }}>Tipo visual</div>
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                        {[
-                          { id: null,    label: "Sin def.", icon: "—",  color: "#606880" },
-                          { id: "bajo",  label: "Bajo",     icon: "⬇",  color: "#7090c8" },
-                          { id: "aereo", label: "Aéreo",    icon: "⬆",  color: "#a070c8" },
-                          { id: "torre", label: "Torre",    icon: "⬛", color: "var(--color-positive)" },
-                        ].map((tipo) => {
-                          const activo = datos.tipoVisual === tipo.id;
-                          return (
-                            <button key={String(tipo.id)} onClick={() => setDatos(d => ({ ...d, tipoVisual: tipo.id }))}
-                              style={{ padding: "4px 9px", borderRadius: 16, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", gap: 4, background: activo ? `${tipo.color}22` : "var(--bg-subtle)", border: `1px solid ${activo ? tipo.color : "var(--border)"}`, color: activo ? tipo.color : "var(--text-muted)" }}>
-                              {tipo.icon} {tipo.label}
-                            </button>
-                          );
-                        })}
+                    {matDef && (
+                      <div style={{ marginTop: 6, padding: "5px 10px", borderRadius: 6, fontSize: 11, background: "rgba(212,175,55,0.08)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+                        ▶ {matDef.nombre} · {matDef.espesor}mm
                       </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ height: 1, background: "var(--border)" }} />
-
-              {/* ── Acordeón: Mano de obra ── */}
-              <div>
-                <button onClick={() => toggleAcc("mo")} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: "none", cursor: "pointer", padding: "6px 0", gap: 8 }}>
-                  <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "#c8a02a" }}>
-                    🔨 Mano de obra
-                  </span>
-                  <span style={{ fontSize: 11, color: "var(--text-muted)", transition: "transform 0.15s", display: "inline-block", transform: accAbierto.mo ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
-                </button>
-                {accAbierto.mo && (
-                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 10 }}>
-                    <Select label="Tipo" value={moDeObra.tipo}
-                      onChange={(v) => setMoDeObra(m => ({ ...m, tipo: v }))}
-                      options={costos.manoDeObra.map((m) => ({ value: m.tipo, label: `${m.nombre} — ${fmtPeso(m.precio)}` }))} />
-                    {moDeObra.tipo === "por_hora" && (
-                      <>
-                        <TextInput label="Horas estimadas" type="number" suffix="hs" value={moDeObra.horas} small
-                          onChange={(v) => setMoDeObra(m => ({ ...m, horas: parseFloat(v) || 0 }))} />
-                        {(() => {
-                          const gf = costos.gastosFijos;
-                          if (!gf?.items?.length || !moDeObra.horas) return null;
-                          const totalMensual = gf.items.reduce((a, i) => a + (parseFloat(i.monto) || 0), 0);
-                          const costoHora = gf.horasProductivasMes > 0 ? totalMensual / gf.horasProductivasMes : 0;
-                          const impacto = Math.round(costoHora * moDeObra.horas);
-                          return (
-                            <div style={{ padding: "7px 10px", borderRadius: 6, background: "rgba(112,144,176,0.10)", border: "1px solid rgba(112,144,176,0.25)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>⏱ {moDeObra.horas}h × {fmtPeso(Math.round(costoHora))}/h</span>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: "#7090c0", fontFamily: "'DM Mono',monospace" }}>{fmtPeso(impacto)}</span>
-                            </div>
-                          );
-                        })()}
-                      </>
                     )}
                   </div>
-                )}
-              </div>
-
-              <div style={{ height: 1, background: "var(--border)" }} />
-
-              {/* ── Acordeón: Herrajes ── */}
-              <div>
-                <button onClick={() => toggleAcc("herr")} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: "none", cursor: "pointer", padding: "6px 0", gap: 8 }}>
-                  <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "#c8a02a" }}>
-                    🔩 Herrajes
-                    {herrajes.length > 0 && (
-                      <span style={{ marginLeft: 6, fontWeight: 400, color: "var(--accent)" }}>({herrajes.length})</span>
-                    )}
-                  </span>
-                  <span style={{ fontSize: 11, color: "var(--text-muted)", transition: "transform 0.15s", display: "inline-block", transform: accAbierto.herr ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
-                </button>
-                {accAbierto.herr && (
-                  <div style={{ marginTop: 4 }}>
-                    {costos.herrajes.map((h) => {
-                      const item = herrajes.find((x) => x.id === h.id);
-                      const cant = item?.cantidad || 0;
-                      const esFormula = typeof item?.cantidad === 'string';
-                      const tieneCondition = !!item?.condition;
-                      const activo = !!item && (cant > 0 || esFormula || tieneCondition);
-                      const setItem = (patch) => setHerrajes((prev) => {
-                        const idx = prev.findIndex((x) => x.id === h.id);
-                        if (idx < 0) return [...prev, { id: h.id, cantidad: 1, ...patch }];
-                        const n = [...prev]; n[idx] = { ...n[idx], ...patch }; return n;
-                      });
-                      const quitarItem = () => setHerrajes((prev) => prev.filter((x) => x.id !== h.id));
-                      return (
-                        <div key={h.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div>
-                              <div style={{ fontSize: 12, color: "var(--text-primary)" }}>{h.nombre}</div>
-                              <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{fmtPeso(h.precio)}/{h.unidad}</div>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                              <button onClick={() => {
-                                if (esFormula || tieneCondition) setItem({ cantidad: 1, condition: undefined });
-                                else setItem({ cantidad: String(cant || 1) });
-                              }} title={esFormula ? "Volver a número" : "Fórmula / condición"}
-                                style={{ width: 26, height: 26, background: (esFormula || tieneCondition) ? "var(--accent)" : "var(--bg-subtle)", border: "1px solid var(--accent-border)", color: (esFormula || tieneCondition) ? "#0a0a0a" : "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono',monospace" }}>
-                                fx
+                  <div>
+                    <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "#c8a02a", marginBottom: 8 }}>🏷 Clasificación</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                      <div>
+                        <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 6 }}>Categoría</div>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          {CATEGORIAS_DEFAULT.map(cat => {
+                            const activa = datos.categoria === cat.id;
+                            return (
+                              <button key={cat.id} onClick={() => setDatos(d => ({ ...d, categoria: cat.id }))}
+                                style={{ padding: "4px 9px", borderRadius: 16, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", gap: 4, background: activa ? `${cat.color}22` : "var(--bg-subtle)", border: `1px solid ${activa ? cat.color : "var(--border)"}`, color: activa ? cat.color : "var(--text-muted)" }}>
+                                {cat.icon} {cat.label}
                               </button>
-                              {!esFormula && (
-                                <>
-                                  <button onClick={() => { if (cant <= 1) quitarItem(); else setItem({ cantidad: cant - 1 }); }}
-                                    style={{ width: 26, height: 26, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                                  <button onClick={() => setItem({ cantidad: (cant || 0) + 1 })}
-                                    style={{ width: 26, height: 26, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-                                </>
-                              )}
-                              <span style={{ fontFamily: "'DM Mono',monospace", minWidth: 20, textAlign: "center", fontSize: 12, color: activo ? "var(--accent)" : "var(--text-muted)" }}>{esFormula ? "fx" : cant}</span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 6 }}>Tipo visual</div>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          {[
+                            { id: null,    label: "Sin def.", icon: "—",  color: "#606880" },
+                            { id: "bajo",  label: "Bajo",     icon: "⬇",  color: "#7090c8" },
+                            { id: "aereo", label: "Aéreo",    icon: "⬆",  color: "#a070c8" },
+                            { id: "torre", label: "Torre",    icon: "⬛", color: "var(--color-positive)" },
+                          ].map((tipo) => {
+                            const activo = datos.tipoVisual === tipo.id;
+                            return (
+                              <button key={String(tipo.id)} onClick={() => setDatos(d => ({ ...d, tipoVisual: tipo.id }))}
+                                style={{ padding: "4px 9px", borderRadius: 16, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", gap: 4, background: activo ? `${tipo.color}22` : "var(--bg-subtle)", border: `1px solid ${activo ? tipo.color : "var(--border)"}`, color: activo ? tipo.color : "var(--text-muted)" }}>
+                                {tipo.icon} {tipo.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {subTabDatos === 'mo' && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 14 }}>
+                  <Select label="Tipo" value={moDeObra.tipo}
+                    onChange={(v) => setMoDeObra(m => ({ ...m, tipo: v }))}
+                    options={costos.manoDeObra.map((m) => ({ value: m.tipo, label: `${m.nombre} — ${fmtPeso(m.precio)}` }))} />
+                  {moDeObra.tipo === "por_hora" && (
+                    <>
+                      <TextInput label="Horas estimadas" type="number" suffix="hs" value={moDeObra.horas} small
+                        onChange={(v) => setMoDeObra(m => ({ ...m, horas: parseFloat(v) || 0 }))} />
+                      {(() => {
+                        const gf = costos.gastosFijos;
+                        if (!gf?.items?.length || !moDeObra.horas) return null;
+                        const totalMensual = gf.items.reduce((a, i) => a + (parseFloat(i.monto) || 0), 0);
+                        const costoHora = gf.horasProductivasMes > 0 ? totalMensual / gf.horasProductivasMes : 0;
+                        const impacto = Math.round(costoHora * moDeObra.horas);
+                        return (
+                          <div style={{ padding: "7px 10px", borderRadius: 6, background: "rgba(112,144,176,0.10)", border: "1px solid rgba(112,144,176,0.25)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>⏱ {moDeObra.horas}h × {fmtPeso(Math.round(costoHora))}/h</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#7090c0", fontFamily: "'DM Mono',monospace" }}>{fmtPeso(impacto)}</span>
+                          </div>
+                        );
+                      })()}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {subTabDatos === 'herrajes' && (
+                <div style={{ paddingTop: 14 }}>
+                  {costos.herrajes.length === 0 && (
+                    <div style={{ padding: "28px 0", textAlign: "center", fontSize: 12, borderRadius: 8, border: "1px dashed var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                      No hay herrajes configurados en Costos
+                    </div>
+                  )}
+                  {costos.herrajes.map((h) => {
+                    const item = herrajes.find((x) => x.id === h.id);
+                    const cant = item?.cantidad || 0;
+                    const esFormula = typeof item?.cantidad === 'string';
+                    const tieneCondition = !!item?.condition;
+                    const activo = !!item && (cant > 0 || esFormula || tieneCondition);
+                    const setItem = (patch) => setHerrajes((prev) => {
+                      const idx = prev.findIndex((x) => x.id === h.id);
+                      if (idx < 0) return [...prev, { id: h.id, cantidad: 1, ...patch }];
+                      const n = [...prev]; n[idx] = { ...n[idx], ...patch }; return n;
+                    });
+                    const quitarItem = () => setHerrajes((prev) => prev.filter((x) => x.id !== h.id));
+                    return (
+                      <div key={h.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <div style={{ fontSize: 12, color: "var(--text-primary)" }}>{h.nombre}</div>
+                            <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{fmtPeso(h.precio)}/{h.unidad}</div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <button onClick={() => {
+                              if (esFormula || tieneCondition) setItem({ cantidad: 1, condition: undefined });
+                              else setItem({ cantidad: String(cant || 1) });
+                            }} title={esFormula ? "Volver a número" : "Fórmula / condición"}
+                              style={{ width: 26, height: 26, background: (esFormula || tieneCondition) ? "var(--accent)" : "var(--bg-subtle)", border: "1px solid var(--accent-border)", color: (esFormula || tieneCondition) ? "#0a0a0a" : "var(--text-muted)", borderRadius: 5, cursor: "pointer", fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono',monospace" }}>
+                              fx
+                            </button>
+                            {!esFormula && (
+                              <>
+                                <button onClick={() => { if (cant <= 1) quitarItem(); else setItem({ cantidad: cant - 1 }); }}
+                                  style={{ width: 26, height: 26, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                                <button onClick={() => setItem({ cantidad: (cant || 0) + 1 })}
+                                  style={{ width: 26, height: 26, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)", borderRadius: 5, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                              </>
+                            )}
+                            <span style={{ fontFamily: "'DM Mono',monospace", minWidth: 20, textAlign: "center", fontSize: 12, color: activo ? "var(--accent)" : "var(--text-muted)" }}>{esFormula ? "fx" : cant}</span>
+                          </div>
+                        </div>
+                        {(esFormula || tieneCondition) && (
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 5 }}>
+                            <div>
+                              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>Cantidad (fórmula)</div>
+                              <input value={typeof item.cantidad === "string" ? item.cantidad : String(item.cantidad || "")}
+                                placeholder="ej: cajones · puertas * 2"
+                                onChange={e => setItem({ cantidad: e.target.value })}
+                                style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "5px 7px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", outline: "none", boxSizing: "border-box" }} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>Condición (opcional)</div>
+                              <input value={item.condition || ""}
+                                placeholder="ej: cajones > 0"
+                                onChange={e => setItem({ condition: e.target.value || undefined })}
+                                style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "5px 7px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", outline: "none", boxSizing: "border-box" }} />
                             </div>
                           </div>
-                          {(esFormula || tieneCondition) && (
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 5 }}>
-                              <div>
-                                <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>Cantidad (fórmula)</div>
-                                <input value={typeof item.cantidad === "string" ? item.cantidad : String(item.cantidad || "")}
-                                  placeholder="ej: cajones · puertas * 2"
-                                  onChange={e => setItem({ cantidad: e.target.value })}
-                                  style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "5px 7px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", outline: "none", boxSizing: "border-box" }} />
-                              </div>
-                              <div>
-                                <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>Condición (opcional)</div>
-                                <input value={item.condition || ""}
-                                  placeholder="ej: cajones > 0"
-                                  onChange={e => setItem({ condition: e.target.value || undefined })}
-                                  style={{ width: "100%", fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "5px 7px", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", outline: "none", boxSizing: "border-box" }} />
-                              </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {tabActiva === "piezas" && (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <SubTabBar
+                tabs={[
+                  { id: 'editor',    label: editandoPiezaIdx !== null ? '✎ Editando' : '✎ Editor' },
+                  { id: 'variables', label: `⚡ Variables${Object.keys(datos.variables || {}).length > 0 ? ` · ${Object.keys(datos.variables || {}).length}` : ''}` },
+                  { id: 'lista',     label: `▤ Lista · ${piezas.length}` },
+                ]}
+                active={subTabPiezas}
+                onSelect={setSubTabPiezas}
+              />
+
+              {subTabPiezas === 'editor' && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 20 }}>
+                  <FormPieza
+                    fp={fp} setFp={setFp}
+                    onCancelar={cancelarEdicion}
+                    onConfirmar={agregarPieza}
+                    editando={editandoPiezaIdx !== null}
+                    dims={datos.dimensiones}
+                    espesor={espesor}
+                    nombresSugeridos={NOMBRES_SUGERIDOS}
+                    variables={datos.variables || {}}
+                    piezas={piezas}
+                    zonas={datos.zonas || []}
+                    parametros={datos.parametros || []} />
+
+                  {fpError && <p style={{ color: "#e07070", fontSize: 12, margin: 0 }}>⚠ {fpError}</p>}
+
+                  {editandoPiezaIdx === null && (
+                    <button onClick={agregarPieza} style={{
+                      width: "100%", padding: "7px 0", borderRadius: 7, cursor: "pointer", fontWeight: 600,
+                      fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: "0.05em",
+                      background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.45)", color: "#c8a02a",
+                    }}>
+                      + AGREGAR ESTA PIEZA
+                    </button>
+                  )}
+
+                </div>
+              )}
+
+              {subTabPiezas === 'variables' && (() => {
+                const variables = datos.variables || {};
+                const customEntries = Object.entries(variables);
+                const baseVars = { ancho: datos.dimensiones.ancho || 0, alto: datos.dimensiones.alto || 0, profundidad: datos.dimensiones.profundidad || 0, esp: espesor };
+                const resolved = resolverVariables(variables, baseVars);
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 14 }}>
+                    {/* Variables base (solo lectura) */}
+                    <div>
+                      <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Variables base del módulo</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        {[['ancho', baseVars.ancho], ['alto', baseVars.alto], ['profundidad', baseVars.profundidad], ['esp', baseVars.esp]].map(([n, v]) => (
+                          <div key={n} style={{ padding: "3px 10px", borderRadius: 6, background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.22)", fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--accent)" }}>
+                            {n} <span style={{ opacity: 0.6, fontSize: 10 }}>= {v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Agregar variable custom */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", textTransform: "uppercase", letterSpacing: "0.08em" }}>Variables custom</div>
+                      {modVarsAgregando ? (
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <input autoFocus value={modVarsNuevoNombre}
+                            onChange={e => setModVarsNuevoNombre(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') { const n = modVarsNuevoNombre.trim(); if (n && !(n in variables)) { setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [n]: '' } })); setModVarsNuevoNombre(''); setModVarsAgregando(false); } }
+                              if (e.key === 'Escape') { setModVarsAgregando(false); setModVarsNuevoNombre(''); }
+                            }}
+                            placeholder="nombre (ej: luz)"
+                            style={{ width: 110, fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "5px 8px", background: "var(--bg-base)", border: "1px solid var(--accent-border)", borderRadius: 6, color: "var(--text-primary)", outline: "none" }} />
+                          <button onClick={() => { const n = modVarsNuevoNombre.trim(); if (n && !(n in variables)) { setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [n]: '' } })); setModVarsNuevoNombre(''); setModVarsAgregando(false); } }}
+                            style={{ padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>OK</button>
+                          <button onClick={() => { setModVarsAgregando(false); setModVarsNuevoNombre(''); }}
+                            style={{ padding: "5px 8px", borderRadius: 6, fontSize: 11, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>✕</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setModVarsAgregando(true); setModVarsNuevoNombre(''); }}
+                          style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "transparent", border: "1px dashed rgba(212,175,55,0.40)", color: "var(--accent)" }}>
+                          + Variable custom
+                        </button>
+                      )}
+                    </div>
+
+                    {customEntries.length === 0 && !modVarsAgregando && (
+                      <div style={{ padding: "20px 0", textAlign: "center", fontSize: 12, borderRadius: 8, border: "1px dashed var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
+                        Sin variables custom — usá las bases o creá una nueva
+                      </div>
+                    )}
+
+                    {customEntries.map(([nombre, valor]) => {
+                      const valStr = typeof valor === 'number' ? String(valor) : (valor || '');
+                      const evalStr = resolved[nombre] != null ? String(Math.round(resolved[nombre] * 10) / 10) : null;
+                      const pendiente = modVarsConfirmDelete === nombre;
+                      const enEdicion = modVarsEditando === nombre;
+                      const usadas = pendiente ? piezasQueUsanVar(nombre, piezas) : [];
+                      const confirmar = () => { setDatos(d => ({ ...d, variables: { ...(d.variables || {}), [nombre]: modVarsValorEditando } })); setModVarsEditando(null); };
+                      const cancelar = () => { setModVarsEditando(null); setModVarsValorEditando(''); };
+                      return (
+                        <div key={nombre} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(212,175,55,0.07)", border: `1px solid ${enEdicion ? "rgba(212,175,55,0.55)" : "rgba(212,175,55,0.22)"}`, borderRadius: 7, padding: "5px 8px" }}>
+                            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{nombre} =</span>
+                            {enEdicion ? (
+                              <>
+                                <input autoFocus type="text" value={modVarsValorEditando} onChange={e => setModVarsValorEditando(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') confirmar(); if (e.key === 'Escape') cancelar(); }}
+                                  style={{ flex: 1, minWidth: 60, fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: "3px 6px", background: "var(--bg-base)", border: "1px solid rgba(212,175,55,0.45)", borderRadius: 5, color: "var(--text-primary)", outline: "none" }} />
+                                <button onClick={confirmar} style={{ padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", flexShrink: 0 }}>✓</button>
+                                <button onClick={cancelar} style={{ padding: "2px 6px", borderRadius: 5, fontSize: 11, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", flexShrink: 0 }}>✕</button>
+                              </>
+                            ) : (
+                              <>
+                                <span style={{ flex: 1, fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: "3px 6px", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {valStr || <span style={{ color: "var(--text-muted)", fontWeight: 400, fontStyle: "italic" }}>(vacío)</span>}
+                                </span>
+                                {evalStr !== null && evalStr !== valStr && (
+                                  <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--color-positive)", fontWeight: 700, flexShrink: 0 }}>= {evalStr}</span>
+                                )}
+                                <button onClick={() => { setModVarsEditando(nombre); setModVarsValorEditando(valStr); }}
+                                  style={{ background: "none", border: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer", fontSize: 11, padding: "2px 8px", borderRadius: 5, flexShrink: 0, fontFamily: "'DM Mono',monospace" }}>✎</button>
+                                <button onClick={() => setModVarsConfirmDelete(nombre)}
+                                  style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: "0 2px", opacity: 0.45, flexShrink: 0 }}
+                                  onMouseEnter={e => { e.currentTarget.style.opacity = 1; }} onMouseLeave={e => { e.currentTarget.style.opacity = 0.45; }}>×</button>
+                              </>
+                            )}
+                          </div>
+                          {pendiente && (
+                            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, padding: "6px 10px", background: "rgba(200,60,60,0.08)", border: "1px solid rgba(200,60,60,0.30)", borderRadius: 7 }}>
+                              {usadas.length > 0
+                                ? <span style={{ fontSize: 10, color: "#e07070", fontFamily: "'DM Mono',monospace", flex: 1 }}>⚠ Usada en: <strong>{usadas.map(p => p.nombre).join(', ')}</strong></span>
+                                : <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", flex: 1 }}>¿Eliminar <strong style={{ color: "var(--accent)" }}>{nombre}</strong>?</span>
+                              }
+                              <button onClick={() => { const { [nombre]: _r, ...rest } = variables; setDatos(d => ({ ...d, variables: rest })); setModVarsConfirmDelete(null); }}
+                                style={{ padding: "3px 10px", borderRadius: 5, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "rgba(200,60,60,0.20)", border: "1px solid rgba(200,60,60,0.45)", color: "#e07070" }}>Sí, eliminar</button>
+                              <button onClick={() => setModVarsConfirmDelete(null)}
+                                style={{ padding: "3px 8px", borderRadius: 5, fontSize: 11, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>Cancelar</button>
                             </div>
                           )}
                         </div>
                       );
                     })}
                   </div>
-                )}
-              </div>
-            </div>
-          )}
+                );
+              })()}
 
-          {tabActiva === "piezas" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <FormPieza
-                fp={fp} setFp={setFp}
-                onCancelar={cancelarEdicion}
-                onConfirmar={agregarPieza}
-                editando={editandoPiezaIdx !== null}
-                dims={datos.dimensiones}
-                espesor={espesor}
-                nombresSugeridos={NOMBRES_SUGERIDOS}
-                variables={datos.variables || {}}
-                onVarsUpdate={v => setDatos(d => ({ ...d, variables: v }))}
-                piezas={datos.piezas || []}
-                zonas={datos.zonas || []}
-                parametros={datos.parametros || []} />
-
-              {fpError && <p style={{ color: "#e07070", fontSize: 12, margin: 0 }}>⚠ {fpError}</p>}
-
-              {/* Botón grande solo en modo "agregar nueva". En modo edición
-                  la acción "Actualizar" vive arriba en el header de FormPieza
-                  junto a "Cancelar", para que el ciclo cancelar/confirmar
-                  quede contiguo y no requiera scrollear. */}
-              {editandoPiezaIdx === null && (
-                <button onClick={agregarPieza} style={{
-                  width: "100%", padding: "11px 0", borderRadius: 8, cursor: "pointer", fontWeight: 700,
-                  fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: "0.05em",
-                  background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.45)", color: "#c8a02a",
-                }}>
-                  + AGREGAR ESTA PIEZA
-                </button>
-              )}
-
-              {/* CTA secundaria: agregar componente hijo. Aparece junto al
-                  botón de agregar pieza porque es donde el usuario espera
-                  encontrar la opción de "este módulo tiene subpartes". */}
-              <button onClick={agregarHijo} style={{
-                width: "100%", padding: "10px 0", borderRadius: 8, cursor: "pointer", fontWeight: 700,
-                fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: "0.05em",
-                background: "rgba(120,160,220,0.08)", border: "1px dashed rgba(120,160,220,0.45)", color: "#9ab8e0",
-              }}>
-                🧩 + Agregar componente hijo (cajón, puerta, sub-mueble…)
-              </button>
-
-              <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)" }}>
-                <div style={{ padding: "10px 14px", background: "rgba(255,255,255,0.04)", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.14em", color: "#c8a02a" }}>
-                    🪵 Lista de piezas <span style={{ color: "var(--accent)", marginLeft: 6 }}>({piezas.length})</span>
-                  </span>
-                  <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
-                    Espesor: <span style={{ color: "var(--accent)" }}>{espesor}mm</span>
-                  </span>
-                </div>
-                <div style={{ padding: "12px 14px", background: "var(--bg-surface)", display: "flex", flexDirection: "column", gap: 6 }}>
+              {subTabPiezas === 'lista' && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "#c8a02a" }}>
+                      {piezas.length} pieza{piezas.length !== 1 ? 's' : ''}
+                    </span>
+                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)" }}>
+                      Espesor: <span style={{ color: "var(--accent)" }}>{espesor}mm</span>
+                    </span>
+                  </div>
                   {piezas.length === 0 ? (
                     <div style={{ padding: "28px 0", textAlign: "center", fontSize: 12, borderRadius: 8, border: "1px dashed var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace" }}>
-                      Sin piezas todavía — agregá la primera arriba
+                      Sin piezas todavía — agregá la primera en el Editor
                     </div>
                   ) : (
                     piezas.map((p, i) => (
@@ -673,7 +803,7 @@ function FormModulo({
                     ))
                   )}
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -725,11 +855,11 @@ function FormModulo({
             👁 Preview 3D
           </div>
           <div style={{ flex: 1, minHeight: 460, position: "relative" }}>
-            {piezas.length === 0 ? (
+            {piezasPreview.length === 0 ? (
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}>
                 <div style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", color: "var(--text-muted)", lineHeight: 1.6 }}>
                   Sin piezas todavía<br />
-                  <span style={{ opacity: 0.7 }}>El preview aparece al agregar la primera</span>
+                  <span style={{ opacity: 0.7 }}>El preview aparece al escribir la primera fórmula</span>
                 </div>
               </div>
             ) : !visor3DMax ? (
@@ -737,7 +867,7 @@ function FormModulo({
                 <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace" }}>Cargando 3D…</div>
               }>
                 <VisorCatalogo3D
-                  modulo={{ ...datos, piezas, herrajes, moDeObra }}
+                  modulo={{ ...datos, piezas: piezasPreview, herrajes, moDeObra }}
                   costos={costos}
                   parametrosValores={valoresPrueba}
                   maximizado={false}
@@ -748,10 +878,12 @@ function FormModulo({
                   }}
                   onSelectPieza={(idx) => {
                     if (idx == null) {
-                      // Deseleccionado → cerrar el editor de pieza
                       if (editandoPiezaIdx !== null) cancelarEdicion();
                       return;
                     }
+                    // piezasPreview puede tener fp en la última posición (modo nueva).
+                    // Si el usuario clickea esa pieza fantasma, no abrir edición de otra.
+                    if (editandoPiezaIdx === null && idx === piezasPreview.length - 1 && idx >= piezas.length) return;
                     setTabActiva("piezas");
                     editarPieza(idx);
                   }}
@@ -770,7 +902,7 @@ function FormModulo({
         </div>
 
         {/* Overlay del visor cuando está maximizado — cubre form + columna preview */}
-        {visor3DMax && piezas.length > 0 && (
+        {visor3DMax && piezasPreview.length > 0 && (
           <div style={{
             position: "absolute", inset: 0, zIndex: 20,
             background: "#0a0c10",
@@ -779,7 +911,7 @@ function FormModulo({
               <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace" }}>Cargando 3D…</div>
             }>
               <VisorCatalogo3D
-                modulo={{ ...datos, piezas, herrajes, moDeObra }}
+                modulo={{ ...datos, piezas: piezasPreview, herrajes, moDeObra }}
                 costos={costos}
                 parametrosValores={valoresPrueba}
                 maximizado={true}

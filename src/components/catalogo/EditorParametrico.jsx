@@ -76,21 +76,6 @@ const btnDel = {
   background: "transparent", border: "1px solid rgba(200,60,60,0.30)",
   color: "#e07070",
 };
-const subSecHdr = (icon, title, count, isOpen, onToggle) => (
-  <div onClick={onToggle} style={{
-    padding: "9px 14px", background: "rgba(200,160,42,0.06)",
-    borderLeft: "2px solid rgba(200,160,42,0.45)",
-    display: "flex", justifyContent: "space-between", alignItems: "center",
-    cursor: "pointer", userSelect: "none",
-  }}>
-    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-      textTransform: "uppercase", letterSpacing: "0.10em", color: "#c8a02a" }}>
-      {icon} {title} <span style={{ color: "var(--text-muted)", marginLeft: 6, fontWeight: 400 }}>({count})</span>
-    </span>
-    <span style={{ fontSize: 9, color: "var(--text-muted)", transition: "transform 0.2s",
-      display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
-  </div>
-);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ListaParametros
@@ -320,135 +305,116 @@ function ListaConstraints({ constraints, onChange, paramsConocidos = [] }) {
 // (hijos) se editan desde su propia pestaña del FormModulo, no acá.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Barra de sub-tabs ────────────────────────────────────────────────────────
+function SubTabBar({ tabs, active, onSelect }) {
+  return (
+    <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      {tabs.map(t => (
+        <button key={t.id} onClick={() => onSelect(t.id)} style={{
+          padding: '6px 14px', background: 'none', border: 'none',
+          borderBottom: active === t.id ? '2px solid var(--accent)' : '2px solid transparent',
+          color: active === t.id ? 'var(--accent)' : 'var(--text-muted)',
+          cursor: 'pointer', fontSize: 10, fontFamily: "'DM Mono',monospace",
+          fontWeight: active === t.id ? 700 : 400, letterSpacing: '0.06em',
+          textTransform: 'uppercase', transition: 'color 0.12s',
+          marginBottom: -1, whiteSpace: 'nowrap',
+        }}>{t.label}</button>
+      ))}
+    </div>
+  );
+}
+
 export default function EditorParametrico({
   parametros, zonas, constraints, onChange,
   moduloPreview, costos, valoresPrueba, onValoresPruebaChange,
 }) {
-  const [secs, setSecs] = useState({ params: true, zonas: false, constraints: false });
-  const toggleSec = k => setSecs(p => ({ ...p, [k]: !p[k] }));
+  const [subTab, setSubTab] = useState('params');
 
   const puedeProbar = !!moduloPreview && !!costos
     && (parametros.length > 0 || constraints.length > 0);
 
-  // Readout: cuántas piezas activan los valores actuales vs el total de
-  // piezas con `condition` declaradas (las que pueden ser ocultadas).
   let resumenPiezas = null;
   if (puedeProbar) {
     try {
       const generadas = generarPiezas(moduloPreview, valoresPrueba || {}, costos);
       const condicionales = (moduloPreview.piezas || []).filter(p => p.condition);
-      // Generadas filtra por condition y expande repeat; queremos saber
-      // qué declaraciones aparecen al menos una vez. Comparamos por nombre+condition.
       const declaracionesActivas = new Set(generadas.map(p => p.nombre));
       const inactivas = condicionales.filter(p => !declaracionesActivas.has(p.nombre));
-      resumenPiezas = {
-        totalGeneradas: generadas.length,
-        totalDefinidas: (moduloPreview.piezas || []).length,
-        inactivas,
-      };
-    } catch (_e) {
-      resumenPiezas = null;
-    }
+      resumenPiezas = { totalGeneradas: generadas.length, totalDefinidas: (moduloPreview.piezas || []).length, inactivas };
+    } catch (_e) { resumenPiezas = null; }
   }
 
+  const tabs = [
+    { id: 'params',      label: `🎚 Params${parametros.length > 0 ? ` · ${parametros.length}` : ''}` },
+    { id: 'zonas',       label: `🎨 Zonas${zonas.length > 0 ? ` · ${zonas.length}` : ''}` },
+    { id: 'constraints', label: `⚠ Reglas${constraints.length > 0 ? ` · ${constraints.length}` : ''}` },
+    { id: 'preview',     label: '👁 Preview' },
+  ];
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 10 }}>
-      {/* Sub-acordeón: Parámetros */}
-      <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-        {subSecHdr("🎚", "Parámetros configurables por el cliente", parametros.length, secs.params, () => toggleSec("params"))}
-        {secs.params && <ListaParametros parametros={parametros}
-          onChange={(p) => onChange({ parametros: p, zonas, constraints })} />}
-      </div>
-      {/* Sub-acordeón: Zonas */}
-      <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-        {subSecHdr("🎨", "Zonas (material por grupo de piezas)", zonas.length, secs.zonas, () => toggleSec("zonas"))}
-        {secs.zonas && <ListaZonas zonas={zonas}
-          onChange={(z) => onChange({ parametros, zonas: z, constraints })} />}
-      </div>
-      {/* Sub-acordeón: Constraints */}
-      <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-        {subSecHdr("⚠", "Reglas de validación", constraints.length, secs.constraints, () => toggleSec("constraints"))}
-        {secs.constraints && <ListaConstraints constraints={constraints}
-          paramsConocidos={parametros.map(p => p.id).filter(Boolean)}
-          onChange={(c) => onChange({ parametros, zonas, constraints: c })} />}
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", marginTop: 10, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+      <SubTabBar tabs={tabs} active={subTab} onSelect={setSubTab} />
 
-      {/* ────────────────────────────────────────────────────────────────
-          Panel de prueba: simula lo que verá el cliente en el presupuesto.
-          Los valores se reflejan en el preview 3D de la derecha en vivo.
-          ──────────────────────────────────────────────────────────────── */}
-      {puedeProbar && (
-        <div style={{
-          marginTop: 4, borderRadius: 8, border: "1px solid rgba(212,175,55,0.30)",
-          background: "rgba(212,175,55,0.04)", overflow: "hidden",
-        }}>
-          <div style={{
-            padding: "9px 14px", display: "flex", alignItems: "center", justifyContent: "space-between",
-            background: "rgba(212,175,55,0.06)", borderBottom: "1px solid rgba(212,175,55,0.20)",
-          }}>
-            <div style={{
-              fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-              textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--accent)",
-            }}>
-              👁 Vista previa del configurador del cliente
-            </div>
-            {Object.keys(valoresPrueba || {}).length > 0 && (
-              <button onClick={() => onValoresPruebaChange({})}
-                style={{
-                  padding: "3px 9px", borderRadius: 5, cursor: "pointer",
-                  fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 500,
-                  background: "transparent", border: "1px solid var(--border)",
-                  color: "var(--text-muted)",
-                }}>
-                ↺ Restaurar defaults
-              </button>
-            )}
-          </div>
-
-          <div style={{ padding: "10px 14px 14px" }}>
-            <ConfiguradorParametrico
-              modulo={moduloPreview}
-              valores={valoresPrueba || {}}
-              onChange={onValoresPruebaChange}
-              costos={costos}
-            />
-
-            {/* Readout: piezas que aparecen / desaparecen con estos valores */}
-            {resumenPiezas && (
-              <div style={{
-                marginTop: 10, padding: "8px 12px", borderRadius: 6,
-                background: "var(--bg-base)", border: "1px solid var(--border)",
-                fontFamily: "'DM Mono',monospace", fontSize: 11,
-                display: "flex", flexDirection: "column", gap: 4,
-              }}>
-                <div style={{ color: "var(--text-secondary)" }}>
-                  Piezas generadas: <span style={{ color: "var(--accent)", fontWeight: 700 }}>{resumenPiezas.totalGeneradas}</span>
-                  {resumenPiezas.totalDefinidas !== resumenPiezas.totalGeneradas && (
-                    <span style={{ color: "var(--text-muted)" }}> · {resumenPiezas.totalDefinidas} declaradas</span>
-                  )}
+      <div style={{ padding: "14px", overflowY: "auto" }}>
+        {subTab === 'params' && (
+          <ListaParametros parametros={parametros}
+            onChange={(p) => onChange({ parametros: p, zonas, constraints })} />
+        )}
+        {subTab === 'zonas' && (
+          <ListaZonas zonas={zonas}
+            onChange={(z) => onChange({ parametros, zonas: z, constraints })} />
+        )}
+        {subTab === 'constraints' && (
+          <ListaConstraints constraints={constraints}
+            paramsConocidos={parametros.map(p => p.id).filter(Boolean)}
+            onChange={(c) => onChange({ parametros, zonas, constraints: c })} />
+        )}
+        {subTab === 'preview' && (
+          puedeProbar ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--accent)" }}>
+                  Vista del configurador del cliente
                 </div>
-                {resumenPiezas.inactivas.length > 0 && (
-                  <div style={{ color: "var(--text-muted)", fontSize: 10 }}>
-                    Ocultas: {resumenPiezas.inactivas.map(p => (
-                      <span key={p.nombre} title={`condition: ${p.condition}`}
-                        style={{ color: "#e08080", marginRight: 8 }}>
-                        ✕ {p.nombre || "(sin nombre)"}
-                      </span>
-                    ))}
-                  </div>
+                {Object.keys(valoresPrueba || {}).length > 0 && (
+                  <button onClick={() => onValoresPruebaChange({})}
+                    style={{ padding: "3px 9px", borderRadius: 5, cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 10, background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                    ↺ Defaults
+                  </button>
                 )}
               </div>
-            )}
-
-            <div style={{
-              marginTop: 8, fontSize: 10, color: "var(--text-muted)",
-              fontFamily: "'DM Mono',monospace", lineHeight: 1.5,
-            }}>
-              Estos valores no se guardan — solo prueban cómo reacciona el módulo. El preview 3D de la derecha se actualiza en vivo.
+              <ConfiguradorParametrico
+                modulo={moduloPreview} valores={valoresPrueba || {}}
+                onChange={onValoresPruebaChange} costos={costos} />
+              {resumenPiezas && (
+                <div style={{ padding: "8px 12px", borderRadius: 6, background: "var(--bg-base)", border: "1px solid var(--border)", fontFamily: "'DM Mono',monospace", fontSize: 11, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ color: "var(--text-secondary)" }}>
+                    Piezas generadas: <span style={{ color: "var(--accent)", fontWeight: 700 }}>{resumenPiezas.totalGeneradas}</span>
+                    {resumenPiezas.totalDefinidas !== resumenPiezas.totalGeneradas && (
+                      <span style={{ color: "var(--text-muted)" }}> · {resumenPiezas.totalDefinidas} declaradas</span>
+                    )}
+                  </div>
+                  {resumenPiezas.inactivas.length > 0 && (
+                    <div style={{ color: "var(--text-muted)", fontSize: 10 }}>
+                      Ocultas: {resumenPiezas.inactivas.map(p => (
+                        <span key={p.nombre} title={`condition: ${p.condition}`} style={{ color: "#e08080", marginRight: 8 }}>✕ {p.nombre || "(sin nombre)"}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", lineHeight: 1.5 }}>
+                Valores de prueba — no se guardan. El preview 3D de la derecha se actualiza en vivo.
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          ) : (
+            <div style={{ padding: "28px 0", textAlign: "center", fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", lineHeight: 1.6 }}>
+              Agregá parámetros o constraints<br />
+              <span style={{ opacity: 0.6 }}>para habilitar la vista previa</span>
+            </div>
+          )
+        )}
+      </div>
     </div>
   );
 }
