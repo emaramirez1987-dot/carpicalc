@@ -601,6 +601,27 @@ describe("expandirSubComponentes", () => {
     spy.mockRestore();
   });
 
+  test("repeat con to=parámetro y from como string respeta el valor del parámetro", () => {
+    // Regresión: con `from: "1"` (string, como llega del input HTML) y
+    // `to: "estantes"`, el expansor debe generar exactamente N instancias
+    // donde N = valor de `estantes`. Sin overrides usa el def.
+    const m = {
+      ...moduloPadre,
+      parametros: [{ id: "estantes", tipo: "integer", def: 1, min: 0, max: 5 }],
+      subComponentes: [{
+        id: "divver", nombre: "division vertical",
+        repeat: { var: "i", from: "1", to: "estantes" },
+        origen: { x: "0", y: "0", z: "0" },
+        dimensiones: { ancho: 18, alto: 332, profundidad: 550 },
+        piezas: [{ nombre: "divver", cantidad: 1, formula1: "alto", formula2: "profundidad", orientacion3d: "vertical" }],
+      }],
+    };
+    // estantes=1 (default) → 1 instancia
+    expect(generarPiezas(m, {}).piezas.filter(p => p._subComponente === "divver")).toHaveLength(1);
+    // estantes=2 (override) → 2 instancias
+    expect(generarPiezas(m, { estantes: 2 }).piezas.filter(p => p._subComponente === "divver")).toHaveLength(2);
+  });
+
   test("integración: generarPiezas dispara expandirSubComponentes automáticamente", () => {
     const m = {
       ...moduloPadre,
