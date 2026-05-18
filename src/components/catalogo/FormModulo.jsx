@@ -4,6 +4,7 @@ import { Btn, TextInput, Select } from '../ui/index.jsx';
 import { fmtPeso, calcularModulo } from '../../utils.js';
 import { CATEGORIAS_DEFAULT } from '../../constants.js';
 import { piezasQueUsanVar, resolverContextoModulo } from '../../services/moduloService.js';
+import VarsExplorer, { construirScopes } from './VarsExplorer.jsx';
 import { cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
 import FilaPieza from './FilaPieza.jsx';
 import FormPieza from './FormPieza.jsx';
@@ -673,17 +674,26 @@ function FormModulo({
                     editando={editandoPiezaIdx !== null}
                     modulo={datos}
                     costos={costos}
+                    valoresParametros={valoresPrueba}
                     nombresSugeridos={NOMBRES_SUGERIDOS} />
 
                   {fpError && <p style={{ color: "#e07070", fontSize: 12, margin: 0 }}>⚠ {fpError}</p>}
 
-                  {editandoPiezaIdx === null && (
+                  {editandoPiezaIdx === null ? (
                     <button onClick={agregarPieza} style={{
                       width: "100%", padding: "7px 0", borderRadius: 7, cursor: "pointer", fontWeight: 600,
                       fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: "0.05em",
                       background: "rgba(200,160,42,0.15)", border: "1px solid rgba(200,160,42,0.45)", color: "#c8a02a",
                     }}>
                       + AGREGAR ESTA PIEZA
+                    </button>
+                  ) : (
+                    <button onClick={agregarPieza} style={{
+                      width: "100%", padding: "7px 0", borderRadius: 7, cursor: "pointer", fontWeight: 700,
+                      fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: "0.05em",
+                      background: "rgba(126,207,138,0.15)", border: "1px solid rgba(126,207,138,0.45)", color: "var(--color-positive)",
+                    }}>
+                      ✓ ACTUALIZAR PIEZA
                     </button>
                   )}
 
@@ -694,19 +704,30 @@ function FormModulo({
                 const variables = datos.variables || {};
                 const customEntries = Object.entries(variables);
                 // Contexto centralizado: usa el punto único de verdad (ver CLAUDE.md).
-                const { modVars: resolved, baseVars } = resolverContextoModulo(datos, costos);
+                // `piezas` vive en state separado de `datos` — se mergea para que
+                // resolverContextoModulo compute pieza-vars del módulo padre.
+                const moduloUnificado = { ...datos, piezas, subComponentes: datos.subComponentes || [] };
+                const { modVars: resolved } = resolverContextoModulo(moduloUnificado, costos, valoresPrueba || {});
+                // Scopes para el explorador jerárquico (padre + subcomponentes).
+                const scopesPadre = construirScopes(moduloUnificado, costos, valoresPrueba || {});
                 return (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 14 }}>
-                    {/* Variables base (solo lectura) */}
+                    {/* Contexto disponible — explorador unificado (modo lectura) */}
                     <div>
-                      <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Variables base del módulo</div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                        {[['ancho', baseVars.ancho], ['alto', baseVars.alto], ['profundidad', baseVars.profundidad], ['esp', baseVars.esp]].map(([n, v]) => (
-                          <div key={n} style={{ padding: "3px 10px", borderRadius: 6, background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.22)", fontFamily: "'DM Mono',monospace", fontSize: 11, color: "var(--accent)" }}>
-                            {n} <span style={{ opacity: 0.6, fontSize: 10 }}>= {v}</span>
-                          </div>
-                        ))}
+                      <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                        Contexto disponible — navegá la jerarquía para descubrir variables
                       </div>
+                      <VarsExplorer
+                        scopes={scopesPadre}
+                        defaultScopeId="padre"
+                        readOnly={false}
+                        onInsert={() => {}}
+                        style={{ width: "100%", maxHeight: 360 }}
+                        carpetas={datos.variablesCarpetas || {}}
+                        onCarpetasChange={(scopeId, newC) =>
+                          setDatos(d => ({ ...d, variablesCarpetas: { ...(d.variablesCarpetas || {}), [scopeId]: newC } }))
+                        }
+                      />
                     </div>
 
                     {/* Agregar variable custom */}
@@ -814,7 +835,7 @@ function FormModulo({
                     piezas.map((p, i) => (
                       <FilaPieza key={i} pieza={p} idx={i} dims={datos.dimensiones} espesor={espesor} tapacanto={costos.tapacanto}
                         isFirst={i === 0} isLast={i === piezas.length - 1}
-                        modVars={{ ...(datos.variables || {}), ...Object.fromEntries((datos.parametros || []).filter(pr => pr.tipo !== 'formula').map(pr => [pr.id, pr.def])) }}
+                        modVars={{ ...(datos.variables || {}), ...Object.fromEntries((datos.parametros || []).filter(pr => pr.tipo !== 'formula').map(pr => [pr.id, (valoresPrueba || {})[pr.id] ?? pr.def])) }}
                         onDelete={(i) => { setPiezas(prev => prev.filter((_, j) => j !== i)); if (editandoPiezaIdx === i) cancelarEdicion(); }}
                         onEdit={editarPieza} onDuplicate={duplicarPieza}
                         onMoveUp={(i) => moverPieza(i, -1)} onMoveDown={(i) => moverPieza(i, 1)}
@@ -859,6 +880,8 @@ function FormModulo({
                 parentVariables={datos.variables || {}}
                 parentParametros={datos.parametros || []}
                 parentZonas={datos.zonas || []}
+                parentPiezas={piezas}
+                parentValoresParametros={valoresPrueba}
                 espesor={espesor}
                 costos={costos} />
             );

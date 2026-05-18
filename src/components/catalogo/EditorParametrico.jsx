@@ -13,8 +13,8 @@
 
 import React, { useState } from 'react';
 import { TIPO_MAT } from '../../constants.js';
-import { inspeccionarFormula } from '../../utils.js';
-import { generarPiezas } from '../../services/moduloService.js';
+import { inspeccionarFormula, evaluarFormula, resolverDim } from '../../utils.js';
+import { generarPiezas, resolverContextoModulo } from '../../services/moduloService.js';
 import ConfiguradorParametrico from '../presupuesto/ConfiguradorParametrico.jsx';
 
 // Variables que siempre están disponibles para fórmulas dentro de un módulo:
@@ -377,6 +377,7 @@ export default function EditorParametrico({
     && (parametros.length > 0 || constraints.length > 0);
 
   let resumenPiezas = null;
+  let dimsPiezas    = null;
   if (puedeProbar) {
     try {
       const generadas = generarPiezas(moduloPreview, valoresPrueba || {}, costos);
@@ -384,7 +385,35 @@ export default function EditorParametrico({
       const declaracionesActivas = new Set(generadas.map(p => p.nombre));
       const inactivas = condicionales.filter(p => !declaracionesActivas.has(p.nombre));
       resumenPiezas = { totalGeneradas: generadas.length, totalDefinidas: (moduloPreview.piezas || []).length, inactivas };
-    } catch (_e) { resumenPiezas = null; }
+
+      // Calcular dimensiones de cada pieza generada con los valores de prueba.
+      // Usa resolverContextoModulo (regla de oro) para obtener el contexto
+      // correcto con parámetros, variables y esp resueltos.
+      const { modVars: ctxPreview } = resolverContextoModulo(
+        moduloPreview, costos, valoresPrueba || {},
+      );
+      const dimBase = { ancho: ctxPreview.ancho || 0, alto: ctxPreview.alto || 0, profundidad: ctxPreview.profundidad || 0 };
+      const espPreview = ctxPreview.esp || 18;
+      dimsPiezas = generadas.map(p => {
+        const d1 = p.especial
+          ? (parseInt(p.dimLibre1) || 0)
+          : p.formula1 != null
+            ? (evaluarFormula(p.formula1, ctxPreview) ?? 0)
+            : resolverDim(dimBase[p.usaDim], p.offsetEsp, p.offsetMm, p.divisor || 1, espPreview);
+        const d2 = p.especial
+          ? (parseInt(p.dimLibre2) || 0)
+          : p.formula2 != null
+            ? (evaluarFormula(p.formula2, ctxPreview) ?? 0)
+            : resolverDim(dimBase[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, espPreview);
+        return {
+          nombre: p.nombre || "(sin nombre)",
+          d1: Math.round(d1),
+          d2: Math.round(d2),
+          cantidad: p.cantidad ?? 1,
+          subComp: p._subComponente || null,
+        };
+      });
+    } catch (_e) { resumenPiezas = null; dimsPiezas = null; }
   }
 
   const tabs = [
@@ -496,20 +525,76 @@ export default function EditorParametrico({
                   modulo={moduloPreview} valores={valoresPrueba || {}}
                   onChange={onValoresPruebaChange} costos={costos} />
                 {resumenPiezas && (
-                  <div style={{ padding: "8px 12px", borderRadius: 6, background: "var(--bg-base)",
-                    border: "1px solid var(--border)", fontFamily: "'DM Mono',monospace", fontSize: 11,
-                    display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div style={{ color: "var(--text-secondary)" }}>
-                      Piezas generadas: <span style={{ color: "var(--accent)", fontWeight: 700 }}>{resumenPiezas.totalGeneradas}</span>
-                      {resumenPiezas.totalDefinidas !== resumenPiezas.totalGeneradas && (
-                        <span style={{ color: "var(--text-muted)" }}> · {resumenPiezas.totalDefinidas} declaradas</span>
-                      )}
+                  <div style={{ borderRadius: 6, background: "var(--bg-base)",
+                    border: "1px solid var(--border)", fontFamily: "'DM Mono',monospace",
+                    fontSize: 11, overflow: "hidden" }}>
+
+                    {/* Cabecera */}
+                    <div style={{ padding: "6px 10px", borderBottom: "1px solid var(--border)",
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      background: "rgba(212,175,55,0.06)" }}>
+                      <span style={{ fontWeight: 700, color: "var(--accent)", fontSize: 10,
+                        textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Piezas generadas
+                      </span>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        <span style={{ color: "var(--accent)", fontWeight: 700 }}>{resumenPiezas.totalGeneradas}</span>
+                        {resumenPiezas.totalDefinidas !== resumenPiezas.totalGeneradas && (
+                          <span style={{ color: "var(--text-muted)" }}> / {resumenPiezas.totalDefinidas} declaradas</span>
+                        )}
+                      </span>
                     </div>
+
+                    {/* Tabla de dimensiones — se recalcula en vivo con cada cambio de parámetro */}
+                    {dimsPiezas && dimsPiezas.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        {/* Header de columnas */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 32px",
+                          padding: "4px 10px", borderBottom: "1px solid var(--border)",
+                          fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase",
+                          letterSpacing: "0.06em" }}>
+                          <span>Pieza</span>
+                          <span style={{ textAlign: "center" }}>D1 × D2 mm</span>
+                          <span style={{ textAlign: "center" }}>Cant</span>
+                        </div>
+                        {dimsPiezas.map((dp, i) => (
+                          <div key={i} style={{
+                            display: "grid", gridTemplateColumns: "1fr 90px 32px",
+                            padding: "4px 10px",
+                            borderBottom: i < dimsPiezas.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                            background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)",
+                            alignItems: "center",
+                          }}>
+                            <span style={{ color: "var(--text-primary)", overflow: "hidden",
+                              textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {dp.subComp && (
+                                <span style={{ color: "var(--text-muted)", marginRight: 4, fontSize: 9 }}>
+                                  [{dp.subComp}]
+                                </span>
+                              )}
+                              {dp.nombre}
+                            </span>
+                            <span style={{ textAlign: "center", fontWeight: 700,
+                              color: "var(--accent)", letterSpacing: "0.02em" }}>
+                              {dp.d1} × {dp.d2}
+                            </span>
+                            <span style={{ textAlign: "center", color: "var(--text-secondary)" }}>
+                              {dp.cantidad}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Piezas ocultas por condition */}
                     {resumenPiezas.inactivas.length > 0 && (
-                      <div style={{ color: "var(--text-muted)", fontSize: 10 }}>
+                      <div style={{ padding: "5px 10px", borderTop: "1px solid var(--border)",
+                        color: "var(--text-muted)", fontSize: 10 }}>
                         Ocultas: {resumenPiezas.inactivas.map(p => (
                           <span key={p.nombre} title={`condition: ${p.condition}`}
-                            style={{ color: "#e08080", marginRight: 8 }}>✕ {p.nombre || "(sin nombre)"}</span>
+                            style={{ color: "#e08080", marginRight: 8 }}>
+                            ✕ {p.nombre || "(sin nombre)"}
+                          </span>
                         ))}
                       </div>
                     )}

@@ -8,6 +8,7 @@ import FilaPieza from './FilaPieza.jsx';
 import EditorSubComponente from './EditorSubComponente.jsx';
 import { evaluarFormula } from '../../utils.js';
 import { resolverContextoModulo } from '../../services/moduloService.js';
+import VarsExplorer, { construirScopes } from './VarsExplorer.jsx';
 
 const PIEZA_VACIA = {
   nombre: "", cantidad: 1,
@@ -62,14 +63,7 @@ const lblInline = {
   fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em",
   whiteSpace: "nowrap", userSelect: "none",
 };
-const chipBase = (active, custom) => ({
-  padding: "2px 8px", borderRadius: 8, cursor: "pointer",
-  fontFamily: M, fontSize: 10, fontWeight: active ? 700 : 500,
-  background: active ? "rgba(212,175,55,0.18)" : custom ? "rgba(120,180,255,0.08)" : "rgba(255,255,255,0.04)",
-  border: `1px solid ${active ? "rgba(212,175,55,0.45)" : custom ? "rgba(120,180,255,0.28)" : "var(--border)"}`,
-  color: active ? "var(--accent)" : custom ? "#8ab4e8" : "var(--text-muted)",
-  letterSpacing: "0.04em", flexShrink: 0,
-});
+// chipBase eliminado — chips de variables renderizados por VarsExplorer.
 
 // ─── SubTabBar ──────────────────────────────────────────────────────────────
 function SubTabBar({ tabs, active, onSelect }) {
@@ -94,7 +88,9 @@ function SubTabBar({ tabs, active, onSelect }) {
 }
 
 // ─── VarsDropdown ────────────────────────────────────────────────────────────
-function VarsDropdown({ rowKey, openKey, onToggle, baseVarNames, customVarNames, onInsert }) {
+// Wrapper del botón "⚡ vars" + popover con VarsExplorer.
+// Delega la navegación jerárquica al componente reutilizable VarsExplorer.
+function VarsDropdown({ rowKey, openKey, onToggle, scopes, defaultScopeId, onInsert }) {
   const isOpen = openKey === rowKey;
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
@@ -112,25 +108,135 @@ function VarsDropdown({ rowKey, openKey, onToggle, baseVarNames, customVarNames,
         ⚡ vars <span style={{ fontSize: 8, opacity: 0.7 }}>{isOpen ? "▲" : "▼"}</span>
       </button>
       {isOpen && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 100,
-          background: "var(--bg-surface)", border: "1px solid var(--border)",
-          borderRadius: 7, padding: "8px 10px", boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
-          display: "flex", flexWrap: "wrap", gap: 4, minWidth: 180, maxWidth: 260,
-        }}>
-          {baseVarNames.map(v => (
-            <button key={v} onMouseDown={e => { onInsert(e, v); onToggle(null); }}
-              style={chipBase(false, false)}>{v}</button>
-          ))}
-          {customVarNames.length > 0 && (
-            <div style={{ width: "100%", height: 1, background: "var(--border)", margin: "3px 0" }} />
-          )}
-          {customVarNames.map(n => (
-            <button key={n} onMouseDown={e => { onInsert(e, n); onToggle(null); }}
-              style={chipBase(false, true)}>{n}</button>
-          ))}
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 100 }}>
+          <VarsExplorer
+            scopes={scopes}
+            defaultScopeId={defaultScopeId}
+            onInsert={(name) => { onInsert(name); onToggle(null); }}
+          />
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Tooltip de ayuda contextual ─────────────────────────────────────────────
+// Botón "?" que abre un panel explicativo en línea.
+// Usado para "Copia" (repeat) y para "Parámetros" en el editor del hijo.
+function AyudaTooltip({ titulo, children, posicion = 'abajo-derecha' }) {
+  const [abierto, setAbierto] = useState(false);
+  const posStyles = posicion === 'abajo-izquierda'
+    ? { top: 'calc(100% + 6px)', right: 0 }
+    : { top: 'calc(100% + 6px)', left: 0 };
+  return (
+    <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+      <button
+        onClick={() => setAbierto(v => !v)}
+        style={{
+          width: 18, height: 18, borderRadius: '50%', cursor: 'pointer',
+          fontFamily: M, fontSize: 9, fontWeight: 700, lineHeight: 1,
+          background: abierto ? 'rgba(212,175,55,0.25)' : 'rgba(255,255,255,0.07)',
+          border: `1px solid ${abierto ? 'rgba(212,175,55,0.55)' : 'rgba(255,255,255,0.15)'}`,
+          color: abierto ? 'var(--accent)' : 'var(--text-muted)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'all 0.12s', flexShrink: 0,
+        }}>?</button>
+      {abierto && (
+        <div style={{
+          position: 'absolute', ...posStyles, zIndex: 300,
+          background: 'var(--bg-surface)', border: '1px solid var(--accent-border)',
+          borderRadius: 8, padding: '10px 12px', boxShadow: '0 8px 24px rgba(0,0,0,0.50)',
+          width: 264, fontSize: 11, lineHeight: 1.65,
+          color: 'var(--text-secondary)', fontFamily: 'inherit',
+        }}>
+          {titulo && (
+            <div style={{ fontWeight: 700, color: 'var(--accent)', marginBottom: 6, fontFamily: M, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              {titulo}
+            </div>
+          )}
+          {children}
+          <button onClick={() => setAbierto(false)} style={{
+            display: 'block', marginTop: 8, padding: '2px 8px', borderRadius: 5,
+            cursor: 'pointer', fontFamily: M, fontSize: 10,
+            background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)',
+          }}>✕ Cerrar</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Visor interactivo de parámetros del hijo ─────────────────────────────────
+// Mismo formato que el configurador del padre: controles +/− para número,
+// toggle para boolean, select para choice. Valores de prueba en estado local.
+function VisorParamsHijo({ parametros, testVals, onTestValsChange }) {
+  if (!parametros || parametros.length === 0) {
+    return (
+      <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', fontFamily: M }}>
+        Sin parámetros definidos — agregá uno en "Definición" para verlo aquí.
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {parametros.map(p => {
+        const val = testVals[p.id] != null ? testVals[p.id] : (p.def ?? 0);
+        const set = (v) => onTestValsChange({ ...testVals, [p.id]: v });
+
+        if (p.tipo === 'boolean') {
+          return (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'var(--bg-surface)', borderRadius: 6, border: '1px solid var(--border)' }}>
+              <span style={{ flex: 1, fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre || p.id}</span>
+              <button onClick={() => set(!val)} style={{
+                padding: '3px 14px', borderRadius: 5, cursor: 'pointer',
+                fontFamily: M, fontSize: 11, fontWeight: 700,
+                background: val ? 'rgba(126,207,138,0.15)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${val ? 'rgba(126,207,138,0.45)' : 'var(--border)'}`,
+                color: val ? 'var(--color-positive)' : 'var(--text-muted)',
+              }}>{val ? 'Sí' : 'No'}</button>
+            </div>
+          );
+        }
+
+        if (p.tipo === 'choice') {
+          return (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'var(--bg-surface)', borderRadius: 6, border: '1px solid var(--border)' }}>
+              <span style={{ flex: 1, fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre || p.id}</span>
+              <select value={val} onChange={e => set(e.target.value)}
+                style={{ ...inputSm, width: 110 }}>
+                {(p.opciones || []).map(o => (
+                  <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>
+                ))}
+              </select>
+            </div>
+          );
+        }
+
+        // number / integer
+        const step = p.tipo === 'integer' ? 1 : 0.1;
+        const numVal = Number(val) || 0;
+        return (
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', background: 'var(--bg-surface)', borderRadius: 6, border: '1px solid var(--border)' }}>
+            <span style={{ flex: 1, fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre || p.id}</span>
+            <button onClick={() => set(p.min != null ? Math.max(p.min, numVal - step) : numVal - step)}
+              style={{ width: 24, height: 24, borderRadius: 4, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>−</button>
+            <input type="number" value={val} min={p.min} max={p.max} step={step}
+              onChange={e => {
+                const v = p.tipo === 'integer' ? Math.round(Number(e.target.value) || 0) : (Number(e.target.value) || 0);
+                const clamped = p.min != null ? Math.max(p.min, p.max != null ? Math.min(p.max, v) : v) : v;
+                set(clamped);
+              }}
+              style={{ ...inputSm, width: 58, textAlign: 'center', color: 'var(--accent)', fontWeight: 700 }} />
+            <button onClick={() => set(p.max != null ? Math.min(p.max, numVal + step) : numVal + step)}
+              style={{ width: 24, height: 24, borderRadius: 4, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
+            {(p.min != null || p.max != null) && (
+              <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: M, flexShrink: 0 }}>
+                {p.min ?? '−∞'}–{p.max ?? '+∞'}{p.unidad ? ` ${p.unidad}` : ''}
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -270,14 +376,17 @@ export default function EditorComponenteHijo({
   parentVariables,
   parentParametros,
   parentZonas,
+  parentPiezas,              // ← piezas del módulo padre (para pieza-vars del padre)
+  parentValoresParametros,   // ← valores efectivos del configurador de prueba
   espesor,
   costos,
 }) {
   // ── Estado UI ────────────────────────────────────────────────────────────
   const [subTabMain, setSubTabMain]     = useState('editor');
   const [subTabEditor, setSubTabEditor] = useState('ident');
-  const [subTabPiezas, setSubTabPiezas] = useState('datos');
+  const [subTabPiezas, setSubTabPiezas] = useState('lista');
   const [confirmandoDelete, setConfirmandoDelete] = useState(false);
+  const [paramTestVals, setParamTestVals] = useState({});
   const [varsOpen, setVarsOpen] = useState(null);
   const activeInputEl = useRef(null);
 
@@ -285,6 +394,13 @@ export default function EditorComponenteHijo({
   const [fp, setFp]               = useState(() => piezaVaciaNueva());
   const [editandoIdx, setEditandoIdx] = useState(null);
   const [fpError, setFpError]     = useState("");
+
+  // Estado del editor de variables propias
+  const [varAgregando, setVarAgregando]         = useState(false);
+  const [varNuevoNombre, setVarNuevoNombre]     = useState("");
+  const [varEditando, setVarEditando]           = useState(null);
+  const [varValorEditando, setVarValorEditando] = useState("");
+  const [varConfirmDelete, setVarConfirmDelete] = useState(null);
 
   // ── Mutaciones ───────────────────────────────────────────────────────────
   const patch       = (cambios) => onChange({ ...subcomp, ...cambios });
@@ -299,26 +415,70 @@ export default function EditorComponenteHijo({
     dimensiones: parentDims || { ancho: 0, alto: 0, profundidad: 0 },
     variables:   parentVariables || {},
     parametros:  parentParametros || [],
+    piezas:      parentPiezas || [],   // necesarias para que las pieza-vars del padre lleguen al subcomp
   };
-  const { modVars: padreVars, baseVars: padreBase } = resolverContextoModulo(
+  const { modVars: padreVars } = resolverContextoModulo(
     moduloPadreVirtual,
     costos || { materiales: [] },
+    parentValoresParametros || {},
   );
   // El espesor llega como prop resuelto: lo imponemos sobre el que
   // resolverContextoModulo derivó del material por defecto.
-  const ctxPadre = { ...padreVars, ...(espesor != null ? { esp: espesor } : {}), i: 1 };
+  const ctxPadreSinI = { ...padreVars, ...(espesor != null ? { esp: espesor } : {}) };
 
-  // ── Dimensiones locales evaluadas ────────────────────────────────────────
+  // ── Rango de la variable de repetición (i) ───────────────────────────────
+  // El subcomp se replica con repeat { var, from, to }. Cada instancia tiene
+  // su propio valor de `i`. Las dimensiones y posiciones que dependen de `i`
+  // deben mostrarse como rango (min…max) sobre todas las instancias.
+  const repeatCfg = subcomp.repeat || {};
+  const repeatVar = repeatCfg.var || 'i';
+  const iFromRaw  = repeatCfg.from == null ? 1 : evaluarFormula(String(repeatCfg.from), ctxPadreSinI);
+  const iToRaw    = repeatCfg.to   == null ? 1 : evaluarFormula(String(repeatCfg.to),   ctxPadreSinI);
+  const iFrom = Math.max(1, Math.floor(Number.isFinite(iFromRaw) ? iFromRaw : 1));
+  const iTo   = Math.max(iFrom, Math.floor(Number.isFinite(iToRaw) ? iToRaw : 1));
+  const iValues = [];
+  for (let i = iFrom; i <= iTo; i++) iValues.push(i);
+  if (iValues.length === 0) iValues.push(1);
+
+  // ctxPadre con i = primera instancia (para todo lo que necesita un valor único)
+  const ctxPadre = { ...ctxPadreSinI, [repeatVar]: iFrom };
+
+  // ── Evaluación de fórmulas ───────────────────────────────────────────────
+  // evalDim: valor estable (primera instancia) — para dimsLocales que se
+  // propaga a piezas y al 3D.
   const evalDim = (formula, fallback) => {
     if (formula == null || formula === "") return fallback;
     if (typeof formula === "number") return formula;
     const v = evaluarFormula(String(formula), ctxPadre);
     return (v != null && Number.isFinite(v)) ? Math.round(v) : fallback;
   };
+
+  // evalDimRango: rango sobre TODAS las instancias del repeat — para mostrar
+  // en la UI cómo cambia el valor entre i=from e i=to.
+  const evalDimRango = (formula, fallback) => {
+    if (formula == null || formula === "") return { min: fallback, max: fallback, varies: false, valido: true };
+    if (typeof formula === "number") return { min: formula, max: formula, varies: false, valido: true };
+    const raws = iValues.map(i => evaluarFormula(String(formula), { ...ctxPadreSinI, [repeatVar]: i }));
+    const valido = raws.every(v => v != null && Number.isFinite(v));
+    if (!valido) return { min: fallback, max: fallback, varies: false, valido: false };
+    const nums = raws.map(v => Math.round(v));
+    const min = Math.min(...nums);
+    const max = Math.max(...nums);
+    return { min, max, varies: min !== max, valido: true };
+  };
+
   const localAncho = evalDim(subcomp.dimensiones?.ancho, parentDims?.ancho ?? 0);
   const localAlto  = evalDim(subcomp.dimensiones?.alto,  parentDims?.alto  ?? 0);
   const localProf  = evalDim(subcomp.dimensiones?.profundidad, parentDims?.profundidad ?? 0);
   const dimsLocales = { ancho: localAncho, alto: localAlto, profundidad: localProf };
+
+  // Rangos para mostrar en la UI
+  const rangoAncho = evalDimRango(subcomp.dimensiones?.ancho, parentDims?.ancho ?? 0);
+  const rangoAlto  = evalDimRango(subcomp.dimensiones?.alto,  parentDims?.alto  ?? 0);
+  const rangoProf  = evalDimRango(subcomp.dimensiones?.profundidad, parentDims?.profundidad ?? 0);
+  const rangoX     = evalDimRango(subcomp.origen?.x, 0);
+  const rangoY     = evalDimRango(subcomp.origen?.y, 0);
+  const rangoZ     = evalDimRango(subcomp.origen?.z, 0);
 
   // ── Variables y parámetros combinados para las piezas ───────────────────
   const variablesParaPieza  = { ...(parentVariables || {}), ...(subcomp.variables || {}) };
@@ -336,17 +496,14 @@ export default function EditorComponenteHijo({
   const { modVars: modVarsLista } = resolverContextoModulo(
     moduloSubVirtual,
     costos || { materiales: [] },
+    parentValoresParametros || {},
   );
 
-  const baseVarNamesHijo   = Object.keys(padreBase).concat(['i']);
-  const customVarNamesHijo = Object.keys(ctxPadre).filter(k => !baseVarNamesHijo.includes(k));
+  // (Las listas planas de vars antes calculadas acá fueron reemplazadas por
+  // construirScopes(...) + VarsExplorer — todo el árbol jerárquico de
+  // navegación se arma una sola vez en scopesExplorer.)
 
-  const localOrigenX = evalDim(subcomp.origen?.x, 0);
-  const localOrigenY = evalDim(subcomp.origen?.y, 0);
-  const localOrigenZ = evalDim(subcomp.origen?.z, 0);
-
-  const insertarVariable = (e, nombre) => {
-    e.preventDefault();
+  const insertarVariable = (nombre) => {
     const el = activeInputEl.current;
     if (!el) return;
     const start  = el.selectionStart ?? el.value.length;
@@ -357,6 +514,22 @@ export default function EditorComponenteHijo({
     el.dispatchEvent(new Event('input', { bubbles: true }));
     setTimeout(() => { el.setSelectionRange(start + nombre.length, start + nombre.length); el.focus(); }, 0);
   };
+
+  // Construir los scopes para el VarsExplorer:
+  //   • scope "padre" — módulo padre con todas sus piezas/vars
+  //   • scope "sub:..." — subcomp actual con sus piezas/vars
+  // Reusamos construirScopes pasando un módulo unificado: padre + este sub.
+  const moduloUnificadoExplorer = {
+    ...moduloPadreVirtual,
+    nombre: 'Padre',
+    subComponentes: [subcomp],
+  };
+  const scopesExplorer = construirScopes(
+    moduloUnificadoExplorer,
+    costos || { materiales: [] },
+    parentValoresParametros || {},
+  );
+  const subScopeId = `sub:${subcomp.id || subcomp.nombre || 0}`;
 
   // ── Acciones sobre piezas ────────────────────────────────────────────────
   const normalizar = (p) => ({
@@ -420,6 +593,7 @@ export default function EditorComponenteHijo({
       {/* ── Sub-tabs principales ─────────────────────────────────────────── */}
       <SubTabBar tabs={[
         { id: 'editor', label: '✎ Editor' },
+        { id: 'datos',  label: '📐 Datos' },
         { id: 'piezas', label: `🪵 Piezas · ${(subcomp.piezas || []).length}` },
       ]} active={subTabMain} onSelect={setSubTabMain} />
 
@@ -431,10 +605,11 @@ export default function EditorComponenteHijo({
 
           {/* Sub-tabs internos del editor */}
           <SubTabBar tabs={[
-            { id: 'ident',    label: '✎ Ident.' },
-            { id: 'herrajes', label: `🔩 Herrajes${(subcomp.herrajes || []).length > 0 ? ` · ${(subcomp.herrajes || []).length}` : ""}` },
-            { id: 'params',   label: `🎚 Params${(subcomp.parametros || []).length > 0 ? ` · ${(subcomp.parametros || []).length}` : ""}` },
-            { id: 'nietos',   label: `🧩 Nietos${(subcomp.subComponentes || []).length > 0 ? ` · ${(subcomp.subComponentes || []).length}` : ""}` },
+            { id: 'ident',     label: '✎ Ident.' },
+            { id: 'variables', label: `⚡ Vars${Object.keys(subcomp.variables || {}).length > 0 ? ` · ${Object.keys(subcomp.variables || {}).length}` : ""}` },
+            { id: 'herrajes',  label: `🔩 Herrajes${(subcomp.herrajes || []).length > 0 ? ` · ${(subcomp.herrajes || []).length}` : ""}` },
+            { id: 'params',    label: `🎚 Params${(subcomp.parametros || []).length > 0 ? ` · ${(subcomp.parametros || []).length}` : ""}` },
+            { id: 'nietos',    label: `🧩 Nietos${(subcomp.subComponentes || []).length > 0 ? ` · ${(subcomp.subComponentes || []).length}` : ""}` },
           ]} active={subTabEditor} onSelect={setSubTabEditor} />
 
           {/* ── Ident: ID + Nombre + Repetición ───────────────────────── */}
@@ -475,30 +650,205 @@ export default function EditorComponenteHijo({
                 )}
               </div>
 
-              {/* Repetición: compact inline row */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px",
-                background: "var(--bg-surface)", borderRadius: 6, border: "1px solid var(--border)" }}>
-                <span style={{ ...lblInline, fontSize: 10 }}>🔁</span>
-                <span style={lblInline}>var</span>
-                <input value={subcomp.repeat?.var || "i"}
-                  onChange={e => patchRepeat("var", e.target.value)}
-                  style={{ ...inputSm, width: 36 }} />
-                <span style={lblInline}>de</span>
-                <input value={subcomp.repeat?.from ?? ""} placeholder="1"
-                  onChange={e => patchRepeat("from", isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}
-                  style={{ ...inputSm, width: 40 }} />
-                <span style={lblInline}>a</span>
-                <input value={subcomp.repeat?.to ?? ""} placeholder="N"
-                  onChange={e => patchRepeat("to", isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}
-                  style={{ ...inputSm, width: 70 }} />
-                <span style={lblInline}>si</span>
-                <input value={subcomp.condition || ""} placeholder="condición (opcional)"
-                  onChange={e => patch({ condition: e.target.value })}
-                  style={{ ...inputSm, flex: 1, minWidth: 0 }} />
+              {/* Copia: repetición del componente entero */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <span style={{ ...lbl, margin: 0 }}>📋 COPIA</span>
+                  <AyudaTooltip titulo="¿Qué es Copia?" posicion="abajo-derecha">
+                    <p style={{ margin: '0 0 6px' }}>Replica este componente <strong>N veces</strong> dentro del módulo padre.</p>
+                    <p style={{ margin: '0 0 6px' }}>La variable (ej: <code style={{ color: 'var(--accent)', fontFamily: M }}>i</code>) toma valores del rango definido en cada copia.</p>
+                    <p style={{ margin: '0 0 6px' }}>Usá <code style={{ color: 'var(--accent)', fontFamily: M }}>i</code> en las fórmulas de posición para distribuirlas en el espacio.</p>
+                    <p style={{ margin: 0, color: 'var(--text-muted)', fontStyle: 'italic', fontSize: 10 }}>Ej: 3 cajones → Hasta = cajones · Y = (i-1) * alto_cajon</p>
+                  </AyudaTooltip>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px",
+                  background: "var(--bg-surface)", borderRadius: 6, border: "1px solid var(--border)" }}>
+                  <span style={lblInline}>var</span>
+                  <input value={subcomp.repeat?.var || "i"}
+                    onChange={e => patchRepeat("var", e.target.value)}
+                    style={{ ...inputSm, width: 36 }} />
+                  <span style={lblInline}>de</span>
+                  <input value={subcomp.repeat?.from ?? ""} placeholder="1"
+                    onChange={e => patchRepeat("from", isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}
+                    style={{ ...inputSm, width: 40 }} />
+                  <span style={lblInline}>a</span>
+                  <input value={subcomp.repeat?.to ?? ""} placeholder="N"
+                    onChange={e => patchRepeat("to", isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}
+                    style={{ ...inputSm, width: 70 }} />
+                  <span style={lblInline}>si</span>
+                  <input value={subcomp.condition || ""} placeholder="condición (opcional)"
+                    onChange={e => patch({ condition: e.target.value })}
+                    style={{ ...inputSm, flex: 1, minWidth: 0 }} />
+                </div>
               </div>
 
             </div>
           )}
+
+          {/* ── Variables propias ────────────────────────────────────── */}
+          {subTabEditor === 'variables' && (() => {
+            const variables = subcomp.variables || {};
+            const customEntries = Object.entries(variables);
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 14 }}>
+
+                {/* Contexto disponible — explorador unificado en modo solo-lectura */}
+                <div>
+                  <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: M, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                    Contexto disponible
+                  </div>
+                  <VarsExplorer
+                    scopes={scopesExplorer}
+                    defaultScopeId={subScopeId}
+                    readOnly={false}
+                    onInsert={() => {}}
+                    style={{ width: "100%", maxHeight: 320 }}
+                    carpetas={subcomp.variablesCarpetas || {}}
+                    onCarpetasChange={(scopeId, newC) =>
+                      patch({ variablesCarpetas: { ...(subcomp.variablesCarpetas || {}), [scopeId]: newC } })
+                    }
+                  />
+                </div>
+
+                {/* Header + botón agregar */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: M, textTransform: "uppercase", letterSpacing: "0.08em" }}>Variables propias</div>
+                  {varAgregando ? (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <input autoFocus value={varNuevoNombre}
+                        onChange={e => setVarNuevoNombre(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            const n = varNuevoNombre.trim();
+                            if (n && !(n in variables)) {
+                              patch({ variables: { ...(subcomp.variables || {}), [n]: '' } });
+                              setVarNuevoNombre(''); setVarAgregando(false);
+                            }
+                          }
+                          if (e.key === 'Escape') { setVarAgregando(false); setVarNuevoNombre(''); }
+                        }}
+                        placeholder="nombre (ej: luz)"
+                        style={{ width: 110, fontFamily: M, fontSize: 12, padding: "5px 8px", background: "var(--bg-base)", border: "1px solid rgba(212,175,55,0.45)", borderRadius: 6, color: "var(--text-primary)", outline: "none" }} />
+                      <button
+                        onClick={() => {
+                          const n = varNuevoNombre.trim();
+                          if (n && !(n in variables)) {
+                            patch({ variables: { ...(subcomp.variables || {}), [n]: '' } });
+                            setVarNuevoNombre(''); setVarAgregando(false);
+                          }
+                        }}
+                        style={{ padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: M, cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)" }}>
+                        OK
+                      </button>
+                      <button onClick={() => { setVarAgregando(false); setVarNuevoNombre(''); }}
+                        style={{ padding: "5px 8px", borderRadius: 6, fontSize: 11, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: M }}>
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => { setVarAgregando(true); setVarNuevoNombre(''); }}
+                      style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: M, cursor: "pointer", background: "transparent", border: "1px dashed rgba(212,175,55,0.40)", color: "var(--accent)" }}>
+                      + Variable propia
+                    </button>
+                  )}
+                </div>
+
+                {customEntries.length === 0 && !varAgregando && (
+                  <div style={{ padding: "20px 0", textAlign: "center", fontSize: 12, borderRadius: 8, border: "1px dashed var(--border)", color: "var(--text-muted)", fontFamily: M }}>
+                    Sin variables propias — creá una nueva o usá las del contexto
+                  </div>
+                )}
+
+                {customEntries.map(([nombre, valor]) => {
+                  const valStr    = typeof valor === 'number' ? String(valor) : (valor || '');
+                  const evalVal   = modVarsLista[nombre];
+                  const evalStr   = evalVal != null ? String(Math.round(evalVal * 10) / 10) : null;
+                  const pendiente = varConfirmDelete === nombre;
+                  const enEdicion = varEditando === nombre;
+                  const confirmar = () => {
+                    patch({ variables: { ...(subcomp.variables || {}), [nombre]: varValorEditando } });
+                    setVarEditando(null);
+                  };
+                  const cancelar = () => { setVarEditando(null); setVarValorEditando(''); };
+                  return (
+                    <div key={nombre} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 5,
+                        background: "rgba(212,175,55,0.07)",
+                        border: `1px solid ${enEdicion ? "rgba(212,175,55,0.55)" : "rgba(212,175,55,0.22)"}`,
+                        borderRadius: 7, padding: "5px 8px",
+                      }}>
+                        <span style={{ fontFamily: M, fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{nombre} =</span>
+                        {enEdicion ? (
+                          <>
+                            <input autoFocus type="text" value={varValorEditando}
+                              onFocus={e => { activeInputEl.current = e.target; }}
+                              onChange={e => setVarValorEditando(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') confirmar(); if (e.key === 'Escape') cancelar(); }}
+                              style={{ flex: 1, minWidth: 60, fontFamily: M, fontSize: 12, fontWeight: 700, padding: "3px 6px", background: "var(--bg-base)", border: "1px solid rgba(212,175,55,0.45)", borderRadius: 5, color: "var(--text-primary)", outline: "none" }} />
+                            <VarsDropdown
+                              rowKey={`var_${nombre}`} openKey={varsOpen} onToggle={setVarsOpen}
+                              scopes={scopesExplorer} defaultScopeId={subScopeId}
+                              onInsert={(n) => {
+                                insertarVariable(n);
+                                // Sync con el state controlado del editor
+                                const el = activeInputEl.current;
+                                if (el) setVarValorEditando(el.value);
+                              }}
+                            />
+                            <button onClick={confirmar} style={{ padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700, fontFamily: M, cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", flexShrink: 0 }}>✓</button>
+                            <button onClick={cancelar} style={{ padding: "2px 6px", borderRadius: 5, fontSize: 11, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: M, flexShrink: 0 }}>✕</button>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ flex: 1, fontFamily: M, fontSize: 12, fontWeight: 700, padding: "3px 6px", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {valStr || <span style={{ color: "var(--text-muted)", fontWeight: 400, fontStyle: "italic" }}>(vacío)</span>}
+                            </span>
+                            {evalStr !== null && evalStr !== valStr && (
+                              <span style={{ fontSize: 10, fontFamily: M, color: "var(--color-positive)", fontWeight: 700, flexShrink: 0 }}>= {evalStr}</span>
+                            )}
+                            <button
+                              onClick={() => { setVarEditando(nombre); setVarValorEditando(valStr); }}
+                              style={{ background: "none", border: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer", fontSize: 11, padding: "2px 8px", borderRadius: 5, flexShrink: 0, fontFamily: M }}>
+                              ✎
+                            </button>
+                            <button
+                              onClick={() => setVarConfirmDelete(nombre)}
+                              style={{ background: "none", border: "none", color: "#e07070", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: "0 2px", opacity: 0.45, flexShrink: 0 }}
+                              onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
+                              onMouseLeave={e => { e.currentTarget.style.opacity = 0.45; }}>
+                              ×
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      {pendiente && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", background: "rgba(200,60,60,0.08)", border: "1px solid rgba(200,60,60,0.30)", borderRadius: 7 }}>
+                          <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: M, flex: 1 }}>
+                            ¿Eliminar <strong style={{ color: "var(--accent)" }}>{nombre}</strong>?
+                          </span>
+                          <button
+                            onClick={() => {
+                              const { [nombre]: _r, ...rest } = variables;
+                              patch({ variables: rest });
+                              setVarConfirmDelete(null);
+                            }}
+                            style={{ padding: "3px 10px", borderRadius: 5, fontSize: 11, fontWeight: 700, fontFamily: M, cursor: "pointer", background: "rgba(200,60,60,0.20)", border: "1px solid rgba(200,60,60,0.45)", color: "#e07070" }}>
+                            Sí
+                          </button>
+                          <button onClick={() => setVarConfirmDelete(null)}
+                            style={{ padding: "3px 8px", borderRadius: 5, fontSize: 11, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: M }}>
+                            Cancelar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+              </div>
+            );
+          })()}
 
           {/* ── Herrajes ──────────────────────────────────────────────── */}
           {subTabEditor === 'herrajes' && (
@@ -511,9 +861,32 @@ export default function EditorComponenteHijo({
 
           {/* ── Parámetros propios ────────────────────────────────────── */}
           {subTabEditor === 'params' && (
-            <div style={{ paddingTop: 16 }}>
-              <EditorParamsSub parametros={subcomp.parametros || []}
-                onChange={(p) => patch({ parametros: p })} />
+            <div style={{ paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+              {/* Header con ayuda */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ ...secHdr, margin: 0, border: 'none', paddingBottom: 0, flex: 1 }}>🎚 Vista previa — valores de prueba</div>
+                <AyudaTooltip titulo="¿Qué son los parámetros?" posicion="abajo-izquierda">
+                  <p style={{ margin: '0 0 6px' }}>Son valores configurables que el usuario puede ajustar al armar un presupuesto.</p>
+                  <p style={{ margin: '0 0 6px' }}>Podés definir tipo (número, sí/no, opción), rango y valor por defecto.</p>
+                  <p style={{ margin: 0, fontStyle: 'italic', color: 'var(--text-muted)', fontSize: 10 }}>Ej: cantidad de cajones, tipo de cierre, número de estantes.</p>
+                </AyudaTooltip>
+              </div>
+
+              {/* Visor interactivo — misma UI que el configurador del padre */}
+              <VisorParamsHijo
+                parametros={subcomp.parametros || []}
+                testVals={paramTestVals}
+                onTestValsChange={setParamTestVals}
+              />
+
+              {/* Editor de definición */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                <div style={secHdr}>Definición de parámetros</div>
+                <EditorParamsSub parametros={subcomp.parametros || []}
+                  onChange={(p) => patch({ parametros: p })} />
+              </div>
+
             </div>
           )}
 
@@ -530,101 +903,116 @@ export default function EditorComponenteHijo({
       )}
 
       {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* Sub-tab DATOS — dimensiones + posición del hijo                   */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {subTabMain === 'datos' && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 20 }}>
+
+          {/* Dimensiones */}
+          <div>
+            <div style={secHdr}>
+              📐 Dimensiones
+              {iValues.length > 1 && (
+                <span style={{ marginLeft: 8, color: "var(--text-muted)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
+                  · {iValues.length} instancia{iValues.length !== 1 ? "s" : ""} ({repeatVar}={iFrom}…{iTo})
+                </span>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              {[
+                { key: "ancho",       label: "A", rango: rangoAncho, placeholder: "ancho - 2*esp" },
+                { key: "alto",        label: "H", rango: rangoAlto,  placeholder: "alto / cajones" },
+                { key: "profundidad", label: "P", rango: rangoProf,  placeholder: "profundidad - 50" },
+              ].map(({ key, label, rango, placeholder }) => {
+                const formula = subcomp.dimensiones?.[key] ?? "";
+                return (
+                  <div key={key} style={{
+                    display: "flex", alignItems: "center", gap: 6, padding: "7px 10px 7px 8px",
+                    background: "var(--bg-surface)", borderRadius: 6,
+                    border: `1px solid ${!rango.valido ? "rgba(224,112,112,0.40)" : "rgba(200,160,42,0.12)"}`,
+                  }}>
+                    <span style={{ ...lblInline, minWidth: 18, color: "rgba(200,160,42,0.75)", fontSize: 10 }}>{label}</span>
+                    <input
+                      value={formula}
+                      placeholder={placeholder}
+                      onFocus={e => { activeInputEl.current = e.target; }}
+                      onChange={e => patchDim(key, e.target.value)}
+                      style={{ ...inputSm, flex: 1, minWidth: 0 }}
+                    />
+                    <VarsDropdown
+                      rowKey={`dim_${key}`} openKey={varsOpen} onToggle={setVarsOpen}
+                      scopes={scopesExplorer} defaultScopeId={subScopeId}
+                      onInsert={insertarVariable}
+                    />
+                    <div style={{ minWidth: 70, textAlign: "right", flexShrink: 0, fontFamily: M, fontSize: 11, color: rango.varies ? "var(--accent)" : "var(--text-muted)", fontWeight: rango.varies ? 700 : 400 }}>
+                      {rango.varies ? `${rango.min}…${rango.max}` : rango.min}
+                      <span style={{ fontSize: 8 }}>mm</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Posición */}
+          <div>
+            <div style={secHdr}>
+              📍 Posición
+              {iValues.length > 1 && (
+                <span style={{ marginLeft: 8, color: "var(--text-muted)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
+                  · rango sobre {repeatVar}={iFrom}…{iTo}
+                </span>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              {[
+                { key: "x", label: "X", rango: rangoX, placeholder: "esp" },
+                { key: "y", label: "Y", rango: rangoY, placeholder: "(i-1)*altoCajon" },
+                { key: "z", label: "Z", rango: rangoZ, placeholder: "esp" },
+              ].map(({ key, label, rango, placeholder }) => {
+                const formula = subcomp.origen?.[key] ?? "";
+                return (
+                  <div key={key} style={{
+                    display: "flex", alignItems: "center", gap: 6, padding: "7px 10px 7px 8px",
+                    background: "var(--bg-surface)", borderRadius: 6,
+                    border: `1px solid ${!rango.valido ? "rgba(224,112,112,0.40)" : "rgba(200,160,42,0.12)"}`,
+                  }}>
+                    <span style={{ ...lblInline, minWidth: 18, color: "rgba(200,160,42,0.75)", fontSize: 10 }}>{label}</span>
+                    <input
+                      value={formula}
+                      placeholder={placeholder}
+                      onFocus={e => { activeInputEl.current = e.target; }}
+                      onChange={e => patchOrigen(key, e.target.value)}
+                      style={{ ...inputSm, flex: 1, minWidth: 0 }}
+                    />
+                    <VarsDropdown
+                      rowKey={`orig_${key}`} openKey={varsOpen} onToggle={setVarsOpen}
+                      scopes={scopesExplorer} defaultScopeId={subScopeId}
+                      onInsert={insertarVariable}
+                    />
+                    <div style={{ minWidth: 70, textAlign: "right", flexShrink: 0, fontFamily: M, fontSize: 11, color: rango.varies ? "var(--accent)" : "var(--text-muted)", fontWeight: rango.varies ? 700 : 400 }}>
+                      {rango.varies ? `${rango.min}…${rango.max}` : rango.min}
+                      <span style={{ fontSize: 8 }}>mm</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
       {/* Sub-tab PIEZAS                                                    */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {subTabMain === 'piezas' && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
 
           <SubTabBar tabs={[
-            { id: 'datos',  label: '📐 Datos hijo' },
             { id: 'nueva',  label: editandoIdx !== null ? '✎ Editando' : '+ Nueva pieza' },
             { id: 'lista',  label: `▤ Lista · ${(subcomp.piezas || []).length}` },
           ]} active={subTabPiezas} onSelect={setSubTabPiezas} />
-
-          {/* ── Datos hijo: dimensiones + posición 3D ─────────────────── */}
-          {subTabPiezas === 'datos' && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 20 }}>
-
-              {/* Dimensiones */}
-              <div>
-                <div style={secHdr}>📐 Dimensiones</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  {[
-                    { key: "ancho",       label: "A", resultado: localAncho, placeholder: "ancho - 2*esp" },
-                    { key: "alto",        label: "H", resultado: localAlto,  placeholder: "alto / cajones" },
-                    { key: "profundidad", label: "P", resultado: localProf,  placeholder: "profundidad - 50" },
-                  ].map(({ key, label, resultado, placeholder }) => {
-                    const formula = subcomp.dimensiones?.[key] ?? "";
-                    const valida = !formula || evaluarFormula(String(formula), ctxPadre) !== null;
-                    return (
-                      <div key={key} style={{
-                        display: "flex", alignItems: "center", gap: 6, padding: "7px 10px 7px 8px",
-                        background: "var(--bg-surface)", borderRadius: 6,
-                        border: `1px solid ${!valida ? "rgba(224,112,112,0.40)" : "rgba(200,160,42,0.12)"}`,
-                      }}>
-                        <span style={{ ...lblInline, minWidth: 18, color: "rgba(200,160,42,0.75)", fontSize: 10 }}>{label}</span>
-                        <input
-                          value={formula}
-                          placeholder={placeholder}
-                          onFocus={e => { activeInputEl.current = e.target; }}
-                          onChange={e => patchDim(key, e.target.value)}
-                          style={{ ...inputSm, flex: 1, minWidth: 0 }}
-                        />
-                        <VarsDropdown
-                          rowKey={`dim_${key}`} openKey={varsOpen} onToggle={setVarsOpen}
-                          baseVarNames={baseVarNamesHijo} customVarNames={customVarNamesHijo}
-                          onInsert={insertarVariable}
-                        />
-                        <div style={{ minWidth: 50, textAlign: "right", flexShrink: 0, fontFamily: M, fontSize: 11, color: "var(--text-muted)" }}>
-                          {Math.round(resultado)}<span style={{ fontSize: 8 }}>mm</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Posición */}
-              <div>
-                <div style={secHdr}>📍 Posición</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  {[
-                    { key: "x", label: "X", resultado: localOrigenX, placeholder: "esp" },
-                    { key: "y", label: "Y", resultado: localOrigenY, placeholder: "(i-1)*altoCajon" },
-                    { key: "z", label: "Z", resultado: localOrigenZ, placeholder: "esp" },
-                  ].map(({ key, label, resultado, placeholder }) => {
-                    const formula = subcomp.origen?.[key] ?? "";
-                    const valida = !formula || evaluarFormula(String(formula), ctxPadre) !== null;
-                    return (
-                      <div key={key} style={{
-                        display: "flex", alignItems: "center", gap: 6, padding: "7px 10px 7px 8px",
-                        background: "var(--bg-surface)", borderRadius: 6,
-                        border: `1px solid ${!valida ? "rgba(224,112,112,0.40)" : "rgba(200,160,42,0.12)"}`,
-                      }}>
-                        <span style={{ ...lblInline, minWidth: 18, color: "rgba(200,160,42,0.75)", fontSize: 10 }}>{label}</span>
-                        <input
-                          value={formula}
-                          placeholder={placeholder}
-                          onFocus={e => { activeInputEl.current = e.target; }}
-                          onChange={e => patchOrigen(key, e.target.value)}
-                          style={{ ...inputSm, flex: 1, minWidth: 0 }}
-                        />
-                        <VarsDropdown
-                          rowKey={`orig_${key}`} openKey={varsOpen} onToggle={setVarsOpen}
-                          baseVarNames={baseVarNamesHijo} customVarNames={customVarNamesHijo}
-                          onInsert={insertarVariable}
-                        />
-                        <div style={{ minWidth: 50, textAlign: "right", flexShrink: 0, fontFamily: M, fontSize: 11, color: "var(--text-muted)" }}>
-                          {Math.round(resultado)}<span style={{ fontSize: 8 }}>mm</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-            </div>
-          )}
 
           {/* ── Nueva pieza ───────────────────────────────────────────── */}
           {subTabPiezas === 'nueva' && (
@@ -635,7 +1023,8 @@ export default function EditorComponenteHijo({
                 editando={editandoIdx !== null}
                 nombresSugeridos={NOMBRES_SUGERIDOS}
                 modulo={moduloSubVirtual}
-                costos={costos} />
+                costos={costos}
+                valoresParametros={parentValoresParametros || {}} />
 
               {fpError && <p style={{ color: "#e07070", fontSize: 12, margin: "6px 0 0" }}>⚠ {fpError}</p>}
 

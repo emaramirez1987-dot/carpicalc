@@ -9,7 +9,7 @@
 // Vive dentro del AcordeonEdicionItem (panel inline bajo el ítem activo).
 // ════════════════════════════════════════════════════════════════════════════
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   resolverParametros, evaluarConstraints,
 } from '../../services/moduloService.js';
@@ -26,28 +26,64 @@ const inputBase = {
   width: "100%", boxSizing: "border-box",
 };
 
-// ── Input numérico con slider opcional ─────────────────────────────────────
-// Slider visible solo si el parámetro tiene min y max definidos.
-// Drag del slider = cambio en vivo (3D, costo, etc. se actualizan).
-function NumberConSlider({ p, val, onChange }) {
-  const tieneRango = typeof p.min === "number" && typeof p.max === "number" && p.max > p.min;
-  const parse = (v) => v === "" ? p.def : (p.tipo === "integer" ? parseInt(v) : parseFloat(v));
-  const setN = (v) => { const n = parse(v); if (Number.isFinite(n)) onChange(n); };
+// ── Stepper numérico (+/- botones) con debounce ────────────────────────────
+// Reemplaza el slider que causaba duplicaciones/errores visuales en el 3D al
+// moverlo rápidamente. El debounce de 150 ms agrupa clicks rápidos en un solo
+// update hacia el padre (setValoresPrueba / onChange del presupuesto).
+function NumberStepper({ p, val, onChange }) {
+  const step     = p.tipo === "integer" ? 1 : (p.step ?? 0.1);
+  const external = val ?? p.def ?? 0;
+
+  // Estado local para que los botones y el input respondan al instante,
+  // sin esperar a que el padre re-renderice.
+  const [local, setLocal] = useState(external);
+  const timerRef = useRef(null);
+
+  // Mantiene el local sincronizado cuando cambia el valor externo
+  // (ej. "Defaults" o cambio desde otro control).
+  useEffect(() => { setLocal(external); }, [external]);
+
+  const clamp = (n) => {
+    let r = n;
+    if (typeof p.min === "number") r = Math.max(p.min, r);
+    if (typeof p.max === "number") r = Math.min(p.max, r);
+    return r;
+  };
+
+  const commit = (raw) => {
+    const parsed = p.tipo === "integer" ? parseInt(raw) : parseFloat(raw);
+    if (!Number.isFinite(parsed)) return;
+    const clamped = clamp(parsed);
+    setLocal(clamped);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => onChange(clamped), 150);
+  };
+
+  const canDec = typeof p.min !== "number" || local > p.min;
+  const canInc = typeof p.max !== "number" || local < p.max;
+
+  const btnStyle = (enabled) => ({
+    width: 28, height: 28, flexShrink: 0,
+    fontFamily: "'DM Mono',monospace", fontSize: 16, fontWeight: 700,
+    lineHeight: 1, padding: 0, borderRadius: 5, cursor: enabled ? "pointer" : "default",
+    background: enabled ? "rgba(212,175,55,0.12)" : "rgba(255,255,255,0.03)",
+    border: `1px solid ${enabled ? "rgba(212,175,55,0.35)" : "var(--border)"}`,
+    color: enabled ? "var(--accent)" : "var(--text-muted)",
+    opacity: enabled ? 1 : 0.4,
+    display: "flex", alignItems: "center", justifyContent: "center",
+  });
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <input type="number" value={val ?? ""}
+    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+      <button onClick={() => commit(local - step)} disabled={!canDec}
+        style={btnStyle(canDec)}>−</button>
+      <input type="number" value={local}
         min={p.min} max={p.max}
         step={p.tipo === "integer" ? 1 : "any"}
-        onChange={e => setN(e.target.value)}
-        style={inputBase} />
-      {tieneRango && (
-        <input type="range"
-          min={p.min} max={p.max}
-          step={p.tipo === "integer" ? 1 : "any"}
-          value={val ?? p.def ?? p.min}
-          onChange={e => setN(e.target.value)}
-          style={{ width: "100%", accentColor: "#d4af37", cursor: "pointer" }} />
-      )}
+        onChange={e => commit(e.target.value)}
+        style={{ ...inputBase, textAlign: "center", flex: 1 }} />
+      <button onClick={() => commit(local + step)} disabled={!canInc}
+        style={btnStyle(canInc)}>+</button>
     </div>
   );
 }
@@ -112,7 +148,7 @@ function ConfiguradorParametrico({ modulo, valores, onChange, costos }) {
                   <input value={p.expr || ""} disabled
                     style={{ ...inputBase, color: "var(--text-muted)", background: "var(--bg-subtle)" }} />
                 ) : (
-                  <NumberConSlider p={p} val={val} onChange={(n) => setValor(p.id, n)} />
+                  <NumberStepper p={p} val={val} onChange={(n) => setValor(p.id, n)} />
                 )}
               </div>
             );

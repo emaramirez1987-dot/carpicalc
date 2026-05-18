@@ -15,7 +15,7 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import { MODULO_VACIO } from "../constants.js";
-import { resolverVariables, evaluarExpresion, evaluarCondicion, evaluarFormula } from "../utils.js";
+import { resolverVariables, evaluarExpresion, evaluarCondicion, evaluarFormula, resolverDim } from "../utils.js";
 
 // ── Tipos del schema paramétrico (JSDoc) ──────────────────────────────────
 
@@ -154,6 +154,71 @@ export function contextoRepeatVar(pieza) {
   return { [r.var]: from };
 }
 
+// ── Vars derivadas de piezas ──────────────────────────────────────────────
+// Para cada pieza con nombre, exponemos sus dimensiones y posición resueltas
+// como variables planas: `{alias}_d1`, `{alias}_d2`, `{alias}_x`, `{alias}_y`,
+// `{alias}_z`. Esto permite que otras fórmulas o variables custom referencien
+// el valor real computado de una pieza (ej. "alturaInterior = lateral_d1").
+//
+// El alias se deriva del nombre normalizado (lowercase, sin tildes/espacios).
+// Si dos piezas tienen el mismo nombre, gana la primera; el resto se omite
+// para que las referencias no sean ambiguas.
+
+/** Convierte un nombre arbitrario a un identificador válido para fórmulas. */
+export function normalizarAliasPieza(nombre) {
+  return String(nombre || '')
+    .normalize('NFD')
+    .replace(new RegExp('[\\u0300-\\u036f]', 'g'), '')   // quitar tildes/diacríticos
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')                         // espacios/símbolos → _
+    .replace(/^_+|_+$/g, '');                            // trim _
+}
+
+/**
+ * Computa { aliasX_d1, aliasX_d2, aliasX_x, aliasX_y, aliasX_z } para cada
+ * pieza con nombre referenciable. Las fórmulas se evalúan con el contexto
+ * `ctx` recibido (base + params), sin auto-referencias entre piezas.
+ *
+ * Las piezas sin nombre, o con alias duplicado, no producen vars derivadas.
+ *
+ * @param {Array}  piezas  Lista de piezas del módulo (modulo.piezas, no expandidas)
+ * @param {Object} ctx     Contexto base para evaluar fórmulas (incluye ancho, alto, prof, esp y params)
+ * @param {number} espesor Espesor en mm (para resolverDim)
+ * @param {Object} dims    { ancho, alto, profundidad } para resolverDim
+ * @returns {Object} { [varName]: number }
+ */
+export function calcularVarsDePiezas(piezas, ctx, espesor, dims) {
+  const out = {};
+  const vistos = new Set();
+  for (const p of (Array.isArray(piezas) ? piezas : [])) {
+    const alias = normalizarAliasPieza(p?.nombre);
+    if (!alias || vistos.has(alias)) continue;
+    vistos.add(alias);
+    const d1 = p.especial
+      ? (parseInt(p.dimLibre1) || 0)
+      : p.formula1 != null
+        ? (evaluarFormula(String(p.formula1), ctx) ?? 0)
+        : resolverDim(dims[p.usaDim], p.offsetEsp, p.offsetMm, p.divisor || 1, espesor);
+    const d2 = p.especial
+      ? (parseInt(p.dimLibre2) || 0)
+      : p.formula2 != null
+        ? (evaluarFormula(String(p.formula2), ctx) ?? 0)
+        : resolverDim(dims[p.usaDim2], p.offsetEsp2, p.offsetMm2, p.divisor2 || 1, espesor);
+    const evalPos = (raw) => {
+      if (raw == null || raw === '') return 0;
+      if (typeof raw === 'number') return raw;
+      const v = evaluarFormula(String(raw), ctx);
+      return Number.isFinite(v) ? v : 0;
+    };
+    out[`${alias}_d1`] = Math.round(d1);
+    out[`${alias}_d2`] = Math.round(d2);
+    out[`${alias}_x`]  = Math.round(evalPos(p.posFormulas?.x));
+    out[`${alias}_y`]  = Math.round(evalPos(p.posFormulas?.y));
+    out[`${alias}_z`]  = Math.round(evalPos(p.posFormulas?.z));
+  }
+  return out;
+}
+
 // ── resolverContextoModulo ────────────────────────────────────────────────
 // Punto único de verdad para evaluar fórmulas de un módulo.
 //
@@ -178,13 +243,23 @@ export function resolverContextoModulo(modulo, costos, valoresParametros = {}) {
   const espesor = materialDef?.espesor || 18;
   const { ancho = 0, alto = 0, profundidad = 0 } = modulo?.dimensiones || {};
   const baseVars = { ancho, alto, profundidad, esp: espesor };
-  // modVars combina dims base + variables custom + parámetros (si vienen).
-  // Sin esto, las fórmulas que referencian parámetros (ej: "cajones") no
-  // resuelven y caen a 0. Bug detectado al armar el módulo cajonera de Fase 8.
-  const baseConVars  = resolverVariables(modulo?.variables, baseVars);
-  const paramVals    = resolverParametros(modulo, valoresParametros);
-  const modVars      = { ...baseConVars, ...paramVals };
-  return { baseVars, modVars, espesor, materialDef };
+  const paramVals = resolverParametros(modulo, valoresParametros);
+
+  // Vars derivadas de las piezas del módulo (d1, d2, x, y, z por alias).
+  // Se computan con base + params PERO sin variables custom — para evitar
+  // ciclos. Las vars custom y otras fórmulas pueden entonces referenciarlas.
+  const baseConParams = { ...baseVars, ...paramVals };
+  const piezaVars = calcularVarsDePiezas(
+    modulo?.piezas, baseConParams, espesor, baseVars,
+  );
+
+  // resolverVariables recibe baseVars + paramVals + piezaVars como punto
+  // de partida — así las variables custom pueden referenciar parámetros y
+  // dimensiones/posiciones de piezas (ej. "alturaInterior = lateral_d1").
+  const contextoParaCustom = { ...baseVars, ...paramVals, ...piezaVars };
+  const baseConVars = resolverVariables(modulo?.variables, contextoParaCustom);
+  const modVars = { ...baseConVars, ...paramVals, ...piezaVars };
+  return { baseVars, modVars, espesor, materialDef, piezaVars };
 }
 
 // ════════════════════════════════════════════════════════════════════════════

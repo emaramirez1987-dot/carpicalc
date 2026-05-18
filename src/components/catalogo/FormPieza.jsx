@@ -7,6 +7,7 @@ import { resolverDim, evaluarFormula } from '../../utils.js';
 import { resolverContextoModulo, contextoRepeatVar } from '../../services/moduloService.js';
 import { ORIENTACIONES_3D } from '../visor3d/engine/buildPiezas3D.js';
 import { DimRowLibre } from './DimRowEditor.jsx';
+import VarsExplorer, { construirScopes } from './VarsExplorer.jsx';
 
 const FORMULAS_POR_ORIENT = {
   horizontal: { f1: "ancho",       f2: "profundidad", l1: "Largo",      l2: "Profundidad" },
@@ -54,17 +55,11 @@ const lblInline = {
   fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em",
   whiteSpace: "nowrap", userSelect: "none",
 };
-const chipBase = (active, custom) => ({
-  padding: "2px 8px", borderRadius: 8, cursor: "pointer",
-  fontFamily: M, fontSize: 10, fontWeight: active ? 700 : 500,
-  background: active ? "rgba(212,175,55,0.18)" : custom ? "rgba(120,180,255,0.08)" : "rgba(255,255,255,0.04)",
-  border: `1px solid ${active ? "rgba(212,175,55,0.45)" : custom ? "rgba(120,180,255,0.28)" : "var(--border)"}`,
-  color: active ? "var(--accent)" : custom ? "#8ab4e8" : "var(--text-muted)",
-  letterSpacing: "0.04em", flexShrink: 0,
-});
 
 // ── Dropdown de variables insertables ────────────────────────────────────────
-function VarsDropdown({ rowKey, openKey, onToggle, baseVarNames, customVarNames, esperada, onInsert }) {
+// Wrapper del botón "⚡ vars" + popover con VarsExplorer (navegación
+// jerárquica + buscador). Delega la lógica al componente reutilizable.
+function VarsDropdown({ rowKey, openKey, onToggle, scopes, defaultScopeId, esperada, onInsert }) {
   const isOpen = openKey === rowKey;
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
@@ -82,27 +77,13 @@ function VarsDropdown({ rowKey, openKey, onToggle, baseVarNames, customVarNames,
         ⚡ vars <span style={{ fontSize: 8, opacity: 0.7 }}>{isOpen ? "▲" : "▼"}</span>
       </button>
       {isOpen && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 100,
-          background: "var(--bg-surface)", border: "1px solid var(--border)",
-          borderRadius: 7, padding: "8px 10px", boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
-          display: "flex", flexWrap: "wrap", gap: 4, minWidth: 180, maxWidth: 260,
-        }}>
-          {baseVarNames.map(v => (
-            <button key={v} onMouseDown={e => { onInsert(e, v); onToggle(null); }}
-              style={chipBase(v === esperada, false)}>
-              {v}
-            </button>
-          ))}
-          {customVarNames.length > 0 && (
-            <div style={{ width: "100%", height: 1, background: "var(--border)", margin: "3px 0" }} />
-          )}
-          {customVarNames.map(n => (
-            <button key={n} onMouseDown={e => { onInsert(e, n); onToggle(null); }}
-              style={chipBase(false, true)}>
-              {n}
-            </button>
-          ))}
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 100 }}>
+          <VarsExplorer
+            scopes={scopes}
+            defaultScopeId={defaultScopeId}
+            esperada={esperada}
+            onInsert={(name) => { onInsert(name); onToggle(null); }}
+          />
         </div>
       )}
     </div>
@@ -110,10 +91,9 @@ function VarsDropdown({ rowKey, openKey, onToggle, baseVarNames, customVarNames,
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costos, nombresSugeridos }) {
+function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costos, nombresSugeridos, valoresParametros }) {
   const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
   const dims        = modulo?.dimensiones || {};
-  const variables   = modulo?.variables || {};
   const parametros  = modulo?.parametros || [];
   const zonas       = modulo?.zonas || [];
   const tapacantos  = costos?.tapacanto || [];
@@ -138,8 +118,7 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costo
     });
   };
 
-  const insertarVariable = (e, nombre) => {
-    e.preventDefault();
+  const insertarVariable = (nombre) => {
     const el = activeInputEl.current;
     if (!el) return;
     const start  = el.selectionStart ?? el.value.length;
@@ -151,9 +130,16 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costo
     setTimeout(() => { el.setSelectionRange(start + nombre.length, start + nombre.length); el.focus(); }, 0);
   };
 
+  // Scopes para el VarsExplorer (jerárquico). El módulo recibido puede ser
+  // el padre o un sub-virtual ya armado por EditorComponenteHijo: en ambos
+  // casos construirScopes produce el árbol correcto.
+  const scopesExplorer = construirScopes(
+    modulo || {}, costos || { materiales: [] }, valoresParametros || {},
+  );
+
   // Contexto centralizado: dims base + variables custom + parámetros (defaults + formula).
   // Único punto de verdad — prohibido reimplementar inline (ver CLAUDE.md).
-  const { modVars, espesor } = resolverContextoModulo(modulo || {}, costos || { materiales: [] });
+  const { modVars, espesor } = resolverContextoModulo(modulo || {}, costos || { materiales: [] }, valoresParametros || {});
   const allVars = { ...modVars, ...contextoRepeatVar(fp) };
 
   const d1 = fp.especial
@@ -172,8 +158,8 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costo
 
   const orient   = fp.orientacion3d;
   const def      = orient ? FORMULAS_POR_ORIENT[orient] : null;
-  const baseVarNames   = ["ancho", "alto", "profundidad", "esp"];
-  const customVarNames = Object.keys(variables || {});
+  // (Las listas planas de baseVarNames/customVarNames/piezaVarNames se
+  // reemplazaron por scopesExplorer — toda la navegación vive en VarsExplorer.)
   const tienePos3d = !!(fp.posFormulas?.x || fp.posFormulas?.y || fp.posFormulas?.z);
   const tcId        = parseInt(fp.tc?.id) || 0;
   const tcLados1    = parseInt(fp.tc?.lados1) || 0;
@@ -199,13 +185,13 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costo
 
       {/* ── Fila 1: [Cancelar] Nombre · Cantidad · Orientación · Libre ────── */}
       <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-        {/* Botón cancelar — solo en modo edición, integrado en la fila */}
+        {/* Botón descartar — solo en modo edición, integrado en la fila */}
         {editando && (
-          <button onClick={onCancelar} style={{
+          <button onClick={onCancelar} title="Descartar cambios y salir del editor" style={{
             height: 28, padding: "0 9px", borderRadius: 5, fontSize: 10, fontWeight: 700,
             cursor: "pointer", fontFamily: M, flexShrink: 0,
             background: "rgba(200,60,60,0.12)", border: "1px solid rgba(200,60,60,0.35)", color: "#e08080",
-          }}>✕</button>
+          }}>✕ Descartar</button>
         )}
         {/* Nombre */}
         <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
@@ -349,8 +335,7 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costo
               rowKey={key}
               openKey={varsOpen}
               onToggle={setVarsOpen}
-              baseVarNames={baseVarNames}
-              customVarNames={customVarNames}
+              scopes={scopesExplorer}
               esperada={esperada}
               onInsert={insertarVariable}
             />
@@ -429,8 +414,7 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costo
                         rowKey={`pos_${axis}`}
                         openKey={varsOpen}
                         onToggle={setVarsOpen}
-                        baseVarNames={baseVarNames}
-                        customVarNames={customVarNames}
+                        scopes={scopesExplorer}
                         esperada={null}
                         onInsert={insertarVariable}
                       />
