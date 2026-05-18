@@ -15,8 +15,18 @@ const PIEZA_VACIA = {
   offsetEsp: 0, offsetMm: 0, divisor: 1,
   offsetEsp2: 0, offsetMm2: 0, divisor2: 1,
   tc: { id: 1, lados1: 1, lados2: 0 },
-  especial: false, dimLibre1: "", dimLibre2: ""
+  especial: false, dimLibre1: "", dimLibre2: "",
+  posFormulas: { x: null, y: null, z: null },
+  offset3d:    { x: 0, y: 0, z: 0 },
+  rot3d:        0,
+  orientacion3d: undefined,
+  zona:          undefined,
+  condition:     undefined,
+  repeat:        undefined,
 };
+
+const clonarPieza = (p) => (typeof structuredClone === "function" ? structuredClone(p) : JSON.parse(JSON.stringify(p)));
+const piezaVaciaNueva = () => clonarPieza(PIEZA_VACIA);
 
 const M = "'DM Mono', monospace";
 
@@ -264,13 +274,14 @@ export default function EditorComponenteHijo({
 }) {
   // ── Estado UI ────────────────────────────────────────────────────────────
   const [subTabMain, setSubTabMain]     = useState('editor');
+  const [subTabEditor, setSubTabEditor] = useState('ident');
   const [subTabPiezas, setSubTabPiezas] = useState('datos');
   const [confirmandoDelete, setConfirmandoDelete] = useState(false);
   const [varsOpen, setVarsOpen] = useState(null);
   const activeInputEl = useRef(null);
 
   // Estado del editor de piezas
-  const [fp, setFp]               = useState({ ...PIEZA_VACIA });
+  const [fp, setFp]               = useState(() => piezaVaciaNueva());
   const [editandoIdx, setEditandoIdx] = useState(null);
   const [fpError, setFpError]     = useState("");
 
@@ -349,29 +360,29 @@ export default function EditorComponenteHijo({
 
   const agregarPieza = () => {
     if (!fp.nombre.trim()) { setFpError("Ingresá el nombre."); return; }
-    const nueva = normalizar(fp);
+    const nueva = clonarPieza(normalizar(fp));
     const piezasNuevas = editandoIdx !== null
       ? (subcomp.piezas || []).map((p, i) => i === editandoIdx ? nueva : p)
       : [...(subcomp.piezas || []), nueva];
     patch({ piezas: piezasNuevas });
-    setFp({ ...PIEZA_VACIA });
+    setFp(piezaVaciaNueva());
     setEditandoIdx(null);
     setFpError("");
   };
   const editarPieza = (idx) => {
-    setFp({ ...(subcomp.piezas || [])[idx] });
+    setFp({ ...piezaVaciaNueva(), ...clonarPieza((subcomp.piezas || [])[idx]) });
     setEditandoIdx(idx);
     setSubTabMain('piezas');
     setSubTabPiezas('nueva');
   };
-  const cancelarEdicion = () => { setFp({ ...PIEZA_VACIA }); setEditandoIdx(null); setFpError(""); };
+  const cancelarEdicion = () => { setFp(piezaVaciaNueva()); setEditandoIdx(null); setFpError(""); };
   const eliminarPieza = (idx) => {
     patch({ piezas: (subcomp.piezas || []).filter((_, i) => i !== idx) });
     if (editandoIdx === idx) cancelarEdicion();
   };
   const duplicarPieza = (idx) => {
     const orig = (subcomp.piezas || [])[idx];
-    const copia = { ...orig, nombre: `${orig.nombre} (copia)` };
+    const copia = { ...clonarPieza(orig), nombre: `${orig.nombre} (copia)` };
     patch({ piezas: [
       ...(subcomp.piezas || []).slice(0, idx + 1),
       copia,
@@ -403,86 +414,104 @@ export default function EditorComponenteHijo({
       {/* Sub-tab EDITOR                                                    */}
       {/* ══════════════════════════════════════════════════════════════════ */}
       {subTabMain === 'editor' && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 20 }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
 
-          {/* Row 1: ID + Nombre + delete — inline, no labels */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <input value={subcomp.id || ""} placeholder="id"
-              onChange={e => patch({ id: e.target.value.replace(/[^a-zA-Z0-9_]/g, "") })}
-              style={{ ...inputSm, width: 90, flexShrink: 0 }} />
-            <input value={subcomp.nombre || ""} placeholder="Nombre del componente"
-              onChange={e => patch({ nombre: e.target.value })}
-              style={{ ...inputSm, flex: 1, minWidth: 0, fontSize: 13 }} />
-            {confirmandoDelete ? (
-              <>
-                <span style={{ fontSize: 10, fontFamily: M, color: "#e07070", whiteSpace: "nowrap", flexShrink: 0 }}>¿Eliminar?</span>
-                <button onClick={() => { setConfirmandoDelete(false); onDelete(); }}
-                  style={{ height: 28, padding: "0 10px", borderRadius: 5, cursor: "pointer", fontWeight: 700,
-                    fontFamily: M, fontSize: 10, flexShrink: 0,
-                    background: "rgba(200,60,60,0.18)", border: "1px solid rgba(200,60,60,0.45)", color: "#e07070" }}>
-                  Sí
-                </button>
-                <button onClick={() => setConfirmandoDelete(false)}
-                  style={{ height: 28, padding: "0 10px", borderRadius: 5, cursor: "pointer",
-                    fontFamily: M, fontSize: 10, flexShrink: 0,
-                    background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                  No
-                </button>
-              </>
-            ) : (
-              <button onClick={() => setConfirmandoDelete(true)}
-                style={{ height: 28, padding: "0 11px", borderRadius: 5, cursor: "pointer",
-                  fontFamily: M, fontSize: 10, fontWeight: 700, flexShrink: 0,
-                  background: "rgba(200,60,60,0.10)", border: "1px solid rgba(200,60,60,0.30)", color: "#e07070" }}>
-                ✕
-              </button>
-            )}
-          </div>
+          {/* Sub-tabs internos del editor */}
+          <SubTabBar tabs={[
+            { id: 'ident',    label: '✎ Ident.' },
+            { id: 'herrajes', label: `🔩 Herrajes${(subcomp.herrajes || []).length > 0 ? ` · ${(subcomp.herrajes || []).length}` : ""}` },
+            { id: 'params',   label: `🎚 Params${(subcomp.parametros || []).length > 0 ? ` · ${(subcomp.parametros || []).length}` : ""}` },
+            { id: 'nietos',   label: `🧩 Nietos${(subcomp.subComponentes || []).length > 0 ? ` · ${(subcomp.subComponentes || []).length}` : ""}` },
+          ]} active={subTabEditor} onSelect={setSubTabEditor} />
 
-          {/* Repetición: single compact inline row */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px",
-            background: "var(--bg-surface)", borderRadius: 6, border: "1px solid var(--border)" }}>
-            <span style={{ ...lblInline, fontSize: 10 }}>🔁</span>
-            <span style={lblInline}>var</span>
-            <input value={subcomp.repeat?.var || "i"}
-              onChange={e => patchRepeat("var", e.target.value)}
-              style={{ ...inputSm, width: 36 }} />
-            <span style={lblInline}>de</span>
-            <input value={subcomp.repeat?.from ?? ""} placeholder="1"
-              onChange={e => patchRepeat("from", isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}
-              style={{ ...inputSm, width: 40 }} />
-            <span style={lblInline}>a</span>
-            <input value={subcomp.repeat?.to ?? ""} placeholder="N"
-              onChange={e => patchRepeat("to", isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}
-              style={{ ...inputSm, width: 70 }} />
-            <span style={lblInline}>si</span>
-            <input value={subcomp.condition || ""} placeholder="condición (opcional)"
-              onChange={e => patch({ condition: e.target.value })}
-              style={{ ...inputSm, flex: 1, minWidth: 0 }} />
-          </div>
+          {/* ── Ident: ID + Nombre + Repetición ───────────────────────── */}
+          {subTabEditor === 'ident' && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 16 }}>
 
-          {/* Herrajes */}
-          <div>
-            <div style={secHdr}>🔩 Herrajes ({(subcomp.herrajes || []).length})</div>
-            <EditorHerrajesSub herrajes={subcomp.herrajes || []}
-              onChange={(h) => patch({ herrajes: h })}
-              costos={costos} />
-          </div>
+              {/* Row: ID + Nombre + delete */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input value={subcomp.id || ""} placeholder="id"
+                  onChange={e => patch({ id: e.target.value.replace(/[^a-zA-Z0-9_]/g, "") })}
+                  style={{ ...inputSm, width: 90, flexShrink: 0 }} />
+                <input value={subcomp.nombre || ""} placeholder="Nombre del componente"
+                  onChange={e => patch({ nombre: e.target.value })}
+                  style={{ ...inputSm, flex: 1, minWidth: 0, fontSize: 13 }} />
+                {confirmandoDelete ? (
+                  <>
+                    <span style={{ fontSize: 10, fontFamily: M, color: "#e07070", whiteSpace: "nowrap", flexShrink: 0 }}>¿Eliminar?</span>
+                    <button onClick={() => { setConfirmandoDelete(false); onDelete(); }}
+                      style={{ height: 28, padding: "0 10px", borderRadius: 5, cursor: "pointer", fontWeight: 700,
+                        fontFamily: M, fontSize: 10, flexShrink: 0,
+                        background: "rgba(200,60,60,0.18)", border: "1px solid rgba(200,60,60,0.45)", color: "#e07070" }}>
+                      Sí
+                    </button>
+                    <button onClick={() => setConfirmandoDelete(false)}
+                      style={{ height: 28, padding: "0 10px", borderRadius: 5, cursor: "pointer",
+                        fontFamily: M, fontSize: 10, flexShrink: 0,
+                        background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                      No
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => setConfirmandoDelete(true)}
+                    style={{ height: 28, padding: "0 11px", borderRadius: 5, cursor: "pointer",
+                      fontFamily: M, fontSize: 10, fontWeight: 700, flexShrink: 0,
+                      background: "rgba(200,60,60,0.10)", border: "1px solid rgba(200,60,60,0.30)", color: "#e07070" }}>
+                    ✕
+                  </button>
+                )}
+              </div>
 
-          {/* Parámetros propios */}
-          <div>
-            <div style={secHdr}>🎚 Parámetros ({(subcomp.parametros || []).length})</div>
-            <EditorParamsSub parametros={subcomp.parametros || []}
-              onChange={(p) => patch({ parametros: p })} />
-          </div>
+              {/* Repetición: compact inline row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px",
+                background: "var(--bg-surface)", borderRadius: 6, border: "1px solid var(--border)" }}>
+                <span style={{ ...lblInline, fontSize: 10 }}>🔁</span>
+                <span style={lblInline}>var</span>
+                <input value={subcomp.repeat?.var || "i"}
+                  onChange={e => patchRepeat("var", e.target.value)}
+                  style={{ ...inputSm, width: 36 }} />
+                <span style={lblInline}>de</span>
+                <input value={subcomp.repeat?.from ?? ""} placeholder="1"
+                  onChange={e => patchRepeat("from", isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}
+                  style={{ ...inputSm, width: 40 }} />
+                <span style={lblInline}>a</span>
+                <input value={subcomp.repeat?.to ?? ""} placeholder="N"
+                  onChange={e => patchRepeat("to", isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}
+                  style={{ ...inputSm, width: 70 }} />
+                <span style={lblInline}>si</span>
+                <input value={subcomp.condition || ""} placeholder="condición (opcional)"
+                  onChange={e => patch({ condition: e.target.value })}
+                  style={{ ...inputSm, flex: 1, minWidth: 0 }} />
+              </div>
 
-          {/* Subcomponentes anidados */}
-          <div>
-            <div style={secHdr}>🧩 Nietos ({(subcomp.subComponentes || []).length})</div>
-            <ListaNietos
-              subComponentes={subcomp.subComponentes || []}
-              onChange={(s) => patch({ subComponentes: s })} />
-          </div>
+            </div>
+          )}
+
+          {/* ── Herrajes ──────────────────────────────────────────────── */}
+          {subTabEditor === 'herrajes' && (
+            <div style={{ paddingTop: 16 }}>
+              <EditorHerrajesSub herrajes={subcomp.herrajes || []}
+                onChange={(h) => patch({ herrajes: h })}
+                costos={costos} />
+            </div>
+          )}
+
+          {/* ── Parámetros propios ────────────────────────────────────── */}
+          {subTabEditor === 'params' && (
+            <div style={{ paddingTop: 16 }}>
+              <EditorParamsSub parametros={subcomp.parametros || []}
+                onChange={(p) => patch({ parametros: p })} />
+            </div>
+          )}
+
+          {/* ── Nietos ────────────────────────────────────────────────── */}
+          {subTabEditor === 'nietos' && (
+            <div style={{ paddingTop: 16 }}>
+              <ListaNietos
+                subComponentes={subcomp.subComponentes || []}
+                onChange={(s) => patch({ subComponentes: s })} />
+            </div>
+          )}
 
         </div>
       )}
@@ -597,7 +626,8 @@ export default function EditorComponenteHijo({
                 variables={variablesParaPieza}
                 piezas={subcomp.piezas || []}
                 zonas={zonasParaPieza}
-                parametros={parametrosParaPieza} />
+                parametros={parametrosParaPieza}
+                tapacantos={costos?.tapacanto || []} />
 
               {fpError && <p style={{ color: "#e07070", fontSize: 12, margin: "6px 0 0" }}>⚠ {fpError}</p>}
 

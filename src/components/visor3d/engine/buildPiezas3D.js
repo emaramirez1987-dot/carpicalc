@@ -193,6 +193,8 @@ export function buildPiezas3D(modulo, costos, valoresParametros = {}) {
         zona:         p.zona || null,
         isHandle:     false,
         hasManualPos: hasOffset,
+        tc:           p.tc || null,
+        orientacion,
       });
     }
   });

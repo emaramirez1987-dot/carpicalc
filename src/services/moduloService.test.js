@@ -95,6 +95,32 @@ describe("parsearModulo", () => {
     const m = parsearModulo({ nombre: "x", piezas: [], dimensiones: { ancho: 600 }, parametros: "no-array" });
     expect(m.parametros).toEqual([]);
   });
+
+  test("preserva posFormulas (incluyendo fórmulas con repeat var como `i`)", () => {
+    // Caso reportado: pieza "Estante" con repeat y posFormulas.y usando `i` y un parámetro.
+    const piezaEstante = {
+      nombre: "Estante",
+      formula1: "ancho-esp*2",
+      formula2: "profundidad",
+      orientacion3d: "horizontal",
+      posFormulas: { x: "esp", y: "i * (alto / (estantes + 1))", z: "0" },
+      repeat: { var: "i", from: 1, to: "estantes" },
+    };
+    const raw = {
+      nombre: "Biblioteca",
+      piezas: [piezaEstante],
+      dimensiones: { ancho: 600, alto: 1800, profundidad: 350 },
+      parametros: [{ id: "estantes", nombre: "Estantes", tipo: "integer", def: 3 }],
+    };
+    const m = parsearModulo(raw);
+    expect(m).not.toBeNull();
+    expect(m.piezas[0].posFormulas).toEqual({
+      x: "esp",
+      y: "i * (alto / (estantes + 1))",
+      z: "0",
+    });
+    expect(m.piezas[0].repeat).toEqual({ var: "i", from: 1, to: "estantes" });
+  });
 });
 
 // ── parsearPresupuesto ─────────────────────────────────────────────────────

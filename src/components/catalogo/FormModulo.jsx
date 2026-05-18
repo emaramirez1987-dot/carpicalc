@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import EditorParametrico from './EditorParametrico.jsx';
 import { Btn, TextInput, Select } from '../ui/index.jsx';
-import { fmtPeso, calcularModulo, resolverVariables } from '../../utils.js';
+import { fmtPeso, calcularModulo } from '../../utils.js';
 import { CATEGORIAS_DEFAULT } from '../../constants.js';
-import { piezasQueUsanVar } from '../../services/moduloService.js';
+import { piezasQueUsanVar, resolverContextoModulo } from '../../services/moduloService.js';
 import { cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
 import FilaPieza from './FilaPieza.jsx';
 import FormPieza from './FormPieza.jsx';
@@ -26,8 +26,18 @@ const PIEZA_VACIA = {
   offsetEsp: 0, offsetMm: 0, divisor: 1,
   offsetEsp2: 0, offsetMm2: 0, divisor2: 1,
   tc: { id: 1, lados1: 1, lados2: 0 },
-  especial: false, dimLibre1: "", dimLibre2: ""
+  especial: false, dimLibre1: "", dimLibre2: "",
+  posFormulas: { x: null, y: null, z: null },
+  offset3d:    { x: 0, y: 0, z: 0 },
+  rot3d:        0,
+  orientacion3d: undefined,
+  zona:          undefined,
+  condition:     undefined,
+  repeat:        undefined,
 };
+
+const clonarPieza = (p) => (typeof structuredClone === "function" ? structuredClone(p) : JSON.parse(JSON.stringify(p)));
+const piezaVaciaNueva = () => clonarPieza(PIEZA_VACIA);
 function SubTabBar({ tabs, active, onSelect }) {
   return (
     <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
@@ -148,7 +158,7 @@ function FormModulo({
     setVisor3DMaxState(v);
     try { localStorage.setItem("carpicalc:visor3d_max", String(v)); } catch (_e) { /* sin-op */ }
   };
-  const [fp, setFp] = useState({ ...PIEZA_VACIA });
+  const [fp, setFp] = useState(() => piezaVaciaNueva());
   const [fpError, setFpError] = useState("");
   // Edición de pieza existente: idx !== null = modo edición
   const [editandoPiezaIdx, setEditandoPiezaIdx] = useState(null);
@@ -203,32 +213,31 @@ function FormModulo({
 
   const agregarPieza = () => {
     if (!fp.nombre.trim()) { setFpError("Ingresá el nombre."); return; }
-    const nueva = normalizarPieza(fp);
+    const nueva = clonarPieza(normalizarPieza(fp));
     if (editandoPiezaIdx !== null) {
-      // Modo edición — reemplazar la pieza en su posición
       setPiezas(prev => prev.map((p, i) => i === editandoPiezaIdx ? nueva : p));
       setEditandoPiezaIdx(null);
     } else {
       setPiezas(prev => [...prev, nueva]);
     }
-    setFp({ ...PIEZA_VACIA });
+    setFp(piezaVaciaNueva());
     setFpError("");
   };
 
   const editarPieza = (idx) => {
-    setFp({ ...piezas[idx] });
+    setFp({ ...piezaVaciaNueva(), ...clonarPieza(piezas[idx]) });
     setEditandoPiezaIdx(idx);
     setSubTabPiezas('editor');
   };
 
   const cancelarEdicion = () => {
-    setFp({ ...PIEZA_VACIA });
+    setFp(piezaVaciaNueva());
     setEditandoPiezaIdx(null);
     setFpError("");
   };
 
   const duplicarPieza = (idx) => {
-    const copia = { ...piezas[idx], nombre: `${piezas[idx].nombre} (copia)` };
+    const copia = { ...clonarPieza(piezas[idx]), nombre: `${piezas[idx].nombre} (copia)` };
     setPiezas(prev => [...prev.slice(0, idx + 1), copia, ...prev.slice(idx + 1)]);
   };
 
@@ -316,6 +325,16 @@ function FormModulo({
     else { limpiarBorradorModulo(); onCancelar(); }
   };
 
+  // Mergea los cambios pendientes del editor de pieza (`fp`) en `piezas[]` antes de guardar.
+  // Sin esto, si el usuario edita un campo (ej: posFormulas.y) y va directo a "Guardar cambios"
+  // sin clickear "✓ Actualizar pieza", su cambio se pierde silenciosamente. `fp` y `piezas[]`
+  // son dos estados paralelos: este merge cierra la brecha al momento de persistir.
+  const piezasParaGuardar = () => {
+    if (editandoPiezaIdx === null || !fp.nombre.trim()) return piezas;
+    const fpCommit = clonarPieza(normalizarPieza(fp));
+    return piezas.map((p, i) => i === editandoPiezaIdx ? fpCommit : p);
+  };
+
   const datosGuardar = () => ({
     nombre:      datos.nombre,
     descripcion: datos.descripcion,
@@ -328,7 +347,7 @@ function FormModulo({
     zonas:          datos.zonas          || [],
     constraints:    datos.constraints    || [],
     subComponentes: datos.subComponentes || [],
-    piezas,
+    piezas:      piezasParaGuardar(),
     herrajes,
     moDeObra
   });
@@ -361,9 +380,13 @@ function FormModulo({
     // Nuevo módulo — guardar directo
     guardarYLimpiar(datos.codigo.trim().toUpperCase(), datosGuardar());
   };
+  // Pasar valoresPrueba para que el preview de costos refleje los parámetros
+  // que el usuario configura en el panel paramétrico (mismo flujo que usa la
+  // Vista 3D del presupuesto). Sin esto, cambiar `estantes` actualizaba la
+  // geometría pero no los costos.
   const preview =
     piezas.length > 0
-      ? calcularModulo({ ...datos, piezas, herrajes, moDeObra }, costos)
+      ? calcularModulo({ ...datos, piezas, herrajes, moDeObra }, costos, valoresPrueba)
       : null;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -404,12 +427,12 @@ function FormModulo({
           activeId={tabActiva}
           onChange={setTabActiva}
           tabs={[
-            { id: "datos", icon: "◈", label: "Datos",
+            { id: "datos", icon: "◈", label: "Padre",
               badge: (datos.codigo && datos.nombre
                 && datos.dimensiones?.ancho && datos.dimensiones?.alto && datos.dimensiones?.profundidad) ? "ok" : "warn" },
             { id: "piezas",         icon: "▤", label: piezas.length > 0 ? `Piezas · ${piezas.length}` : "Piezas",
               badge: piezas.length > 0 ? "ok" : "warn" },
-            { id: "configurable",   icon: "⊹", label: "Config.",
+            { id: "configurable",   icon: "⊹", label: "Panel Vista",
               badge: (datos.parametros?.length > 0) ? "ok" : null },
             ...subComponentes.map((sub, idx) => ({
               id: `hijo:${sub.id}`,
@@ -648,13 +671,9 @@ function FormModulo({
                     onCancelar={cancelarEdicion}
                     onConfirmar={agregarPieza}
                     editando={editandoPiezaIdx !== null}
-                    dims={datos.dimensiones}
-                    espesor={espesor}
-                    nombresSugeridos={NOMBRES_SUGERIDOS}
-                    variables={datos.variables || {}}
-                    piezas={piezas}
-                    zonas={datos.zonas || []}
-                    parametros={datos.parametros || []} />
+                    modulo={datos}
+                    costos={costos}
+                    nombresSugeridos={NOMBRES_SUGERIDOS} />
 
                   {fpError && <p style={{ color: "#e07070", fontSize: 12, margin: 0 }}>⚠ {fpError}</p>}
 
@@ -674,8 +693,8 @@ function FormModulo({
               {subTabPiezas === 'variables' && (() => {
                 const variables = datos.variables || {};
                 const customEntries = Object.entries(variables);
-                const baseVars = { ancho: datos.dimensiones.ancho || 0, alto: datos.dimensiones.alto || 0, profundidad: datos.dimensiones.profundidad || 0, esp: espesor };
-                const resolved = resolverVariables(variables, baseVars);
+                // Contexto centralizado: usa el punto único de verdad (ver CLAUDE.md).
+                const { modVars: resolved, baseVars } = resolverContextoModulo(datos, costos);
                 return (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 14 }}>
                     {/* Variables base (solo lectura) */}

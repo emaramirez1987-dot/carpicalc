@@ -19,7 +19,8 @@ import * as THREE from 'three';
 import { ORIENTACIONES_3D, buildPiezas3D } from './engine/buildPiezas3D.js';
 import { getMaterialProps } from './useMaterial3D.js';
 import { CAMARAS } from './CamaraPresets.js';
-import { evaluarFormula, resolverVariables } from '../../utils.js';
+import { evaluarFormula } from '../../utils.js';
+import { resolverContextoModulo, contextoRepeatVar } from '../../services/moduloService.js';
 
 const LS_PREFS_KEY = "carpicalc:visor3d_prefs";
 
@@ -41,16 +42,17 @@ const STEP_OPTIONS = [1, 5, 10];
 function leerPrefs() {
   try {
     const raw = localStorage.getItem(LS_PREFS_KEY);
-    if (!raw) return { grid: true, ejes: true, aristas: true, toolbar: true };
+    if (!raw) return { grid: true, ejes: true, aristas: true, toolbar: true, verTC: true };
     const p = JSON.parse(raw);
     return {
       grid:    p.grid    !== false,
       ejes:    p.ejes    !== false,
       aristas: p.aristas !== false,
       toolbar: p.toolbar !== false,
+      verTC:   p.verTC   !== false,
     };
   } catch (_e) {
-    return { grid: true, ejes: true, aristas: true, toolbar: true };
+    return { grid: true, ejes: true, aristas: true, toolbar: true, verTC: true };
   }
 }
 function guardarPrefs(prefs) {
@@ -95,9 +97,71 @@ function EjesConLabels({ origen = [0, 0, 0], largo = 0.3, grosor = 0.005 }) {
   );
 }
 
+// ── Geometría de aristas con tapacanto (yellow rim per lados D1/D2) ─────────
+function buildTCEdgesGeo(orientacion, size, tc) {
+  if (!tc || (parseInt(tc.id) || 0) <= 0) return null;
+  const lados1 = parseInt(tc.lados1) || 0;
+  const lados2 = parseInt(tc.lados2) || 0;
+  if (lados1 === 0 && lados2 === 0) return null;
+
+  const [sx, sy, sz] = size;
+  const hx = sx / 2, hy = sy / 2, hz = sz / 2;
+
+  // Cada "lado" del rim agrupa los 2 box-edges que lo delimitan (front+back face).
+  let d1Sides, d2Sides;
+  if (orientacion === 'vertical') {
+    // size=[te,d1,d2]: D1∥Y, D2∥Z
+    d1Sides = [
+      [ [+hx,-hy,-hz,+hx,+hy,-hz], [-hx,-hy,-hz,-hx,+hy,-hz] ],
+      [ [+hx,-hy,+hz,+hx,+hy,+hz], [-hx,-hy,+hz,-hx,+hy,+hz] ],
+    ];
+    d2Sides = [
+      [ [+hx,-hy,-hz,+hx,-hy,+hz], [-hx,-hy,-hz,-hx,-hy,+hz] ],
+      [ [+hx,+hy,-hz,+hx,+hy,+hz], [-hx,+hy,-hz,-hx,+hy,+hz] ],
+    ];
+  } else if (orientacion === 'horizontal') {
+    // size=[d1,te,d2]: D1∥X, D2∥Z
+    d1Sides = [
+      [ [-hx,+hy,-hz,+hx,+hy,-hz], [-hx,-hy,-hz,+hx,-hy,-hz] ],
+      [ [-hx,+hy,+hz,+hx,+hy,+hz], [-hx,-hy,+hz,+hx,-hy,+hz] ],
+    ];
+    d2Sides = [
+      [ [-hx,+hy,-hz,-hx,+hy,+hz], [-hx,-hy,-hz,-hx,-hy,+hz] ],
+      [ [+hx,+hy,-hz,+hx,+hy,+hz], [+hx,-hy,-hz,+hx,-hy,+hz] ],
+    ];
+  } else if (orientacion === 'frente') {
+    // size=[d2,d1,te]: D1∥Y, D2∥X
+    d1Sides = [
+      [ [-hx,-hy,+hz,-hx,+hy,+hz], [-hx,-hy,-hz,-hx,+hy,-hz] ],
+      [ [+hx,-hy,+hz,+hx,+hy,+hz], [+hx,-hy,-hz,+hx,+hy,-hz] ],
+    ];
+    d2Sides = [
+      [ [-hx,-hy,+hz,+hx,-hy,+hz], [-hx,-hy,-hz,+hx,-hy,-hz] ],
+      [ [-hx,+hy,+hz,+hx,+hy,+hz], [-hx,+hy,-hz,+hx,+hy,-hz] ],
+    ];
+  } else {
+    return null;
+  }
+
+  const vs = [];
+  const push = (sides, count) => {
+    for (let i = 0; i < Math.min(count, sides.length); i++) {
+      for (const seg of sides[i]) vs.push(...seg);
+    }
+  };
+  push(d1Sides, lados1);
+  push(d2Sides, lados2);
+  if (vs.length === 0) return null;
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(vs, 3));
+  return geo;
+}
+
 // ── PiezaAnimada — animación + selección + contornos opcionales ─────────────
 function PiezaAnimada({ targetPos, targetRotYDeg, size, explodeVec, explodeFactor,
-                        materialTipo, selected, isHandle, status, onClick, aristasColor }) {
+                        materialTipo, selected, isHandle, status, onClick, aristasColor,
+                        tc, orientacion, showTC }) {
   const grpRef   = useRef();
   const animPos  = useRef({ x: targetPos[0], y: targetPos[1], z: targetPos[2] });
   const animRotY = useRef((targetRotYDeg || 0) * Math.PI / 180);
@@ -106,6 +170,12 @@ function PiezaAnimada({ targetPos, targetRotYDeg, size, explodeVec, explodeFacto
     () => new THREE.EdgesGeometry(new THREE.BoxGeometry(...size)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [size[0], size[1], size[2]]
+  );
+
+  const tcEdgesGeo = useMemo(
+    () => showTC ? buildTCEdgesGeo(orientacion, size, tc) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [showTC, orientacion, size[0], size[1], size[2], tc?.id, tc?.lados1, tc?.lados2]
   );
 
   useFrame((_, dt) => {
@@ -154,6 +224,11 @@ function PiezaAnimada({ targetPos, targetRotYDeg, size, explodeVec, explodeFacto
       {!showSelectEdge && aristasColor && (
         <lineSegments geometry={edgesGeo}>
           <lineBasicMaterial color={aristasColor} />
+        </lineSegments>
+      )}
+      {tcEdgesGeo && (
+        <lineSegments renderOrder={2} geometry={tcEdgesGeo}>
+          <lineBasicMaterial color="#FFD400" depthTest={false} transparent opacity={0.95} />
         </lineSegments>
       )}
     </group>
@@ -220,26 +295,13 @@ export default function VisorCatalogo3D({
   ejesOrigen,
   onSelectPieza,  // (idx) => void — el padre puede sincronizar selección con su form
 }) {
-  // Contexto de variables para evaluar fórmulas de pieza (dimensiones, posición).
-  const espesor = useMemo(() => {
-    const matDef = costos?.materiales?.find(m => m.tipo === modulo?.material) || costos?.materiales?.[0];
-    return matDef?.espesor || 18;
-  }, [costos, modulo?.material]);
-  const baseVars = useMemo(() => ({
-    ancho: modulo?.dimensiones?.ancho || 0,
-    alto:  modulo?.dimensiones?.alto  || 0,
-    profundidad: modulo?.dimensiones?.profundidad || 0,
-    esp: espesor,
-  }), [modulo?.dimensiones?.ancho, modulo?.dimensiones?.alto, modulo?.dimensiones?.profundidad, espesor]);
-  const allVars = useMemo(() => {
-    const customVars = resolverVariables(modulo?.variables, baseVars);
-    const paramDefaults = Object.fromEntries(
-      (modulo?.parametros || [])
-        .filter(p => p.tipo !== 'formula')
-        .map(p => [p.id, parametrosValores?.[p.id] ?? p.def])
-    );
-    return { ...customVars, ...paramDefaults };
-  }, [modulo?.variables, modulo?.parametros, baseVars, parametrosValores]);
+  // Contexto centralizado de variables (regla de oro CLAUDE.md — único punto de verdad).
+  // Incluye dims base, variables custom, parámetros (defaults + valores actuales + fórmula).
+  // La var de `repeat` (ej: `i`) la mergea PanelEdicionPieza por pieza seleccionada.
+  const { modVars: allVars } = useMemo(
+    () => resolverContextoModulo(modulo || {}, costos || { materiales: [] }, parametrosValores || {}),
+    [modulo, costos, parametrosValores]
+  );
   const tapacantoOptions = costos?.tapacanto || [];
   const [prefs, setPrefsState] = useState(leerPrefs);
   const [selectedIdx,   setSelectedIdx]   = useState(null);
@@ -443,6 +505,7 @@ export default function VisorCatalogo3D({
           <ToolBtn activo={prefs.grid}    onClick={() => setPref("grid")}    title="Grilla del piso">▦</ToolBtn>
           <ToolBtn activo={prefs.ejes}    onClick={() => setPref("ejes")}    title="Ejes XYZ">⊕</ToolBtn>
           <ToolBtn activo={prefs.aristas} onClick={() => setPref("aristas")} title="Aristas negras">◇</ToolBtn>
+          <ToolBtn activo={prefs.verTC}   onClick={() => setPref("verTC")}   title="Resaltar tapacanto en amarillo">🎗</ToolBtn>
         </ToolGroup>
 
         <SeparadorTool />
@@ -503,6 +566,9 @@ export default function VisorCatalogo3D({
                 status={p.status}
                 onClick={() => handleSelect(p.piezaIdx)}
                 aristasColor={prefs.aristas ? "#000000" : null}
+                tc={p.tc}
+                orientacion={p.orientacion}
+                showTC={prefs.verTC}
               />
             ))}
           </Suspense>
@@ -557,6 +623,10 @@ function PanelEdicionPieza({
   onSetFormula, onSetPosFormula, onSetTc,
 }) {
   const stColor = STATUS_COLOR[piezaP3D?.status] || '#888';
+  // Si la pieza seleccionada tiene `repeat`, mergear la var de iteración (ej: `i`)
+  // para que las fórmulas que la usen evalúen durante la edición. Mismo idiom
+  // que generarPiezasInternal usa en runtime.
+  const varsConRepeat = { ...allVars, ...contextoRepeatVar(pieza) };
   return (
     <div style={{
       position: 'absolute', top: 8, right: 8, zIndex: 30,
@@ -607,13 +677,13 @@ function PanelEdicionPieza({
               etiqueta="D1 (largo)"
               valor={pieza?.formula1 ?? ''}
               onChange={(v) => onSetFormula?.('formula1', v)}
-              vars={allVars}
+              vars={varsConRepeat}
             />
             <DimRowEditor
               etiqueta="D2 (ancho)"
               valor={pieza?.formula2 ?? ''}
               onChange={(v) => onSetFormula?.('formula2', v)}
-              vars={allVars}
+              vars={varsConRepeat}
             />
           </Seccion>
         )}
@@ -633,7 +703,7 @@ function PanelEdicionPieza({
               etiqueta={label}
               valor={pieza?.posFormulas?.[axis] ?? ''}
               onChange={(v) => onSetPosFormula?.(axis, v)}
-              vars={allVars}
+              vars={varsConRepeat}
               placeholder={placeholder}
               esPosicion
             />

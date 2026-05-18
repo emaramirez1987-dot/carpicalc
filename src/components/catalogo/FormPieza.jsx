@@ -3,7 +3,8 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import React, { useState, useRef } from 'react';
-import { resolverDim, evaluarFormula, resolverVariables } from '../../utils.js';
+import { resolverDim, evaluarFormula } from '../../utils.js';
+import { resolverContextoModulo, contextoRepeatVar } from '../../services/moduloService.js';
 import { ORIENTACIONES_3D } from '../visor3d/engine/buildPiezas3D.js';
 import { DimRowLibre } from './DimRowEditor.jsx';
 
@@ -109,8 +110,13 @@ function VarsDropdown({ rowKey, openKey, onToggle, baseVarNames, customVarNames,
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, dims, espesor, nombresSugeridos, variables, piezas, zonas = [], parametros = [] }) {
+function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costos, nombresSugeridos }) {
   const [mostrarSugeridos, setMostrarSugeridos] = useState(false);
+  const dims        = modulo?.dimensiones || {};
+  const variables   = modulo?.variables || {};
+  const parametros  = modulo?.parametros || [];
+  const zonas       = modulo?.zonas || [];
+  const tapacantos  = costos?.tapacanto || [];
   const tieneParam = zonas.length > 0 || parametros.length > 0 || fp.zona || fp.condition || fp.repeat;
   const [subTab, setSubTab] = useState('pos3d');
   const [varsOpen, setVarsOpen]     = useState(null);
@@ -145,11 +151,10 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, dims, espesor
     setTimeout(() => { el.setSelectionRange(start + nombre.length, start + nombre.length); el.focus(); }, 0);
   };
 
-  const baseVars = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor };
-  const paramDefaults = Object.fromEntries(
-    (parametros || []).filter(p => p.tipo !== 'formula').map(p => [p.id, p.def])
-  );
-  const allVars = { ...resolverVariables(variables, baseVars), ...paramDefaults };
+  // Contexto centralizado: dims base + variables custom + parámetros (defaults + formula).
+  // Único punto de verdad — prohibido reimplementar inline (ver CLAUDE.md).
+  const { modVars, espesor } = resolverContextoModulo(modulo || {}, costos || { materiales: [] });
+  const allVars = { ...modVars, ...contextoRepeatVar(fp) };
 
   const d1 = fp.especial
     ? (parseInt(fp.dimLibre1) || 0)
@@ -170,9 +175,17 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, dims, espesor
   const baseVarNames   = ["ancho", "alto", "profundidad", "esp"];
   const customVarNames = Object.keys(variables || {});
   const tienePos3d = !!(fp.posFormulas?.x || fp.posFormulas?.y || fp.posFormulas?.z);
+  const tcId        = parseInt(fp.tc?.id) || 0;
+  const tcLados1    = parseInt(fp.tc?.lados1) || 0;
+  const tcLados2    = parseInt(fp.tc?.lados2) || 0;
+  const tieneTC     = tcId > 0 && (tcLados1 > 0 || tcLados2 > 0);
+  const metrosTC    = tieneTC
+    ? ((parseInt(fp.cantidad) || 1) * (tcLados1 * (d1 || 0) + tcLados2 * (d2 || 0))) / 1000
+    : 0;
 
   const subTabs = [
     { id: 'pos3d', label: `ƒ Pos. 3D${tienePos3d ? ' ●' : ''}` },
+    { id: 'tc',    label: `🎗 TC${tieneTC ? ' ●' : ''}` },
     ...(tieneParam ? [{ id: 'param', label: '⚙ Param.' }] : []),
   ];
 
@@ -432,6 +445,77 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, dims, espesor
                   );
                 })}
               </>
+            )}
+
+            {/* ── Tapacanto ── */}
+            {subTab === 'tc' && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "7px 10px 7px 8px", borderRadius: 6,
+                  background: "var(--bg-surface)",
+                  border: "1px solid rgba(212,175,55,0.12)",
+                }}>
+                  <span style={{ ...lblInline, color: "rgba(212,175,55,0.85)", fontSize: 10 }}>Cinta</span>
+                  <select
+                    value={tcId}
+                    onChange={e => setFp(p => ({ ...p, tc: { ...(p.tc || {}), id: parseInt(e.target.value) || 0 } }))}
+                    style={{ ...inputSm, flex: 1, minWidth: 0, cursor: "pointer" }}>
+                    <option value={0}>Sin tapacanto</option>
+                    {tapacantos.map(t => (
+                      <option key={t.id} value={t.id}>{t.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {tcId > 0 && (
+                  <>
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      padding: "7px 10px 7px 8px", borderRadius: 6,
+                      background: "var(--bg-surface)",
+                      border: "1px solid rgba(212,175,55,0.12)",
+                    }}>
+                      <span style={{ ...lblInline, minWidth: 18, color: "rgba(212,175,55,0.85)", fontSize: 10 }}>D1</span>
+                      <span style={{ ...lblInline, fontSize: 9 }}>lados</span>
+                      <button
+                        onClick={() => setFp(p => ({ ...p, tc: { ...(p.tc || {}), lados1: Math.max(0, (parseInt(p.tc?.lados1) || 0) - 1) } }))}
+                        style={{ width: 22, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>−</button>
+                      <input
+                        type="number" min="0" max="2"
+                        value={tcLados1}
+                        onChange={e => setFp(p => ({ ...p, tc: { ...(p.tc || {}), lados1: parseInt(e.target.value) || 0 } }))}
+                        style={{ ...inputSm, width: 36, textAlign: "center", color: "var(--accent)", fontWeight: 700, padding: "3px 2px" }} />
+                      <button
+                        onClick={() => setFp(p => ({ ...p, tc: { ...(p.tc || {}), lados1: Math.min(2, (parseInt(p.tc?.lados1) || 0) + 1) } }))}
+                        style={{ width: 22, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>+</button>
+                      <span style={{ ...lblInline, fontSize: 9, marginLeft: 6 }}>D2</span>
+                      <span style={{ ...lblInline, fontSize: 9 }}>lados</span>
+                      <button
+                        onClick={() => setFp(p => ({ ...p, tc: { ...(p.tc || {}), lados2: Math.max(0, (parseInt(p.tc?.lados2) || 0) - 1) } }))}
+                        style={{ width: 22, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>−</button>
+                      <input
+                        type="number" min="0" max="2"
+                        value={tcLados2}
+                        onChange={e => setFp(p => ({ ...p, tc: { ...(p.tc || {}), lados2: parseInt(e.target.value) || 0 } }))}
+                        style={{ ...inputSm, width: 36, textAlign: "center", color: "var(--accent)", fontWeight: 700, padding: "3px 2px" }} />
+                      <button
+                        onClick={() => setFp(p => ({ ...p, tc: { ...(p.tc || {}), lados2: Math.min(2, (parseInt(p.tc?.lados2) || 0) + 1) } }))}
+                        style={{ width: 22, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>+</button>
+                    </div>
+
+                    {tieneTC && (
+                      <div style={{ padding: "5px 10px", borderRadius: 5,
+                        background: "rgba(126,207,138,0.06)", border: "1px solid rgba(126,207,138,0.15)",
+                        fontFamily: M, fontSize: 11, color: "var(--color-positive)", fontWeight: 600,
+                        textAlign: "right",
+                      }}>
+                        → {(Math.round(metrosTC * 100) / 100).toFixed(2)} m lineales
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             )}
 
             {/* ── Parametrización ── */}

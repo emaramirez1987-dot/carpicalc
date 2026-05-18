@@ -139,6 +139,21 @@ export function parsearPresupuesto(raw) {
   };
 }
 
+// ── contextoRepeatVar ─────────────────────────────────────────────────────
+// Para validar/evaluar fórmulas que usan la variable de iteración de un
+// `repeat` (típicamente `i`) durante la EDICIÓN, sin tener que iterar el
+// repeat real. Mismo patrón que generarPiezasInternal usa en runtime:
+//   const ctxI = { ...ctxBase, [varName]: i };
+//
+// Retorna { [varName]: from } o {} si la pieza no tiene repeat.
+// Si `from` no es numérico (es una fórmula como "estantes"), usa 1.
+export function contextoRepeatVar(pieza) {
+  const r = pieza?.repeat;
+  if (!r?.var) return {};
+  const from = typeof r.from === "number" ? r.from : 1;
+  return { [r.var]: from };
+}
+
 // ── resolverContextoModulo ────────────────────────────────────────────────
 // Punto único de verdad para evaluar fórmulas de un módulo.
 //
