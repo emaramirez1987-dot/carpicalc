@@ -6,7 +6,8 @@ import React, { useState, useRef } from 'react';
 import FormPieza from './FormPieza.jsx';
 import FilaPieza from './FilaPieza.jsx';
 import EditorSubComponente from './EditorSubComponente.jsx';
-import { evaluarFormula, resolverVariables } from '../../utils.js';
+import { evaluarFormula } from '../../utils.js';
+import { resolverContextoModulo } from '../../services/moduloService.js';
 
 const PIEZA_VACIA = {
   nombre: "", cantidad: 1,
@@ -291,18 +292,21 @@ export default function EditorComponenteHijo({
   const patchDim    = (k, v) => onChange({ ...subcomp, dimensiones: { ...(subcomp.dimensiones || {}), [k]: v } });
   const patchRepeat = (k, v) => onChange({ ...subcomp, repeat: { ...(subcomp.repeat || { var: "i" }), [k]: v } });
 
-  // ── Contexto de fórmulas del padre ──────────────────────────────────────
-  const ctxPadreBase = {
-    ancho: parentDims.ancho || 0,
-    alto:  parentDims.alto  || 0,
-    profundidad: parentDims.profundidad || 0,
-    esp: espesor || 18,
+  // ── Contexto de fórmulas del padre (regla de oro: resolverContextoModulo) ──
+  // Construimos un módulo virtual con los datos del padre para que
+  // resolverContextoModulo resuelva variables y parámetros en un solo lugar.
+  const moduloPadreVirtual = {
+    dimensiones: parentDims || { ancho: 0, alto: 0, profundidad: 0 },
+    variables:   parentVariables || {},
+    parametros:  parentParametros || [],
   };
-  const customVars = resolverVariables(parentVariables || {}, ctxPadreBase);
-  const paramDefaults = Object.fromEntries(
-    (parentParametros || []).filter(p => p.tipo !== 'formula').map(p => [p.id, p.def])
+  const { modVars: padreVars, baseVars: padreBase } = resolverContextoModulo(
+    moduloPadreVirtual,
+    costos || { materiales: [] },
   );
-  const ctxPadre = { ...ctxPadreBase, ...customVars, ...paramDefaults, i: 1 };
+  // El espesor llega como prop resuelto: lo imponemos sobre el que
+  // resolverContextoModulo derivó del material por defecto.
+  const ctxPadre = { ...padreVars, ...(espesor != null ? { esp: espesor } : {}), i: 1 };
 
   // ── Dimensiones locales evaluadas ────────────────────────────────────────
   const evalDim = (formula, fallback) => {
@@ -311,22 +315,31 @@ export default function EditorComponenteHijo({
     const v = evaluarFormula(String(formula), ctxPadre);
     return (v != null && Number.isFinite(v)) ? Math.round(v) : fallback;
   };
-  const localAncho = evalDim(subcomp.dimensiones?.ancho, parentDims.ancho);
-  const localAlto  = evalDim(subcomp.dimensiones?.alto,  parentDims.alto);
-  const localProf  = evalDim(subcomp.dimensiones?.profundidad, parentDims.profundidad);
+  const localAncho = evalDim(subcomp.dimensiones?.ancho, parentDims?.ancho ?? 0);
+  const localAlto  = evalDim(subcomp.dimensiones?.alto,  parentDims?.alto  ?? 0);
+  const localProf  = evalDim(subcomp.dimensiones?.profundidad, parentDims?.profundidad ?? 0);
   const dimsLocales = { ancho: localAncho, alto: localAlto, profundidad: localProf };
 
   // ── Variables y parámetros combinados para las piezas ───────────────────
   const variablesParaPieza  = { ...(parentVariables || {}), ...(subcomp.variables || {}) };
   const parametrosParaPieza = [...(parentParametros || []), ...(subcomp.parametros || [])];
   const zonasParaPieza      = [...(parentZonas || []), ...(subcomp.zonas || [])];
-  const modVarsLista = {
-    ...resolverVariables(variablesParaPieza, { ...dimsLocales, esp: espesor }),
-    ...Object.fromEntries(parametrosParaPieza.filter(p => p.tipo !== 'formula').map(p => [p.id, p.def])),
-  };
 
-  const baseVarNamesHijo = ["ancho", "alto", "profundidad", "esp", "i"];
-  const customVarNamesHijo = Object.keys(customVars);
+  // Módulo virtual del subcomponente — contexto usado en FormPieza y FilaPieza
+  const moduloSubVirtual = {
+    dimensiones: dimsLocales,
+    variables:   variablesParaPieza,
+    parametros:  parametrosParaPieza,
+    zonas:       zonasParaPieza,
+    piezas:      subcomp.piezas || [],
+  };
+  const { modVars: modVarsLista } = resolverContextoModulo(
+    moduloSubVirtual,
+    costos || { materiales: [] },
+  );
+
+  const baseVarNamesHijo   = Object.keys(padreBase).concat(['i']);
+  const customVarNamesHijo = Object.keys(ctxPadre).filter(k => !baseVarNamesHijo.includes(k));
 
   const localOrigenX = evalDim(subcomp.origen?.x, 0);
   const localOrigenY = evalDim(subcomp.origen?.y, 0);
@@ -620,14 +633,9 @@ export default function EditorComponenteHijo({
                 fp={fp} setFp={setFp}
                 onCancelar={cancelarEdicion}
                 editando={editandoIdx !== null}
-                dims={dimsLocales}
-                espesor={espesor}
                 nombresSugeridos={NOMBRES_SUGERIDOS}
-                variables={variablesParaPieza}
-                piezas={subcomp.piezas || []}
-                zonas={zonasParaPieza}
-                parametros={parametrosParaPieza}
-                tapacantos={costos?.tapacanto || []} />
+                modulo={moduloSubVirtual}
+                costos={costos} />
 
               {fpError && <p style={{ color: "#e07070", fontSize: 12, margin: "6px 0 0" }}>⚠ {fpError}</p>}
 

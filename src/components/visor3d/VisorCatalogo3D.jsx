@@ -293,7 +293,7 @@ export default function VisorCatalogo3D({
   maximizado = false,
   onToggleMaximizar,
   ejesOrigen,
-  onSelectPieza,  // (idx) => void — el padre puede sincronizar selección con su form
+  onSelectPieza,  // (idx, subComponenteId?) => void — el padre sincroniza con su form/tab
 }) {
   // Contexto centralizado de variables (regla de oro CLAUDE.md — único punto de verdad).
   // Incluye dims base, variables custom, parámetros (defaults + valores actuales + fórmula).
@@ -326,7 +326,7 @@ export default function VisorCatalogo3D({
   const piezas3D = useMemo(
     () => buildPiezas3D(modulo, costos, parametrosValores || {}),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [modulo?.piezas, modulo?.dimensiones, modulo?.material, modulo?.zonas, modulo?.parametros, costos, parametrosValores]
+    [modulo?.piezas, modulo?.subComponentes, modulo?.dimensiones, modulo?.material, modulo?.zonas, modulo?.parametros, costos, parametrosValores]
   );
 
   // Si la pieza seleccionada deja de existir (cambio de parámetros, etc.),
@@ -338,12 +338,12 @@ export default function VisorCatalogo3D({
   }, [selectedIdx, modulo?.piezas]);
 
   // ── Handlers de edición ───────────────────────────────────────────────────
-  const handleSelect = useCallback((piezaIdx) => {
+  const handleSelect = useCallback((piezaIdx, subComponenteId = null) => {
     setSelectedIdx(prev => {
       const nuevo = prev === piezaIdx ? null : piezaIdx;
-      // Notificar al padre — abre la pieza en el formulario de edición
-      // del FormModulo (cambia al tab Piezas y carga el FormPieza).
-      onSelectPieza?.(nuevo);
+      // Notificar al padre. Si la pieza pertenece a un subcomponente, pasa
+      // `subComponenteId` para que FormModulo navegue al tab correspondiente.
+      onSelectPieza?.(nuevo, subComponenteId);
       return nuevo;
     });
   }, [onSelectPieza]);
@@ -564,7 +564,7 @@ export default function VisorCatalogo3D({
                 selected={!p.isHandle && selectedIdx === p.piezaIdx}
                 isHandle={p.isHandle}
                 status={p.status}
-                onClick={() => handleSelect(p.piezaIdx)}
+                onClick={() => handleSelect(p.piezaIdx, p._subComponente)}
                 aristasColor={prefs.aristas ? "#000000" : null}
                 tc={p.tc}
                 orientacion={p.orientacion}

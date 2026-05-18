@@ -195,6 +195,10 @@ export function buildPiezas3D(modulo, costos, valoresParametros = {}) {
         hasManualPos: hasOffset,
         tc:           p.tc || null,
         orientacion,
+        // Presentes solo en piezas expandidas desde subcomponentes.
+        // Permiten que onSelectPieza navegue al tab del subcomp correcto.
+        _subComponente: p._subComponente ?? null,
+        _instancia:     p._instancia     ?? null,
       });
     }
   });

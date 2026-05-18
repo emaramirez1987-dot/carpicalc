@@ -895,9 +895,14 @@ function FormModulo({
                     if (nuevoMod?.piezas)   setPiezas(nuevoMod.piezas);
                     if (nuevoMod?.herrajes) setHerrajes(nuevoMod.herrajes);
                   }}
-                  onSelectPieza={(idx) => {
+                  onSelectPieza={(idx, subComponenteId) => {
                     if (idx == null) {
                       if (editandoPiezaIdx !== null) cancelarEdicion();
+                      return;
+                    }
+                    // Pieza de subcomponente: navegar al tab del hijo correcto.
+                    if (subComponenteId) {
+                      setTabActiva(`hijo:${subComponenteId}`);
                       return;
                     }
                     // piezasPreview puede tener fp en la última posición (modo nueva).
@@ -938,6 +943,13 @@ function FormModulo({
                 onActualizar={(nuevoMod) => {
                   if (nuevoMod?.piezas)   setPiezas(nuevoMod.piezas);
                   if (nuevoMod?.herrajes) setHerrajes(nuevoMod.herrajes);
+                }}
+                onSelectPieza={(idx, subComponenteId) => {
+                  if (idx == null) { if (editandoPiezaIdx !== null) cancelarEdicion(); return; }
+                  if (subComponenteId) { setTabActiva(`hijo:${subComponenteId}`); return; }
+                  if (editandoPiezaIdx === null && idx === piezasPreview.length - 1 && idx >= piezas.length) return;
+                  setTabActiva("piezas");
+                  editarPieza(idx);
                 }}
               />
             </Suspense>
