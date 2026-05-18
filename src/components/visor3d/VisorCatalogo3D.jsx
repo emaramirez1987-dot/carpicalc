@@ -331,11 +331,14 @@ export default function VisorCatalogo3D({
 
   // Si la pieza seleccionada deja de existir (cambio de parámetros, etc.),
   // limpiar la selección para no mostrar un panel huérfano.
+  // Validamos contra la lista EXPANDIDA (piezas3D) — no contra modulo.piezas
+  // raw — porque las piezas de subcomponentes tienen piezaIdx más allá del
+  // largo de modulo.piezas (vienen de expandirSubComponentes).
   useEffect(() => {
-    if (selectedIdx != null && (selectedIdx >= (modulo?.piezas?.length || 0))) {
+    if (selectedIdx != null && !piezas3D.some(p => !p.isHandle && p.piezaIdx === selectedIdx)) {
       setSelectedIdx(null);
     }
-  }, [selectedIdx, modulo?.piezas]);
+  }, [selectedIdx, piezas3D]);
 
   // ── Handlers de edición ───────────────────────────────────────────────────
   const handleSelect = useCallback((piezaIdx, subComponenteId = null) => {
@@ -456,7 +459,11 @@ export default function VisorCatalogo3D({
   const currentRol    = selectedP3D?.role ?? null;
   const currentRot    = selectedPieza?.rot3d ?? 0;
   const currentOffset = selectedPieza?.offset3d ?? { x: 0, y: 0, z: 0 };
-  const panelAbierto  = selectedIdx != null && selectedP3D;
+  // Solo abrimos el panel de edición para piezas del módulo padre. Para
+  // piezas de subcomponentes, selectedPieza es undefined porque su definición
+  // vive en modulo.subComponentes[*].piezas — el usuario edita esas en su
+  // tab dedicado (el click en 3D ya navega allí vía onSelectPieza).
+  const panelAbierto  = selectedIdx != null && selectedP3D && selectedPieza;
 
   const toolbarWidth = prefs.toolbar ? 56 : 30;
 
