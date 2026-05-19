@@ -18,6 +18,7 @@
 import { costoIniciales, PERFIL_VACIO } from "./constants.js";
 import { supabase } from "./lib/supabase.js";
 import { parsearModulo, parsearPresupuesto } from "./services/moduloService.js";
+import { unificarLegacy, normalizarMaterial } from "./services/materialesService.js";
 import { notificarError } from "./hooks/useToastErrores.js";
 
 // ── Escritura localStorage (datos locales/efímeros) ───────────────────────
@@ -56,6 +57,8 @@ export async function cargarDatos() {
         costos: costoIniciales,
         presupuestos: {},
         perfil: { ...PERFIL_VACIO },
+        materiales: [],
+        materialesCategorias: [],
       };
     }
 
@@ -104,11 +107,47 @@ export async function cargarDatos() {
     // Cache del perfil para leerPerfil() síncrono (PDFs)
     try { localStorage.setItem("carpicalc:perfil_cache", JSON.stringify(perfil)); } catch {}
 
+    // ── Materiales (entidad top-level) ─────────────────────────────────
+    // Persistimos dentro de costos.datos.materiales / .materialesCategorias por
+    // ahora (sin migración SQL). Si los items ya están normalizados (tienen
+    // `fechaCreacion`), pass-through. Si vienen de schema legacy, normalizar.
+    // Si está vacío, hacer migración automática desde:
+    //   1. costos.datos.materiales legacy (formato anterior)
+    //   2. localStorage carpicalc:materiales3d (mapa de texturas)
+    const costos = costosRow?.datos ?? costoIniciales;
+    const materialesCategorias =
+      Array.isArray(costos.materialesCategorias) ? costos.materialesCategorias :
+      Array.isArray(costos.materialesGrupos)     ? costos.materialesGrupos     // MVP previo
+      : [];
+
+    let materiales;
+    const yaMigrados = Array.isArray(costos.materiales)
+      && costos.materiales.length > 0
+      && costos.materiales[0]?.fechaCreacion != null;
+
+    if (yaMigrados) {
+      // Ya normalizado en una sesión previa — pass-through con normalize defensivo
+      materiales = costos.materiales.map(m => normalizarMaterial(m)).filter(Boolean);
+    } else {
+      // Primera vez con el nuevo sistema: migrar legacy
+      let materiales3DMap = {};
+      try {
+        const raw = localStorage.getItem("carpicalc:materiales3d");
+        if (raw) materiales3DMap = JSON.parse(raw) || {};
+      } catch {}
+      materiales = unificarLegacy({
+        costosMateriales: Array.isArray(costos.materiales) ? costos.materiales : [],
+        materiales3DMap,
+      });
+    }
+
     return {
       modulos: modulosLimpios,
-      costos: costosRow?.datos ?? costoIniciales,
+      costos,
       presupuestos,
       perfil,
+      materiales,
+      materialesCategorias,
     };
   } catch (e) {
     console.error("cargarDatos:", e);
@@ -117,6 +156,8 @@ export async function cargarDatos() {
       costos: costoIniciales,
       presupuestos: {},
       perfil: { ...PERFIL_VACIO },
+      materiales: [],
+      materialesCategorias: [],
     };
   }
 }
@@ -227,6 +268,53 @@ export const guardarCostos = async (costos) => {
     return true;
   } catch (e) {
     notificarError("No se pudieron guardar los costos.", e);
+    return false;
+  }
+};
+
+// ── Guardar materiales (entidad top-level) ────────────────────────────────
+// Persistido dentro de costos.datos.materiales + .materialesCategorias para
+// no requerir migración SQL ahora. Cuando se cree la tabla `materiales`
+// dedicada, este wrapper redirige sin cambiar callers.
+//
+// Estrategia: leer costos actuales de Supabase, mergear materiales+categorías,
+// escribir todo. Esto evita pisar otros campos de costos (desperdicio, herrajes,
+// etc.) en concurrencia con guardarCostos.
+export const guardarMateriales = async (materiales, materialesCategorias) => {
+  _save("carpicalc:costos_version", Date.now().toString());
+  try {
+    const wsId = await getWorkspaceId();
+    if (!wsId) return false;
+
+    // Leer costos actuales para no pisar otros campos
+    const { data: costosRow } = await supabase
+      .from("costos").select("datos").eq("workspace_id", wsId).maybeSingle();
+    const costosActuales = costosRow?.datos ?? {};
+
+    const nuevoCostos = {
+      ...costosActuales,
+      materiales: Array.isArray(materiales) ? materiales : [],
+      materialesCategorias: Array.isArray(materialesCategorias) ? materialesCategorias : [],
+    };
+    // Limpiar campo legacy del MVP previo (si existe)
+    delete nuevoCostos.materialesGrupos;
+
+    const { error } = await supabase.from("costos").upsert(
+      { workspace_id: wsId, datos: nuevoCostos, updated_at: new Date().toISOString() },
+      { onConflict: "workspace_id" }
+    );
+    if (error) { console.error("guardarMateriales:", error); return false; }
+
+    // Una vez migrado a Supabase, podemos limpiar el cache legacy de localStorage.
+    // Solo lo hacemos si la migración generó al menos 1 material — para no
+    // perder data si algo salió mal antes.
+    if ((materiales || []).length > 0) {
+      try { localStorage.removeItem("carpicalc:materiales3d"); } catch {}
+    }
+
+    return true;
+  } catch (e) {
+    notificarError("No se pudieron guardar los materiales.", e);
     return false;
   }
 };

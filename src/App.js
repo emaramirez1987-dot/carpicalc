@@ -13,8 +13,10 @@ import { calcularModulo } from "./utils.js";
 import {
   cargarDatos, cargarSuscripcion,
   guardarModulos, guardarPresupuestos, guardarPerfil, guardarCostos,
-  leerVersionCostos, leerMateriales3D, guardarMateriales3D,
+  guardarMateriales,
+  leerVersionCostos,
 } from "./storage.js";
+import { materialesComoMapa3D } from "./services/materialesService.js";
 import { useTema } from "./hooks/useTema.js";
 import { useAtajosTeclado } from "./hooks/useAtajosTeclado.js";
 import { useToastErrores } from "./hooks/useToastErrores.js";
@@ -190,19 +192,19 @@ function AppInterna() {
   const [presupuestoActivoId, setPresupuestoActivoId] = useState(null);
   const [suscripcion,         setSuscripcion]         = useState(null);
   const [imagenRef3D,         setImagenRef3D]         = useState(null);
-  const [materiales3D,        setMateriales3D]        = useState(() => leerMateriales3D());
 
-  const handleGuardarMaterial3D = (cod, mat) => {
-    const nuevos = { ...materiales3D, [cod]: mat };
-    setMateriales3D(nuevos);
-    guardarMateriales3D(nuevos);
-  };
-  const handleEliminarMaterial3D = (cod) => {
-    const nuevos = { ...materiales3D };
-    delete nuevos[cod];
-    setMateriales3D(nuevos);
-    guardarMateriales3D(nuevos);
-  };
+  // Materiales como entidad top-level (consumibles desde Costos, Vista 3D,
+  // Render IA, Presupuestos). Persistencia: storage.guardarMateriales — hoy
+  // dentro de costos.datos para evitar migración SQL, pero el contrato del
+  // service ya está aislado para que el día de mañana migre a tabla propia.
+  const [materiales,           setMateriales]           = useState([]);
+  const [materialesCategorias, setMaterialesCategorias] = useState([]);
+
+  // Vista derivada para compatibilidad con Vista 3D / Render IA legacy.
+  // Mapa { [codigo]: { nombre, dataUrl } } — mismo shape que el viejo
+  // localStorage:carpicalc:materiales3d. Permite que Vista3DTab y
+  // Escena3DPrincipal sigan funcionando sin tocarlos hasta que migremos.
+  const materiales3D = useMemo(() => materialesComoMapa3D(materiales), [materiales]);
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -222,13 +224,15 @@ function AppInterna() {
     } else {
       cargarSuscripcion().then(setSuscripcion);
     }
-    cargarDatos().then(({ modulos, costos, presupuestos, perfil }) => {
+    cargarDatos().then(({ modulos, costos, presupuestos, perfil, materiales: mats, materialesCategorias: cats }) => {
       const { presupuestos: migrados, cambiaron } = migrarDimOverridePresupuestos(presupuestos || {});
       setModulos(modulos);
       setCostos(costos);
       setPresupuestos(migrados);
       if (cambiaron) guardarPresupuestos(migrados);
       if (perfil) setPerfil(perfil);
+      setMateriales(mats || []);
+      setMaterialesCategorias(cats || []);
       // Primera vez: perfil vacío y nunca completó onboarding → ir a Mi Taller
       const onboardingDone = localStorage.getItem("carpicalc:onboarding_done");
       if (!perfil?.nombre && !onboardingDone) {
@@ -315,6 +319,19 @@ function AppInterna() {
     setCostosVersion(Date.now());
     return withSave(() => guardarCostos(data));
   };
+
+  // Save de materiales (entidad top-level). Recibe `mats` y opcionalmente `cats`.
+  // Si `cats` no se pasa, conserva las categorías actuales.
+  const hSaveMateriales = useCallback((mats, cats) => {
+    setMateriales(mats);
+    const catsFinal = cats !== undefined ? cats : materialesCategorias;
+    if (cats !== undefined) setMaterialesCategorias(cats);
+    return withSave(() => guardarMateriales(mats, catsFinal));
+  }, [materialesCategorias, withSave]);
+
+  // (Los handlers legacy handleGuardarMaterial3D / handleEliminarMaterial3D
+  // ya no se usan: la biblioteca 3D de Render IA fue reemplazada por
+  // MaterialesManager unificado. La migración legacy se hace en cargarDatos.)
 
   // ── getModUsado — resuelve módulo con overrides del presupuesto activo ─────
   // Prioridad: inlineModulos (fuente única completa) → base + dimOverride + composicionOverride
@@ -604,9 +621,9 @@ function AppInterna() {
                 onRenderGenerado={() => cargarSuscripcion().then(setSuscripcion)}
                 onImportarRender={handleImportarRender}
                 imagenRef3D={imagenRef3D}
-                materiales3D={materiales3D}
-                onGuardarMaterial3D={handleGuardarMaterial3D}
-                onEliminarMaterial3D={handleEliminarMaterial3D}
+                materiales={materiales}
+                materialesCategorias={materialesCategorias}
+                onSaveMateriales={hSaveMateriales}
               />
               </Suspense>
             </div>
@@ -700,7 +717,14 @@ function AppInterna() {
 
             {nav.vista === "costos" && (
               <Suspense fallback={null}>
-                <HojaCostos costos={costos} setCostos={setCostos} onSave={hSaveC} />
+                <HojaCostos
+                  costos={costos}
+                  setCostos={setCostos}
+                  onSave={hSaveC}
+                  materiales={materiales}
+                  materialesCategorias={materialesCategorias}
+                  onSaveMateriales={hSaveMateriales}
+                />
               </Suspense>
             )}
 

@@ -157,6 +157,10 @@ export const costoIniciales = {
     { id: 1, nombre: "Tapacanto melamina 19mm", precio: 180 },
     { id: 2, nombre: "Tapacanto PVC 2mm",        precio: 250 },
   ],
+  // Categorías para organizar materiales (vacío = sin agrupar).
+  // Cada material referencia una categoría opcional vía `material.categoria = categoria.id`.
+  // El array vive en costos.materialesCategorias y es manejado por materialesService.
+  materialesCategorias: [],
   // Porcentaje de desperdicio de material aplicado a m² bruto
   desperdicioPct: 20,
   // Porcentaje de ganancia aplicado sobre el costo base total

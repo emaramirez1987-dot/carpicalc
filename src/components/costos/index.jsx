@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Btn, Card, TextInput, Select, SectionTitle } from '../ui/index.jsx';
-import { fmtPeso, fmtNum, applyFactor, restoreFrom } from '../../utils.js';
+import { fmtPeso, applyFactor, restoreFrom } from '../../utils.js';
 import { cargarHistorialPrecios, guardarSnapshotPrecios } from '../../storage.js';
+import MaterialesManager from '../materiales/MaterialesManager.jsx';
 
 // Constantes de estilo compartidas entre los componentes Hc*
 const hcBb = {
@@ -480,16 +481,7 @@ const FilaVista = ({ style, onEnter, onLeave, children }) => (
 // 7. COSTOS
 // ══════════════════════════════════════════════════════════════════
 // ── HojaCostos ────────────────────────────────────────────────────
-function HojaCostos({ costos, setCostos, onSave }) {
-  const [nuevoMat, setNuevoMat] = useState({
-    nombre: "",
-    tipo: "melamina",
-    espesor: 18,
-    precioM2: "",
-    placaLargo: 2750,
-    placaAncho: 1830,
-    codigoEgger: "",
-  });
+function HojaCostos({ costos, setCostos, onSave, materiales = [], materialesCategorias = [], onSaveMateriales }) {
   const [nuevaMO, setNuevaMO] = useState({
     nombre: "",
     tipo: "por_modulo",
@@ -559,21 +551,6 @@ function HojaCostos({ costos, setCostos, onSave }) {
     setEditando((e) => ({ ...e, data: { ...e.data, [k]: v } }));
   const ok = () => {
     const { sec, id, data } = editando;
-    if (sec === "mat")
-      save({
-        ...costos,
-        materiales: costos.materiales.map((m) =>
-          m.id === id
-            ? {
-                ...data,
-                espesor: parseFloat(data.espesor) || 0,
-                precioM2: parseFloat(data.precioM2) || 0,
-                placaLargo: parseFloat(data.placaLargo) || 2750,
-                placaAncho: parseFloat(data.placaAncho) || 1830,
-              }
-            : m
-        ),
-      });
     if (sec === "mo")
       save({
         ...costos,
@@ -597,12 +574,6 @@ function HojaCostos({ costos, setCostos, onSave }) {
       });
     setEditando(null);
   };
-  const matOpts = [
-    { value: "melamina", label: "Melamina" },
-    { value: "mdf", label: "MDF" },
-    { value: "madera_maciza", label: "Madera maciza" },
-    { value: "terciado", label: "Terciado" },
-  ];
   const unidOpts = [
     { value: "u", label: "Unidad" },
     { value: "m", label: "Metro" },
@@ -732,265 +703,11 @@ function HojaCostos({ costos, setCostos, onSave }) {
       </HcSec>
 
       <HcSec icon="🪵" titulo="Materiales">
-        {costos.materiales.map((mat) => {
-          const ed = editando?.sec === "mat" && editando?.id === mat.id;
-          return (
-            <FilaVista
-              key={mat.id}
-              style={ed ? hcFE : hcFV}
-              onEnter={(e) => {
-                if (!ed)
-                  e.currentTarget.style.borderColor = "var(--accent-border)";
-              }}
-              onLeave={(e) => {
-                if (!ed) e.currentTarget.style.borderColor = "var(--border)";
-              }}
-            >
-              {ed ? (
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
-                >
-                  <div
-                    className="rsp-grid-1"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "2fr 1fr 1fr 1fr",
-                      gap: 10,
-                    }}
-                  >
-                    <div>
-                      <label style={hcLc}>Nombre</label>
-                      <HcII
-                        value={editando.data.nombre}
-                        onChange={(v) => updE("nombre", v)}
-                      />
-                    </div>
-                    <div>
-                      <label style={hcLc}>Tipo</label>
-                      <HcIS
-                        value={editando.data.tipo}
-                        onChange={(v) => updE("tipo", v)}
-                        options={matOpts}
-                      />
-                    </div>
-                    <div>
-                      <label style={hcLc}>Espesor mm</label>
-                      <HcII
-                        value={editando.data.espesor}
-                        onChange={(v) => updE("espesor", v)}
-                        type="number"
-                      />
-                    </div>
-                    <div>
-                      <label style={hcLc}>$/m²</label>
-                      <HcII
-                        value={editando.data.precioM2}
-                        onChange={(v) => updE("precioM2", v)}
-                        type="number"
-                      />
-                    </div>
-                  </div>
-                  <div
-                    className="rsp-grid-1"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr 1fr 1fr",
-                      gap: 10,
-                      paddingTop: 6,
-                      borderTop: "1px solid var(--border)",
-                    }}
-                  >
-                    <div>
-                      <label style={hcLc}>Largo placa (mm)</label>
-                      <HcII
-                        value={editando.data.placaLargo ?? 2750}
-                        onChange={(v) => updE("placaLargo", v)}
-                        type="number"
-                      />
-                    </div>
-                    <div>
-                      <label style={hcLc}>Ancho placa (mm)</label>
-                      <HcII
-                        value={editando.data.placaAncho ?? 1830}
-                        onChange={(v) => updE("placaAncho", v)}
-                        type="number"
-                      />
-                    </div>
-                    <div>
-                      <label style={hcLc}>Código EGGER</label>
-                      <HcII
-                        value={editando.data.codigoEgger ?? ""}
-                        onChange={(v) => updE("codigoEgger", v)}
-                        placeholder="ej: W1100 ST9"
-                      />
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-end",
-                        paddingBottom: 2,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 11,
-                          color: "var(--text-muted)",
-                          fontFamily: "'DM Mono',monospace",
-                        }}
-                      >
-                        Área:{" "}
-                        {fmtNum(
-                          ((editando.data.placaLargo ?? 2750) *
-                            (editando.data.placaAncho ?? 1830)) /
-                            1_000_000
-                        )}{" "}
-                        m²
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    <HcBtnCx onClick={() => setEditando(null)} />
-                    <HcBtnOk onClick={ok} />
-                  </div>
-                </div>
-              ) : (
-                <div className="rsp-lista-item" style={{ display: "flex", alignItems: "center", gap: 0, padding: "7px 0", flexWrap: "nowrap" }}>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {mat.nombre}
-                  </span>
-                  <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", flexShrink: 0, marginRight: 10 }}>
-                    {mat.espesor}mm · {mat.placaLargo ?? 2750}×{mat.placaAncho ?? 1830}
-                  </span>
-                  {mat.codigoEgger && (
-                    <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--accent)", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 6px", flexShrink: 0, marginRight: 10 }}>
-                      {mat.codigoEgger}
-                    </span>
-                  )}
-                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "var(--accent)", flexShrink: 0, marginRight: 14 }}>
-                    {fmtPeso(mat.precioM2)}/m²
-                  </span>
-                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    <HcBtnE onClick={() => ini("mat", mat)} />
-                    <HcBtnD onClick={() => save({ ...costos, materiales: costos.materiales.filter((m) => m.id !== mat.id) })} />
-                  </div>
-                </div>
-              )}
-            </FilaVista>
-          );
-        })}
-        <HcNewBox>
-          <div
-            className="rsp-grid-1"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "2fr 1fr 1fr 1fr",
-              gap: 8,
-              marginBottom: 8,
-            }}
-          >
-            <TextInput
-              label="Nombre"
-              placeholder="Melamina 15mm"
-              value={nuevoMat.nombre}
-              onChange={(v) => setNuevoMat((p) => ({ ...p, nombre: v }))}
-              small
-            />
-            <Select
-              label="Tipo"
-              value={nuevoMat.tipo}
-              onChange={(v) => setNuevoMat((p) => ({ ...p, tipo: v }))}
-              small
-              options={matOpts}
-            />
-            <TextInput
-              label="Espesor mm"
-              type="number"
-              value={nuevoMat.espesor}
-              onChange={(v) => setNuevoMat((p) => ({ ...p, espesor: v }))}
-              small
-              suffix="mm"
-            />
-            <TextInput
-              label="$/m²"
-              type="number"
-              value={nuevoMat.precioM2}
-              onChange={(v) => setNuevoMat((p) => ({ ...p, precioM2: v }))}
-              small
-            />
-          </div>
-          <div
-            className="rsp-grid-1"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr auto",
-              gap: 8,
-              alignItems: "end",
-            }}
-          >
-            <TextInput
-              label="Largo placa (mm)"
-              type="number"
-              value={nuevoMat.placaLargo}
-              onChange={(v) => setNuevoMat((p) => ({ ...p, placaLargo: v }))}
-              small
-              suffix="mm"
-            />
-            <TextInput
-              label="Ancho placa (mm)"
-              type="number"
-              value={nuevoMat.placaAncho}
-              onChange={(v) => setNuevoMat((p) => ({ ...p, placaAncho: v }))}
-              small
-              suffix="mm"
-            />
-            <TextInput
-              label="Código EGGER"
-              placeholder="ej: W1100 ST9"
-              value={nuevoMat.codigoEgger}
-              onChange={(v) => setNuevoMat((p) => ({ ...p, codigoEgger: v }))}
-              small
-            />
-            <div>
-              <Btn
-                small
-                onClick={() => {
-                  if (!nuevoMat.nombre || !nuevoMat.precioM2) return;
-                  save({
-                    ...costos,
-                    materiales: [
-                      ...costos.materiales,
-                      {
-                        ...nuevoMat,
-                        id: Date.now(),
-                        espesor: parseFloat(nuevoMat.espesor) || 18,
-                        precioM2: parseFloat(nuevoMat.precioM2),
-                        placaLargo: parseFloat(nuevoMat.placaLargo) || 2750,
-                        placaAncho: parseFloat(nuevoMat.placaAncho) || 1830,
-                      },
-                    ],
-                  });
-                  setNuevoMat({
-                    nombre: "",
-                    tipo: "melamina",
-                    espesor: 18,
-                    precioM2: "",
-                    placaLargo: 2750,
-                    placaAncho: 1830,
-                    codigoEgger: "",
-                  });
-                }}
-              >
-                + Agregar
-              </Btn>
-            </div>
-          </div>
-        </HcNewBox>
+        <MaterialesManager
+          materiales={materiales}
+          categorias={materialesCategorias}
+          onSave={onSaveMateriales}
+        />
       </HcSec>
 
       <HcSec icon="🎗" titulo="Tapacanto (por metro lineal)">
