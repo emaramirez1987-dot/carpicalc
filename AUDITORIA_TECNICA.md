@@ -819,13 +819,18 @@ presupuesto/ConfiguradorParametrico.jsx
 
 #### 🔴 RIESGO ALTO
 
-**1. `modulo.variables` shape inconsistente**
+**1. ~~`modulo.variables` shape inconsistente~~** ✅ **RESUELTO (2026-05-19)**
 
-El problema: `parsearModulo` trata `variables` como `Array`. Pero `resolverVariables` en utils.js lo trata como objeto `{ nombre: formula }`. Y el formulario también lo trata como objeto.
+~~El problema: `parsearModulo` trata `variables` como `Array`. Pero `resolverVariables` en utils.js lo trata como objeto `{ nombre: formula }`. Y el formulario también lo trata como objeto.~~
 
-En la práctica funciona porque al cargar los datos viejos de Supabase vienen como arrays de `{ nombre, formula }` y se convierten. Pero hay un riesgo latente de inconsistencia si se cambia la serialización.
+**Solución implementada:** `normalizarVariables()` en `moduloService.js` es la única función que toca el shape. Acepta las tres formas posibles:
+- `Object` → pass-through (formato canónico).
+- `Array` de `{ nombre, formula }` → convierte a Object (retrocompatibilidad total con datos viejos en Supabase).
+- Cualquier otro formato → cuarentena: `variables = {}`, flag `_variablesFormatoDesconocido = true`, `_variablesRawOriginal` preservado para diagnóstico, banner de aviso en la UI.
 
-**Documentado en `ARCHITECTURE.md` y `CLAUDE.md` como deuda técnica pendiente.**
+`guardarModulos` en `storage.js` llama a `limpiarMetadataRuntime()` (recursivo sobre subComponentes) antes de persistir, eliminando los campos de runtime.
+
+Contrato canónico desde esta fecha: **`modulo.variables` es siempre `Object { [nombre]: formula }`**. No hay más conversión implícita en callsites.
 
 **2. App.js tiene 848 líneas y sigue creciendo**
 
@@ -862,6 +867,10 @@ Si el navegador se cierra durante el window entre delete e insert, se pierden da
 **8. Imágenes como base64 en el objeto módulo**
 
 Las imágenes del catálogo se guardan como strings base64 dentro del objeto módulo en Supabase. Si el carpintero sube muchas imágenes de alta resolución (aunque se comprimen), el payload de `guardarModulos` puede volverse grande. Hay compresión implementada (`comprimirImagen`) pero no hay límite de tamaño forzado en la API de Supabase.
+
+**9. ~~Popovers VarsDropdown / GuiaFormulasBtn clipeados por overflow~~** ✅ **RESUELTO (2026-05-19)**
+
+Los popovers `⚡ vars` y `📖` usaban `position: absolute` y quedaban cortados por el ancestro con `overflow: hidden` (wrapper del form) y `overflow: auto` (panel de scroll). Corregido usando `position: fixed` + `getBoundingClientRect()` para anclar al botón trigger sin depender del stacking context del contenedor. Aplica a `VarsDropdown` en FormModulo, FormPieza y EditorComponenteHijo, y a `GuiaFormulasBtn`.
 
 ---
 
@@ -1083,7 +1092,7 @@ Esta función fue creada para reemplazar tres implementaciones paralelas que exi
 
 | Prioridad | Deuda | Ubicación | Impacto |
 |-----------|-------|-----------|---------|
-| Media | `variables` shape inconsistente (Array vs Object) | `parsearModulo` + `resolverVariables` | Riesgo latente de bug si se cambia la serialización |
+| ~~Media~~ ✅ | ~~`variables` shape inconsistente (Array vs Object)~~ **RESUELTO** | `normalizarVariables` en `moduloService.js` | Contrato canónico: Object. Array legacy y formatos desconocidos normalizados en el parser. |
 | Baja | App.js en crecimiento (848 líneas) | `App.js` | Mantenibilidad a largo plazo |
 | Baja | Estilos inline repetidos en componentes | Toda la carpeta components/ | Solo estética, no funcional |
 | Baja | Imágenes base64 en payload de módulos | `storage.js → guardarModulos` | Puede volverse lento con muchas imágenes grandes |

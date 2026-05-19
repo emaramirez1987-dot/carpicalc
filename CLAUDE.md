@@ -247,7 +247,7 @@ Estado expuesto: `vista`, `catalogoDeepLink`, `origenEdicion`, `presupuestoParaE
 {
   nombre, descripcion, categoria, material,
   dimensiones: { ancho, alto, profundidad },
-  variables: { [name]: formula | number },        // OJO: ver "Deuda técnica" — shape ambiguo
+  variables: { [name]: formula | number },        // Contrato canónico: Object. Parser normaliza formatos legacy (Array → Object, desconocido → cuarentena con flag).
   variablesCarpetas?: {                            // metadatos de organización en carpetas
     [scopeId]: { [carpetaId]: { nombre, vars: [...] } }
   },
@@ -309,7 +309,7 @@ Cubren el motor de fórmulas, parámetros, subcomponentes y armado 3D.
 ### Deuda técnica registrada
 | Priority | Tarea | Detalle |
 |---|---|---|
-| Alta | `modulo.variables` shape inconsistente | El parser lo valida como `Array`, pero `FormModulo`, `corte/`, `visor3d/`, `VarsExplorer` y `resolverVariables` lo tratan como objeto `{ key: formula }`. Funciona por conversión implícita en la lectura. Unificar a objeto en parser y callsites. Documentado en `src/ARCHITECTURE.md`. |
+| ~~Alta~~ ✅ | ~~`modulo.variables` shape inconsistente~~ **RESUELTO** | `normalizarVariables` en `moduloService.js` unifica Object (pass-through), Array legacy (convierte) y formato desconocido (cuarentena: `variables: {}` + flag `_variablesFormatoDesconocido` + UI banner). `guardarModulos` limpia runtime metadata antes de persistir. Contrato canónico: `Object { [nombre]: formula }`. |
 | Alta | `catalogoDeepLink` / `origenEdicion` se setean fuera del reducer | El reducer de NavContext los LIMPIA pero no tiene acción que los SETEE. App.js los lee del estado y los pasa por props a CatalogoModulos — sin embargo, no hay un dispatch claro que los inicialice. Investigar: o son legacy, o se setean por mutación directa del state inicial / efecto. |
 | Media | App.js en crecimiento (848 líneas) | Mantenibilidad a largo plazo. Mover handlers de dominio a hooks/services, sacar Header y lógica de auth a sus carpetas. |
 | Baja | Estilos inline repetidos | Patrones de IconBtn / ConfirmBtn / Chip duplicados en muchos componentes. Extraer a `components/ui/`. |
