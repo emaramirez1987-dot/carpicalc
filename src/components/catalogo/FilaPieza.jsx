@@ -5,20 +5,16 @@ import { fmtNum, resolverDim, evaluarFormula, resolverVariables } from '../../ut
 // FilaPieza — fila de una pieza dentro del listado de piezas en FormModulo
 // ════════════════════════════════════════════════════════════════════════════
 
-function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMoveDown, onChangeCantidad, dims, espesor, tapacanto, isFirst, isLast, modVars }) {
+function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMoveDown, dims, espesor, tapacanto, isFirst, isLast, modVars }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const baseVars = { ancho: dims.ancho || 0, alto: dims.alto || 0, profundidad: dims.profundidad || 0, esp: espesor };
   const allVars = resolverVariables(modVars, baseVars);
-  const d1 = pieza.especial
-    ? (parseInt(pieza.dimLibre1) || 0)
-    : pieza.formula1 != null
-      ? (evaluarFormula(pieza.formula1, allVars) ?? 0)
-      : resolverDim(dims[pieza.usaDim], pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1, espesor);
-  const d2 = pieza.especial
-    ? (parseInt(pieza.dimLibre2) || 0)
-    : pieza.formula2 != null
-      ? (evaluarFormula(pieza.formula2, allVars) ?? 0)
-      : resolverDim(dims[pieza.usaDim2], pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1, espesor);
+  const d1 = pieza.formula1 != null
+    ? (evaluarFormula(pieza.formula1, allVars) ?? 0)
+    : resolverDim(dims[pieza.usaDim], pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1, espesor);
+  const d2 = pieza.formula2 != null
+    ? (evaluarFormula(pieza.formula2, allVars) ?? 0)
+    : resolverDim(dims[pieza.usaDim2], pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1, espesor);
   const area = (d1 * d2 * pieza.cantidad) / 1_000_000;
   const tcDef = tapacanto?.find((t) => t.id === pieza.tc?.id);
   const mTc = pieza.tc?.id
@@ -42,18 +38,13 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
 
       {/* Nombre */}
       <div style={{ flex: "1 1 130px", minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 5 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {pieza.nombre}
-          {pieza.especial && (
-            <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(212,175,55,0.18)", color: "var(--accent)", border: "1px solid var(--accent-border)", borderRadius: 4, padding: "1px 4px", flexShrink: 0 }}>ESP</span>
-          )}
         </div>
         <div style={{ fontSize: 10, marginTop: 1, fontFamily: "'DM Mono',monospace", color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {pieza.especial
-            ? `libre: ${pieza.dimLibre1 || 0}×${pieza.dimLibre2 || 0}mm`
-            : pieza.formula1 != null
-              ? `${pieza.formula1} × ${pieza.formula2}`
-              : `${pieza.usaDim}${offsetLabel(pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1)} × ${pieza.usaDim2}${offsetLabel(pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1)}`}
+          {pieza.formula1 != null
+            ? `${pieza.formula1} × ${pieza.formula2}`
+            : `${pieza.usaDim}${offsetLabel(pieza.offsetEsp, pieza.offsetMm, pieza.divisor || 1)} × ${pieza.usaDim2}${offsetLabel(pieza.offsetEsp2, pieza.offsetMm2, pieza.divisor2 || 1)}`}
         </div>
       </div>
 
@@ -79,18 +70,6 @@ function FilaPieza({ pieza, idx, onDelete, onEdit, onDuplicate, onMoveUp, onMove
           <div style={{ ...metVal, color: "var(--accent)" }}>{fmtNum(mTc, 2)}<span style={{ fontSize: 10, color: "var(--text-secondary)", marginLeft: 2 }}>m</span></div>
         </div>
       )}
-
-      {/* Separador */}
-      <div style={{ width: 1, height: 28, background: "var(--border)", flexShrink: 0 }} />
-
-      {/* Cantidad */}
-      <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
-        <button onClick={() => onChangeCantidad(Math.max(1, pieza.cantidad - 1))}
-          style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "var(--accent)", minWidth: 24, textAlign: "center" }}>×{pieza.cantidad}</span>
-        <button onClick={() => onChangeCantidad(pieza.cantidad + 1)}
-          style={{ width: 22, height: 22, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-      </div>
 
       {/* Separador */}
       <div style={{ width: 1, height: 28, background: "var(--border)", flexShrink: 0 }} />

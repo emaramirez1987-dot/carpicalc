@@ -6,7 +6,6 @@ import React, { useState, useRef } from 'react';
 import { resolverDim, evaluarFormula } from '../../utils.js';
 import { resolverContextoModulo, contextoRepeatVar } from '../../services/moduloService.js';
 import { ORIENTACIONES_3D } from '../visor3d/engine/buildPiezas3D.js';
-import { DimRowLibre } from './DimRowEditor.jsx';
 import VarsExplorer, { construirScopes } from './VarsExplorer.jsx';
 import GuiaFormulasBtn from './GuiaFormulasBtn.jsx';
 
@@ -298,21 +297,10 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costo
           );
         })()}
 
-        {/* Toggle Libre */}
-        <button onClick={() => setFp(p => ({ ...p, especial: !p.especial }))}
-          style={{
-            height: 28, padding: "0 10px", borderRadius: 5, fontSize: 10, fontWeight: 700,
-            fontFamily: M, cursor: "pointer", transition: "all 0.12s", flexShrink: 0,
-            background: fp.especial ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${fp.especial ? "var(--accent-border)" : "var(--border)"}`,
-            color: fp.especial ? "var(--accent)" : "var(--text-muted)",
-          }}>
-          ✦ Libre
-        </button>
       </div>
 
       {/* ── Filas D1 / D2 — grupo compacto ──────────────────────────────── */}
-      {!fp.especial && <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
       {dimRows.map(({ key, label, resultado, valida, esperada }) => {
         const advertencia = def && esperada && fp[key] && !String(fp[key]).includes(esperada);
         return (
@@ -361,25 +349,8 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costo
       })}</div>}
 
       {/* ── Medidas libres ────────────────────────────────────────────────── */}
-      {fp.especial && (
-        <>
-          <div style={{ fontSize: 10, padding: "4px 8px", background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.20)", borderRadius: 5, color: "var(--accent)", fontFamily: M }}>
-            ✦ Medidas libres — no dependen de las dimensiones del módulo
-          </div>
-          <DimRowLibre titulo="D1" valKey="dimLibre1" fp={fp} setFp={setFp} />
-          <DimRowLibre titulo="D2" valKey="dimLibre2" fp={fp} setFp={setFp} />
-          {(parseInt(fp.dimLibre1) || 0) > 0 && (parseInt(fp.dimLibre2) || 0) > 0 && (
-            <div style={{ padding: "3px 8px", background: "rgba(126,207,138,0.06)", border: "1px solid rgba(126,207,138,0.15)", borderRadius: 5 }}>
-              <span style={{ fontFamily: M, fontSize: 11, color: "var(--color-positive)", fontWeight: 600 }}>
-                {parseInt(fp.dimLibre1) || 0} × {parseInt(fp.dimLibre2) || 0} mm
-              </span>
-            </div>
-          )}
-        </>
-      )}
-
       {/* ── Sub-tabs: Pos. 3D / Param. ───────────────────────────────────── */}
-      {!fp.especial && (
+      {(
         <div style={{ marginTop: 1, borderTop: "1px solid var(--border)" }}>
           <SubTabBar tabs={subTabs} active={subTab} onSelect={setSubTab} />
           <div style={{ paddingTop: 20, display: "flex", flexDirection: "column", gap: 7 }}>

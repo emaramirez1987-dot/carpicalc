@@ -897,7 +897,7 @@ function FormModulo({
                         onDelete={(i) => { setPiezas(prev => prev.filter((_, j) => j !== i)); if (editandoPiezaIdx === i) cancelarEdicion(); }}
                         onEdit={editarPieza} onDuplicate={duplicarPieza}
                         onMoveUp={(i) => moverPieza(i, -1)} onMoveDown={(i) => moverPieza(i, 1)}
-                        onChangeCantidad={(cant) => setPiezas(prev => prev.map((px, j) => j === i ? { ...px, cantidad: cant } : px))} />
+                        />
                     ))
                   )}
                 </div>
