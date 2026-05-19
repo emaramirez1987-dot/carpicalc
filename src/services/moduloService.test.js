@@ -121,6 +121,98 @@ describe("parsearModulo", () => {
     });
     expect(m.piezas[0].repeat).toEqual({ var: "i", from: 1, to: "estantes" });
   });
+
+  // ── variables shape — normalización defensiva ──────────────────────────
+  // El contrato canónico es Object { [nombre]: formula }. Estos tests cubren
+  // todos los formatos esperados + degradación silenciosa para los raros.
+  describe("variables shape", () => {
+    const baseModulo = {
+      nombre: "Test",
+      piezas: [],
+      dimensiones: { ancho: 600, alto: 720, profundidad: 550 },
+    };
+
+    test("variables ausente → {}", () => {
+      const m = parsearModulo(baseModulo);
+      expect(m.variables).toEqual({});
+      expect(m._variablesFormatoDesconocido).toBeFalsy();
+    });
+
+    test("variables null → {}", () => {
+      const m = parsearModulo({ ...baseModulo, variables: null });
+      expect(m.variables).toEqual({});
+      expect(m._variablesFormatoDesconocido).toBeFalsy();
+    });
+
+    test("variables ya en Object → passthrough", () => {
+      const m = parsearModulo({ ...baseModulo, variables: { zocalo: 80, borde: "esp * 2" } });
+      expect(m.variables).toEqual({ zocalo: 80, borde: "esp * 2" });
+      expect(m._variablesFormatoDesconocido).toBeFalsy();
+    });
+
+    test("variables Array legacy → convertido a Object", () => {
+      const m = parsearModulo({
+        ...baseModulo,
+        variables: [
+          { nombre: "zocalo", formula: 80 },
+          { nombre: "borde",  formula: "esp * 2" },
+        ],
+      });
+      expect(m.variables).toEqual({ zocalo: 80, borde: "esp * 2" });
+      expect(m._variablesFormatoDesconocido).toBeFalsy();
+    });
+
+    test("variables Array con entries inválidos → ignora los inválidos", () => {
+      const m = parsearModulo({
+        ...baseModulo,
+        variables: [
+          { nombre: "zocalo", formula: 80 },
+          { sinNombre: true, formula: 99 },   // sin nombre — descartar
+          null,                                // entry null — descartar
+          { nombre: "borde", formula: 4 },
+        ],
+      });
+      expect(m.variables).toEqual({ zocalo: 80, borde: 4 });
+    });
+
+    test("variables en formato desconocido (string) → {} + flag + raw original", () => {
+      const m = parsearModulo({ ...baseModulo, variables: "formato_raro" });
+      expect(m.variables).toEqual({});
+      expect(m._variablesFormatoDesconocido).toBe(true);
+      expect(m._variablesRawOriginal).toBe("formato_raro");
+    });
+
+    test("variables en formato desconocido (número) → {} + flag", () => {
+      const m = parsearModulo({ ...baseModulo, variables: 42 });
+      expect(m.variables).toEqual({});
+      expect(m._variablesFormatoDesconocido).toBe(true);
+      expect(m._variablesRawOriginal).toBe(42);
+    });
+
+    test("subComponentes[*].variables también se normaliza", () => {
+      const m = parsearModulo({
+        ...baseModulo,
+        subComponentes: [
+          {
+            id: "sub1",
+            nombre: "cajon",
+            dimensiones: { ancho: 100, alto: 100, profundidad: 100 },
+            variables: [{ nombre: "h_cajon", formula: 80 }],  // legacy Array
+            piezas: [],
+          },
+          {
+            id: "sub2",
+            nombre: "estante",
+            dimensiones: { ancho: 100, alto: 100, profundidad: 100 },
+            variables: { espesor_local: 18 },                   // ya Object
+            piezas: [],
+          },
+        ],
+      });
+      expect(m.subComponentes[0].variables).toEqual({ h_cajon: 80 });
+      expect(m.subComponentes[1].variables).toEqual({ espesor_local: 18 });
+    });
+  });
 });
 
 // ── parsearPresupuesto ─────────────────────────────────────────────────────

@@ -47,7 +47,7 @@ export const PERFIL_VACIO = {
 //   material    — clave de TIPO_MAT
 //   dimensiones — { ancho, alto, profundidad } en mm
 //   piezas      — PiezaModulo[] (ver roles en ROLES_PIEZA_DEFAULT)
-//   variables   — Variable[] { nombre, formula } para cálculos encadenados
+//   variables   — Object { [nombre]: formula } para cálculos encadenados
 //   herrajes    — Herraje[] referenciando costos.herrajes
 //                 { id, cantidad: number|string, condition?: string }
 //                 cantidad puede ser fórmula; condition habilita/oculta
@@ -77,7 +77,7 @@ export const MODULO_VACIO = {
   material:    "melamina",
   dimensiones: { ancho: 600, alto: 720, profundidad: 550 },
   piezas:      [],
-  variables:   [],
+  variables:   {},
   herrajes:    [],
   moDeObra:    { tipo: "por_modulo", horas: 0 },
   imagen:      null,

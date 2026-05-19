@@ -121,6 +121,20 @@ export async function cargarDatos() {
   }
 }
 
+// ── limpiarMetadataRuntime ────────────────────────────────────────────────
+// Strip campos `_variablesRawOriginal` / `_variablesFormatoDesconocido` antes
+// de persistir. Son metadata de runtime, no de dominio.
+// Recursivo sobre subComponentes — un módulo anidado también puede tener
+// el flag de cuarentena por sus propias variables.
+function limpiarMetadataRuntime(m) {
+  if (!m || typeof m !== "object") return m;
+  const { _variablesRawOriginal, _variablesFormatoDesconocido, ...limpio } = m;
+  if (Array.isArray(limpio.subComponentes)) {
+    limpio.subComponentes = limpio.subComponentes.map(limpiarMetadataRuntime);
+  }
+  return limpio;
+}
+
 // ── Guardar módulos ───────────────────────────────────────────────────────
 export const guardarModulos = async (modulosObj, ts) => {
   _save("carpicalc:costos_version", (ts || Date.now()).toString());
@@ -136,7 +150,11 @@ export const guardarModulos = async (modulosObj, ts) => {
 
     if (entries.length > 0) {
       const { error } = await supabase.from("modulos").insert(
-        entries.map(([codigo, datos]) => ({ workspace_id: wsId, codigo, datos }))
+        entries.map(([codigo, datos]) => ({
+          workspace_id: wsId,
+          codigo,
+          datos: limpiarMetadataRuntime(datos),
+        }))
       );
       if (error) { console.error("guardarModulos insert:", error); return false; }
     }

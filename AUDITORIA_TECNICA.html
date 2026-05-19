@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auditoría Técnica — CarpiCalc</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.65;
+    color: #1a1a2e;
+    background: #fff;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 48px;
+  }
+
+  /* ── PORTADA ── */
+  .portada {
+    text-align: center;
+    padding: 60px 0 50px;
+    border-bottom: 3px solid #c8a030;
+    margin-bottom: 48px;
+    page-break-after: always;
+  }
+  .portada-logo {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  .portada h1 {
+    font-size: 32px;
+    font-weight: 900;
+    color: #c8a030;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  .portada h2 {
+    font-size: 18px;
+    font-weight: 400;
+    color: #555;
+    margin-bottom: 24px;
+  }
+  .portada-meta {
+    display: inline-block;
+    background: #f8f4e8;
+    border: 1px solid #e8d878;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 12px;
+    color: #7a6010;
+  }
+
+  /* ── ÍNDICE ── */
+  .indice {
+    background: #f8f8fc;
+    border: 1px solid #dde;
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 40px;
+    page-break-after: always;
+  }
+  .indice h2 { font-size: 14px; font-weight: 700; color: #c8a030; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 14px; }
+  .indice ol { padding-left: 20px; }
+  .indice li { padding: 4px 0; color: #333; font-size: 13px; }
+  .indice a { color: #3a6bc8; text-decoration: none; }
+
+  /* ── FASES ── */
+  .fase {
+    margin-bottom: 52px;
+    page-break-inside: avoid;
+  }
+  .fase-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #2a2a4e 100%);
+    color: #fff;
+    padding: 16px 20px;
+    border-radius: 10px 10px 0 0;
+    margin-bottom: 0;
+  }
+  .fase-num {
+    background: #c8a030;
+    color: #1a1a2e;
+    font-weight: 900;
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  .fase-titulo {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .fase-body {
+    border: 1px solid #dde;
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    padding: 24px 24px 20px;
+    background: #fafbff;
+  }
+
+  /* ── TIPOGRAFÍA ── */
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #2a2a4e;
+    margin: 24px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #e8d878;
+  }
+  h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #c8a030;
+    margin: 20px 0 6px;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.03em;
+  }
+  p { margin-bottom: 10px; }
+  ul, ol { padding-left: 20px; margin-bottom: 12px; }
+  li { margin-bottom: 4px; }
+  strong { color: #1a1a2e; }
+  em { color: #555; }
+
+  /* ── CÓDIGO ── */
+  code {
+    background: #f0f0f8;
+    border: 1px solid #dde;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: 'Courier New', monospace;
+    font-size: 11.5px;
+    color: #3a3a7a;
+  }
+  pre {
+    background: #1a1a2e;
+    color: #c8d8f0;
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+    font-size: 11px;
+    line-height: 1.7;
+    font-family: 'Courier New', monospace;
+    white-space: pre;
+    page-break-inside: avoid;
+  }
+
+  /* ── TABLAS ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 18px;
+    font-size: 12px;
+    page-break-inside: avoid;
+  }
+  thead tr { background: #1a1a2e; color: #fff; }
+  thead th { padding: 9px 12px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+  tbody tr:nth-child(even) { background: #f4f4fc; }
+  tbody tr:hover { background: #eeeef8; }
+  tbody td { padding: 7px 12px; border-bottom: 1px solid #e0e0ec; color: #333; }
+
+  /* ── BADGES DE RIESGO ── */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+  .badge-red    { background: #fde8e8; color: #c03030; border: 1px solid #f0a0a0; }
+  .badge-yellow { background: #fdf8e0; color: #806010; border: 1px solid #e0c050; }
+  .badge-green  { background: #e8f8ec; color: #2a8040; border: 1px solid #80c890; }
+
+  /* ── CALLOUTS ── */
+  .callout {
+    border-left: 4px solid #c8a030;
+    background: #fdf8e8;
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+    font-size: 12.5px;
+    color: #5a4010;
+  }
+  .callout-blue {
+    border-left-color: #3a6bc8;
+    background: #f0f4fd;
+    color: #1a3060;
+  }
+  .callout-red {
+    border-left-color: #c03030;
+    background: #fdf0f0;
+    color: #601010;
+  }
+
+  /* ── SEPARADORES ── */
+  hr { border: none; border-top: 1px solid #e0e0ec; margin: 28px 0; }
+
+  /* ── IMPRESIÓN ── */
+  @media print {
+    body { padding: 20px 28px; font-size: 11.5px; }
+    .portada { page-break-after: always; }
+    .indice  { page-break-after: always; }
+    .fase    { page-break-inside: avoid; }
+    pre      { font-size: 9.5px; }
+    table    { font-size: 10.5px; }
+    a        { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════ PORTADA -->
+<div class="portada">
+  <div class="portada-logo">🪚</div>
+  <h1>AUDITORÍA TÉCNICA COMPLETA</h1>
+  <h2>CarpiCalc — Radiografía del estado actual del proyecto</h2>
+  <div class="portada-meta">
+    📅 Mayo 2026 &nbsp;·&nbsp; Versión: producción actual en Vercel &nbsp;·&nbsp; 9 fases &nbsp;·&nbsp; Inspección directa del código fuente
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ ÍNDICE -->
+<div class="indice">
+  <h2>Índice</h2>
+  <ol>
+    <li>Árbol completo del proyecto — qué hay, dónde, para qué</li>
+    <li>Arquitectura real implementada — capas y tecnologías</li>
+    <li>Mapa de componentes — los 15 archivos más importantes</li>
+    <li>Flujos reales del sistema — cómo viajan los datos</li>
+    <li>Sistema de estado — qué se recuerda y dónde</li>
+    <li>Dependencias cruzadas — quién depende de quién</li>
+    <li>Puntos críticos actuales — riesgos y deuda técnica</li>
+    <li>Mapa de impacto — ¿qué se rompe si tocás X?</li>
+    <li>Resumen ejecutivo — conclusión y guía de cambios</li>
+  </ol>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ FASE 1 -->
+<div class="fase">
+  <div class="fase-header">
+    <span class="fase-num">FASE 1</span>
+    <span class="fase-titulo">Árbol completo del proyecto</span>
+  </div>
+  <div class="fase-body">
+
+    <div class="callout">
+      <strong>¿Qué es CarpiCalc?</strong> Una app web para carpinteros. Permite crear un catálogo de muebles con sus medidas y piezas, armar presupuestos, ver todo en 3D, calcular cuánto material se necesita y gestionar trabajos como un tablero Kanban. Funciona 100% en el navegador. Los datos se guardan en la nube (Supabase).
+    </div>
+
+    <h3>Las 10 pestañas de la app</h3>
+    <table>
+      <thead><tr><th>#</th><th>Pestaña</th><th>Archivo principal</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><strong>Presupuesto</strong></td><td><code>presupuesto/index.jsx</code></td><td>Editor activo de presupuesto. Carga INMEDIATA (no lazy)</td></tr>
+        <tr><td>2</td><td><strong>Catálogo</strong></td><td><code>catalogo/index.jsx</code></td><td>CRUD de módulos del carpintero</td></tr>
+        <tr><td>3</td><td><strong>Costos</strong></td><td><code>costos/</code></td><td>Precios de materiales, herrajes, MO</td></tr>
+        <tr><td>4</td><td><strong>Vista 3D</strong></td><td><code>vista3d/Vista3DTab.jsx</code></td><td>Vista 3D del presupuesto activo</td></tr>
+        <tr><td>5</td><td><strong>Vista previa</strong></td><td><code>vista-previa/</code></td><td>PDF, WhatsApp, link de aprobación</td></tr>
+        <tr><td>6</td><td><strong>Corte</strong></td><td><code>corte/</code></td><td>Optimizador de corte por placa</td></tr>
+        <tr><td>7</td><td><strong>Trabajos</strong></td><td><code>trabajos/</code></td><td>Kanban de estado de trabajos</td></tr>
+        <tr><td>8</td><td><strong>Caja</strong></td><td><code>caja/</code></td><td>Cobros y rentabilidad</td></tr>
+        <tr><td>9</td><td><strong>Perfil</strong></td><td><code>perfil/PanelPerfil.jsx</code></td><td>Datos del taller</td></tr>
+        <tr><td>10</td><td><strong>Suscripción</strong></td><td><code>suscripcion/PanelSuscripcion.jsx</code></td><td>Planes Bronce / Plata / Oro</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Estructura de carpetas</h3>
+<pre>carpicalc/
+│
+├── public/                        → Archivos estáticos: logo, favicon, html base
+├── supabase/migrations/           → Script SQL: crea las tablas en la nube
+├── api/                           → 8 funciones serverless de Vercel
+│   ├── cancel-subscription.js     → Cancela suscripción en Mercado Pago
+│   ├── check-subscription.js      → Verifica si el plan está activo
+│   ├── create-subscription.js     → Crea nueva suscripción
+│   ├── deduct-render.js           → Descuenta un crédito de render IA
+│   ├── generate-render-gpt.js     → Render fotorrealista con GPT-4o Vision
+│   ├── generate-render.js         → Versión alternativa de render IA
+│   ├── generate-scene.js          → Genera escena 3D para el render
+│   └── mp-webhook.js              → Notificaciones de Mercado Pago (alta/baja)
+│
+└── src/                           → Todo el código fuente
+    ├── App.js                     → EL CEREBRO: estado global, layout raíz
+    ├── utils.js                   → Motor de cálculo: fórmulas, costos, SVG
+    ├── storage.js                 → Persistencia: Supabase + localStorage
+    ├── constants.js               → Datos fijos: materiales, categorías, defaults
+    │
+    ├── lib/supabase.js            → Conexión única a Supabase
+    ├── state/NavContext.jsx        → Estado de navegación (qué pestaña)
+    ├── state/PresupuestoContext.jsx→ Estado del presupuesto en edición ahora
+    │
+    ├── services/
+    │   ├── moduloService.js        → Lógica de módulos: parsear, generar piezas
+    │   ├── presupuestoService.js   → Crear, eliminar, migrar presupuestos
+    │   └── optimizerService.js     → Algoritmo de corte optimizado
+    │
+    ├── hooks/
+    │   ├── useUndo.js              → Deshacer/rehacer acciones
+    │   ├── useTema.js              → Tema oscuro/claro
+    │   └── useIsMobile.js          → Detectar si es celular
+    │
+    └── components/
+        ├── ui/                     → Botones, cards, badges reutilizables
+        ├── auth/                   → Login con Supabase
+        ├── catalogo/               → Editor del catálogo (el más complejo)
+        ├── presupuesto/            → Editor de presupuestos
+        ├── visor3d/                → Visor 3D individual (catálogo)
+        ├── vista3d/                → Vista 3D multi-módulo (presupuesto)
+        ├── vista-svg/              → Renderer SVG 2D (vista técnica)
+        ├── corte/                  → Lista de cortes optimizada
+        ├── trabajos/               → Kanban de trabajos
+        ├── caja/                   → Cobros y rentabilidad
+        ├── costos/                 → Tabla de precios
+        ├── perfil/                 → Panel del taller
+        ├── suscripcion/            → Planes de pago
+        ├── render/                 → Renders fotorrealistas con IA
+        └── ErrorBoundary.jsx       → Captura errores en runtime</pre>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ FASE 2 -->
+<div class="fase">
+  <div class="fase-header">
+    <span class="fase-num">FASE 2</span>
+    <span class="fase-titulo">Arquitectura real implementada</span>
+  </div>
+  <div class="fase-body">
+
+    <div class="callout callout-blue">
+      Imaginá la app como una fábrica con departamentos: el Director (App.js) tiene todos los datos, el Almacén (storage.js) guarda y lee de la nube, los Calculistas (services/) hacen cálculos sin efectos secundarios, y los Trabajadores (components/) muestran la pantalla.
+    </div>
+
+    <h3>Stack tecnológico</h3>
+    <table>
+      <thead><tr><th>Capa</th><th>Tecnología</th><th>Para qué</th></tr></thead>
+      <tbody>
+        <tr><td>Frontend</td><td>React 18 (SPA)</td><td>Toda la UI. No recarga la página.</td></tr>
+        <tr><td>Estilos</td><td>CSS-in-JS + variables CSS globales</td><td>Dark/light theme sin librería externa</td></tr>
+        <tr><td>3D</td><td>Three.js</td><td>Visor 3D de muebles</td></tr>
+        <tr><td>PDFs</td><td>jsPDF</td><td>Generación de presupuestos PDF</td></tr>
+        <tr><td>Base de datos</td><td>Supabase (Postgres + Auth + RLS)</td><td>Fuente de verdad en la nube</td></tr>
+        <tr><td>API</td><td>Vercel Serverless Functions</td><td>Pagos + IA (8 endpoints)</td></tr>
+        <tr><td>Deploy</td><td>Vercel + GitHub</td><td>CI/CD automático</td></tr>
+        <tr><td>Pagos</td><td>Mercado Pago</td><td>Suscripciones Bronce/Plata/Oro</td></tr>
+        <tr><td>IA</td><td>GPT-4o Vision API</td><td>Renders fotorrealistas</td></tr>
+        <tr><td>Build</td><td>react-scripts (Create React App)</td><td>CI=true → warning = error de build</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Capas de la arquitectura</h3>
+<pre>┌──────────────────────────────────────────────────────────┐
+│  PRESENTACIÓN: components/  (lo que se ve)               │
+│   ├─ components/ui/         Botones, cards, badges       │
+│   ├─ components/presupuesto/ Editor de presupuestos      │
+│   ├─ components/catalogo/   Editor de módulos            │
+│   └─ components/visor3d/    Visor 3D                     │
+├──────────────────────────────────────────────────────────┤
+│  ESTADO: App.js + Contexts  (lo que se recuerda)         │
+│   ├─ App.js            modulos, costos, presupuestos     │
+│   ├─ NavContext         pestaña activa, deep links       │
+│   └─ PresupuestoContext ítems, dims, adicionales         │
+├──────────────────────────────────────────────────────────┤
+│  SERVICIOS: services/  (lógica pura, sin side effects)   │
+│   ├─ moduloService.js   parseo, parámetros, piezas       │
+│   ├─ presupuestoService.js  mutaciones de presupuestos   │
+│   └─ optimizerService.js    algoritmo de corte           │
+├──────────────────────────────────────────────────────────┤
+│  CÁLCULO: utils.js  (matemática pura)                    │
+│   └─ evaluarExpresion, calcularModulo, generarVistaSVG   │
+├──────────────────────────────────────────────────────────┤
+│  PERSISTENCIA: storage.js  (leer/escribir)               │
+│   ├─ Supabase: módulos, presupuestos, perfil, costos     │
+│   └─ localStorage: borrador, tema, caché ligero          │
+└──────────────────────────────────────────────────────────┘</pre>
+
+    <div class="callout">
+      <strong>Regla de oro:</strong> Cada capa solo puede hablar con la capa de abajo. Un componente puede usar un service ✅. Un service no puede llamar a un componente ❌. Un componente no puede escribir directo en Supabase ❌ (siempre via storage.js).
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ FASE 3 -->
+<div class="fase">
+  <div class="fase-header">
+    <span class="fase-num">FASE 3</span>
+    <span class="fase-titulo">Mapa de componentes — los 15 archivos más importantes</span>
+  </div>
+  <div class="fase-body">
+
+    <h4>1. App.js — El cerebro &nbsp;<span class="badge badge-red">CRITICIDAD MÁXIMA · 848 líneas</span></h4>
+    <p>Componente raíz. Contiene autenticación, todo el estado de dominio, la cola de guardado serializada (<code>withSave</code>), el layout raíz con 10 pestañas, y carga todas las pestañas con <code>React.lazy()</code> excepto Presupuesto (siempre visible). Usa el patrón <code>display:none</code> para preservar el estado de pestañas visitadas sin desmontar el componente.</p>
+
+    <h4>2. utils.js — El calculador &nbsp;<span class="badge badge-red">CRITICIDAD MÁXIMA · 857 líneas</span></h4>
+    <table>
+      <thead><tr><th>Función</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>evaluarExpresion(expr, vars)</code></td><td>Motor central de fórmulas. Usa <code>new Function()</code> con whitelist de seguridad.</td></tr>
+        <tr><td><code>evaluarFormula(expr, vars)</code></td><td>Igual pero clampea el resultado a ≥ 0</td></tr>
+        <tr><td><code>evaluarCondicion(expr, vars)</code></td><td>Evalúa una fórmula como booleano</td></tr>
+        <tr><td><code>resolverVariables(rawVars, baseVars)</code></td><td>Resuelve variables custom encadenadas. Itera hasta que todas estén resueltas.</td></tr>
+        <tr><td><code>calcularModulo(modulo, costos, params)</code></td><td>Calcula el costo completo: m², tapacanto, herrajes, MO, ganancia, total</td></tr>
+        <tr><td><code>recalcularTotalPresupuesto(p, mods, costos)</code></td><td>Recalcula el total de un presupuesto determinísticamente</td></tr>
+        <tr><td><code>generarVistaSVG(modulo, opts)</code></td><td>Genera SVG de vista técnica de frente del módulo</td></tr>
+        <tr><td><code>resolverDim(base, offsetEsp, ...)</code></td><td>Calcula la dimensión de una pieza según la fórmula estándar</td></tr>
+      </tbody>
+    </table>
+
+    <h4>3. services/moduloService.js — Corazón del sistema paramétrico &nbsp;<span class="badge badge-red">CRITICIDAD MÁXIMA · 652 líneas</span></h4>
+    <table>
+      <thead><tr><th>Función</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>parsearModulo(raw)</code></td><td>Normaliza datos crudos de Supabase. Rellena campos faltantes con defaults. Nunca crashea.</td></tr>
+        <tr><td><code>resolverContextoModulo()</code></td><td><strong>LA FUNCIÓN MÁS CRÍTICA.</strong> Construye el contexto completo de variables para evaluar cualquier fórmula. TODO el código debe usar esta función.</td></tr>
+        <tr><td><code>generarPiezas(modulo, params, costos)</code></td><td>Expande módulo paramétrico: aplica <code>condition</code> (filtra) y <code>repeat</code> (multiplica). Devuelve módulo concreto.</td></tr>
+        <tr><td><code>expandirSubComponentes()</code></td><td>Convierte mini-módulos internos en piezas del padre, trasladando coordenadas locales → globales.</td></tr>
+        <tr><td><code>calcularVarsDePiezas()</code></td><td>Genera vars <code>lateral_d1</code>, <code>lateral_x</code>, etc. para que otras piezas referencien las medidas de una pieza.</td></tr>
+        <tr><td><code>resolverParametros()</code></td><td>Mezcla defaults de parámetros con valores del usuario. Resuelve parámetros tipo "formula".</td></tr>
+        <tr><td><code>evaluarConstraints()</code></td><td>Valida restricciones del módulo. Ej: "alto >= cajones * 80".</td></tr>
+        <tr><td><code>resolverHerrajes()</code></td><td>Calcula herrajes con condiciones y fórmulas de cantidad.</td></tr>
+      </tbody>
+    </table>
+
+    <h4>4. storage.js — Guardián de datos &nbsp;<span class="badge badge-red">CRITICIDAD ALTA · 364 líneas</span></h4>
+    <p>Única capa que habla con Supabase y localStorage. Estrategia: delete-all + insert-all por workspace. Simple y confiable para un usuario. Las funciones más importantes: <code>cargarDatos()</code>, <code>guardarModulos()</code>, <code>guardarPresupuestos()</code>, <code>cargarBorradorModulo()</code>.</p>
+
+    <h4>5. state/NavContext.jsx — El navegador &nbsp;<span class="badge badge-yellow">CRITICIDAD ALTA · 120 líneas</span></h4>
+    <p>Solo maneja navegación. Usa <code>useReducer</code> con 12 acciones semánticas. Patrón importante: las acciones son "puentes" — un componente pone datos, otro los consume y los borra (DEEPLINK_CONSUMIDO). Así no quedan estados colgados.</p>
+
+    <h4>6. state/PresupuestoContext.jsx — El editor activo &nbsp;<span class="badge badge-yellow">CRITICIDAD ALTA · 43 líneas</span></h4>
+    <p>Define solo el contexto. El estado real vive en <code>AppInterna</code> dentro de <code>App.js</code>. Expone: <code>items</code>, <code>dimOverride</code>, <code>composicionOverride</code>, <code>inlineModulos</code>, <code>adicionales</code>, <code>costosDirectos</code>, <code>presupuestoActivoId</code>.</p>
+
+    <h4>7. visor3d/engine/buildPiezas3D.js — Motor 3D &nbsp;<span class="badge badge-yellow">CRITICIDAD ALTA</span></h4>
+    <p>Función pura: módulo + costos + parámetros → lista de piezas con geometría 3D. No importa React ni Three.js. Proceso: expande con <code>generarPiezas()</code> → resuelve contexto → determina orientación por campo o por nombre → calcula d1/d2 → evalúa posFormulas → devuelve array de geometrías.</p>
+
+    <h4>8. catalogo/index.jsx — El catálogo &nbsp;<span class="badge badge-yellow">CRITICIDAD ALTA · 1263 líneas</span></h4>
+    <p>Exporta 3 componentes: <strong>CatalogoModulos</strong> (lista con búsqueda, import/export JSON, abre FormModulo), <strong>PanelSelectorModulos</strong> (selector compacto para el presupuesto), <strong>EditorVistaSVG</strong> (editor de composición visual del frente del módulo).</p>
+
+    <h4>9. catalogo/FormModulo.jsx — Formulario de módulo &nbsp;<span class="badge badge-yellow">CRITICIDAD ALTA</span></h4>
+    <p>El formulario más complejo. Tabs: <strong>Datos</strong> (nombre, dims, material) · <strong>Variables</strong> (VarsExplorer con carpetas) · <strong>Piezas</strong> (lista + FormPieza) · <strong>Herrajes</strong> · <strong>Avanzado</strong> (EditorParametrico) · <strong>Sub-componentes</strong> (EditorComponenteHijo). Preview SVG en tiempo real + barra de costo total.</p>
+
+    <h4>10. presupuesto/index.jsx — Editor de presupuesto &nbsp;<span class="badge badge-yellow">CRITICIDAD ALTA</span></h4>
+    <p>Gestiona todo el flujo: agregar/quitar módulos, editar dimensiones (AcordeonEdicionItem), ver SVG, guardar/cargar (GestorPresupuestos), exportar PDF. Indicador de autosave en tiempo real. Consume PresupuestoContext.</p>
+
+    <h4>11. presupuesto/ConfiguradorParametrico.jsx — Controles paramétricos &nbsp;<span class="badge badge-yellow">CRITICIDAD MEDIA-ALTA</span></h4>
+    <p>Un control por parámetro del módulo: <code>number/integer</code> → stepper +/- con debounce 150ms · <code>boolean</code> → toggle · <code>choice</code> → select · <code>formula</code> → solo lectura. Muestra warnings de constraints violadas en rojo.</p>
+
+    <h4>12. presupuesto/GestorPresupuestos.jsx — Lista de presupuestos &nbsp;<span class="badge badge-green">CRITICIDAD MEDIA</span></h4>
+    <p>Panel colapsable con todos los presupuestos. Calcula en tiempo real si alguno está desactualizado (compara total guardado vs. total calculado con precios actuales). Permite buscar, cambiar estado, cargar en editor, eliminar.</p>
+
+    <h4>13. services/optimizerService.js — Optimizador de corte &nbsp;<span class="badge badge-green">CRITICIDAD MEDIA · 224 líneas</span></h4>
+    <p>Algoritmo Guillotine 2D bin-packing mejorado. Ordena por área DESC, multi-placa open list, best-fit space, split BSSF. Calcula sobrantes reutilizables (≥300mm) y métricas: rendimiento %, desperdicio %.</p>
+
+    <h4>14. catalogo/VarsExplorer.jsx — Explorador de variables &nbsp;<span class="badge badge-green">CRITICIDAD MEDIA</span></h4>
+    <p>Muestra todas las variables disponibles en scopes jerárquicos: dims base → parámetros → vars derivadas de piezas → vars custom → vars de subcomponentes. Sistema de carpetas para organizar variables custom (metadatos separados, no afectan las fórmulas).</p>
+
+    <h4>15. services/presupuestoService.js — Mutaciones de presupuesto &nbsp;<span class="badge badge-green">CRITICIDAD MEDIA · 156 líneas</span></h4>
+    <p>Funciones puras: <code>crearPresupuesto()</code> (IDs con <code>crypto.randomUUID()</code>), <code>eliminarPresupuesto()</code> (limpia TEMP_ huérfanos), <code>migrarDimOverridePresupuestos()</code> (migra formato legacy), <code>migrarTempEnPresupuestos()</code> (TEMP_ → permanente).</p>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ FASE 4 -->
+<div class="fase">
+  <div class="fase-header">
+    <span class="fase-num">FASE 4</span>
+    <span class="fase-titulo">Flujos reales del sistema</span>
+  </div>
+  <div class="fase-body">
+
+    <h3>Flujo 1: Editar un módulo en el catálogo</h3>
+<pre>1. Usuario clic "✎ Editar" en tarjeta del catálogo
+   └─ CatalogoModulos → setModo({ tipo:"editar", codigo, modulo })
+
+2. FormModulo se monta con los datos del módulo existente
+   └─ Inicializa: datos, piezas, variables, herrajes, subComponentes, parametros
+
+3. Usuario cambia dimensiones / agrega piezas
+   └─ Estado local de FormModulo se actualiza
+   └─ Preview SVG se re-renderiza en tiempo real (generarVistaSVG)
+   └─ Costo total se recalcula (calcularModulo)
+
+4. Usuario clic "💾 Guardar"
+   └─ CatalogoModulos.guardar(codigo, datos)
+   └─ setModulos({ ...modulos, [codigo]: datosNuevos })
+   └─ onSave(todos) → App.js → withSave → guardarModulos(supabase)
+
+5. Supabase recibe los datos nuevos (delete-all + insert-all)</pre>
+
+    <h3>Flujo 2: Armar un presupuesto</h3>
+<pre>1. Usuario abre pestaña Presupuesto
+   └─ Consume PresupuestoContext (items, dimOverride, etc.)
+
+2. Busca un módulo en PanelSelectorModulos
+   └─ Clic → agrega { id: uuid, codigo, cantidad: 1 } a items[]
+
+3. Para cada ítem se muestra:
+   └─ Preview SVG + costo calculado + botón "✎ editar"
+
+4. Usuario clic "✎" en el ítem
+   └─ AcordeonEdicionItem se expande
+   └─ Sliders A/P/H + selector de material
+   └─ Si el módulo tiene parámetros → ConfiguradorParametrico
+
+5. Usuario clic "💾 Guardar presupuesto"
+   └─ presupuestoService.crearPresupuesto() → ID UUID
+   └─ App.js → withSave → guardarPresupuestos(supabase)</pre>
+
+    <h3>Flujo 3: Sistema paramétrico end-to-end</h3>
+<pre>DISEÑO (catálogo):
+  FormModulo → EditorParametrico
+  └─ Carpintero define: cajones (integer, min 1, max 8)
+  └─ Pieza "frente" con repeat: { var:"i", from:1, to:"cajones" }
+
+USO (presupuesto):
+  AcordeonEdicionItem → ConfiguradorParametrico
+  └─ NumberStepper para "cajones" → usuario cambia a 5
+
+CÁLCULO:
+  calcularModulo(modulo, costos, { cajones: 5 })
+  └─ resolverContextoModulo → modVars incluye cajones=5
+  └─ generarPiezas → repeat expande frente × 5 piezas
+  └─ Costo recalculado con 5 piezas
+
+RENDER 3D:
+  buildPiezas3D(modulo, costos, { cajones: 5 })
+  └─ 5 piezas de frente posicionadas con "i" en posFormulas</pre>
+
+    <h3>Flujo 4: Edición Nivel 3 (editar módulo desde el presupuesto)</h3>
+<pre>1. "🔧 Editar en catálogo" en un ítem del presupuesto
+   └─ crearTempDesdeModulo() → copia con código TEMP_1234567890
+   └─ dispatch(INICIAR_EDICION_NIVEL3)
+
+2. NavContext → catalogoDeepLink = tempCod
+   └─ Vista cambia a "catalogo"
+   └─ CatalogoModulos abre FormModulo con el TEMP_
+
+3. Usuario edita → cambios solo afectan la copia temporal
+
+4a. Guardar "solo para este presupuesto":
+    └─ TEMP_ queda como módulo temporal vinculado al presupuesto
+
+4b. Guardar "también en catálogo":
+    └─ Nuevo ID permanente: MC${Date.now().slice(-6)}
+    └─ TEMP_ eliminado + referencias actualizadas en items[]
+
+5. dispatch(VOLVER_A_PRESUPUESTO) → vuelve al presupuesto</pre>
+
+    <h3>Flujo 5: Cola serializada de guardado (withSave)</h3>
+<pre>// El problema: cambios rápidos → múltiples saves paralelos
+// → race conditions → datos corruptos.
+
+// La solución:
+withSave(async () => await guardarModulos(costos))
+
+// Internamente:
+// 1. Agrega la función a saveQueue[]
+// 2. Si no hay save corriendo → llama a drain()
+// 3. drain() ejecuta uno por uno en orden
+// → Nunca dos saves corren al mismo tiempo</pre>
+
+    <h3>Flujo 6: Detección de precios desactualizados</h3>
+<pre>Carpintero sube el precio del material
+→ guardarCostos() → bumps costos_version en localStorage
+
+GestorPresupuestos al renderizar:
+→ recalcularTotalPresupuesto(p, modulos, costos) por cada presupuesto
+→ |calculado - guardado| > $1 → "⚠ Desactualizado"
+
+Usuario clic "Actualizar":
+→ Se guarda el nuevo total en Supabase</pre>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ FASE 5 -->
+<div class="fase">
+  <div class="fase-header">
+    <span class="fase-num">FASE 5</span>
+    <span class="fase-titulo">Sistema de estado</span>
+  </div>
+  <div class="fase-body">
+
+    <h3>Mapa del estado</h3>
+<pre>App.js (DOMINIO — persiste en Supabase)
+  modulos: { [codigo]: Modulo }   ← incluye TEMP_ (temporales)
+  costos:  { materiales[], herrajes[], manoDeObra[], ... }
+  presupuestos: { [uuid]: Presupuesto }
+  perfil:  { nombre, slogan, tel, logo, ... }
+  suscripcion: { plan, activa, creditos }
+           │
+           ▼ pasa via props a AppInterna
+AppInterna  (EDITOR ACTIVO — via PresupuestoContext)
+  items:   [{ id, codigo, cantidad, parametrosValores }]
+  dimOverride: { [itemId]: { ancho, alto, profundidad, material } }
+  composicionOverride: { [itemId]: {...} }
+  inlineModulos: { [codigo]: Modulo }
+  adicionales: [{ id, nombre, monto }]
+  costosDirectos: [{ id, tipo, refId, ... }]
+  presupuestoActivoId: string | null
+
+NavContext  (NAVEGACIÓN — nunca persiste)
+  vista: "presupuesto" | "catalogo" | "costos" | ...
+  catalogoDeepLink: string | null
+  origenEdicion: { tipo, presupuestoId } | null
+  presupuestoParaEditar: { id, p } | null
+  cajaPresId: string | null</pre>
+
+    <h3>localStorage: qué se guarda y para qué</h3>
+    <table>
+      <thead><tr><th>Clave</th><th>Qué guarda</th><th>Por qué</th></tr></thead>
+      <tbody>
+        <tr><td><code>carpicalc:costos_version</code></td><td>Timestamp del último cambio de costos</td><td>Detectar presupuestos desactualizados</td></tr>
+        <tr><td><code>carpicalc:perfil_cache</code></td><td>Copia síncrona del perfil</td><td>Generación de PDFs necesita datos síncronos</td></tr>
+        <tr><td><code>carpicalc:borrador</code></td><td>Presupuesto activo en edición</td><td>Recuperar si el usuario cierra sin guardar</td></tr>
+        <tr><td><code>carpicalc:borrador_modulo</code></td><td>Estado de FormModulo</td><td>Preservar entre cambios de pestaña</td></tr>
+        <tr><td><code>carpicalc:roles_pieza</code></td><td>Roles custom del taller</td><td>Customización local</td></tr>
+        <tr><td><code>carpicalc:tema</code></td><td>"dark" o "light"</td><td>Preferencia visual</td></tr>
+        <tr><td><code>carpicalc:ultimo_backup</code></td><td>Timestamp del último backup</td><td>Recordatorio de backup</td></tr>
+        <tr><td><code>carpicalc:catalogo_vista</code></td><td>"grid" o "list"</td><td>Preferencia de vista del catálogo</td></tr>
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ FASE 6 -->
+<div class="fase">
+  <div class="fase-header">
+    <span class="fase-num">FASE 6</span>
+    <span class="fase-titulo">Dependencias cruzadas</span>
+  </div>
+  <div class="fase-body">
+
+    <h3>Los archivos más importados (más riesgo si cambian)</h3>
+    <table>
+      <thead><tr><th>Archivo</th><th>Importado por</th><th>Riesgo si cambia</th></tr></thead>
+      <tbody>
+        <tr><td><code>utils.js</code></td><td>10+ archivos</td><td><span class="badge badge-red">CRÍTICO</span> — cambia fórmulas → todo falla</td></tr>
+        <tr><td><code>moduloService.js</code></td><td>6+ archivos</td><td><span class="badge badge-red">MUY ALTO</span> — cambia parseo → datos rotos</td></tr>
+        <tr><td><code>constants.js</code></td><td>8+ archivos</td><td><span class="badge badge-yellow">ALTO</span> — cambia MODULO_VACIO → defaults rotos</td></tr>
+        <tr><td><code>storage.js</code></td><td>App.js + catálogo</td><td><span class="badge badge-yellow">ALTO</span> — cambia I/O → pérdida de datos</td></tr>
+        <tr><td><code>NavContext.jsx</code></td><td>~8 componentes</td><td><span class="badge badge-green">MEDIO</span> — cambia navegación</td></tr>
+        <tr><td><code>PresupuestoContext.jsx</code></td><td>~6 componentes</td><td><span class="badge badge-green">MEDIO</span> — cambia estado del editor</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-blue">
+      <strong>No existen dependencias circulares.</strong> El grafo de importaciones es un árbol dirigido sin ciclos (DAG). Fue un diseño intencional. utils.js no importa nada del proyecto. moduloService.js solo importa utils.js y constants.js.
+    </div>
+
+    <h3>Puntos de acoplamiento fuerte</h3>
+    <ol>
+      <li><strong><code>resolverContextoModulo</code></strong> — llamada desde 4 lugares (buildPiezas3D, calcularModulo, _contextoParametrico, VarsExplorer). Cambiar su firma impacta todos.</li>
+      <li><strong>El shape del objeto <code>modulo</code></strong> — todos los componentes esperan el mismo contrato. Agregar un campo requiere actualizar MODULO_VACIO y parsearModulo.</li>
+      <li><strong><code>dimOverride</code> key format</strong> — la clave es <code>item.id || item.codigo</code>. Cambiarlo rompe overrides existentes (hay migración implementada).</li>
+      <li><strong><code>withSave</code> en App.js</strong> — todos los saves pasan por esta cola. Si falla, ningún save funciona.</li>
+    </ol>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ FASE 7 -->
+<div class="fase">
+  <div class="fase-header">
+    <span class="fase-num">FASE 7</span>
+    <span class="fase-titulo">Puntos críticos actuales</span>
+  </div>
+  <div class="fase-body">
+
+    <h3>🔴 Riesgos altos</h3>
+
+    <h4>1. modulo.variables shape inconsistente</h4>
+    <div class="callout callout-red">
+      <code>parsearModulo</code> valida <code>variables</code> como <code>Array</code>. Pero <code>resolverVariables</code> en utils.js lo trata como objeto <code>{ nombre: formula }</code>. Y el formulario también lo trata como objeto. En la práctica funciona porque la conversión ocurre implícitamente, pero es una bomba de tiempo si se cambia la serialización. <strong>Documentado en ARCHITECTURE.md como deuda técnica pendiente.</strong>
+    </div>
+
+    <h4>2. App.js con 848 líneas y creciendo</h4>
+    <p>Es el componente más grande. Está bien organizado pero cualquier funcionalidad nueva tiene la tentación de ir ahí. Si crece más se vuelve difícil de mantener.</p>
+
+    <h3>🟡 Riesgos medios</h3>
+
+    <h4>3. Módulos TEMP_ conviven con permanentes en el mismo objeto</h4>
+    <p>Están filtrados en PanelSelectorModulos y CatalogoModulos, pero puede filtrarse si se agrega un nuevo punto de acceso al catálogo.</p>
+
+    <h4>4. Borrador de presupuesto puede quedar desincronizado</h4>
+    <p>Si el usuario abre la app en dos pestañas del navegador al mismo tiempo, el borrador en localStorage se pisa. Limitación documentada de app single-user.</p>
+
+    <h3>🟢 Riesgos bajos (ya manejados)</h3>
+
+    <h4>5. Fórmulas con new Function() — seguridad</h4>
+    <p>Tiene whitelist de palabras permitidas. Solo el carpintero autenticado puede definir fórmulas para su propio uso. Riesgo bajo en este contexto.</p>
+
+    <h4>6. Delete-all + insert-all</h4>
+    <p>Window de milisegundos entre delete e insert. Supabase RLS garantiza que nadie más puede escribir en ese workspace. Riesgo muy bajo pero documentado.</p>
+
+    <h4>7. Imágenes como base64</h4>
+    <p>Las imágenes del catálogo se guardan como base64 en el objeto módulo. Hay compresión implementada (<code>comprimirImagen</code>) pero no hay límite de tamaño forzado.</p>
+
+    <h3>Código duplicado existente</h3>
+    <table>
+      <thead><tr><th>Patrón</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>Resolución de fórmulas inline (antes en 3 archivos)</td><td><span class="badge badge-green">✅ Resuelto</span> — centralizado en <code>resolverContextoModulo</code></td></tr>
+        <tr><td>Cálculo de espesor por zona en buildPiezas3D y moduloService</td><td><span class="badge badge-yellow">🟡 Menor duplicación aceptable</span></td></tr>
+        <tr><td>Estilos inline de botones/chips repetidos en componentes</td><td><span class="badge badge-yellow">🟡 Deuda estética, no funcional</span></td></tr>
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ FASE 8 -->
+<div class="fase">
+  <div class="fase-header">
+    <span class="fase-num">FASE 8</span>
+    <span class="fase-titulo">Mapa de impacto — ¿qué se rompe si tocás X?</span>
+  </div>
+  <div class="fase-body">
+
+    <table>
+      <thead><tr><th>Si modificás…</th><th>Impacto</th><th>Riesgo</th><th>Requiere</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>evaluarExpresion</code> en utils.js</td>
+          <td>TODO: piezas, costos, 3D, variables, constraints, SVG, PDF</td>
+          <td><span class="badge badge-red">CRÍTICO</span></td>
+          <td>Tests completos antes de tocar</td>
+        </tr>
+        <tr>
+          <td><code>resolverContextoModulo</code></td>
+          <td>buildPiezas3D, calcularModulo, VarsExplorer, ConfiguradorParametrico, FormModulo preview</td>
+          <td><span class="badge badge-red">MUY ALTO</span></td>
+          <td>Probar cada punto de uso</td>
+        </tr>
+        <tr>
+          <td><code>generarPiezas</code></td>
+          <td>Render 3D, optimizador de corte, cálculo de costo</td>
+          <td><span class="badge badge-red">ALTO</span></td>
+          <td>Probar módulos con repeat/condition/subComponentes</td>
+        </tr>
+        <tr>
+          <td><code>guardarModulos</code> en storage.js</td>
+          <td>Todos los saves del catálogo + detección de precios</td>
+          <td><span class="badge badge-yellow">ALTO</span></td>
+          <td>NO afecta el cálculo ni el 3D</td>
+        </tr>
+        <tr>
+          <td>Motor 3D (buildPiezas3D.js o Modulo3D.jsx)</td>
+          <td>Solo el sistema 3D: visor catálogo, Vista3DTab, preview del formulario</td>
+          <td><span class="badge badge-yellow">MEDIO</span></td>
+          <td>NO afecta costos, presupuestos guardados, PDFs, corte</td>
+        </tr>
+        <tr>
+          <td>FormModulo.jsx</td>
+          <td>Solo la edición de módulos. No afecta módulos ya guardados.</td>
+          <td><span class="badge badge-green">BAJO-MEDIO</span></td>
+          <td>Solo UI local</td>
+        </tr>
+        <tr>
+          <td>MODULO_VACIO en constants.js (agregar campo)</td>
+          <td>Módulos nuevos reciben el nuevo default</td>
+          <td><span class="badge badge-green">BAJO</span></td>
+          <td>También actualizar parsearModulo</td>
+        </tr>
+        <tr>
+          <td>MODULO_VACIO en constants.js (eliminar campo)</td>
+          <td>Módulos viejos quedan con undefined para ese campo</td>
+          <td><span class="badge badge-red">ALTO</span></td>
+          <td>Agregar migración + default en parsearModulo</td>
+        </tr>
+        <tr>
+          <td>NavContext (agregar acción)</td>
+          <td>Solo navegación</td>
+          <td><span class="badge badge-green">BAJO</span></td>
+          <td>Agregar case en navReducer + actualizar CLAUDE.md</td>
+        </tr>
+        <tr>
+          <td>Endpoints en /api/</td>
+          <td>Solo pagos e IA</td>
+          <td><span class="badge badge-green">BAJO</span></td>
+          <td>NO afecta módulos, presupuestos, 3D, costos</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ FASE 9 -->
+<div class="fase">
+  <div class="fase-header">
+    <span class="fase-num">FASE 9</span>
+    <span class="fase-titulo">Resumen ejecutivo</span>
+  </div>
+  <div class="fase-body">
+
+    <div class="callout">
+      <strong>El dato más importante de toda la arquitectura:</strong> hay una única función que todo el sistema usa para calcular fórmulas: <code>resolverContextoModulo()</code> en <code>services/moduloService.js</code>. Fue creada para reemplazar tres implementaciones paralelas con bugs distintos. Hoy, si una fórmula funciona bien, funciona igual en el presupuesto, el 3D, el optimizador de corte y el PDF.
+    </div>
+
+    <h3>Los 5 archivos más críticos</h3>
+    <table>
+      <thead><tr><th>Prioridad</th><th>Archivo</th><th>Por qué</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><code>utils.js</code></td><td>Motor de fórmulas. Todo el proyecto depende de él.</td></tr>
+        <tr><td>2</td><td><code>services/moduloService.js</code></td><td>Parseo + parámetros + generación de piezas</td></tr>
+        <tr><td>3</td><td><code>App.js</code></td><td>Estado de dominio + cola de guardado serializada</td></tr>
+        <tr><td>4</td><td><code>storage.js</code></td><td>Persistencia. Si falla, se pierden datos.</td></tr>
+        <tr><td>5</td><td><code>constants.js</code></td><td>Contrato del objeto módulo (MODULO_VACIO)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Fortalezas del proyecto</h3>
+    <ol>
+      <li><strong>Arquitectura en capas clara y respetada</strong> — cada archivo tiene una sola responsabilidad bien definida.</li>
+      <li><strong>Función de resolución centralizada</strong> — <code>resolverContextoModulo</code> evita la duplicación del motor de fórmulas.</li>
+      <li><strong>Parser que nunca rompe</strong> — <code>parsearModulo</code> garantiza que datos viejos o incompletos nunca crashean la app.</li>
+      <li><strong>Cola de guardado serializada</strong> — <code>withSave</code> previene race conditions sin bibliotecas externas.</li>
+      <li><strong>Sistema paramétrico completo</strong> — repeat, condition, constraints, zonas, subComponentes.</li>
+      <li><strong>Tests automáticos</strong> — <code>moduloService.test.js</code> y <code>buildPiezas3D.test.js</code> cubren las funciones más críticas.</li>
+      <li><strong>Zero dependencias circulares</strong> — el grafo de importaciones es un árbol limpio.</li>
+    </ol>
+
+    <h3>Deudas técnicas registradas</h3>
+    <table>
+      <thead><tr><th>Prioridad</th><th>Deuda</th><th>Impacto</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-yellow">Media</span></td><td><code>variables</code> shape inconsistente (Array vs Object)</td><td>Riesgo latente si se cambia la serialización</td></tr>
+        <tr><td><span class="badge badge-green">Baja</span></td><td>App.js en crecimiento (848 líneas)</td><td>Mantenibilidad a largo plazo</td></tr>
+        <tr><td><span class="badge badge-green">Baja</span></td><td>Estilos inline repetidos en componentes</td><td>Solo estética, no funcional</td></tr>
+        <tr><td><span class="badge badge-green">Baja</span></td><td>Imágenes base64 en payload de módulos</td><td>Puede volverse lento con muchas imágenes grandes</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Cuánto cuesta hacer cada tipo de cambio</h3>
+    <table>
+      <thead><tr><th>Cambio</th><th>Costo</th><th>Por qué</th></tr></thead>
+      <tbody>
+        <tr><td>Nuevo tipo de parámetro (ej: "color")</td><td><span class="badge badge-green">Bajo</span></td><td>Solo moduloService + ConfiguradorParametrico</td></tr>
+        <tr><td>Nueva pestaña de navegación</td><td><span class="badge badge-green">Bajo</span></td><td>App.js + NavContext</td></tr>
+        <tr><td>Cambiar el diseño visual de un componente</td><td><span class="badge badge-green">Muy bajo</span></td><td>Estilos inline en el componente</td></tr>
+        <tr><td>Cambiar el algoritmo de costo</td><td><span class="badge badge-yellow">Medio</span></td><td>utils.js + tests</td></tr>
+        <tr><td>Campo nuevo en el objeto módulo</td><td><span class="badge badge-yellow">Medio</span></td><td>MODULO_VACIO + parsearModulo + formulario</td></tr>
+        <tr><td>Cambiar la base de datos (Supabase por otra)</td><td><span class="badge badge-yellow">Alto</span></td><td>Solo storage.js, pero es complejo</td></tr>
+        <tr><td>Cambiar el motor de fórmulas</td><td><span class="badge badge-red">Muy alto</span></td><td>evaluarExpresion + toda la app depende de él</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-blue">
+      <strong>Para hacer cambios grandes con seguridad:</strong><br>
+      1. Correr los tests antes y después de cambiar utils.js o moduloService.js<br>
+      2. Usar <code>resolverContextoModulo</code> para cualquier código nuevo que evalúe fórmulas<br>
+      3. Agregar campos nuevos al objeto módulo siempre con default en MODULO_VACIO y en parsearModulo<br>
+      4. Cualquier lógica nueva de negocio va a services/, nunca en componentes
+    </div>
+
+    <hr>
+    <p style="font-size: 11px; color: #888; text-align: center; margin-top: 16px;">
+      Documento generado por auditoría directa del código fuente · Todos los datos son del estado real del proyecto · Sin suposiciones
+    </p>
+
+  </div>
+</div>
+
+</body>
+</html>

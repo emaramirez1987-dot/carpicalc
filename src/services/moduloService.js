@@ -77,6 +77,54 @@ import { resolverVariables, evaluarExpresion, evaluarCondicion, evaluarFormula, 
  * @property {Herraje[]=}             herrajes     Herrajes propios
  */
 
+// ── normalizarVariables ───────────────────────────────────────────────────
+// El contrato canónico de `variables` es Object { [nombre]: formula }.
+// Históricamente algunos datos quedaron como Array legacy [{nombre, formula}, ...].
+// Helper PURO — no muta el input; devuelve un descriptor explícito.
+//
+// Retorna { variables, rawOriginal, formatoDesconocido }:
+//   - variables           → Object normalizado (siempre, contrato respetado)
+//   - rawOriginal         → el dato crudo si NO se pudo entender (cuarentena)
+//   - formatoDesconocido  → flag para que la UI pueda alertar al usuario
+function normalizarVariables(raw) {
+  if (raw == null) {
+    return { variables: {}, rawOriginal: null, formatoDesconocido: false };
+  }
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    return { variables: raw, rawOriginal: null, formatoDesconocido: false };
+  }
+  if (Array.isArray(raw)) {
+    const obj = {};
+    for (const item of raw) {
+      if (item && typeof item.nombre === "string") {
+        obj[item.nombre] = item.formula;
+      }
+    }
+    return { variables: obj, rawOriginal: null, formatoDesconocido: false };
+  }
+  // Formato desconocido (string, número, etc.) — cuarentena
+  // eslint-disable-next-line no-console
+  console.warn("[parsearModulo] variables en formato desconocido:", raw);
+  return { variables: {}, rawOriginal: raw, formatoDesconocido: true };
+}
+
+// Normaliza un subcomponente (mismo principio que el módulo raíz, pero
+// preserva el shape del subcomp tal como vino, ajustando solo variables).
+function normalizarSubComponente(sub) {
+  if (sub === null || typeof sub !== "object") return sub;
+  const { variables, rawOriginal, formatoDesconocido } = normalizarVariables(sub.variables);
+  const subNormalizado = { ...sub, variables };
+  if (formatoDesconocido) {
+    subNormalizado._variablesRawOriginal = rawOriginal;
+    subNormalizado._variablesFormatoDesconocido = true;
+  }
+  // Recursión: un subcomp puede tener sub-subcomponentes
+  if (Array.isArray(sub.subComponentes)) {
+    subNormalizado.subComponentes = sub.subComponentes.map(normalizarSubComponente);
+  }
+  return subNormalizado;
+}
+
 // ── parsearModulo ─────────────────────────────────────────────────────────
 // Recibe datos crudos (Supabase, localStorage, importación JSON).
 // Retorna null si el dato es fundamentalmente corrupto (no se puede usar).
@@ -88,7 +136,9 @@ export function parsearModulo(raw) {
   if (!Array.isArray(raw.piezas))               return null;
   if (raw.dimensiones === null || typeof raw.dimensiones !== "object") return null;
 
-  return {
+  const { variables, rawOriginal, formatoDesconocido } = normalizarVariables(raw.variables);
+
+  const modulo = {
     ...MODULO_VACIO,
     ...raw,
     dimensiones: {
@@ -96,13 +146,22 @@ export function parsearModulo(raw) {
       ...raw.dimensiones,
     },
     piezas:     Array.isArray(raw.piezas)     ? raw.piezas     : [],
-    variables:  Array.isArray(raw.variables)  ? raw.variables  : [],
+    variables,
     herrajes:   Array.isArray(raw.herrajes)   ? raw.herrajes   : [],
     parametros:     Array.isArray(raw.parametros)     ? raw.parametros     : [],
     zonas:          Array.isArray(raw.zonas)          ? raw.zonas          : [],
     constraints:    Array.isArray(raw.constraints)    ? raw.constraints    : [],
-    subComponentes: Array.isArray(raw.subComponentes) ? raw.subComponentes : [],
+    subComponentes: Array.isArray(raw.subComponentes)
+      ? raw.subComponentes.map(normalizarSubComponente)
+      : [],
   };
+
+  if (formatoDesconocido) {
+    modulo._variablesRawOriginal = rawOriginal;
+    modulo._variablesFormatoDesconocido = true;
+  }
+
+  return modulo;
 }
 
 // ── piezasQueUsanVar ──────────────────────────────────────────────────────

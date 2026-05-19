@@ -451,6 +451,17 @@ function FormModulo({
         </div>
       )}
 
+      {/* Banner — variables en formato no reconocido (cuarentena del parser) */}
+      {datos._variablesFormatoDesconocido && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 14px", borderRadius: 8, fontSize: 13, background: "rgba(200,60,60,0.10)", border: "1px solid rgba(200,60,60,0.30)", color: "#e08080" }}>
+          <div style={{ fontWeight: 700 }}>⚠ Variables en formato no reconocido</div>
+          <div style={{ fontSize: 12, opacity: 0.85 }}>
+            Las variables de este módulo no pudieron normalizarse. Se preservaron en <code style={{ fontFamily: "'DM Mono',monospace" }}>_variablesRawOriginal</code> (visible en DevTools).
+            Reescribilas manualmente desde la pestaña ⚡ Variables antes de guardar.
+          </div>
+        </div>
+      )}
+
       {/* ── Bloque unificado: header + tabs + body (sin gap entre ellos) ── */}
       <div style={{
         display: "flex", flexDirection: "column",
