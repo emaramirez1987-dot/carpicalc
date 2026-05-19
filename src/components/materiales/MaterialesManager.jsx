@@ -92,7 +92,9 @@ export default function MaterialesManager({
     const nuevos = existe
       ? materiales.map(m => m.id === data.id ? data : m)
       : [...materiales, data];
-    onSave(nuevos);
+    // 3er arg: el material guardado. El handler de App aplica
+    // single-default-por-tipo si data.esDefault === true.
+    onSave(nuevos, undefined, data);
     cerrarDrawer();
   };
 

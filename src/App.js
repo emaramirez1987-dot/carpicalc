@@ -16,7 +16,13 @@ import {
   guardarMateriales,
   leerVersionCostos,
 } from "./storage.js";
-import { materialesComoMapa3D } from "./services/materialesService.js";
+import {
+  materialesComoMapa3D,
+  backfillEsDefault,
+  aplicarDefaultExclusivo,
+  autopromoverPorTipo,
+  derivarCostosMateriales,
+} from "./services/materialesService.js";
 import { useTema } from "./hooks/useTema.js";
 import { useAtajosTeclado } from "./hooks/useAtajosTeclado.js";
 import { useToastErrores } from "./hooks/useToastErrores.js";
@@ -206,6 +212,19 @@ function AppInterna() {
   // Escena3DPrincipal sigan funcionando sin tocarlos hasta que migremos.
   const materiales3D = useMemo(() => materialesComoMapa3D(materiales), [materiales]);
 
+  // Puente al motor de costo: arma `costos.materiales` desde la biblioteca,
+  // usando UN material por tipo (el default). Conserva entradas legacy de
+  // costos.materiales para tipos no cubiertos (transitorio). `calcularModulo`
+  // recibe `costosResueltos` en lugar de `costos`. La tabla original sigue
+  // intacta para edición desde Costos.
+  const costosResueltos = useMemo(() => {
+    if (!costos) return costos;
+    return {
+      ...costos,
+      materiales: derivarCostosMateriales(materiales, costos.materiales || []),
+    };
+  }, [costos, materiales]);
+
   // ── Carga inicial ─────────────────────────────────────────────────────────
   useEffect(() => {
     // Verificar si el usuario volvió de MercadoPago con preapproval_id
@@ -231,7 +250,17 @@ function AppInterna() {
       setPresupuestos(migrados);
       if (cambiaron) guardarPresupuestos(migrados);
       if (perfil) setPerfil(perfil);
-      setMateriales(mats || []);
+      // Backfill one-time de esDefault para materiales pre-feature.
+      // Criterio determinista: por tipo, el más antiguo por fechaCreacion
+      // queda marcado como default. Persiste una sola vez; en cargas
+      // posteriores `cambiado` es false y no se reescribe nada.
+      const matsArr = mats || [];
+      const bf = backfillEsDefault(matsArr);
+      if (bf.cambiado) {
+        bf.log.forEach(l => console.info("[materiales]", l));
+        guardarMateriales(bf.materiales, cats || []);
+      }
+      setMateriales(bf.materiales);
       setMaterialesCategorias(cats || []);
       // Primera vez: perfil vacío y nunca completó onboarding → ir a Mi Taller
       const onboardingDone = localStorage.getItem("carpicalc:onboarding_done");
@@ -320,13 +349,31 @@ function AppInterna() {
     return withSave(() => guardarCostos(data));
   };
 
-  // Save de materiales (entidad top-level). Recibe `mats` y opcionalmente `cats`.
-  // Si `cats` no se pasa, conserva las categorías actuales.
-  const hSaveMateriales = useCallback((mats, cats) => {
-    setMateriales(mats);
+  // Save de materiales (entidad top-level).
+  //
+  // Firma: hSaveMateriales(mats, cats?, guardado?)
+  //   - mats:     array final (caller arma create/update/delete)
+  //   - cats:     opcional. Si undefined, conserva las categorías actuales.
+  //   - guardado: opcional. Si vino y guardado.esDefault === true, se
+  //               desmarcan otros del mismo tipo (single-default-por-tipo).
+  //
+  // Después aplica autopromoverPorTipo SIEMPRE: cubre el caso de borrar el
+  // default de un tipo, o cambiar el tipo de un material default. Promueve
+  // al más antiguo del tipo huérfano por fechaCreacion. Emite warnings.
+  const hSaveMateriales = useCallback((mats, cats, guardado) => {
+    let final = Array.isArray(mats) ? mats : [];
+    if (guardado && guardado.esDefault === true) {
+      final = aplicarDefaultExclusivo(final, guardado);
+    }
+    const { materiales: postPromote, promociones } = autopromoverPorTipo(final);
+    if (promociones.length > 0) {
+      promociones.forEach(p => console.warn(`[materiales] ${p.motivo} — tipo="${p.tipo}", promovido="${p.codigo}"`));
+    }
+    setMateriales(postPromote);
     const catsFinal = cats !== undefined ? cats : materialesCategorias;
     if (cats !== undefined) setMaterialesCategorias(cats);
-    return withSave(() => guardarMateriales(mats, catsFinal));
+    setCostosVersion(Date.now()); // los precios efectivos pueden haber cambiado
+    return withSave(() => guardarMateriales(postPromote, catsFinal));
   }, [materialesCategorias, withSave]);
 
   // (Los handlers legacy handleGuardarMaterial3D / handleEliminarMaterial3D
@@ -358,10 +405,10 @@ function AppInterna() {
   }, [modulos, dimOverride, composicionOverride, inlineModulos]);
 
   // ── Total del presupuesto activo ──────────────────────────────────────────
-  const totalModulos = !costos ? 0 : items.reduce((acc, it) => {
+  const totalModulos = !costosResueltos ? 0 : items.reduce((acc, it) => {
     const m = getModUsado(it);
     if (!m) return acc;
-    const c = calcularModulo(m, costos, it.parametrosValores || {});
+    const c = calcularModulo(m, costosResueltos, it.parametrosValores || {});
     if (!c) return acc;
     return acc + c.total * it.cantidad;
   }, 0);
@@ -526,7 +573,7 @@ function AppInterna() {
             <div style={{ display: nav.vista === "presupuesto" ? undefined : "none" }}>
               <Presupuesto
                 modulos={modulos}
-                costos={costos}
+                costos={costosResueltos}
                 getModUsado={getModUsado}
                 totalGeneral={totalGeneral}
                 presupuestos={presupuestos}
@@ -570,7 +617,7 @@ function AppInterna() {
               <VistaPrevia
                 items={items}
                 modulos={modulos}
-                costos={costos}
+                costos={costosResueltos}
                 onLimpiar={() => { setItems([]); setDimOverride({}); }}
                 getModUsado={getModUsado}
                 totalGeneral={totalGeneral}
@@ -597,7 +644,7 @@ function AppInterna() {
               <ListaCorte
                 items={items}
                 modulos={modulos}
-                costos={costos}
+                costos={costosResueltos}
                 getModUsado={getModUsado}
                 presupuestos={presupuestos}
                 presupuestoActivoId={presupuestoActivoId}
@@ -634,7 +681,7 @@ function AppInterna() {
               <Suspense fallback={null}>
               <Vista3DTab
                 modulos={modulos}
-                costos={costos}
+                costos={costosResueltos}
                 items={items}
                 setItems={setItems}
                 dimOverride={dimOverride}
@@ -696,7 +743,7 @@ function AppInterna() {
                   dispatch({ type: "CAMBIAR_VISTA", payload: { vista: "presupuesto" } });
                 }}
                 modulos={modulos}
-                costos={costos}
+                costos={costosResueltos}
                 onActualizarPresupuesto={handleActualizarPresupuesto}
               />
               </Suspense>
@@ -708,7 +755,7 @@ function AppInterna() {
                 presupuestos={presupuestos}
                 onActualizar={handleActualizarPresupuesto}
                 modulos={modulos}
-                costos={costos}
+                costos={costosResueltos}
                 cajaPresId={nav.cajaPresId}
                 onClearCajaPresId={() => dispatch({ type: "CAJA_PRES_ID_CONSUMIDO" })}
               />

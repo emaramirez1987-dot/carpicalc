@@ -173,6 +173,7 @@ export default function MaterialEditorDrawer({
       espesor: parseFloat(data.espesor) || 0,
       placaLargo: parseFloat(data.placaLargo) || 2750,
       placaAncho: parseFloat(data.placaAncho) || 1830,
+      esDefault:  data.esDefault === true,
       fechaActualizacion: Date.now(),
     };
     onSave(limpio);
@@ -365,6 +366,32 @@ export default function MaterialEditorDrawer({
                   {fmtPeso(precioM2Calculado)} /m²
                 </div>
               </Campo>
+              <label style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "10px 12px", marginBottom: 12,
+                background: data.esDefault ? "rgba(212,175,55,0.10)" : "var(--bg-base)",
+                border: `1px solid ${data.esDefault ? "var(--accent-border)" : "var(--border)"}`,
+                borderRadius: 5, cursor: "pointer",
+                transition: "all 0.15s",
+              }}>
+                <input
+                  type="checkbox"
+                  checked={data.esDefault === true}
+                  onChange={e => upd("esDefault", e.target.checked)}
+                  style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--accent)" }}
+                />
+                <div style={{ flex: 1, lineHeight: 1.4 }}>
+                  <div style={{
+                    fontSize: 11, fontFamily: M, fontWeight: 700,
+                    color: data.esDefault ? "var(--accent)" : "var(--text-primary)",
+                  }}>
+                    {data.esDefault ? "⭐ " : ""}Material por defecto para "{data.tipo}"
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
+                    Este precio se aplica al calcular módulos de este tipo. Solo uno por tipo.
+                  </div>
+                </div>
+              </label>
               <Campo label="Proveedor">
                 <input
                   value={data.proveedor || ""} onChange={e => upd("proveedor", e.target.value)}

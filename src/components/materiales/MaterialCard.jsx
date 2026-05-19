@@ -86,6 +86,20 @@ function MaterialCardBase({
             }}
           />
         )}
+
+        {/* Estrella de default (esquina sup. izq.) */}
+        {mat.esDefault && (
+          <span
+            title={`Material por defecto para "${mat.tipo}"`}
+            style={{
+              position: "absolute", top: 4, left: 6,
+              fontSize: 13, lineHeight: 1, color: "var(--accent)",
+              textShadow: "0 1px 3px rgba(0,0,0,0.55)",
+              pointerEvents: "none",
+            }}>
+            ⭐
+          </span>
+        )}
       </div>
 
       {/* Info */}
