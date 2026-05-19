@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import EditorParametrico from './EditorParametrico.jsx';
 import { Btn, TextInput, Select } from '../ui/index.jsx';
 import { fmtPeso, calcularModulo } from '../../utils.js';
@@ -39,6 +39,38 @@ const PIEZA_VACIA = {
 
 const clonarPieza = (p) => (typeof structuredClone === "function" ? structuredClone(p) : JSON.parse(JSON.stringify(p)));
 const piezaVaciaNueva = () => clonarPieza(PIEZA_VACIA);
+// ── VarsDropdown — botón ⚡ vars + popover con VarsExplorer ──────────────────
+// Mismo patrón que FormPieza y EditorComponenteHijo.
+function VarsDropdown({ rowKey, openKey, onToggle, scopes, onInsert }) {
+  const isOpen = openKey === rowKey;
+  return (
+    <div style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        onMouseDown={e => { e.preventDefault(); onToggle(isOpen ? null : rowKey); }}
+        style={{
+          height: 26, padding: "0 8px", borderRadius: 5, cursor: "pointer",
+          fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 600,
+          background: isOpen ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)",
+          border: `1px solid ${isOpen ? "rgba(212,175,55,0.40)" : "var(--border)"}`,
+          color: isOpen ? "var(--accent)" : "var(--text-muted)",
+          display: "flex", alignItems: "center", gap: 4,
+          transition: "all 0.12s",
+        }}>
+        ⚡ vars <span style={{ fontSize: 8, opacity: 0.7 }}>{isOpen ? "▲" : "▼"}</span>
+      </button>
+      {isOpen && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 200 }}>
+          <VarsExplorer
+            scopes={scopes}
+            defaultScopeId="padre"
+            onInsert={(name) => { onInsert(name); onToggle(null); }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SubTabBar({ tabs, active, onSelect }) {
   return (
     <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
@@ -82,6 +114,21 @@ function FormModulo({
   const [modVarsConfirmDelete, setModVarsConfirmDelete] = useState(null);
   const [modVarsEditando, setModVarsEditando] = useState(null);
   const [modVarsValorEditando, setModVarsValorEditando] = useState('');
+  const [modVarsOpen, setModVarsOpen] = useState(null);
+  const modVarsInputRef = useRef(null);
+  // Inserta el nombre de una variable en el input activo de fórmula de variable,
+  // respetando la posición del cursor igual que FormPieza / EditorComponenteHijo.
+  const insertarVarModulo = (nombre) => {
+    const el = modVarsInputRef.current;
+    if (!el) return;
+    const start  = el.selectionStart ?? el.value.length;
+    const end    = el.selectionEnd   ?? el.value.length;
+    const newVal = el.value.slice(0, start) + nombre + el.value.slice(end);
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    setter.call(el, newVal);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    setTimeout(() => { el.setSelectionRange(start + nombre.length, start + nombre.length); el.focus(); }, 0);
+  };
   // Modal de decisión: aparece al guardar desde Nivel 3
   // null = cerrado, "pidiendo" = mostrando opciones, "nombre" = ingresando nombre para catálogo
   const [modalDecision, setModalDecision] = useState(null);
@@ -721,7 +768,7 @@ function FormModulo({
                         scopes={scopesPadre}
                         defaultScopeId="padre"
                         readOnly={false}
-                        onInsert={() => {}}
+                        onInsert={insertarVarModulo}
                         style={{ width: "100%", maxHeight: 360 }}
                         carpetas={datos.variablesCarpetas || {}}
                         onCarpetasChange={(scopeId, newC) =>
@@ -776,9 +823,16 @@ function FormModulo({
                             <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>{nombre} =</span>
                             {enEdicion ? (
                               <>
-                                <input autoFocus type="text" value={modVarsValorEditando} onChange={e => setModVarsValorEditando(e.target.value)}
+                                <input autoFocus ref={modVarsInputRef} type="text" value={modVarsValorEditando} onChange={e => setModVarsValorEditando(e.target.value)}
                                   onKeyDown={e => { if (e.key === 'Enter') confirmar(); if (e.key === 'Escape') cancelar(); }}
                                   style={{ flex: 1, minWidth: 60, fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, padding: "3px 6px", background: "var(--bg-base)", border: "1px solid rgba(212,175,55,0.45)", borderRadius: 5, color: "var(--text-primary)", outline: "none" }} />
+                                <VarsDropdown
+                                  rowKey={`modvar_${nombre}`}
+                                  openKey={modVarsOpen}
+                                  onToggle={setModVarsOpen}
+                                  scopes={scopesPadre}
+                                  onInsert={insertarVarModulo}
+                                />
                                 <button onClick={confirmar} style={{ padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono',monospace", cursor: "pointer", background: "linear-gradient(135deg,var(--accent),var(--accent-hover))", border: "none", color: "var(--text-inverted)", flexShrink: 0 }}>✓</button>
                                 <button onClick={cancelar} style={{ padding: "2px 6px", borderRadius: 5, fontSize: 11, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", flexShrink: 0 }}>✕</button>
                               </>
