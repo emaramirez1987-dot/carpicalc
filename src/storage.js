@@ -15,7 +15,7 @@
 // IMPORTANTE: Este archivo NO importa React.
 // ════════════════════════════════════════════════════════════════════════════
 
-import { modulosIniciales, costoIniciales, PERFIL_VACIO } from "./constants.js";
+import { costoIniciales, PERFIL_VACIO } from "./constants.js";
 import { supabase } from "./lib/supabase.js";
 import { parsearModulo, parsearPresupuesto } from "./services/moduloService.js";
 import { notificarError } from "./hooks/useToastErrores.js";
@@ -52,7 +52,7 @@ export async function cargarDatos() {
     const wsId = await getWorkspaceId();
     if (!wsId) {
       return {
-        modulos: modulosIniciales,
+        modulos: {},
         costos: costoIniciales,
         presupuestos: {},
         perfil: { ...PERFIL_VACIO },
@@ -105,7 +105,7 @@ export async function cargarDatos() {
     try { localStorage.setItem("carpicalc:perfil_cache", JSON.stringify(perfil)); } catch {}
 
     return {
-      modulos: Object.keys(modulosLimpios).length > 0 ? modulosLimpios : modulosIniciales,
+      modulos: modulosLimpios,
       costos: costosRow?.datos ?? costoIniciales,
       presupuestos,
       perfil,
@@ -113,7 +113,7 @@ export async function cargarDatos() {
   } catch (e) {
     console.error("cargarDatos:", e);
     return {
-      modulos: modulosIniciales,
+      modulos: {},
       costos: costoIniciales,
       presupuestos: {},
       perfil: { ...PERFIL_VACIO },
