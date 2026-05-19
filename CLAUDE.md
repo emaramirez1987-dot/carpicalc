@@ -20,14 +20,15 @@ src/
 │   ├── presupuestoService.js     # Pure mutations: crear/eliminar/cambiarEstado/migraciones
 │   └── optimizerService.js       # Optimización de corte por placa (Guillotine 2D)
 ├── components/
-│   ├── ui/                       # Visual primitives only (Btn, Card, Badge, etc.)
+│   ├── ui/                       # Visual primitives (Btn, Card, Badge, ResizablePanels, etc.)
 │   ├── auth/                     # LoginScreen (Supabase auth)
 │   ├── perfil/                   # PanelPerfil del taller
 │   ├── suscripcion/              # PanelSuscripcion (Mercado Pago — Bronce/Plata/Oro)
 │   ├── render/                   # Generación de renders IA con créditos
 │   ├── costos/                   # Price table, waste, overhead
 │   ├── catalogo/                 # FormModulo, EditorParametrico, EditorComponenteHijo,
-│   │                             # VarsExplorer (con carpetas), GuiaParametricaModal, etc.
+│   │                             # VarsExplorer (con carpetas), GuiaParametricaModal,
+│   │                             # GuiaFormulasBtn (📖 referencia de fórmulas), etc.
 │   ├── presupuesto/              # Active editor, GestorPresupuestos, BarraTotal,
 │   │                             # AcordeonEdicionItem, ConfiguradorParametrico
 │   ├── vista-previa/             # PDF, WhatsApp, client approval
@@ -90,7 +91,7 @@ Las variables custom del módulo (y de cada subcomponente) se pueden organizar e
 | `NavContext` | Navigation transitions only | Mutate domain data |
 | `PresupuestoContext` | Estado del editor activo (items, dims, adicionales, composicionOverride, inlineModulos) | Persist directly, business logic |
 | `services/` | Pure domain mutations + parser + motor paramétrico + optimizador | Call setState, dispatch |
-| `utils.js` | Pure calculations + motor de fórmulas (`evaluarExpresion`, `evaluarFormula`, `calcularModulo`, `generarVistaSVG`) | State, effects, UI, localStorage |
+| `utils.js` | Pure calculations + motor de fórmulas (`evaluarExpresion`, `evaluarFormula`, `calcularModulo`, `generarVistaSVG`). Funciones soportadas: `min, max, round, ceil, floor, abs, clamp, mod`. Operadores: aritmética, comparación, lógicos, ternario | State, effects, UI, localStorage |
 | `storage.js` | I/O Supabase + I/O localStorage (cache) | Business logic |
 | `lib/supabase.js` | Cliente Supabase singleton | Lógica de negocio |
 | `components/[domain]/` | Visual + local interaction | Direct persistence |
@@ -251,7 +252,8 @@ Estado expuesto: `vista`, `catalogoDeepLink`, `origenEdicion`, `presupuestoParaE
     [scopeId]: { [carpetaId]: { nombre, vars: [...] } }
   },
   piezas: [{
-    nombre, cantidad, formula1, formula2, ...,
+    nombre, formula1, formula2, ...,
+    cantidad: 1,                                   // legacy — siempre 1 en el sistema paramétrico (multiplicar = repeat)
     zona?: string,                                 // referencia a modulo.zonas[*].id
     condition?: string,                            // expr booleana — pieza solo si truthy
     repeat?: { var, from, to },                    // genera N piezas con var en contexto
