@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
+import ResizablePanels from '../ui/ResizablePanels.jsx';
 import EditorParametrico from './EditorParametrico.jsx';
 import { Btn, TextInput, Select } from '../ui/index.jsx';
 import { fmtPeso, calcularModulo } from '../../utils.js';
@@ -503,13 +504,10 @@ function FormModulo({
             Sin borde propio — el wrapper exterior ya lo da. El tab activo
             cubre el borde inferior del tab bar con marginBottom:-1, creando
             la conexión visual "pestaña → hoja". */}
-        <div style={{
-          display: "grid", gridTemplateColumns: "minmax(0, 1fr) 460px", gap: 0,
-          background: "var(--bg-surface)",
-          minHeight: 520,
-          position: "relative",   // anchor para el overlay del modo expandido del VisorCatalogo3D
-        }}>
-        {/* Columna izquierda: contenido de la tab activa */}
+        <ResizablePanels
+          defaultSplit={55}
+          style={{ background: "var(--bg-surface)", minHeight: 520, position: "relative" }}
+          left={
         <div style={{ padding: 14, overflowY: "auto", maxHeight: "78vh" }}>
 
           {tabActiva === "datos" && (
@@ -946,11 +944,9 @@ function FormModulo({
           })()}
 
         </div>
-
-        {/* Columna derecha: preview 3D persistente.
-            Cuando el visor está maximizado, la columna queda vacía y el
-            visor se monta más abajo como overlay sobre toda la grilla. */}
-        <div style={{ borderLeft: "1px solid var(--border)", background: "#0a0c10", display: "flex", flexDirection: "column" }}>
+          }
+          right={
+        <div style={{ background: "#0a0c10", display: "flex", flexDirection: "column" }}>
           <div style={{ padding: "8px 14px", fontSize: 10, fontFamily: "'DM Mono',monospace", color: "#c8a02a", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.10em", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
             👁 Preview 3D
           </div>
@@ -1037,6 +1033,8 @@ function FormModulo({
           </div>
         )}
       </div>
+          }
+        />
       </div>{/* cierre del bloque unificado header+tabs+body */}
 
       {/* Footer sticky: resumen de costos + botones de acción */}
