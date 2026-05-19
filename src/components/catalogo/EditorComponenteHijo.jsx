@@ -93,12 +93,22 @@ function SubTabBar({ tabs, active, onSelect }) {
 // Delega la navegación jerárquica al componente reutilizable VarsExplorer.
 function VarsDropdown({ rowKey, openKey, onToggle, scopes, defaultScopeId, onInsert }) {
   const isOpen = openKey === rowKey;
+  const btnRef = useRef(null);
+  const [popPos, setPopPos] = useState({ top: 0, right: 0 });
   return (
     <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
       <GuiaFormulasBtn />
       <div style={{ position: "relative" }}>
         <button
-          onMouseDown={e => { e.preventDefault(); onToggle(isOpen ? null : rowKey); }}
+          ref={btnRef}
+          onMouseDown={e => {
+            e.preventDefault();
+            if (!isOpen && btnRef.current) {
+              const r = btnRef.current.getBoundingClientRect();
+              setPopPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+            }
+            onToggle(isOpen ? null : rowKey);
+          }}
           style={{
             height: 28, padding: "0 9px", borderRadius: 5, cursor: "pointer",
             fontFamily: M, fontSize: 10, fontWeight: 600,
@@ -111,7 +121,7 @@ function VarsDropdown({ rowKey, openKey, onToggle, scopes, defaultScopeId, onIns
           ⚡ vars <span style={{ fontSize: 8, opacity: 0.7 }}>{isOpen ? "▲" : "▼"}</span>
         </button>
         {isOpen && (
-          <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 100 }}>
+          <div style={{ position: "fixed", top: popPos.top, right: popPos.right, zIndex: 1200 }}>
             <VarsExplorer
               scopes={scopes}
               defaultScopeId={defaultScopeId}

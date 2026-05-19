@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 const M = "'DM Mono',monospace";
 
@@ -39,11 +39,21 @@ const SECCIONES = [
 
 export default function GuiaFormulasBtn() {
   const [abierto, setAbierto] = useState(false);
+  const btnRef = useRef(null);
+  const [popPos, setPopPos] = useState({ top: 0, right: 0 });
 
   return (
-    <div style={{ position: "relative", flexShrink: 0 }}>
+    <div style={{ flexShrink: 0 }}>
       <button
-        onMouseDown={e => { e.preventDefault(); setAbierto(v => !v); }}
+        ref={btnRef}
+        onMouseDown={e => {
+          e.preventDefault();
+          if (!abierto && btnRef.current) {
+            const r = btnRef.current.getBoundingClientRect();
+            setPopPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+          }
+          setAbierto(v => !v);
+        }}
         title="Guía de fórmulas"
         style={{
           height: 28, padding: "0 8px", borderRadius: 5, cursor: "pointer",
@@ -61,11 +71,11 @@ export default function GuiaFormulasBtn() {
         <>
           {/* overlay para cerrar al hacer click fuera */}
           <div
-            style={{ position: "fixed", inset: 0, zIndex: 199 }}
+            style={{ position: "fixed", inset: 0, zIndex: 1199 }}
             onMouseDown={() => setAbierto(false)}
           />
           <div style={{
-            position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 200,
+            position: "fixed", top: popPos.top, right: popPos.right, zIndex: 1200,
             background: "var(--bg-surface)", border: "1px solid var(--border)",
             borderRadius: 8, padding: "12px 14px", minWidth: 320, maxWidth: 380,
             boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
