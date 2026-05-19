@@ -227,15 +227,6 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costo
           )}
         </div>
 
-        {/* Cantidad */}
-        <button onClick={() => setFp(p => ({ ...p, cantidad: Math.max(1, (parseInt(p.cantidad) || 1) - 1) }))}
-          style={{ width: 22, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>−</button>
-        <input type="number" value={fp.cantidad} min="1"
-          onChange={e => setFp(p => ({ ...p, cantidad: e.target.value }))}
-          style={{ ...inputSm, width: 34, textAlign: "center", color: "var(--accent)", fontWeight: 700, padding: "3px 2px" }} />
-        <button onClick={() => setFp(p => ({ ...p, cantidad: (parseInt(p.cantidad) || 1) + 1 }))}
-          style={{ width: 22, height: 26, borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>+</button>
-
         {/* Dropdown orientación */}
         {(() => {
           const activeOrient = ORIENTACIONES_3D.find(o => o.id === fp.orientacion3d);
@@ -346,12 +337,10 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costo
             )}
           </div>
         );
-      })}</div>}
+      })}</div>
 
-      {/* ── Medidas libres ────────────────────────────────────────────────── */}
       {/* ── Sub-tabs: Pos. 3D / Param. ───────────────────────────────────── */}
-      {(
-        <div style={{ marginTop: 1, borderTop: "1px solid var(--border)" }}>
+      <div style={{ marginTop: 1, borderTop: "1px solid var(--border)" }}>
           <SubTabBar tabs={subTabs} active={subTab} onSelect={setSubTab} />
           <div style={{ paddingTop: 20, display: "flex", flexDirection: "column", gap: 7 }}>
 
@@ -517,7 +506,6 @@ function FormPieza({ fp, setFp, onCancelar, onConfirmar, editando, modulo, costo
 
           </div>
         </div>
-      )}
     </div>
   );
 }
