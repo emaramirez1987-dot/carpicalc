@@ -12,13 +12,13 @@ src/
 ├── lib/
 │   └── supabase.js              # Cliente Supabase (auth + Postgres + RLS)
 ├── state/
-│   ├── NavContext.jsx            # Navigation state only (useReducer, 12 semantic actions)
+│   ├── NavContext.jsx            # Navigation state only (useReducer, 10 acciones)
 │   └── PresupuestoContext.jsx    # Active editor state (items, dims, adicionales, etc.)
 ├── services/
-│   ├── moduloService.js          # Pure domain: parser/normalizer + parametrico (Fase 1-5)
+│   ├── moduloService.js          # Pure domain: parser/normalizer + paramétrico + subcomponentes
 │   ├── moduloService.test.js
 │   ├── presupuestoService.js     # Pure mutations: crear/eliminar/cambiarEstado/migraciones
-│   └── optimizerService.js       # Optimización de corte por placa
+│   └── optimizerService.js       # Optimización de corte por placa (Guillotine 2D)
 ├── components/
 │   ├── ui/                       # Visual primitives only (Btn, Card, Badge, etc.)
 │   ├── auth/                     # LoginScreen (Supabase auth)
@@ -26,18 +26,23 @@ src/
 │   ├── suscripcion/              # PanelSuscripcion (Mercado Pago — Bronce/Plata/Oro)
 │   ├── render/                   # Generación de renders IA con créditos
 │   ├── costos/                   # Price table, waste, overhead
-│   ├── catalogo/                 # FormModulo, EditorParametrico, GuiaParametricaModal, PanelSelector
+│   ├── catalogo/                 # FormModulo, EditorParametrico, EditorComponenteHijo,
+│   │                             # VarsExplorer (con carpetas), GuiaParametricaModal, etc.
 │   ├── presupuesto/              # Active editor, GestorPresupuestos, BarraTotal,
-│   │                             # AcordeonEdicionItem, ConfiguradorParametrico (Fase 7)
+│   │                             # AcordeonEdicionItem, ConfiguradorParametrico
 │   ├── vista-previa/             # PDF, WhatsApp, client approval
 │   ├── corte/                    # Cut list by material
 │   ├── trabajos/                 # Kanban + list tracking
 │   ├── caja/                     # Payments, profitability, validity
 │   ├── visor3d/                  # Visor 3D individual (catálogo) — engine puro en visor3d/engine/
+│   │   └── engine/
+│   │       ├── buildPiezas3D.js
+│   │       └── buildPiezas3D.test.js
 │   ├── vista3d/                  # Vista 3D del presupuesto (multi-módulo) + configurador en vivo
 │   ├── vista-svg/                # Renderer SVG 2D del módulo
 │   └── ErrorBoundary.jsx         # Captura de errores en runtime
-├── utils.js               # Pure calculation functions (fórmulas + costos)
+├── utils.js               # Pure calculation functions (fórmulas + costos + SVG)
+├── utils.test.js
 ├── storage.js             # I/O Supabase (fuente de verdad) + localStorage (cache UI)
 ├── constants.js           # Domain data: states, materials, defaults, MODULO_VACIO
 └── hooks/
@@ -55,22 +60,27 @@ api/                       # Functions serverless de Vercel
 ├── generate-scene.js
 └── mp-webhook.js          # Webhook de Mercado Pago para alta/baja de planes
 
-supabase/migrations/        # Schema SQL versionado
+supabase/migrations/
 └── 001_initial_schema.sql
 ```
 
 ## Sistema paramétrico
 
 CarpiCálc tiene un sistema de **módulos paramétricos** — el autor define en el catálogo:
-- **Parámetros** (cantidad de cajones, manija sí/no, etc.)
+- **Parámetros** (cantidad de cajones, manija sí/no, etc.) — tipos: `number`, `integer`, `boolean`, `choice`, `formula`
 - **Zonas** (agrupación de piezas con material propio)
 - **Piezas con `condition` y `repeat`** (aparecen/desaparecen, se multiplican)
 - **Herrajes con `cantidad`-fórmula y `condition`**
-- **Constraints** (validaciones)
+- **Constraints** (validaciones tipo "alto >= cajones * 80")
+- **Subcomponentes** (mini-módulos con su propio eje local; se expanden a piezas/herrajes concretos en coords del padre)
 
 El usuario del presupuesto cambia los parámetros desde dos lugares (panel del item · Vista 3D) y todo se recalcula en vivo (3D + costo + cortes + materiales + total).
 
 Ver `GUIA_PARAMETRICA.md` y `src/ARCHITECTURE.md` para el detalle. La guía también está accesible en la app desde el botón **📖 Guía** del catálogo.
+
+### Sistema de carpetas en VarsExplorer
+
+Las variables custom del módulo (y de cada subcomponente) se pueden organizar en carpetas con nombre. Los metadatos viven en `modulo.variablesCarpetas` separado del objeto `modulo.variables` (que sigue plano para no romper las fórmulas). Forma: `{ [scopeId]: { [carpetaId]: { nombre, vars[] } } }`.
 
 ## Layer Responsibilities
 
@@ -78,9 +88,9 @@ Ver `GUIA_PARAMETRICA.md` y `src/ARCHITECTURE.md` para el detalle. La guía tamb
 |---|---|---|
 | `App.js` | Estado de dominio (modulos, costos, presupuestos, perfil), sesión Supabase, layout | Business logic, nav state |
 | `NavContext` | Navigation transitions only | Mutate domain data |
-| `PresupuestoContext` | Estado del editor activo (items, dims, adicionales) | Persist directly, business logic |
-| `services/` | Pure domain mutations + parser + motor paramétrico | Call setState, dispatch |
-| `utils.js` | Pure calculations + motor de fórmulas (`evaluarExpresion`, `evaluarFormula`, `calcularModulo`) | State, effects, UI, localStorage |
+| `PresupuestoContext` | Estado del editor activo (items, dims, adicionales, composicionOverride, inlineModulos) | Persist directly, business logic |
+| `services/` | Pure domain mutations + parser + motor paramétrico + optimizador | Call setState, dispatch |
+| `utils.js` | Pure calculations + motor de fórmulas (`evaluarExpresion`, `evaluarFormula`, `calcularModulo`, `generarVistaSVG`) | State, effects, UI, localStorage |
 | `storage.js` | I/O Supabase + I/O localStorage (cache) | Business logic |
 | `lib/supabase.js` | Cliente Supabase singleton | Lógica de negocio |
 | `components/[domain]/` | Visual + local interaction | Direct persistence |
@@ -96,26 +106,26 @@ Ver `GUIA_PARAMETRICA.md` y `src/ARCHITECTURE.md` para el detalle. La guía tamb
   - `carpicalc:borrador_modulo` — estado de FormModulo entre pestañas
   - `carpicalc:roles_pieza` — roles personalizados del taller
   - `carpicalc:tema` — `"dark" | "light"`
+  - `carpicalc:catalogo_vista` — `"grid" | "list"` para el catálogo
   - `carpicalc:ultimo_backup` — timestamp del último backup exportado
-- `withSave` usa cola serializada (`saveQueue` + `drain`) — saves paralelos se procesan en orden
+- `withSave` en App.js usa cola serializada (`saveQueue` + `drain`) — saves paralelos se procesan en orden
 - **Validación de schema:** `storage.js` pasa los datos de Supabase por `parsearModulo`/`parsearPresupuesto` (services). Datos malformados se descartan con warning, no se cargan corruptos.
+- **Estrategia de guardado:** delete-all + insert-all por workspace (app single-user, gap imperceptible).
 
 ## Key Data Flows
 
-**TEMP flow (Nivel 3 editing):**
+**Edición Nivel 3 (editar módulo del catálogo desde el presupuesto):**
 ```
-User clicks ✎ on item
+User clicks "🔧 Editar en catálogo" en un ítem
 → crearTempDesdeModulo()        [moduloService]
-→ setModulos({...prev, [tempCod]: copy})
-→ onVerCatalogo(tempCod, ctx)
-→ dispatch(INICIAR_EDICION_NIVEL3)  [NavContext: sets pendingDeepLink]
-→ useEffect in Presupuesto detects modulos[tempCod] exists
-→ dispatch(DEEPLINK_LISTO)          [NavContext: vista=catalogo]
-→ User edits → saves
-→ migrarTempAPermanente()       [moduloService]
-→ actualizarReferenciasEnItems() [moduloService]
+→ setModulos({...prev, [tempCod]: copy, _origen: presupuestoId})
+→ navega al catálogo con deepLink = tempCod
+→ CatalogoModulos detecta deepLinkCodigo y abre FormModulo
+→ User edita → guarda como TEMP o promueve a permanente
+→ migrarTempAPermanente()  + actualizarReferenciasEnItems()  (si promueve)
 → dispatch(VOLVER_A_PRESUPUESTO)
 ```
+> Nota: `catalogoDeepLink` y `origenEdicion` viven en el estado de NavContext y se LIMPIAN por las acciones `DEEPLINK_CONSUMIDO`, `ABRIR_CATALOGO` y `VOLVER_A_PRESUPUESTO`. Su SETEO actual ocurre fuera del reducer (App.js los lee de un origen externo y los pasa por props a CatalogoModulos). Ver "Deuda técnica registrada".
 
 **Cost update detection:**
 ```
@@ -127,12 +137,20 @@ Detection is deterministic (real total comparison), NOT timestamp-based.
 
 **Flujo paramétrico end-to-end:**
 ```
-Catálogo (FormModulo + EditorParametrico) → módulo con parametros[]/zonas[]/constraints[]
-Presupuesto (AcordeonEdicionItem · ConfiguradorParametrico) → item.parametrosValores
-Vista 3D (ConfiguradorParametrico en panel lateral) → mismo item.parametrosValores
-calcularModulo(modulo, costos, item.parametrosValores) → costo, piezas y total se recalculan
-buildPiezas3D(modulo, costos, item.parametrosValores) → render se actualiza
+Catálogo (FormModulo + EditorParametrico + EditorComponenteHijo)
+  → módulo con parametros[]/zonas[]/constraints[]/subComponentes[]
+Presupuesto (AcordeonEdicionItem · ConfiguradorParametrico)
+  → item.parametrosValores
+Vista 3D (ConfiguradorParametrico en panel lateral)
+  → mismo item.parametrosValores
+calcularModulo(modulo, costos, item.parametrosValores)
+  → costo, piezas y total se recalculan
+buildPiezas3D(modulo, costos, item.parametrosValores)
+  → render se actualiza
 ```
+
+**Save queue:**
+Todas las escrituras (módulos, costos, presupuestos, perfil) entran a `withSave` en App.js → encolan en `saveQueue` → `drain()` ejecuta de a una. Evita race conditions sin librerías externas.
 
 ## Critical Rules
 
@@ -145,7 +163,7 @@ buildPiezas3D(modulo, costos, item.parametrosValores) → render se actualiza
 **State:**
 - Navigation state → NavContext only. Never add nav vars to App.js state.
 - Domain state (modulos, costos, presupuestos) → App.js only, until domain contexts are built.
-- NavContext actions must be semantic (ABRIR_VISTA_PREVIA) not generic (SET_STATE)
+- NavContext actions must be semantic (ABRIR_EDITOR_VISTA) not generic (SET_STATE)
 
 **Services:**
 - Functions in `services/` must be pure: receive data, return data, no side effects
@@ -160,6 +178,7 @@ buildPiezas3D(modulo, costos, item.parametrosValores) → render se actualiza
 
 **IDs:**
 - Presupuesto IDs: `crypto.randomUUID()` — globally unique, Supabase-compatible
+- Items dentro de presupuesto: `crypto.randomUUID()` (migración legacy → UUID en `migrarDimOverridePresupuestos`)
 - TEMP codes: `TEMP_${Date.now()}` — always cleaned up on save or delete
 - Permanent module codes: `MC${String(Date.now()).slice(-6)}`
 - **Never use `Date.now()` as a persistent entity ID** — it's a timestamp, not an identifier
@@ -177,20 +196,22 @@ buildPiezas3D(modulo, costos, item.parametrosValores) → render se actualiza
 
 ## NavContext Actions Reference
 
+Las 10 acciones reales del reducer (`src/state/NavContext.jsx`):
+
 ```js
 dispatch({ type: "CAMBIAR_VISTA",                payload: { vista } })
 dispatch({ type: "ABRIR_CATALOGO" })
-dispatch({ type: "INICIAR_EDICION_NIVEL3",       payload: { cod, contexto } })
-dispatch({ type: "DEEPLINK_LISTO",               payload: { cod, contexto } })
 dispatch({ type: "DEEPLINK_CONSUMIDO" })
 dispatch({ type: "VOLVER_A_PRESUPUESTO" })
-dispatch({ type: "ABRIR_VISTA_PREVIA",           payload: { presupuestoId } })
-dispatch({ type: "SELECCIONAR_PRESUPUESTO_PREVIEW", payload: { presupuestoId } })
 dispatch({ type: "EDITAR_PRESUPUESTO",           payload: { id, p } })
 dispatch({ type: "PRESUPUESTO_PARA_EDITAR_CONSUMIDO" })
-dispatch({ type: "ABRIR_CAJA",                  payload: { presupuestoId } })
+dispatch({ type: "ABRIR_CAJA",                   payload: { presupuestoId } })
 dispatch({ type: "CAJA_PRES_ID_CONSUMIDO" })
+dispatch({ type: "ABRIR_EDITOR_VISTA",           payload: { cod } })
+dispatch({ type: "EDITOR_VISTA_CERRADO" })
 ```
+
+Estado expuesto: `vista`, `catalogoDeepLink`, `origenEdicion`, `presupuestoParaEditar`, `cajaPresId`, `editorVistaCod`, `editorVistaOrigen`.
 
 ## Presupuesto Object Shape
 
@@ -205,43 +226,74 @@ dispatch({ type: "CAJA_PRES_ID_CONSUMIDO" })
     parametrosValores?: { [paramId]: valor },  // sistema paramétrico
     ...
   }],
-  dimOverride: { [codigo-id]: { ancho, alto, profundidad, material? } },
-  adicionales: [{ id, nombre, monto }],
-  costosDirectos: [{ id, tipo, refId, cantidad, precioUnit, precioManual, subtotal }],
-  total: number,
-  costosVersionAl: timestamp,  // sync marker for stale detection
-  cobros: [{ fecha, monto, concepto }],
-  costoReal: number,
-  diasVigencia: number,
+  dimOverride:         { [item.id || item.codigo]: { ancho, alto, profundidad, material? } },
+  composicionOverride: { [itemKey]: {...} },              // override de composicionVisual por ítem
+  inlineModulos:       { [codigo]: Modulo },              // ediciones inline solo del presupuesto
+  adicionales:         [{ id, nombre, monto }],
+  costosDirectos:      [{ id, tipo, refId, cantidad, precioUnit, precioManual, subtotal }],
+  total:               number,
+  costosVersionAl:     timestamp,                          // sync marker for stale detection
+  cobros:              [{ fecha, monto, concepto }],
+  costoReal:           number,
+  diasVigencia:        number,
+  creadoEn:            number,                             // Date.now() de la creación
 }
 ```
 
-## Modulo Object Shape (con paramétrico)
+## Modulo Object Shape
 
 ```js
 {
   nombre, descripcion, categoria, material,
   dimensiones: { ancho, alto, profundidad },
-  variables: { [name]: formula | number },
+  variables: { [name]: formula | number },        // OJO: ver "Deuda técnica" — shape ambiguo
+  variablesCarpetas?: {                            // metadatos de organización en carpetas
+    [scopeId]: { [carpetaId]: { nombre, vars: [...] } }
+  },
   piezas: [{
     nombre, cantidad, formula1, formula2, ...,
-    zona?: string,                                // Fase 4
-    condition?: string,                           // Fase 3
-    repeat?: { var, from, to },                   // Fase 3
+    zona?: string,                                 // referencia a modulo.zonas[*].id
+    condition?: string,                            // expr booleana — pieza solo si truthy
+    repeat?: { var, from, to },                    // genera N piezas con var en contexto
+    posFormulas?: { x, y, z },                     // posición exacta en coords del módulo
   }],
   herrajes: [{
     id,
-    cantidad: number | string,                    // string = fórmula (Fase 5)
-    condition?: string,                           // Fase 5
+    cantidad: number | string,                     // string = fórmula
+    condition?: string,
   }],
-  moDeObra: { tipo, horas },
+  moDeObra: { tipo: "por_modulo"|"por_hora", horas },
   imagen, tipoVisual,
-  // Schema paramétrico (Fase 1):
-  parametros: [{ id, nombre, tipo, def, min?, max?, opciones?, expr?, unidad? }],
-  zonas:      [{ id, nombre, material, espesor? }],
-  constraints:[{ expr, msg }],
+  // Schema paramétrico:
+  parametros:    [{ id, nombre, tipo, def, min?, max?, opciones?, expr?, unidad? }],
+  zonas:         [{ id, nombre, material, espesor? }],
+  constraints:   [{ expr, msg }],
+  subComponentes: [{                               // mini-módulos con eje local
+    id, nombre,
+    repeat?: { var, from, to },
+    condition?: string,
+    origen?: { x, y, z },                          // coords en el padre
+    dimensiones: { ancho, alto, profundidad },     // LOCALES (pueden ser fórmulas)
+    parametros?: [...],
+    piezas: [...],                                 // en coords locales del subcomp
+    herrajes?: [...],
+    variables?: { [name]: formula },
+    variablesCarpetas?: {...},
+  }],
+  temporal?: boolean,                              // true para TEMP_ (no aparecen en catálogo)
+  presupuestoId?: string,                          // si temporal, qué presupuesto lo originó
 }
 ```
+
+## Tests existentes
+
+```
+src/utils.test.js
+src/services/moduloService.test.js
+src/components/visor3d/engine/buildPiezas3D.test.js
+```
+
+Cubren el motor de fórmulas, parámetros, subcomponentes y armado 3D.
 
 ## Roadmap
 
@@ -250,12 +302,16 @@ dispatch({ type: "CAJA_PRES_ID_CONSUMIDO" })
 |---|---|---|
 | Alta | Public budget link | Flujo de aprobación del cliente vía link público |
 | Baja | Resumen mensual / m² calculator / export lista de compras | |
-| Opcional | Editor 3D inmersivo Nivel 2/3 | Medir, esconder/explotar, sección · gizmos drag, snap, history. Plan paramétrico Fase 8 lo dejó como diferido — solo si se justifica con uso real. |
+| Opcional | Editor 3D inmersivo Nivel 2/3 | Medir, esconder/explotar, sección · gizmos drag, snap, history. Diferido hasta que haya uso real que lo justifique. |
 
 ### Deuda técnica registrada
 | Priority | Tarea | Detalle |
 |---|---|---|
-| Media | `modulo.variables` shape inconsistente | El parser lo valida como `Array`, pero `FormModulo`, `corte/`, `visor3d/` y `resolverVariables` lo tratan como objeto `{ key: formula }`. Unificar a objeto en parser y callsites. Documentado en `src/ARCHITECTURE.md`. |
+| Alta | `modulo.variables` shape inconsistente | El parser lo valida como `Array`, pero `FormModulo`, `corte/`, `visor3d/`, `VarsExplorer` y `resolverVariables` lo tratan como objeto `{ key: formula }`. Funciona por conversión implícita en la lectura. Unificar a objeto en parser y callsites. Documentado en `src/ARCHITECTURE.md`. |
+| Alta | `catalogoDeepLink` / `origenEdicion` se setean fuera del reducer | El reducer de NavContext los LIMPIA pero no tiene acción que los SETEE. App.js los lee del estado y los pasa por props a CatalogoModulos — sin embargo, no hay un dispatch claro que los inicialice. Investigar: o son legacy, o se setean por mutación directa del state inicial / efecto. |
+| Media | App.js en crecimiento (848 líneas) | Mantenibilidad a largo plazo. Mover handlers de dominio a hooks/services, sacar Header y lógica de auth a sus carpetas. |
+| Baja | Estilos inline repetidos | Patrones de IconBtn / ConfirmBtn / Chip duplicados en muchos componentes. Extraer a `components/ui/`. |
+| Baja | `catalogo/index.jsx` 1263 líneas, contiene 3 componentes | Partir en `CatalogoModulos.jsx`, `PanelSelectorModulos.jsx`, `EditorVistaSVG.jsx`. |
 
 ## Architecture Principles — Non-negotiable
 
