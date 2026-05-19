@@ -66,7 +66,7 @@ export const fmtFechaLarga = (ts) =>
 //
 // Soporta:
 //   • Aritmética: + - * / con paréntesis
-//   • Funciones: min, max, round, ceil, floor, abs (case-sensitive)
+//   • Funciones: min, max, round, ceil, floor, abs, clamp, mod (case-sensitive)
 //   • Comparación: > < >= <= == != (== y != usan == y != de JS)
 //   • Lógicos: && ||
 //   • Ternario: cond ? a : b
@@ -87,7 +87,7 @@ export const fmtFechaLarga = (ts) =>
  */
 export function inspeccionarFormula(expr, conocidas = []) {
   if (!expr || typeof expr !== 'string') return { ok: true, desconocidas: [] };
-  const FUNCIONES = new Set(['min', 'max', 'round', 'ceil', 'floor', 'abs']);
+  const FUNCIONES = new Set(['min', 'max', 'round', 'ceil', 'floor', 'abs', 'clamp', 'mod']);
   const OK = new Set(conocidas);
   // Extraer todos los identificadores (incluyendo dot notation: parent.ancho)
   const matches = expr.match(/\b[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*\b/g) || [];
@@ -103,12 +103,17 @@ export function inspeccionarFormula(expr, conocidas = []) {
   return { ok: desconocidas.length === 0, desconocidas };
 }
 
-/** Funciones permitidas en fórmulas → mapeo a Math.X */
+/** Funciones permitidas en fórmulas → mapeo a Math.X o helper interno */
 export const FUNCIONES_FORMULA = {
   min: 'Math.min', max: 'Math.max',
   round: 'Math.round', ceil: 'Math.ceil', floor: 'Math.floor',
   abs: 'Math.abs',
+  clamp: '_clamp',  // clamp(x, min, max) → limita x entre min y max
+  mod:   '_mod',    // mod(x, n) → resto siempre positivo
 };
+
+const _clamp = (x, lo, hi) => Math.min(Math.max(x, lo), hi);
+const _mod   = (x, n)      => ((x % n) + n) % n;
 
 /** Aplana un objeto anidado en claves dot-notation. {a:{b:1}} → {'a.b':1} */
 function flattenVars(obj, prefix = '', out = {}) {
@@ -154,12 +159,13 @@ export function evaluarExpresion(expr, vars = {}) {
   //    no debe quedar nada. Cualquier identificador residual es rechazado.
   const stripped = t
     .replace(/Math\.(min|max|round|ceil|floor|abs)/g, '')
+    .replace(/_clamp|_mod/g, '')
     .replace(/[\d\s+\-*/().,?:<>=!&|]/g, '');
   if (stripped !== '') return null;
 
   try {
     // eslint-disable-next-line no-new-func
-    const r = new Function(`return (${t})`)();
+    const r = new Function('_clamp', '_mod', `return (${t})`)(_clamp, _mod);
     if (typeof r === 'boolean') return r;
     if (typeof r === 'number' && isFinite(r)) return r;
     return null;

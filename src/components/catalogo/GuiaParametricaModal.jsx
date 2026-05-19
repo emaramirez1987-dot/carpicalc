@@ -340,7 +340,8 @@ Ternario:      cond ? a : b
 Funciones:
   min(a, b, ...)  max(a, b, ...)
   round(x)        ceil(x)        floor(x)
-  abs(x)`}</Codeline>
+  abs(x)
+  clamp(x, min, max)             mod(x, n)`}</Codeline>
 
             <H>Ejemplos prácticos</H>
             <Codeline>{`// Alto del cajón = (alto disponible / cantidad) - margen

@@ -5,6 +5,7 @@ import { fmtPeso, calcularModulo } from '../../utils.js';
 import { CATEGORIAS_DEFAULT } from '../../constants.js';
 import { piezasQueUsanVar, resolverContextoModulo } from '../../services/moduloService.js';
 import VarsExplorer, { construirScopes } from './VarsExplorer.jsx';
+import GuiaFormulasBtn from './GuiaFormulasBtn.jsx';
 import { cargarBorradorModulo, guardarBorradorModulo, limpiarBorradorModulo } from '../../storage.js';
 import FilaPieza from './FilaPieza.jsx';
 import FormPieza from './FormPieza.jsx';
@@ -44,29 +45,32 @@ const piezaVaciaNueva = () => clonarPieza(PIEZA_VACIA);
 function VarsDropdown({ rowKey, openKey, onToggle, scopes, onInsert }) {
   const isOpen = openKey === rowKey;
   return (
-    <div style={{ position: "relative", flexShrink: 0 }}>
-      <button
-        onMouseDown={e => { e.preventDefault(); onToggle(isOpen ? null : rowKey); }}
-        style={{
-          height: 26, padding: "0 8px", borderRadius: 5, cursor: "pointer",
-          fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 600,
-          background: isOpen ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)",
-          border: `1px solid ${isOpen ? "rgba(212,175,55,0.40)" : "var(--border)"}`,
-          color: isOpen ? "var(--accent)" : "var(--text-muted)",
-          display: "flex", alignItems: "center", gap: 4,
-          transition: "all 0.12s",
-        }}>
-        ⚡ vars <span style={{ fontSize: 8, opacity: 0.7 }}>{isOpen ? "▲" : "▼"}</span>
-      </button>
-      {isOpen && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 200 }}>
-          <VarsExplorer
-            scopes={scopes}
-            defaultScopeId="padre"
-            onInsert={(name) => { onInsert(name); onToggle(null); }}
-          />
-        </div>
-      )}
+    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+      <GuiaFormulasBtn />
+      <div style={{ position: "relative" }}>
+        <button
+          onMouseDown={e => { e.preventDefault(); onToggle(isOpen ? null : rowKey); }}
+          style={{
+            height: 26, padding: "0 8px", borderRadius: 5, cursor: "pointer",
+            fontFamily: "'DM Mono',monospace", fontSize: 10, fontWeight: 600,
+            background: isOpen ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${isOpen ? "rgba(212,175,55,0.40)" : "var(--border)"}`,
+            color: isOpen ? "var(--accent)" : "var(--text-muted)",
+            display: "flex", alignItems: "center", gap: 4,
+            transition: "all 0.12s",
+          }}>
+          ⚡ vars <span style={{ fontSize: 8, opacity: 0.7 }}>{isOpen ? "▲" : "▼"}</span>
+        </button>
+        {isOpen && (
+          <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 200 }}>
+            <VarsExplorer
+              scopes={scopes}
+              defaultScopeId="padre"
+              onInsert={(name) => { onInsert(name); onToggle(null); }}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
