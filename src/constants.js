@@ -128,8 +128,7 @@ export const ESTADOS_TRABAJO = [
 // Se usan solo la primera vez que el usuario abre la app (cuando localStorage
 // está vacío). No se modifican en runtime.
 //
-// costoIniciales   → tabla de precios de materiales, herrajes, MO y tapacanto
-// modulosIniciales → catálogo de ejemplo con 2 módulos parametrizados
+// costoIniciales → tabla de precios de materiales, herrajes, MO y tapacanto
 // ════════════════════════════════════════════════════════════════════════════
 
 // ── Costos iniciales ──────────────────────────────────────────────────────
@@ -207,51 +206,6 @@ export const ROLES_PIEZA_DEFAULT = [
 
 // ── Módulos iniciales ─────────────────────────────────────────────────────
 //
-// Cada módulo define:
-//   nombre / descripcion / dimensiones (en mm) / material
-//   piezas: lista de cortes parametrizados
-//     - usaDim / usaDim2: de qué dimensión del módulo toma la medida ("ancho", "alto", "profundidad")
-//     - offsetEsp: cuántos espesores de placa restar/sumar a esa dimensión
-//     - offsetMm: milímetros fijos a restar/sumar
-//     - divisor: divide la dimensión (ej: para puertas dobles, divisor=2)
-//     - tc: tapacanto — id del tipo + cantidad de lados en cada dimensión
-//     - especial: true = usa dimLibre1/dimLibre2 en lugar de calcularlo
-//   herrajes: lista de { id, cantidad } referenciando costos.herrajes[].id
-//   moDeObra: tipo de mano de obra + horas (si aplica)
-//
-export const modulosIniciales = {
-  MC001: {
-    nombre:      "Módulo bajo mesada 60cm",
-    descripcion: "Bajo mesada con puerta",
-    dimensiones: { ancho: 600, profundidad: 550, alto: 700 },
-    material:    "melamina",
-    tipoVisual:  "bajo",
-    piezas: [
-      { nombre: "Lateral", cantidad: 2, usaDim: "alto",  usaDim2: "profundidad", offsetEsp: 0,  offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 1, lados2: 0 } },
-      { nombre: "Base",    cantidad: 1, usaDim: "ancho", usaDim2: "profundidad", offsetEsp: -2, offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 0, lados2: 1 } },
-      { nombre: "Techo",   cantidad: 1, usaDim: "ancho", usaDim2: "profundidad", offsetEsp: -2, offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 1, lados2: 1 } },
-      { nombre: "Puerta",  cantidad: 1, usaDim: "alto",  usaDim2: "ancho",       offsetEsp: 0,  offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 2, lados2: 2 } },
-    ],
-    herrajes: [{ id: 1, cantidad: 2 }],
-    moDeObra: { tipo: "por_modulo", horas: 0 },
-  },
-  MC002: {
-    nombre:      "Módulo colgante 60cm",
-    descripcion: "Alacena 2 puertas",
-    dimensiones: { ancho: 600, profundidad: 350, alto: 700 },
-    material:    "melamina",
-    tipoVisual:  "aereo",
-    piezas: [
-      { nombre: "Lateral", cantidad: 2, usaDim: "alto",  usaDim2: "profundidad", offsetEsp: 0,  offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 1, lados2: 0 } },
-      { nombre: "Base",    cantidad: 1, usaDim: "ancho", usaDim2: "profundidad", offsetEsp: -2, offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 0, lados2: 1 } },
-      { nombre: "Techo",   cantidad: 1, usaDim: "ancho", usaDim2: "profundidad", offsetEsp: -2, offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 1, lados2: 1 } },
-      { nombre: "Puerta",  cantidad: 2, usaDim: "alto",  usaDim2: "ancho",       offsetEsp: 0,  offsetMm: 0, divisor: 1, offsetEsp2: 0, offsetMm2: 0, divisor2: 1, tc: { id: 1, lados1: 2, lados2: 2 } },
-    ],
-    herrajes: [{ id: 1, cantidad: 4 }],
-    moDeObra: { tipo: "por_modulo", horas: 0 },
-  },
-};
-
 // ── Planes de suscripción — límites de renders ────────────────────────────
 // renders: null = ilimitado. Modificar aquí para ajustar límites por plan.
 export const PLANES_RENDER = {
