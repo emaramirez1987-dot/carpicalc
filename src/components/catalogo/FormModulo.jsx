@@ -1001,39 +1001,36 @@ function FormModulo({
             )}
           </div>
         </div>
-
-        {/* Overlay del visor cuando está maximizado — cubre form + columna preview */}
-        {visor3DMax && piezasPreview.length > 0 && (
-          <div style={{
-            position: "absolute", inset: 0, zIndex: 20,
-            background: "#0a0c10",
-          }}>
-            <Suspense fallback={
-              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace" }}>Cargando 3D…</div>
-            }>
-              <VisorCatalogo3D
-                modulo={{ ...datos, piezas: piezasPreview, herrajes, moDeObra }}
-                costos={costos}
-                parametrosValores={valoresPrueba}
-                maximizado={true}
-                onToggleMaximizar={setVisor3DMax}
-                onActualizar={(nuevoMod) => {
-                  if (nuevoMod?.piezas)   setPiezas(nuevoMod.piezas);
-                  if (nuevoMod?.herrajes) setHerrajes(nuevoMod.herrajes);
-                }}
-                onSelectPieza={(idx, subComponenteId) => {
-                  if (idx == null) { if (editandoPiezaIdx !== null) cancelarEdicion(); return; }
-                  if (subComponenteId) { setTabActiva(`hijo:${subComponenteId}`); return; }
-                  if (editandoPiezaIdx === null && idx === piezasPreview.length - 1 && idx >= piezas.length) return;
-                  setTabActiva("piezas");
-                  editarPieza(idx);
-                }}
-              />
-            </Suspense>
-          </div>
-        )}
-      </div>
           }
+          overlay={visor3DMax && piezasPreview.length > 0 && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 20,
+              background: "#0a0c10",
+            }}>
+              <Suspense fallback={
+                <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 11, fontFamily: "'DM Mono',monospace" }}>Cargando 3D…</div>
+              }>
+                <VisorCatalogo3D
+                  modulo={{ ...datos, piezas: piezasPreview, herrajes, moDeObra }}
+                  costos={costos}
+                  parametrosValores={valoresPrueba}
+                  maximizado={true}
+                  onToggleMaximizar={setVisor3DMax}
+                  onActualizar={(nuevoMod) => {
+                    if (nuevoMod?.piezas)   setPiezas(nuevoMod.piezas);
+                    if (nuevoMod?.herrajes) setHerrajes(nuevoMod.herrajes);
+                  }}
+                  onSelectPieza={(idx, subComponenteId) => {
+                    if (idx == null) { if (editandoPiezaIdx !== null) cancelarEdicion(); return; }
+                    if (subComponenteId) { setTabActiva(`hijo:${subComponenteId}`); return; }
+                    if (editandoPiezaIdx === null && idx === piezasPreview.length - 1 && idx >= piezas.length) return;
+                    setTabActiva("piezas");
+                    editarPieza(idx);
+                  }}
+                />
+              </Suspense>
+            </div>
+          )}
         />
       </div>{/* cierre del bloque unificado header+tabs+body */}
 

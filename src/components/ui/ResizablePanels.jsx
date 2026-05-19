@@ -13,6 +13,7 @@ import { useState, useRef } from "react";
 export default function ResizablePanels({
   left,
   right,
+  overlay,
   defaultSplit = 55,
   minLeft = 30,
   maxLeft = 80,
@@ -46,7 +47,7 @@ export default function ResizablePanels({
   return (
     <div
       ref={containerRef}
-      style={{ display: "flex", overflow: "hidden", ...style }}
+      style={{ display: "flex", overflow: "hidden", position: "relative", ...style }}
     >
       {/* Columna izquierda */}
       <div style={{ width: `${splitPct}%`, minWidth: 0, overflow: "hidden" }}>
@@ -73,6 +74,9 @@ export default function ResizablePanels({
       <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
         {right}
       </div>
+
+      {/* Overlay opcional — cubre ambas columnas */}
+      {overlay}
     </div>
   );
 }
