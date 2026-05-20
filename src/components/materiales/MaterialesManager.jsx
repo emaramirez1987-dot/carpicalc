@@ -220,7 +220,7 @@ export default function MaterialesManager({
                   ? "No hay materiales cargados. Cliqueá + Nuevo material para empezar."
                   : "No hay materiales en esta categoría"}
             </div>
-          ) : vista === "agrupada" && agrupados ? (
+          ) : vista === "agrupada" && agrupados && categoriaActiva !== CATEGORIA_TODOS ? (
             // Vista agrupada: paginación por categoría
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               {[...agrupados.entries()].map(([cid, items]) => {
