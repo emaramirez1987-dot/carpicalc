@@ -41,6 +41,7 @@ export default function MaterialesManager({
   const [categoriaActiva, setCategoriaActiva] = useState(CATEGORIA_TODOS);
   const [vistaUser, setVistaUser] = useState(null);  // null = auto
   const [pagina, setPagina] = useState(0);
+  const [paginasPorCat, setPaginasPorCat] = useState({});
   const POR_PAGINA = 12;
 
   // Auto-default vista: agrupada si hay categorías, plana si no
@@ -54,8 +55,8 @@ export default function MaterialesManager({
     materiales, categorias, query: queryDeferred, categoriaActiva, vista, orden,
   });
 
-  // Resetear página cuando cambia el filtro
-  useEffect(() => { setPagina(0); }, [queryDeferred, categoriaActiva, orden]);
+  // Resetear páginas cuando cambia el filtro
+  useEffect(() => { setPagina(0); setPaginasPorCat({}); }, [queryDeferred, categoriaActiva, orden]);
 
   const totalPaginas = Math.ceil(enCategoriaActiva.length / POR_PAGINA);
   const itemsPagina  = enCategoriaActiva.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA);
@@ -135,6 +136,26 @@ export default function MaterialesManager({
     fontFamily: M, fontSize: 12, fontWeight: 700, transition: "all 0.12s",
   };
 
+  const PaginacionControls = ({ pag, total, onChange }) => {
+    if (total <= 1) return null;
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
+        <button onClick={() => onChange(Math.max(0, pag - 1))} disabled={pag === 0}
+          style={{ ...btnPagStyle, opacity: pag === 0 ? 0.3 : 1 }}>‹</button>
+        {Array.from({ length: total }, (_, i) => (
+          <button key={i} onClick={() => onChange(i)} style={{
+            ...btnPagStyle, minWidth: 30,
+            background: pag === i ? "var(--accent)" : "transparent",
+            color: pag === i ? "#000" : "var(--text-muted)",
+            borderColor: pag === i ? "var(--accent)" : "var(--border)",
+          }}>{i + 1}</button>
+        ))}
+        <button onClick={() => onChange(Math.min(total - 1, pag + 1))} disabled={pag === total - 1}
+          style={{ ...btnPagStyle, opacity: pag === total - 1 ? 0.3 : 1 }}>›</button>
+      </div>
+    );
+  };
+
   // ── Render de cards ─────────────────────────────────────────────────────
   const renderCard = (mat) => (
     <MaterialCard
@@ -200,7 +221,7 @@ export default function MaterialesManager({
                   : "No hay materiales en esta categoría"}
             </div>
           ) : vista === "agrupada" && agrupados ? (
-            // Vista agrupada: sin paginación, se agrupa por categoría
+            // Vista agrupada: paginación por categoría
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               {[...agrupados.entries()].map(([cid, items]) => {
                 if (items.length === 0) return null;
@@ -208,6 +229,9 @@ export default function MaterialesManager({
                   ? { nombre: "Sin categoría", color: "var(--text-muted)" }
                   : categoriaPorId.get(cid);
                 if (!c) return null;
+                const pag = paginasPorCat[cid] || 0;
+                const totalPag = Math.ceil(items.length / POR_PAGINA);
+                const slice = items.slice(pag * POR_PAGINA, (pag + 1) * POR_PAGINA);
                 return (
                   <div key={cid}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -220,7 +244,12 @@ export default function MaterialesManager({
                       </span>
                       <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
                     </div>
-                    {grid(items)}
+                    {grid(slice)}
+                    <PaginacionControls
+                      pag={pag}
+                      total={totalPag}
+                      onChange={n => setPaginasPorCat(prev => ({ ...prev, [cid]: n }))}
+                    />
                   </div>
                 );
               })}
@@ -229,42 +258,11 @@ export default function MaterialesManager({
             // Vista plana: paginada
             <>
               <div style={{ flex: 1 }}>{grid(itemsPagina)}</div>
-              {totalPaginas > 1 && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, paddingTop: 4 }}>
-                  <button
-                    onClick={() => setPagina(p => Math.max(0, p - 1))}
-                    disabled={pagina === 0}
-                    style={{ ...btnPagStyle, opacity: pagina === 0 ? 0.3 : 1 }}
-                  >
-                    ‹
-                  </button>
-                  {Array.from({ length: totalPaginas }, (_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setPagina(i)}
-                      style={{
-                        ...btnPagStyle,
-                        background: pagina === i ? "var(--accent)" : "transparent",
-                        color: pagina === i ? "#000" : "var(--text-muted)",
-                        borderColor: pagina === i ? "var(--accent)" : "var(--border)",
-                        minWidth: 30,
-                      }}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setPagina(p => Math.min(totalPaginas - 1, p + 1))}
-                    disabled={pagina === totalPaginas - 1}
-                    style={{ ...btnPagStyle, opacity: pagina === totalPaginas - 1 ? 0.3 : 1 }}
-                  >
-                    ›
-                  </button>
-                  <span style={{ fontSize: 11, fontFamily: M, color: "var(--text-muted)", marginLeft: 6 }}>
-                    {pagina * POR_PAGINA + 1}–{Math.min((pagina + 1) * POR_PAGINA, enCategoriaActiva.length)} de {enCategoriaActiva.length}
-                  </span>
-                </div>
-              )}
+              <PaginacionControls
+                pag={pagina}
+                total={totalPaginas}
+                onChange={setPagina}
+              />
             </>
           )}
         </div>
