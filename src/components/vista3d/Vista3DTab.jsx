@@ -2,232 +2,12 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { Canvas } from '@react-three/fiber';
 import { CAMARAS } from '../visor3d/CamaraPresets.js';
-import { PanelModulos3D } from './PanelModulos3D.jsx';
 import { Escena3DPrincipal } from './Escena3DPrincipal.jsx';
-import ConfiguradorParametrico from '../presupuesto/ConfiguradorParametrico.jsx';
+import { SceneOutliner } from './SceneOutliner.jsx';
+import { InspectorPanel } from './InspectorPanel.jsx';
+import { ViewportToolbar } from './ViewportToolbar.jsx';
+import { useIsDark, tok, SectionLabel, PanelDivider } from './tokens.js';
 import { calcularModulo, fmtPeso } from '../../utils.js';
-
-// ── Lectura de tema robusta — usa localStorage como fallback cuando
-// data-theme aún no fue seteado por useTema (efecto corre después del primer render)
-function getTema() {
-  const attr = document.documentElement.getAttribute('data-theme');
-  if (attr) return attr;
-  try { return localStorage.getItem('carpicalc:tema') || 'dark'; }
-  catch { return 'dark'; }
-}
-
-// ── Theme observer ─────────────────────────────────────────────────────────────
-function useIsDark() {
-  const [isDark, setIsDark] = useState(() => getTema() !== 'light');
-  useEffect(() => {
-    const obs = new MutationObserver(() =>
-      setIsDark(document.documentElement.getAttribute('data-theme') !== 'light')
-    );
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => obs.disconnect();
-  }, []);
-  return isDark;
-}
-
-// ── Theme tokens ───────────────────────────────────────────────────────────────
-// Components read isDark from DOM so they re-theme on every parent re-render.
-function tok() {
-  const d = getTema() !== 'light';
-  return d ? {
-    outerBg:      '#07090c',
-    panelBg:      '#0b0d12',
-    panelShadow:  '1px 0 18px rgba(0,0,0,0.45)',
-    border:       'rgba(255,255,255,0.06)',
-    borderSub:    'rgba(255,255,255,0.04)',
-    toolbarBg:    'rgba(9,11,16,0.97)',
-    toolbarShadow:'0 1px 0 rgba(255,255,255,0.05)',
-    text:         '#7a7e8a',
-    textDim:      '#3c404c',
-    label:        '#282b35',
-    btnBg:        'rgba(255,255,255,0.05)',
-    btnBord:      'rgba(255,255,255,0.09)',
-    btnText:      '#7a7e8a',
-    btnHoverBg:   'rgba(255,255,255,0.10)',
-    btnHoverText: '#c8cad4',
-    swatchBord:   'rgba(255,255,255,0.16)',
-    dpBg:         'rgba(255,255,255,0.04)',
-    dpBord:       'rgba(255,255,255,0.09)',
-    dpText:       '#7a7e8a',
-    dotBg:        'rgba(255,255,255,0.025)',
-    dotBord:      'rgba(255,255,255,0.05)',
-    matBg:        'rgba(255,255,255,0.04)',
-    matBord:      'rgba(255,255,255,0.09)',
-    matText:      '#666',
-    snapBg:       'rgba(212,175,55,0.07)',
-    snapBord:     'rgba(212,175,55,0.22)',
-    snapText:     '#9a7828',
-    rmBg:         'rgba(200,60,60,0.08)',
-    rmBord:       'rgba(200,60,60,0.26)',
-    rmText:       '#c06060',
-    clrBg:        'rgba(255,255,255,0.03)',
-    clrBord:      'rgba(255,255,255,0.07)',
-    clrText:      '#3c404c',
-    divider:      'rgba(255,255,255,0.06)',
-    countText:    '#3c404c',
-    emptyIcon:    'rgba(255,255,255,0.10)',
-    emptyTitle:   'rgba(255,255,255,0.14)',
-    emptySub:     'rgba(255,255,255,0.07)',
-    hint:         'rgba(255,255,255,0.18)',
-    canvasFallbk: '#080a0d',
-  } : {
-    outerBg:      '#e4e7ed',
-    panelBg:      '#ffffff',
-    panelShadow:  '1px 0 14px rgba(0,0,0,0.07)',
-    border:       'rgba(0,0,0,0.07)',
-    borderSub:    'rgba(0,0,0,0.04)',
-    toolbarBg:    'rgba(252,253,255,0.97)',
-    toolbarShadow:'0 1px 0 rgba(0,0,0,0.07)',
-    text:         '#5a5e6a',
-    textDim:      '#9a9eaa',
-    label:        '#b8bcc8',
-    btnBg:        'rgba(0,0,0,0.04)',
-    btnBord:      'rgba(0,0,0,0.09)',
-    btnText:      '#666',
-    btnHoverBg:   'rgba(0,0,0,0.08)',
-    btnHoverText: '#2a2d38',
-    swatchBord:   'rgba(0,0,0,0.16)',
-    dpBg:         'rgba(0,0,0,0.04)',
-    dpBord:       'rgba(0,0,0,0.09)',
-    dpText:       '#7a7e8a',
-    dotBg:        'rgba(0,0,0,0.025)',
-    dotBord:      'rgba(0,0,0,0.07)',
-    matBg:        'rgba(0,0,0,0.04)',
-    matBord:      'rgba(0,0,0,0.09)',
-    matText:      '#777',
-    snapBg:       'rgba(212,175,55,0.09)',
-    snapBord:     'rgba(212,175,55,0.32)',
-    snapText:     '#8a6818',
-    rmBg:         'rgba(200,60,60,0.07)',
-    rmBord:       'rgba(200,60,60,0.22)',
-    rmText:       '#b04040',
-    clrBg:        'rgba(0,0,0,0.04)',
-    clrBord:      'rgba(0,0,0,0.08)',
-    clrText:      '#888',
-    divider:      'rgba(0,0,0,0.07)',
-    countText:    '#999',
-    emptyIcon:    'rgba(0,0,0,0.08)',
-    emptyTitle:   'rgba(0,0,0,0.18)',
-    emptySub:     'rgba(0,0,0,0.10)',
-    hint:         'rgba(0,0,0,0.22)',
-    canvasFallbk: '#eff0f4',
-  };
-}
-
-// ── BTN ────────────────────────────────────────────────────────────────────────
-const BTN = ({ active, onClick, children, style }) => {
-  const t = tok();
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: active ? 'rgba(212,175,55,0.20)' : t.btnBg,
-        border:     active ? '1px solid rgba(212,175,55,0.52)' : `1px solid ${t.btnBord}`,
-        color:      active ? '#D4AF37' : t.btnText,
-        borderRadius: 6, padding: '4px 11px', cursor: 'pointer',
-        fontSize: 11, fontFamily: "'DM Mono',monospace", letterSpacing: '0.04em',
-        transition: 'all 0.14s',
-        ...style,
-      }}
-      onMouseEnter={e => { if (!active) { e.currentTarget.style.background = t.btnHoverBg; e.currentTarget.style.color = t.btnHoverText; }}}
-      onMouseLeave={e => { if (!active) { e.currentTarget.style.background = t.btnBg; e.currentTarget.style.color = t.btnText; }}}
-    >
-      {children}
-    </button>
-  );
-};
-
-// ── ColorToggle ────────────────────────────────────────────────────────────────
-function ColorToggle({ value, onToggle, color, onColor, label }) {
-  const inputRef = useRef();
-  const t = tok();
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <BTN active={value} onClick={onToggle}>{value ? '✓ ' : ''}{label}</BTN>
-      <div
-        onClick={() => inputRef.current?.click()}
-        title={`Color de ${label}`}
-        style={{
-          width: 14, height: 14, borderRadius: 3, cursor: 'pointer',
-          background: color,
-          border: `1px solid ${t.swatchBord}`,
-          flexShrink: 0, transition: 'transform 0.12s',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.25)'; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-      />
-      <input
-        ref={inputRef}
-        type="color"
-        value={color}
-        onChange={e => onColor(e.target.value)}
-        style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
-      />
-    </div>
-  );
-}
-
-// ── DropItem ───────────────────────────────────────────────────────────────────
-function DropItem({ active, onClick, children }) {
-  const t = tok();
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: active ? 'rgba(212,175,55,0.18)' : 'transparent',
-        border: active ? '1px solid rgba(212,175,55,0.42)' : '1px solid transparent',
-        color: active ? '#D4AF37' : t.btnText,
-        borderRadius: 5, padding: '5px 10px', cursor: 'pointer',
-        fontSize: 11, fontFamily: "'DM Mono',monospace",
-        textAlign: 'left', width: '100%', transition: 'background 0.12s',
-      }}
-      onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.btnHoverBg; }}
-      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
-    >
-      {children}
-    </button>
-  );
-}
-
-// ── Dropdown ───────────────────────────────────────────────────────────────────
-function Dropdown({ label, active, children }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef();
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-  const t = tok();
-  return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
-      <BTN active={active || open} onClick={() => setOpen(v => !v)}>
-        {label} <span style={{ fontSize: 7, marginLeft: 2, opacity: 0.65 }}>▾</span>
-      </BTN>
-      {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 5px)', left: 0,
-          background: t.toolbarBg, border: `1px solid ${t.border}`,
-          borderRadius: 8, padding: 5, zIndex: 300, minWidth: 140,
-          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-          boxShadow: '0 6px 24px rgba(0,0,0,0.30)',
-          display: 'flex', flexDirection: 'column', gap: 2,
-        }}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Colores default de la escena ───────────────────────────────────────────────
-const DEFAULTS = { colorMesada: '#c8b89a' };
-const initColor = (dark, light) => () => getTema() === 'light' ? light : dark;
 
 // ── Vista3DTab ─────────────────────────────────────────────────────────────────
 export function Vista3DTab({
@@ -237,44 +17,52 @@ export function Vista3DTab({
   setItems,
   dimOverride = {},
   setDimOverride,
-  inlineModulos = {},  // eslint-disable-line no-unused-vars
+  inlineModulos = {},
   presupuestoActivoId,
   onCaptura,
 }) {
-  const isDark = useIsDark();
-  const glRef  = useRef(null);
-  const T      = tok(); // computed every render — isDark drives re-render
+  const isDark  = useIsDark();
+  const glRef   = useRef(null);
+  const T       = tok(); // re-computed every render; isDark drives re-render
 
+  // ── Scene state ───────────────────────────────────────────────────────────
   const [modulosEnEscena, setModulosEnEscena] = useState([]);
   const [selectedCod,     setSelectedCod]     = useState(null);
-  const [mostrarPiso,     setMostrarPiso]      = useState(true);
-  const [mostrarPared,    setMostrarPared]     = useState(true);
-  const [mostrarMesada,   setMostrarMesada]    = useState(true);
-  const [colorPiso,        setColorPiso]        = useState(initColor('#1e2028', '#e8e9ed'));
-  const [colorPared,       setColorPared]       = useState(initColor('#1c1f28', '#e0e1e5'));
-  const [colorMesada,      setColorMesada]      = useState(DEFAULTS.colorMesada);
-  const [camTarget,        setCamTarget]        = useState(CAMARAS.iso.pos);
-  const [camView,          setCamView]          = useState('iso');
-  const [capturado,        setCapturado]        = useState(false);
+
+  // ── Display toggles ───────────────────────────────────────────────────────
+  const [mostrarPiso,     setMostrarPiso]     = useState(true);
+  const [mostrarPared,    setMostrarPared]    = useState(true);
+  const [mostrarMesada,   setMostrarMesada]   = useState(true);
+  const [mostrarParedIzq, setMostrarParedIzq] = useState(false);
+  const [mostrarParedDer, setMostrarParedDer] = useState(false);
+  const [mostrarGrilla,   setMostrarGrilla]   = useState(true);
+  const [mostrarContornos, setMostrarContornos] = useState(false);
+
+  // ── Colors ────────────────────────────────────────────────────────────────
+  const [colorPiso,      setColorPiso]      = useState(() => isDark ? '#1e2028' : '#e8e9ed');
+  const [colorPared,     setColorPared]     = useState(() => isDark ? '#1c1f28' : '#e0e1e5');
+  const [colorMesada,    setColorMesada]    = useState('#c8b89a');
+  const [colorContornos, setColorContornos] = useState('#000000');
+
+  // ── Light / grid config ───────────────────────────────────────────────────
   const [shadowIntensidad, setShadowIntensidad] = useState(1.0);
   const [shadowAngle,      setShadowAngle]      = useState(45);
-  const [mostrarGrilla,    setMostrarGrilla]    = useState(true);
-  const [divisionesGrilla, setDivisionesGrilla] = useState(50);
-  const [mostrarParedIzq,  setMostrarParedIzq]  = useState(false);
-  const [mostrarParedDer,  setMostrarParedDer]  = useState(false);
-  const [maximizado,       setMaximizado]       = useState(false);
-  // Contornos / aristas — toggle + color + grosor de línea
-  const [mostrarContornos, setMostrarContornos] = useState(false);
-  const [colorContornos,   setColorContornos]   = useState("#000000");
+  // Grid divisiones — fixed for now; no toolbar UI. Restore as useState when re-adding the selector.
+  const divisionesGrilla = 50;
   const [grosorContornos,  setGrosorContornos]  = useState(1);
-  // Escala de textura — cuántas veces se repite la imagen PNG sobre cada pieza
-  // Bajo (0.5) = textura grande sin uniones; alto (4) = más repeticiones
-  const [texturaRepeat,    setTexturaRepeat]    = useState(1);
-  // Key de remount de la escena 3D. Cualquier cambio en `modulos` (detectado
-  // por hash completo de dimensiones + piezas + variables + parámetros) o un
-  // click del usuario en "Actualizar" incrementa este número y fuerza un
-  // remount limpio de Escena3DPrincipal, garantizando que helpers,
-  // livePositions y closures de R3F arranquen de cero con los datos nuevos.
+
+  // ── Camera ────────────────────────────────────────────────────────────────
+  const [camTarget, setCamTarget] = useState(CAMARAS.iso.pos);
+  const [camView,   setCamView]   = useState('iso');
+
+  // ── Texture repeat (global for all modules — per-item in future) ──────────
+  const [texturaRepeat, setTexturaRepeat] = useState(1);
+
+  // ── UI state ──────────────────────────────────────────────────────────────
+  const [capturado,  setCapturado]  = useState(false);
+  const [maximizado, setMaximizado] = useState(false);
+
+  // ── Scene version (forces Escena3DPrincipal remount on catalog changes) ───
   const [escenaVersion, setEscenaVersion] = useState(0);
   const modulosHash = useMemo(() => {
     if (!modulos) return '';
@@ -284,7 +72,7 @@ export function Vista3DTab({
         const piezasFp = (m?.piezas || []).map(p =>
           `${p.nombre}|${p.formula1}|${p.formula2}|${p.cantidad}|${p.orientacion3d}|${p.rot3d}|${p.offset3d?.x}|${p.offset3d?.y}|${p.offset3d?.z}|${p.posFormulas?.x}|${p.posFormulas?.y}|${p.posFormulas?.z}`
         ).join(';');
-        const varsFp = JSON.stringify(m?.variables || {});
+        const varsFp  = JSON.stringify(m?.variables || {});
         const paramsFp = JSON.stringify(m?.parametros || []);
         return `${k}:${d.ancho}:${d.alto}:${d.profundidad}:${m?.material}::${piezasFp}::${varsFp}::${paramsFp}`;
       })
@@ -297,30 +85,24 @@ export function Vista3DTab({
       setEscenaVersion(v => v + 1);
     }
   }, [modulosHash]);
+
   const contornosConfig = mostrarContornos
     ? { color: colorContornos, linewidth: grosorContornos }
     : null;
 
-  // Sincronizar colores de piso/pared con el tema — igual que VisorModulo3D
-  // El usuario puede personalizar con el color picker, pero al cambiar tema se resetean
+  // ── Sync theme colors ─────────────────────────────────────────────────────
   useEffect(() => {
     setColorPiso(isDark ? '#1e2028' : '#e8e9ed');
     setColorPared(isDark ? '#1c1f28' : '#e0e1e5');
   }, [isDark]);
 
-  // ── Limpiar escena al cambiar de presupuesto (o cerrar) ──────────────
-  // presupuestoActivoId cambia cuando el usuario abre otro presupuesto o
-  // vuelve al gestor. Limpiamos todo para que la escena arranque vacía.
+  // ── Reset scene on budget change ──────────────────────────────────────────
   useEffect(() => {
     setModulosEnEscena([]);
     setSelectedCod(null);
   }, [presupuestoActivoId]);
 
-  // ── Sincronizar items del presupuesto → modulosEnEscena (Fase 8 N1+) ──
-  // Un item con cantidad N genera N instancias en la escena (instKey = itemKey#k).
-  // Las instancias manuales (sin itemKey) se mantienen entre renders.
-  // Posición/rotación/textura quedan en el state local (no en el item).
-  // parametrosValores se LEE del item directamente (no se cachea).
+  // ── Sync budget items → scene instances ──────────────────────────────────
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const itemsKey = items.map(i => `${i.id || i.codigo}:${i.cantidad || 1}`).join('|');
   useEffect(() => {
@@ -334,14 +116,7 @@ export function Vista3DTab({
           const existing = prev.find(m => m.instKey === instKey);
           fromItems.push(existing
             ? { ...existing, codigo: it.codigo, itemIdx: idx }
-            : {
-                instanceId: `pres-${instKey}`,
-                instKey,
-                codigo: it.codigo,
-                posicion: [0, 0, 0],
-                itemIdx: idx,
-                itemKey,
-              }
+            : { instanceId: `pres-${instKey}`, instKey, codigo: it.codigo, posicion: [0, 0, 0], itemIdx: idx, itemKey }
           );
         }
       });
@@ -351,45 +126,66 @@ export function Vista3DTab({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemsKey]);
 
-  // Handler para cambiar parámetros de un item del presupuesto
-  const handleSetParametros = (itemIdx, valores) => {
-    if (!setItems || itemIdx == null) return;
-    setItems(items.map((it, i) => i === itemIdx ? { ...it, parametrosValores: valores } : it));
-  };
+  // ── Derived: material library ─────────────────────────────────────────────
+  const biblioteca = useMemo(() => costos?.bibliotecaMateriales || [], [costos]);
 
-  // Total del presupuesto (módulos) — se recalcula cuando cambian items,
-  // costos o parametrosValores. Para ver el cambio en vivo al editar params.
-  const totalPresupuesto = useMemo(() => {
-    if (!costos || !modulos || items.length === 0) return 0;
-    return items.reduce((acc, it) => {
-      const base = modulos[it.codigo];
-      if (!base) return acc;
-      const ov = (dimOverride && dimOverride[it.id || it.codigo]) || {};
+  // ── Derived: items with calculated cost (feeds SceneOutliner + totalPresupuesto) ──
+  const itemsConCosto = useMemo(() => {
+    return items.map(it => {
+      const keyId  = it.id || it.codigo;
+      const inline = inlineModulos?.[keyId];
+      const base   = modulos?.[it.codigo];
+      const mod    = inline ?? base;
+      if (!mod) return { ...it, costoUnitario: 0, costoTotal: 0, modulo: null, dims: null };
+      const ov   = dimOverride[keyId] || {};
       const dims = {
-        ancho:       ov.ancho       ?? base.dimensiones.ancho,
-        profundidad: ov.profundidad ?? base.dimensiones.profundidad,
-        alto:        ov.alto        ?? base.dimensiones.alto,
+        ancho:       ov.ancho       ?? mod.dimensiones?.ancho       ?? 600,
+        alto:        ov.alto        ?? mod.dimensiones?.alto        ?? 700,
+        profundidad: ov.profundidad ?? mod.dimensiones?.profundidad ?? 550,
       };
       const modResuelto = {
-        ...base,
+        ...mod,
         dimensiones: dims,
-        material:    ov.material   ?? base.material,
-        materialId:  ov.materialId ?? base.materialId,
+        material:    ov.material   ?? mod.material,
+        materialId:  ov.materialId ?? mod.materialId,
       };
       const calc = calcularModulo(modResuelto, costos, it.parametrosValores || {});
-      if (!calc) return acc;
-      return acc + calc.total * (it.cantidad || 1);
-    }, 0);
-  }, [items, modulos, costos, dimOverride]);
+      const costoUnitario = calc?.total || 0;
+      return { ...it, costoUnitario, costoTotal: costoUnitario * (it.cantidad || 1), modulo: mod, dims };
+    });
+  }, [items, modulos, inlineModulos, costos, dimOverride]);
 
-  // Centro del bbox de los módulos en escena (en metros, espacio Three.js).
-  // Coincide con cómo useAutoLayout3D los posiciona: módulos arrancando en
-  // x=0 y crecen hacia la derecha. El centro X = totalAncho/2.
-  // El centro Y = promedio de alturas (los módulos están con su piso en y=0).
+  const totalPresupuesto = useMemo(
+    () => itemsConCosto.reduce((sum, it) => sum + (it.costoTotal || 0), 0),
+    [itemsConCosto]
+  );
+
+  // ── Derived: selected instance + its module + resolved dims ───────────────
+  const selectedInst = modulosEnEscena.find(m => m.instanceId === selectedCod) || null;
+
+  const selectedModulo = useMemo(() => {
+    if (!selectedInst) return null;
+    return inlineModulos?.[selectedInst.itemKey] ?? modulos?.[selectedInst.codigo] ?? null;
+  }, [selectedInst, modulos, inlineModulos]);
+
+  const dimsActuales = useMemo(() => {
+    if (!selectedInst?.itemKey || !selectedModulo) return null;
+    const ov = dimOverride[selectedInst.itemKey] || {};
+    return {
+      ancho:       ov.ancho       ?? selectedModulo.dimensiones?.ancho       ?? 600,
+      alto:        ov.alto        ?? selectedModulo.dimensiones?.alto        ?? 700,
+      profundidad: ov.profundidad ?? selectedModulo.dimensiones?.profundidad ?? 550,
+    };
+  }, [selectedInst, selectedModulo, dimOverride]);
+
+  const materialIdActual = selectedInst?.itemKey
+    ? (dimOverride[selectedInst.itemKey]?.materialId || '')
+    : '';
+
+  // ── Scene center (for camera presets) ────────────────────────────────────
   const sceneCenter = useMemo(() => {
     if (modulosEnEscena.length === 0) return [0, 0.5, 0];
-    let totalAncho = 0;
-    let maxAlto = 0;
+    let totalAncho = 0, maxAlto = 0;
     for (const inst of modulosEnEscena) {
       const mod = modulos?.[inst.codigo];
       if (!mod) continue;
@@ -400,9 +196,7 @@ export function Vista3DTab({
     return [totalAncho / 2, maxAlto / 2, 0];
   }, [modulosEnEscena, modulos]);
 
-  // Aplica un preset: posiciona la cámara relativa al centro de la escena.
-  // Los offsets vienen de CAMARAS[key].pos — se interpretan como dirección
-  // relativa al centro, no como posición absoluta.
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const irACamara = (key) => {
     setCamView(key);
     const offset = CAMARAS[key].pos;
@@ -412,15 +206,12 @@ export function Vista3DTab({
 
   const handleAgregar = ({ itemId, codigo, dimsOverride }) => {
     if (itemId && setItems) {
-      // Incrementar cantidad del item en el presupuesto.
-      // El efecto de sync se encarga de crear la instancia extra en la escena.
       setItems(prev => prev.map(it =>
         (it.id || it.codigo) === itemId
           ? { ...it, cantidad: (it.cantidad || 1) + 1 }
           : it
       ));
     } else {
-      // Instancia manual sin item en presupuesto (caso edge)
       const instanceId = `${codigo}-${crypto.randomUUID()}`;
       setModulosEnEscena(prev => [...prev, { instanceId, codigo, posicion: [0, 0, 0], dimsOverride }]);
     }
@@ -446,12 +237,9 @@ export function Vista3DTab({
     ));
   };
 
-  const handleLimpiarEscena = () => { setModulosEnEscena([]); setSelectedCod(null); };
   const handleEliminarModulo = (instanceId) => {
     const inst = modulosEnEscena.find(m => m.instanceId === instanceId);
     if (inst?.itemKey && setItems) {
-      // Es una instancia del presupuesto: decrementar cantidad del item.
-      // Si llega a 0 el efecto de sync la elimina de la escena automáticamente.
       setItems(prev => prev.map(it => {
         const key = it.id || it.codigo;
         if (key !== inst.itemKey) return it;
@@ -459,36 +247,19 @@ export function Vista3DTab({
         return nuevaCantidad > 0 ? { ...it, cantidad: nuevaCantidad } : it;
       }));
     } else {
-      // Instancia manual: filtrar del state local directamente
       setModulosEnEscena(prev => prev.filter(m => m.instanceId !== instanceId));
     }
     setSelectedCod(null);
   };
-  const selectedInst = modulosEnEscena.find(m => m.instanceId === selectedCod);
 
-  // ── Material del ítem — fuente única de costo + visual ────────────────────
-  // Asigna materialId al override del ítem. De ahí se deriva TODO:
-  //  · costo  → calcularModulo resuelve por id (resolverMaterial)
-  //  · visual → Escena3DPrincipal resuelve textura + PBR (resolverVisualMaterial)
-  const biblioteca = useMemo(() => costos?.bibliotecaMateriales || [], [costos]);
-  const materialIdActual = selectedInst?.itemKey
-    ? (dimOverride[selectedInst.itemKey]?.materialId || '')
-    : '';
-  const materialElegido = materialIdActual
-    ? biblioteca.find(m => m.id === materialIdActual)
-    : null;
-  const materialesPorTipo = useMemo(() => {
-    const g = {};
-    for (const m of biblioteca) {
-      const t = m.tipo || 'otro';
-      (g[t] || (g[t] = [])).push(m);
-    }
-    for (const t of Object.keys(g)) {
-      g[t].sort((a, b) => (a.nombre || a.codigo || '').localeCompare(b.nombre || b.codigo || ''));
-    }
-    return g;
-  }, [biblioteca]);
+  const handleLimpiarEscena = () => { setModulosEnEscena([]); setSelectedCod(null); };
 
+  const handleSetParametros = (itemIdx, valores) => {
+    if (!setItems || itemIdx == null) return;
+    setItems(items.map((it, i) => i === itemIdx ? { ...it, parametrosValores: valores } : it));
+  };
+
+  // ── Material — fuente única de costo + visual ─────────────────────────────
   const handleAsignarMaterial = (materialId) => {
     if (!selectedInst?.itemKey || !setDimOverride) return;
     const keyId = selectedInst.itemKey;
@@ -503,6 +274,18 @@ export function Vista3DTab({
     });
   };
 
+  // ── Dim change — handler ready for when Inspector inputs become editable ──
+  // To activate: remove `readOnly` from DimInput in InspectorPanel.jsx
+  const handleDimChange = (campo, valor) => {
+    if (!selectedInst?.itemKey || !setDimOverride) return;
+    const keyId = selectedInst.itemKey;
+    setDimOverride(prev => {
+      const next = { ...(prev[keyId] || {}), [campo]: Number(valor) };
+      return { ...prev, [keyId]: next };
+    });
+  };
+
+  // ── Layout ────────────────────────────────────────────────────────────────
   const inner = (
     <div style={maximizado ? {
       position: 'fixed', inset: 0, zIndex: 200,
@@ -516,332 +299,119 @@ export function Vista3DTab({
       transition: 'background 0.35s ease',
     }}>
 
-      {/* ── Panel izquierdo ──────────────────────────────────────── */}
+      {/* ── LEFT: Scene Outliner ─────────────────────────────────────── */}
       <div style={{
-        width: 236, flexShrink: 0,
+        width: 220, flexShrink: 0,
         background: T.panelBg,
         boxShadow: T.panelShadow,
         borderRight: `1px solid ${T.border}`,
         display: 'flex', flexDirection: 'column',
-        overflow: 'hidden',
-        zIndex: 2,
-        transition: 'background 0.35s ease, box-shadow 0.35s ease',
+        overflow: 'hidden', zIndex: 2,
+        transition: 'background 0.35s ease',
       }}>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          <PanelModulos3D
-            items={items}
-            modulos={modulos}
-            inlineModulos={inlineModulos}
-            dimOverride={dimOverride}
-            costos={costos}
-            onAgregar={handleAgregar}
-          />
-        </div>
-
-        {/* Panel inferior izquierdo */}
-        {modulosEnEscena.length > 0 && (
-          <div style={{ borderTop: `1px solid ${T.borderSub}`, flexShrink: 0 }}>
-
-            {/* Count bar */}
-            <div style={{ padding: '6px 12px 4px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
-              EN ESCENA · {modulosEnEscena.length}
-            </div>
-
-              {/* Panel paramétrico — Fase 8 N1+ */}
-              {selectedInst?.itemIdx != null && (() => {
-                const modSel = modulos?.[selectedInst.codigo];
-                if (!modSel) return null;
-                const tieneParams = (modSel.parametros?.length || 0) > 0;
-                if (!tieneParams) return null;
-                return (
-                  <div style={{ borderTop: `1px solid ${T.borderSub}`, padding: '8px 10px 12px' }}>
-                    <div style={{ padding: '0 0 6px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
-                      PARÁMETROS
-                    </div>
-                    <ConfiguradorParametrico
-                      modulo={modSel}
-                      valores={items[selectedInst.itemIdx]?.parametrosValores || {}}
-                      onChange={(v) => handleSetParametros(selectedInst.itemIdx, v)}
-                      costos={costos} />
-                  </div>
-                );
-              })()}
-
-              {/* Material del ítem — costo + textura en una sola elección.
-                  La galería visual reemplazará este selector más adelante. */}
-              {selectedInst?.itemIdx != null && biblioteca.length > 0 && (
-                <div style={{ borderTop: `1px solid ${T.borderSub}`, padding: '8px 10px 12px' }}>
-                  <div style={{ padding: '0 0 6px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
-                    MATERIAL
-                  </div>
-                  <select
-                    value={materialIdActual}
-                    onChange={e => handleAsignarMaterial(e.target.value || null)}
-                    style={{
-                      width: '100%', padding: '5px 6px', borderRadius: 6,
-                      border: `1px solid ${T.border}`, background: T.matBg,
-                      color: T.text, fontFamily: "'DM Mono',monospace", fontSize: 10,
-                      outline: 'none', cursor: 'pointer',
-                    }}>
-                    <option value="">— Default del módulo —</option>
-                    {Object.entries(materialesPorTipo).map(([tipo, lista]) => (
-                      <optgroup key={tipo} label={tipo}>
-                        {lista.map(m => (
-                          <option key={m.id} value={m.id}>
-                            {(m.codigo ? m.codigo + ' · ' : '') + (m.nombre || 'sin nombre')}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                  {materialElegido && (
-                    <div style={{ marginTop: 5, fontSize: 9, fontFamily: "'DM Mono',monospace", color: '#D4AF37' }}>
-                      {fmtPeso(materialElegido.precioM2)}/m² · {materialElegido.espesor}mm
-                      {materialElegido.textura ? ' · con textura' : ' · sin textura'}
-                    </div>
-                  )}
-                  {/* Escala de textura — repetición del PNG sobre cada pieza */}
-                  {materialElegido?.textura && (
-                    <div style={{ marginTop: 8 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.text, marginBottom: 4 }}>
-                        <span>Escala de textura</span>
-                        <span style={{ color: '#D4AF37' }}>×{texturaRepeat.toFixed(1)}</span>
-                      </div>
-                      <input type="range" min={0.3} max={5} step={0.1}
-                        value={texturaRepeat}
-                        onChange={e => setTexturaRepeat(parseFloat(e.target.value))}
-                        style={{ width: '100%', accentColor: '#d4af37', cursor: 'pointer' }} />
-                      <div style={{ fontSize: 8, fontFamily: "'DM Mono',monospace", color: T.text, opacity: 0.5, marginTop: 2 }}>
-                        bajo = grande sin uniones · alto = repeticiones
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-            <div style={{ padding: '8px 12px', borderTop: `1px solid ${T.borderSub}` }}>
-              <button
-                onClick={handleLimpiarEscena}
-                style={{
-                  width: '100%', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
-                  background: T.clrBg, border: `1px solid ${T.clrBord}`,
-                  color: T.clrText, fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-                }}
-              >
-                Limpiar escena
-              </button>
-            </div>
-          </div>
-        )}
+        <SceneOutliner
+          modulosEnEscena={modulosEnEscena}
+          modulos={modulos}
+          itemsConCosto={itemsConCosto}
+          totalPresupuesto={totalPresupuesto}
+          selectedCod={selectedCod}
+          onSelect={setSelectedCod}
+          onRemove={handleEliminarModulo}
+          onAgregar={handleAgregar}
+          onLimpiar={handleLimpiarEscena}
+        />
       </div>
 
-      {/* ── Área derecha: toolbar + canvas ───────────────────────── */}
+      {/* ── CENTER: Toolbar + Canvas ─────────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
 
-        {/* ── Toolbar ── */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 5,
-          padding: '7px 14px',
-          background: T.toolbarBg,
-          boxShadow: T.toolbarShadow,
-          borderBottom: `1px solid ${T.border}`,
-          flexWrap: 'wrap',
-          flexShrink: 0,
-          zIndex: 10,
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          transition: 'background 0.35s ease, box-shadow 0.35s ease',
-        }}>
-          {/* Vistas */}
-          <Dropdown label="Vistas" active={false}>
-            {Object.entries(CAMARAS).map(([k, v]) => (
-              <DropItem key={k} active={camView === k} onClick={() => irACamara(k)}>{v.label}</DropItem>
-            ))}
-          </Dropdown>
+        <ViewportToolbar
+          camView={camView}
+          onCameraPreset={irACamara}
+          mostrarPiso={mostrarPiso}         setMostrarPiso={setMostrarPiso}
+          colorPiso={colorPiso}             setColorPiso={setColorPiso}
+          mostrarPared={mostrarPared}       setMostrarPared={setMostrarPared}
+          colorPared={colorPared}           setColorPared={setColorPared}
+          mostrarParedIzq={mostrarParedIzq} setMostrarParedIzq={setMostrarParedIzq}
+          mostrarParedDer={mostrarParedDer} setMostrarParedDer={setMostrarParedDer}
+          mostrarMesada={mostrarMesada}     setMostrarMesada={setMostrarMesada}
+          colorMesada={colorMesada}         setColorMesada={setColorMesada}
+          mostrarGrilla={mostrarGrilla}     setMostrarGrilla={setMostrarGrilla}
+          mostrarContornos={mostrarContornos} setMostrarContornos={setMostrarContornos}
+          colorContornos={colorContornos}   setColorContornos={setColorContornos}
+          grosorContornos={grosorContornos} setGrosorContornos={setGrosorContornos}
+          shadowIntensidad={shadowIntensidad} setShadowIntensidad={setShadowIntensidad}
+          shadowAngle={shadowAngle}         setShadowAngle={setShadowAngle}
+          onActualizar={() => setEscenaVersion(v => v + 1)}
+          capturado={capturado}             onCapturar={handleCapturar}
+          maximizado={maximizado}           onMaximizar={() => setMaximizado(v => !v)}
+          modulosCount={modulosEnEscena.length}
+        />
 
-          <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
+        {/* Canvas area */}
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
 
-          {/* Piso */}
-          <ColorToggle value={mostrarPiso} onToggle={() => setMostrarPiso(v => !v)} color={colorPiso} onColor={setColorPiso} label="Piso" />
-
-          {/* Contornos — aristas resaltadas en los módulos */}
-          <Dropdown label="Contornos" active={mostrarContornos}>
-            <DropItem active={mostrarContornos} onClick={() => setMostrarContornos(v => !v)}>
-              {mostrarContornos ? '✓ ' : ''}Mostrar contornos
-            </DropItem>
-            {mostrarContornos && (
-              <>
-                <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
-                <div style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: T.text }}>Color</span>
-                  <input type="color" value={colorContornos}
-                    onChange={e => setColorContornos(e.target.value)}
-                    style={{ width: 28, height: 22, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }} />
-                </div>
-                <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
-                {[[1, 'Fino    · 1px'],[2, 'Medio   · 2px'],[3, 'Grueso  · 3px']].map(([g, lbl]) => (
-                  <DropItem key={g} active={grosorContornos === g} onClick={() => setGrosorContornos(g)}>{lbl}</DropItem>
-                ))}
-              </>
-            )}
-          </Dropdown>
-
-          {/* Grilla */}
-          <Dropdown label="Grilla" active={mostrarGrilla}>
-            <DropItem active={mostrarGrilla} onClick={() => setMostrarGrilla(v => !v)}>
-              {mostrarGrilla ? '✓ ' : ''}Mostrar grilla
-            </DropItem>
-            {mostrarGrilla && (
-              <>
-                <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
-                {[[20, 'Gruesa  · 20 div'],[50, 'Media   · 50 div'],[100, 'Fina   · 100 div']].map(([div, lbl]) => (
-                  <DropItem key={div} active={divisionesGrilla === div} onClick={() => setDivisionesGrilla(div)}>{lbl}</DropItem>
-                ))}
-              </>
-            )}
-          </Dropdown>
-
-          {/* Paredes */}
-          <Dropdown label="Paredes" active={mostrarPared || mostrarParedIzq || mostrarParedDer}>
-            <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <ColorToggle value={mostrarPared}    onToggle={() => setMostrarPared(v => !v)}    color={colorPared} onColor={setColorPared} label="Trasera" />
-              <BTN active={mostrarParedIzq} onClick={() => setMostrarParedIzq(v => !v)}>Izquierda</BTN>
-              <BTN active={mostrarParedDer} onClick={() => setMostrarParedDer(v => !v)}>Derecha</BTN>
+          {/* Empty state */}
+          {modulosEnEscena.length === 0 && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 5,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              pointerEvents: 'none',
+            }}>
+              <div style={{ fontSize: 36, marginBottom: 10, color: T.emptyIcon }}>◈</div>
+              <p style={{
+                fontSize: 13, fontWeight: 600,
+                fontFamily: "'Bricolage Grotesque',sans-serif",
+                color: T.emptyTitle, margin: 0,
+              }}>
+                Escena vacía
+              </p>
+              <p style={{
+                fontSize: 11, fontFamily: "'DM Mono',monospace",
+                color: T.emptySub, margin: '5px 0 0',
+              }}>
+                Usá el panel izquierdo para agregar módulos
+              </p>
             </div>
-          </Dropdown>
-
-          {/* Mesada */}
-          <ColorToggle value={mostrarMesada} onToggle={() => setMostrarMesada(v => !v)} color={colorMesada} onColor={setColorMesada} label="Mesada" />
-
-          <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
-
-          {/* Actualizar — fuerza remount limpio de la escena 3D */}
-          <BTN
-            onClick={() => setEscenaVersion(v => v + 1)}
-            title="Recargar la escena 3D con los datos actuales del catálogo">
-            ↻ Actualizar
-          </BTN>
-
-          <div style={{ width: 1, height: 14, background: T.divider, margin: '0 4px', flexShrink: 0 }} />
-
-          {/* Luz */}
-          <Dropdown label="Luz" active={false}>
-            <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 170 }}>
-              <div>
-                <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, letterSpacing: '0.08em', marginBottom: 5 }}>
-                  ÁNGULO · {shadowAngle}°
-                </div>
-                <input type="range" min={0} max={359} step={1} value={shadowAngle}
-                  onChange={e => setShadowAngle(Number(e.target.value))}
-                  style={{ width: '100%', accentColor: '#D4AF37', cursor: 'pointer' }} />
-              </div>
-              <div>
-                <div style={{ fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.label, letterSpacing: '0.08em', marginBottom: 5 }}>
-                  INTENSIDAD · {Math.round(shadowIntensidad * 100)}%
-                </div>
-                <input type="range" min={20} max={140} step={5}
-                  value={Math.round(shadowIntensidad * 100)}
-                  onChange={e => setShadowIntensidad(Number(e.target.value) / 100)}
-                  style={{ width: '100%', accentColor: '#D4AF37', cursor: 'pointer' }} />
-              </div>
-            </div>
-          </Dropdown>
-
-          <div style={{ flex: 1 }} />
-
-          {modulosEnEscena.length > 0 && (
-            <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", color: T.countText, marginRight: 4 }}>
-              {modulosEnEscena.length} módulo{modulosEnEscena.length !== 1 ? 's' : ''}
-            </span>
           )}
 
-          <button
-            onClick={handleCapturar}
-            disabled={modulosEnEscena.length === 0}
-            style={{
-              padding: '5px 14px', borderRadius: 6,
-              cursor: modulosEnEscena.length === 0 ? 'default' : 'pointer',
-              background: capturado ? 'rgba(126,207,138,0.14)' : 'rgba(212,175,55,0.14)',
-              border: capturado ? '1px solid rgba(126,207,138,0.48)' : '1px solid rgba(212,175,55,0.42)',
-              color: capturado ? '#7ecf8a' : '#D4AF37',
-              fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-              letterSpacing: '0.04em',
-              opacity: modulosEnEscena.length === 0 ? 0.30 : 1,
-              transition: 'all 0.2s',
-            }}
-          >
-            {capturado ? '✓ Capturado' : '◈ Capturar'}
-          </button>
-
-          <button
-            onClick={() => setMaximizado(v => !v)}
-            title={maximizado ? 'Restaurar' : 'Pantalla completa'}
-            style={{
-              marginLeft: 4,
-              padding: '5px 9px', borderRadius: 6, cursor: 'pointer',
-              background: maximizado ? 'rgba(212,175,55,0.14)' : T.btnBg,
-              border: maximizado ? '1px solid rgba(212,175,55,0.42)' : `1px solid ${T.btnBord}`,
-              color: maximizado ? '#D4AF37' : T.btnText,
-              fontSize: 13, lineHeight: 1,
-              transition: 'all 0.15s',
-            }}
-          >
-            {maximizado ? '⤡' : '⤢'}
-          </button>
-        </div>
-
-        {/* ── Empty state ── */}
-        {modulosEnEscena.length === 0 && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            pointerEvents: 'none', zIndex: 5,
-          }}>
-            <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.55, color: T.emptyIcon }}>◈</div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: T.emptyTitle, margin: 0, fontFamily: "'Bricolage Grotesque',sans-serif" }}>
-              Escena vacía
-            </p>
-            <p style={{ fontSize: 11, color: T.emptySub, margin: '5px 0 0', fontFamily: "'DM Mono',monospace" }}>
-              Usá el panel izquierdo para agregar módulos
-            </p>
-          </div>
-        )}
-
-        {/* ── Canvas R3F ── */}
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-          {/* Badge de total del presupuesto — overlay sobre el canvas */}
+          {/* Total presupuesto badge */}
           {items.length > 0 && (
             <div style={{
               position: 'absolute', bottom: 12, right: 12, zIndex: 10,
               padding: '8px 14px', borderRadius: 8,
-              background: 'rgba(8, 10, 13, 0.85)',
-              border: '1px solid rgba(212,175,55,0.40)',
+              background: isDark ? 'rgba(8,10,13,0.85)' : 'rgba(255,255,255,0.90)',
+              border: `1px solid ${T.goldBord}`,
               backdropFilter: 'blur(6px)',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.20)',
               pointerEvents: 'none',
               display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2,
             }}>
               <span style={{
-                fontSize: 9, fontFamily: "'DM Mono',monospace",
+                fontSize: 8, fontFamily: "'DM Mono',monospace",
                 textTransform: 'uppercase', letterSpacing: '0.10em',
-                color: '#9a8540',
+                color: T.goldDim,
               }}>
                 Total presupuesto
               </span>
               <span style={{
-                fontSize: 16, fontWeight: 700, fontFamily: "'DM Mono',monospace",
-                color: '#d4af37',
+                fontSize: 16, fontWeight: 700,
+                fontFamily: "'DM Mono',monospace",
+                color: T.gold,
               }}>
                 {fmtPeso(totalPresupuesto)}
               </span>
               <span style={{
-                fontSize: 9, fontFamily: "'DM Mono',monospace",
-                color: '#5a5d68', marginTop: 1,
+                fontSize: 8, fontFamily: "'DM Mono',monospace",
+                color: T.textMuted, marginTop: 1,
               }}>
                 {items.length} módulo{items.length !== 1 ? 's' : ''}
               </span>
             </div>
           )}
+
+          {/* Canvas R3F */}
           <Canvas
             shadows
             camera={{ position: CAMARAS.iso.pos, fov: 45, near: 0.01, far: 100 }}
@@ -886,18 +456,46 @@ export function Vista3DTab({
             />
           </Canvas>
 
-          {/* Hint inferior */}
+          {/* Hint overlay */}
           <div style={{
             position: 'absolute', bottom: 10, left: 14,
             fontSize: 10, fontFamily: "'DM Mono',monospace",
-            color: T.hint,
-            pointerEvents: 'none',
-            letterSpacing: '0.03em',
+            color: T.hint, pointerEvents: 'none', letterSpacing: '0.03em',
           }}>
             Arrastrá para rotar · Scroll zoom · Click para seleccionar
           </div>
         </div>
       </div>
+
+      {/* ── RIGHT: Inspector ─────────────────────────────────────────── */}
+      <div style={{
+        width: 210, flexShrink: 0,
+        background: T.panelBg,
+        borderLeft: `1px solid ${T.border}`,
+        display: 'flex', flexDirection: 'column',
+        overflow: 'hidden', zIndex: 2,
+        transition: 'background 0.35s ease',
+      }}>
+        <SectionLabel style={{ padding: '12px 14px 6px' }}>Inspector</SectionLabel>
+        <PanelDivider />
+        <InspectorPanel
+          selectedInst={selectedInst}
+          modulo={selectedModulo}
+          dims={dimsActuales}
+          items={items}
+          costos={costos}
+          biblioteca={biblioteca}
+          materialIdActual={materialIdActual}
+          onAsignarMaterial={handleAsignarMaterial}
+          onRotar={() => selectedCod && handleRotar90(selectedCod)}
+          onEliminar={() => selectedCod && handleEliminarModulo(selectedCod)}
+          onSetParametros={handleSetParametros}
+          texturaRepeat={texturaRepeat}
+          onTexturaRepeat={setTexturaRepeat}
+          onDimChange={handleDimChange}
+        />
+      </div>
+
     </div>
   );
 
