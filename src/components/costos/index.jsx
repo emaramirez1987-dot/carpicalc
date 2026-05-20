@@ -579,16 +579,52 @@ function HojaCostos({ costos, setCostos, onSave, materiales = [], materialesCate
     { value: "m", label: "Metro" },
     { value: "par", label: "Par" },
   ];
+  const [tabCostos, setTabCostos] = useState("materiales");
+  const TABS_COSTOS = [
+    { id: "materiales", label: "Materiales" },
+    { id: "precios",    label: "MO y Herrajes" },
+    { id: "taller",     label: "Taller" },
+  ];
+
   const moOpts = [
     { value: "por_modulo", label: "Por módulo" },
     { value: "por_hora", label: "Por hora" },
   ];
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <SectionTitle sub="Valores base para todos los cálculos">
         Hoja de Costos
       </SectionTitle>
 
+      {/* ── Pestañas ── */}
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)", paddingBottom: 0 }}>
+        {TABS_COSTOS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTabCostos(t.id)}
+            style={{
+              padding: "8px 20px",
+              fontFamily: "'DM Mono',monospace",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              border: "none",
+              borderBottom: tabCostos === t.id ? "2px solid var(--accent)" : "2px solid transparent",
+              background: "transparent",
+              color: tabCostos === t.id ? "var(--accent)" : "var(--text-muted)",
+              transition: "all 0.15s",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tabCostos === "taller" && (
+        <>
       {/* ── Ajuste por Inflación ── */}
       <HcSec icon="📈" titulo="Ajuste de precios por inflación">
         <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
@@ -702,6 +738,13 @@ function HojaCostos({ costos, setCostos, onSave, materiales = [], materialesCate
         )}
       </HcSec>
 
+      <SeccionDesperdicio costos={costos} save={save} />
+      <SeccionGastosFijos costos={costos} save={save} />
+        </>
+      )}
+
+      {tabCostos === "materiales" && (
+        <>
       <HcSec icon="🪵" titulo="Materiales">
         <MaterialesManager
           materiales={materiales}
@@ -709,7 +752,11 @@ function HojaCostos({ costos, setCostos, onSave, materiales = [], materialesCate
           onSave={onSaveMateriales}
         />
       </HcSec>
+        </>
+      )}
 
+      {tabCostos === "precios" && (
+        <>
       <HcSec icon="🎗" titulo="Tapacanto (por metro lineal)">
         {(costos.tapacanto || []).map((tc) => {
           const ed = editando?.sec === "tc" && editando?.id === tc.id;
@@ -1107,9 +1154,6 @@ function HojaCostos({ costos, setCostos, onSave, materiales = [], materialesCate
         </HcNewBox>
       </HcSec>
 
-      <SeccionDesperdicio costos={costos} save={save} />
-      <SeccionGastosFijos costos={costos} save={save} />
-
       {/* Extras frecuentes — base para autocompletado en Presupuesto */}
       <HcSec icon="📦" titulo="Extras y Servicios Frecuentes">
         <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14, lineHeight: 1.6 }}>
@@ -1140,6 +1184,8 @@ function HojaCostos({ costos, setCostos, onSave, materiales = [], materialesCate
           </button>
         </div>
       </HcSec>
+        </>
+      )}
     </div>
   );
 }

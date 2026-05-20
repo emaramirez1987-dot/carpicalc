@@ -17,7 +17,7 @@
 // Toda mutación va por `onSave` que llama internamente a guardarMateriales.
 // ════════════════════════════════════════════════════════════════════════════
 
-import React, { useState, useMemo, useDeferredValue } from "react";
+import React, { useState, useMemo, useDeferredValue, useEffect } from "react";
 import MaterialesSidebar from "./MaterialesSidebar.jsx";
 import MaterialSearchToolbar from "./MaterialSearchToolbar.jsx";
 import MaterialEditorDrawer from "./MaterialEditorDrawer.jsx";
@@ -40,6 +40,8 @@ export default function MaterialesManager({
   const [orden, setOrden] = useState("nombre");
   const [categoriaActiva, setCategoriaActiva] = useState(CATEGORIA_TODOS);
   const [vistaUser, setVistaUser] = useState(null);  // null = auto
+  const [pagina, setPagina] = useState(0);
+  const POR_PAGINA = 12;
 
   // Auto-default vista: agrupada si hay categorías, plana si no
   const vista = vistaUser || (categorias.length > 0 ? "agrupada" : "plana");
@@ -51,6 +53,12 @@ export default function MaterialesManager({
   const { enCategoriaActiva, agrupados, counts } = useMaterialesFilter({
     materiales, categorias, query: queryDeferred, categoriaActiva, vista, orden,
   });
+
+  // Resetear página cuando cambia el filtro
+  useEffect(() => { setPagina(0); }, [queryDeferred, categoriaActiva, orden]);
+
+  const totalPaginas = Math.ceil(enCategoriaActiva.length / POR_PAGINA);
+  const itemsPagina  = enCategoriaActiva.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA);
 
   // Mapa categoriaId → categoria, para resolución rápida en cada card
   const categoriaPorId = useMemo(() => {
@@ -121,6 +129,12 @@ export default function MaterialesManager({
     if (categoriaActiva === id) setCategoriaActiva(CATEGORIA_TODOS);
   };
 
+  const btnPagStyle = {
+    padding: "4px 10px", borderRadius: 5, border: "1px solid var(--border)",
+    background: "transparent", color: "var(--text-muted)", cursor: "pointer",
+    fontFamily: M, fontSize: 12, fontWeight: 700, transition: "all 0.12s",
+  };
+
   // ── Render de cards ─────────────────────────────────────────────────────
   const renderCard = (mat) => (
     <MaterialCard
@@ -172,7 +186,7 @@ export default function MaterialesManager({
           onNuevo={abrirCrear}
         />
 
-        <div style={{ flex: 1, padding: 14, overflowY: "auto" }}>
+        <div style={{ flex: 1, padding: 14, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
           {enCategoriaActiva.length === 0 ? (
             <div style={{
               padding: "60px 20px", textAlign: "center", fontSize: 12, fontFamily: M,
@@ -186,6 +200,7 @@ export default function MaterialesManager({
                   : "No hay materiales en esta categoría"}
             </div>
           ) : vista === "agrupada" && agrupados ? (
+            // Vista agrupada: sin paginación, se agrupa por categoría
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               {[...agrupados.entries()].map(([cid, items]) => {
                 if (items.length === 0) return null;
@@ -195,23 +210,12 @@ export default function MaterialesManager({
                 if (!c) return null;
                 return (
                   <div key={cid}>
-                    <div style={{
-                      display: "flex", alignItems: "center", gap: 8, marginBottom: 10,
-                    }}>
-                      <span style={{
-                        width: 9, height: 9, borderRadius: "50%",
-                        background: c.color, flexShrink: 0,
-                      }} />
-                      <span style={{
-                        fontSize: 10, fontFamily: M, fontWeight: 700,
-                        color: "var(--text-secondary)",
-                        textTransform: "uppercase", letterSpacing: "0.10em",
-                      }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                      <span style={{ width: 9, height: 9, borderRadius: "50%", background: c.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 10, fontFamily: M, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.10em" }}>
                         {c.nombre}
                       </span>
-                      <span style={{
-                        fontSize: 10, fontFamily: M, color: "var(--text-muted)",
-                      }}>
+                      <span style={{ fontSize: 10, fontFamily: M, color: "var(--text-muted)" }}>
                         ({items.length})
                       </span>
                       <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
@@ -222,7 +226,46 @@ export default function MaterialesManager({
               })}
             </div>
           ) : (
-            grid(enCategoriaActiva)
+            // Vista plana: paginada
+            <>
+              <div style={{ flex: 1 }}>{grid(itemsPagina)}</div>
+              {totalPaginas > 1 && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, paddingTop: 4 }}>
+                  <button
+                    onClick={() => setPagina(p => Math.max(0, p - 1))}
+                    disabled={pagina === 0}
+                    style={{ ...btnPagStyle, opacity: pagina === 0 ? 0.3 : 1 }}
+                  >
+                    ‹
+                  </button>
+                  {Array.from({ length: totalPaginas }, (_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setPagina(i)}
+                      style={{
+                        ...btnPagStyle,
+                        background: pagina === i ? "var(--accent)" : "transparent",
+                        color: pagina === i ? "#000" : "var(--text-muted)",
+                        borderColor: pagina === i ? "var(--accent)" : "var(--border)",
+                        minWidth: 30,
+                      }}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setPagina(p => Math.min(totalPaginas - 1, p + 1))}
+                    disabled={pagina === totalPaginas - 1}
+                    style={{ ...btnPagStyle, opacity: pagina === totalPaginas - 1 ? 0.3 : 1 }}
+                  >
+                    ›
+                  </button>
+                  <span style={{ fontSize: 11, fontFamily: M, color: "var(--text-muted)", marginLeft: 6 }}>
+                    {pagina * POR_PAGINA + 1}–{Math.min((pagina + 1) * POR_PAGINA, enCategoriaActiva.length)} de {enCategoriaActiva.length}
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
