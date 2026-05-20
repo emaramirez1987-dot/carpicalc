@@ -3,10 +3,12 @@
 //   • Module name + code + action buttons (rotate, delete)
 //   • DIMENSIONES — A/H/P readOnly inputs (path prepared for editing)
 //   • PARÁMETROS — ConfiguradorParametrico (if module has params)
-//   • MATERIAL — MaterialGallery (replaces the old <select>)
+//   • MATERIAL — MaterialGallery
 
 import React from 'react';
-import { tok, SectionLabel, PanelDivider } from './tokens.js';
+import { tok } from './theme.js';
+import { SectionLabel, PanelDivider, IconBtn } from './ui.jsx';
+import { RotateIcon, TrashIcon } from './icons.jsx';
 import { MaterialGallery } from './MaterialGallery.jsx';
 import ConfiguradorParametrico from '../presupuesto/ConfiguradorParametrico.jsx';
 
@@ -21,7 +23,7 @@ function DimInput({ campo, label, value }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
       <span style={{
         fontSize: 8, fontFamily: "'DM Mono',monospace",
-        color: T.sectionHd, letterSpacing: '0.08em',
+        color: T.section.text, letterSpacing: '0.08em',
         textAlign: 'center',
       }}>
         {label}
@@ -29,7 +31,6 @@ function DimInput({ campo, label, value }) {
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
         <input
           type="number"
-          // campo is available for when onChange is wired: e => onDimChange(campo, Number(e.target.value))
           data-campo={campo}
           value={value}
           readOnly
@@ -45,7 +46,6 @@ function DimInput({ campo, label, value }) {
             fontWeight: 600,
             outline: 'none',
             cursor: 'default',
-            // When editing is enabled: change cursor to 'text'
             boxSizing: 'border-box',
           }}
         />
@@ -62,39 +62,6 @@ function DimInput({ campo, label, value }) {
   );
 }
 
-// ── Icon action button ─────────────────────────────────────────────────────────
-function ActionBtn({ onClick, title, children, danger }) {
-  const T = tok();
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      style={{
-        width: 32, height: 32,
-        background: danger ? T.rmBg : T.btnBg,
-        border: `1px solid ${danger ? T.rmBord : T.btnBord}`,
-        borderRadius: 7,
-        cursor: 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: danger ? T.rmText : T.btnText,
-        fontSize: 15, lineHeight: 1,
-        transition: 'all 0.14s',
-        padding: 0,
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.background = danger ? T.rmBord : T.btnHoverBg;
-        e.currentTarget.style.color = danger ? '#e07070' : T.btnHoverText;
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.background = danger ? T.rmBg : T.btnBg;
-        e.currentTarget.style.color = danger ? T.rmText : T.btnText;
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
 // ── Empty state (nothing selected) ────────────────────────────────────────────
 function EmptyInspector() {
   const T = tok();
@@ -105,10 +72,10 @@ function EmptyInspector() {
       alignItems: 'center', justifyContent: 'center',
       padding: '24px 16px', gap: 10,
     }}>
-      <div style={{ fontSize: 24, opacity: 0.3, color: T.emptyIcon }}>◈</div>
+      <div style={{ fontSize: 24, opacity: 0.3, color: T.empty.icon }}>◈</div>
       <p style={{
         fontSize: 11, fontFamily: "'DM Mono',monospace",
-        color: T.emptySub, textAlign: 'center', margin: 0, lineHeight: 1.6,
+        color: T.empty.sub, textAlign: 'center', margin: 0, lineHeight: 1.6,
       }}>
         Seleccioná un módulo<br />en la escena
       </p>
@@ -168,12 +135,17 @@ export function InspectorPanel({
         </div>
 
         <div style={{ display: 'flex', gap: 6 }}>
-          <ActionBtn onClick={onRotar} title="Rotar 90°">
-            ↻
-          </ActionBtn>
-          <ActionBtn onClick={onEliminar} title="Quitar de la escena" danger>
-            🗑
-          </ActionBtn>
+          <IconBtn
+            icon={<RotateIcon size={14} />}
+            onClick={onRotar}
+            title="Rotar 90°"
+          />
+          <IconBtn
+            icon={<TrashIcon size={14} />}
+            onClick={onEliminar}
+            title="Quitar de la escena"
+            danger
+          />
         </div>
       </div>
 
@@ -191,7 +163,7 @@ export function InspectorPanel({
         </div>
       )}
 
-      {/* ── PARÁMETROS ─────────────────────────────────────────────────── */}
+      {/* ── PARÁMETROS ────────────────────────────────────────────────── */}
       {tieneParams && itemIdx != null && (
         <>
           <PanelDivider />
@@ -209,7 +181,7 @@ export function InspectorPanel({
         </>
       )}
 
-      {/* ── MATERIAL ───────────────────────────────────────────────────── */}
+      {/* ── MATERIAL ──────────────────────────────────────────────────── */}
       {biblioteca.length > 0 && itemIdx != null && (
         <>
           <PanelDivider />

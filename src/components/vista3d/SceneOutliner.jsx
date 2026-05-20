@@ -1,19 +1,14 @@
 // SceneOutliner.jsx — Left panel: scene instances + budget breakdown
 // Two sections:
-//   ESCENA   — modules currently placed in the 3D scene (selectable, removable)
+//   ESCENA      — modules currently placed in the 3D scene (selectable, removable)
 //   PRESUPUESTO — all budget items with calculated costs + total
 
 import React from 'react';
-import { tok, SectionLabel, PanelDivider } from './tokens.js';
+import { tok } from './theme.js';
+import { SectionLabel, PanelDivider, IconBtn } from './ui.jsx';
 import { fmtPeso } from '../../utils.js';
 
-// ── Color swatch by tipoVisual (matches PanelModulos3D convention) ─────────────
-const TIPO_COLOR = {
-  aereo:  '#3a5a8a',
-  torre:  '#3a6a4a',
-  bajo:   '#6a4a3a',
-  otro:   '#4a4a5a',
-};
+// Module type display labels (data, not visual — lives here, not in theme.js)
 const TIPO_LABEL = {
   aereo: 'AÉR',
   torre: 'TOR',
@@ -21,30 +16,31 @@ const TIPO_LABEL = {
   otro:  'OTR',
 };
 
+// ── Type swatch — colored square with category abbreviation ───────────────────
 function TypeSwatch({ tipo, size = 28 }) {
   const T = tok();
-  const color = TIPO_COLOR[tipo] || TIPO_COLOR.otro;
-  const label = TIPO_LABEL[tipo] || 'OTR';
+  const tipoKey = TIPO_LABEL[tipo] ? tipo : 'otro';
+  const { bg, text } = T.tipoColors[tipoKey];
   return (
     <div style={{
       width: size, height: size, borderRadius: 5, flexShrink: 0,
-      background: color,
+      background: bg,
       border: `1px solid ${T.border}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: 7, fontFamily: "'DM Mono',monospace",
-      color: 'rgba(255,255,255,0.70)', letterSpacing: '0.04em', fontWeight: 700,
+      color: text, letterSpacing: '0.04em', fontWeight: 700,
     }}>
-      {label}
+      {TIPO_LABEL[tipoKey] || 'OTR'}
     </div>
   );
 }
 
-// ── Instance row in the ESCENA section ────────────────────────────────────────
+// ── Instance row in ESCENA section ────────────────────────────────────────────
 function InstanceRow({ inst, modulo, selected, onSelect, onRemove }) {
   const T = tok();
-  const tipo = modulo?.tipoVisual || 'otro';
+  const tipo   = modulo?.tipoVisual || 'otro';
   const nombre = modulo?.nombre || inst.codigo;
-  const k = inst.instKey
+  const k      = inst.instKey
     ? ('#' + (parseInt(inst.instKey.split('#')[1]) + 1))
     : '';
 
@@ -81,33 +77,23 @@ function InstanceRow({ inst, modulo, selected, onSelect, onRemove }) {
         </div>
       </div>
 
-      {/* Remove button */}
-      <button
+      <IconBtn
+        icon="×"
+        size={20}
         onClick={e => { e.stopPropagation(); onRemove(inst.instanceId); }}
         title="Quitar de la escena"
-        style={{
-          width: 20, height: 20, flexShrink: 0,
-          background: 'none', border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: T.textMuted, fontSize: 14, lineHeight: 1,
-          borderRadius: 4, transition: 'all 0.12s',
-          padding: 0,
-        }}
-        onMouseEnter={e => { e.currentTarget.style.background = T.rmBg; e.currentTarget.style.color = T.rmText; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = T.textMuted; }}
-      >
-        ×
-      </button>
+        style={{ fontSize: 14, borderRadius: 4 }}
+      />
     </div>
   );
 }
 
 // ── Budget item row in PRESUPUESTO section ────────────────────────────────────
 function BudgetRow({ item, modulo, onAgregar }) {
-  const T = tok();
-  const keyId = item.id || item.codigo;
+  const T   = tok();
+  const keyId  = item.id || item.codigo;
   const nombre = modulo?.nombre || item.codigo;
-  const dims = item.dims;
+  const dims   = item.dims;
 
   return (
     <div style={{
@@ -115,24 +101,20 @@ function BudgetRow({ item, modulo, onAgregar }) {
       padding: '5px 12px',
       gap: 8,
     }}>
-      {/* Add to scene button */}
-      <button
+      <IconBtn
+        icon="+"
+        size={18}
         onClick={() => onAgregar({ itemId: keyId, codigo: item.codigo, dimsOverride: {} })}
         title="Agregar a la escena"
         style={{
-          width: 18, height: 18, flexShrink: 0, borderRadius: 3,
-          background: T.snapBg, border: `1px solid ${T.snapBord}`,
-          color: T.snapText, fontSize: 13, lineHeight: 1,
-          cursor: 'pointer', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', padding: 0, transition: 'all 0.12s',
+          background: T.snapBg,
+          border: `1px solid ${T.snapBord}`,
+          color: T.snapText,
+          fontSize: 13,
+          borderRadius: 3,
         }}
-        onMouseEnter={e => { e.currentTarget.style.background = T.goldBord; }}
-        onMouseLeave={e => { e.currentTarget.style.background = T.snapBg; }}
-      >
-        +
-      </button>
+      />
 
-      {/* Name + dims */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 11, color: T.text,
@@ -143,7 +125,8 @@ function BudgetRow({ item, modulo, onAgregar }) {
           {nombre}
           {item.cantidad > 1 && (
             <span style={{
-              marginLeft: 5, fontSize: 9, fontFamily: "'DM Mono',monospace",
+              marginLeft: 5, fontSize: 9,
+              fontFamily: "'DM Mono',monospace",
               color: T.gold,
             }}>
               ×{item.cantidad}
@@ -160,7 +143,6 @@ function BudgetRow({ item, modulo, onAgregar }) {
         )}
       </div>
 
-      {/* Cost */}
       {item.costoTotal > 0 && (
         <div style={{
           fontSize: 10, fontFamily: "'DM Mono',monospace",
@@ -210,7 +192,7 @@ export function SceneOutliner({
               background: 'none', border: 'none', cursor: 'pointer',
               fontSize: 9, fontFamily: "'DM Mono',monospace",
               color: T.textMuted, padding: '2px 4px', borderRadius: 3,
-              transition: 'color 0.12s',
+              transition: 'color 0.12s', lineHeight: 1, outline: 'none',
             }}
             onMouseEnter={e => { e.currentTarget.style.color = T.rmText; }}
             onMouseLeave={e => { e.currentTarget.style.color = T.textMuted; }}
@@ -225,7 +207,7 @@ export function SceneOutliner({
           <div style={{
             padding: '12px 14px',
             fontSize: 10, fontFamily: "'DM Mono',monospace",
-            color: T.emptySub, textAlign: 'center',
+            color: T.empty.sub, textAlign: 'center',
           }}>
             Usá + para agregar módulos
           </div>
@@ -256,12 +238,12 @@ export function SceneOutliner({
           <div style={{
             padding: '12px 14px',
             fontSize: 10, fontFamily: "'DM Mono',monospace",
-            color: T.emptySub, textAlign: 'center',
+            color: T.empty.sub, textAlign: 'center',
           }}>
             No hay módulos en el presupuesto
           </div>
         ) : (
-          itemsConCosto.map((item) => (
+          itemsConCosto.map(item => (
             <BudgetRow
               key={item.id || item.codigo}
               item={item}
@@ -283,7 +265,7 @@ export function SceneOutliner({
           }}>
             <span style={{
               fontSize: 9, fontFamily: "'DM Mono',monospace",
-              color: T.sectionHd, letterSpacing: '0.10em', textTransform: 'uppercase',
+              color: T.section.text, letterSpacing: '0.10em', textTransform: 'uppercase',
             }}>
               Total
             </span>

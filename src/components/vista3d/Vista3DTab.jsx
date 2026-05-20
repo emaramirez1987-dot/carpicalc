@@ -6,7 +6,8 @@ import { Escena3DPrincipal } from './Escena3DPrincipal.jsx';
 import { SceneOutliner } from './SceneOutliner.jsx';
 import { InspectorPanel } from './InspectorPanel.jsx';
 import { ViewportToolbar } from './ViewportToolbar.jsx';
-import { useIsDark, tok, SectionLabel, PanelDivider } from './tokens.js';
+import { useIsDark, tok } from './tokens.js';
+import { SectionLabel, PanelDivider } from './ui.jsx';
 import { calcularModulo, fmtPeso } from '../../utils.js';
 
 // ── Vista3DTab ─────────────────────────────────────────────────────────────────
@@ -381,7 +382,7 @@ export function Vista3DTab({
             <div style={{
               position: 'absolute', bottom: 12, right: 12, zIndex: 10,
               padding: '8px 14px', borderRadius: 8,
-              background: isDark ? 'rgba(8,10,13,0.85)' : 'rgba(255,255,255,0.90)',
+              background: T.canvas.overlayBg,
               border: `1px solid ${T.goldBord}`,
               backdropFilter: 'blur(6px)',
               boxShadow: '0 4px 16px rgba(0,0,0,0.20)',
