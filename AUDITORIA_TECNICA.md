@@ -1,6 +1,6 @@
 # AUDITORÍA TÉCNICA COMPLETA — CarpiCalc
 ### Radiografía del estado actual del proyecto
-**Fecha:** Mayo 2026 · **Versión auditada:** producción actual en Vercel
+**Fecha:** Mayo 2026 · **Última actualización:** 2026-05-20 · **Versión auditada:** producción actual en Vercel
 
 ---
 
@@ -142,7 +142,8 @@ carpicalc/
         │
         ├── vista3d/                → VISTA 3D DEL PRESUPUESTO (multi-módulo)
         │   └── Vista3DTab.jsx      → Vista 3D de todos los módulos del presupuesto juntos
-        │                             con configurador paramétrico en panel lateral
+        │                             con configurador paramétrico + selector de material de
+        │                             costo por ítem (impacta total del presupuesto en vivo)
         │
         ├── vista-svg/              → Renderer SVG 2D (vista técnica de frente)
         │   └── index.js            → VistaModuloSVG — genera SVG reactivo sin canvas
@@ -296,10 +297,10 @@ Es el componente raíz. Contiene:
 
 ---
 
-#### 2. `utils.js` — El calculador (857 líneas)
+#### 2. `utils.js` — El calculador (~1010 líneas)
 **Criticidad: MÁXIMA**
 
-Funciones puras sin side effects. No importa React.
+Funciones puras sin side effects. No importa React. Importa `resolverMaterial` de `materialesService.js` para resolución de material por `materialId` (única dependencia externa, justificada — evita duplicar la lógica de resolución).
 
 | Función | Qué hace |
 |---------|----------|
@@ -307,10 +308,11 @@ Funciones puras sin side effects. No importa React.
 | `evaluarFormula(expr, vars)` | Igual que anterior pero clampea el resultado a ≥ 0 |
 | `evaluarCondicion(expr, vars)` | Evalúa una fórmula como booleano. Ej: `"cajones > 0"` → `true` |
 | `resolverVariables(rawVars, baseVars)` | Resuelve variables custom encadenadas. Itera hasta que todas estén resueltas o queden sin resolver (→ 0). |
-| `calcularModulo(modulo, costos, valoresParametros)` | Calcula el costo completo de un módulo: m², tapacanto, herrajes, MO, ganancia, total |
+| `calcularModulo(modulo, costos, valoresParametros)` | Calcula el costo completo de un módulo: m², tapacanto, herrajes, MO, ganancia, total. Si `costos.bibliotecaMateriales` está presente, resuelve el material por `materialId` vía `resolverMaterial`; si no, fallback a resolución por tipo (compatibilidad con tests legacy). |
 | `recalcularTotalPresupuesto(p, modulos, costos)` | Recalcula el total de un presupuesto completo determinísticamente |
 | `generarVistaSVG(modulo, opts)` | Genera el SVG de vista técnica de frente del módulo |
 | `resolverDim(base, offsetEsp, offsetMm, divisor, espesor)` | Calcula la dimensión de una pieza según la fórmula estándar |
+| `resolverModuloDesdePresupuesto(p, item, modulos)` | Fusiona el módulo base con los overrides del ítem en el presupuesto, incluyendo `materialId`. |
 
 ---
 
@@ -640,7 +642,33 @@ withSave(async () => await guardarModulos(costos))
 
 ---
 
-### Flujo 6: Detección de precios desactualizados
+### Flujo 6: Asignación de material de costo desde Vista 3D ✅ (2026-05-20)
+
+```
+Vista 3D — panel lateral del módulo seleccionado:
+  → Muestra selector "MATERIAL" con todos los materiales de la biblioteca,
+    agrupados por tipo (optgroup), ordenados alfabéticamente.
+
+Usuario elige un material:
+  → handleAsignarMaterialCosto(materialId)
+  → setDimOverride(prev → { ...prev, [itemKey]: { ...prev[itemKey], materialId } })
+  → Si elige "— Default del módulo —" → borra materialId del override
+
+calcularModulo (en utils.js):
+  → Detecta costos.bibliotecaMateriales (array presente y no vacío)
+  → Llama resolverMaterial({ modulo, materiales: biblioteca })
+  → resolverMaterial resuelve: por materialId → por tipo → fallback vacío
+  → Calcula costo con el precio real del material elegido
+  → El total del presupuesto se recalcula automáticamente
+
+App.js:
+  → costos derivados (useMemo) incluyen: bibliotecaMateriales: materiales
+  → Vista3DTab recibe setDimOverride como prop explícita
+```
+
+---
+
+### Flujo 7: Detección de precios desactualizados
 
 ```
 El carpintero sube el precio del material de melamina.
@@ -683,7 +711,7 @@ Usuario hace clic en "Actualizar":
 │  AppInterna (estado del EDITOR ACTIVO)                           │
 │                                                                  │
 │  items: [{ id, codigo, cantidad, parametrosValores }]            │
-│  dimOverride: { [itemId]: { ancho, alto, profundidad, material }}│
+│  dimOverride: { [itemId]: { ancho, alto, profundidad, material?, materialId? }}│
 │  composicionOverride: { [itemId]: {...} }                        │
 │  inlineModulos: { [codigo]: Modulo }  ← ediciones inline        │
 │  adicionales: [{ id, nombre, monto }]                            │
@@ -741,7 +769,7 @@ App.js
   └─ lazy imports: todos los tabs
 
 utils.js
-  └─ imports: NADA (archivo más puro del proyecto)
+  └─ imports: materialesService.js (solo resolverMaterial — para calcularModulo)
 
 moduloService.js
   ├─ imports: utils.js
@@ -784,7 +812,7 @@ presupuesto/ConfiguradorParametrico.jsx
 
 | Archivo | Importado por | Riesgo si cambia |
 |---------|--------------|-----------------|
-| `utils.js` | 10+ archivos | **CRÍTICO** — cambia fórmulas → todo falla |
+| `utils.js` | 10+ archivos | **CRÍTICO** — cambia fórmulas → todo falla. Ahora depende de `materialesService.js` (resolverMaterial). |
 | `moduloService.js` | 6+ archivos | **MUY ALTO** — cambia parseo → datos rotos |
 | `constants.js` | 8+ archivos | **ALTO** — cambia MODULO_VACIO → defaults rotos |
 | `storage.js` | App.js + catalogo | **ALTO** — cambia I/O → pérdida de datos |
@@ -840,9 +868,9 @@ Es el componente más grande. Aunque está bien organizado, cualquier funcionali
 
 #### 🟡 RIESGO MEDIO
 
-**3. `calcularModulo` en utils.js llama a `resolverContextoModulo`**
+**3. `utils.js` ahora importa `materialesService.js`**
 
-`calcularModulo` está en utils.js pero necesita llamar a `resolverContextoModulo` que está en moduloService.js. Esto crea una dependencia de utils.js hacia moduloService.js que "rompe" la regla de que utils.js no depende de nadie. Actualmente utils.js no importa moduloService (los llaman en paralelo desde afuera). Hay que verificar que siga así.
+`calcularModulo` importa `resolverMaterial` de `materialesService.js` para resolver el material por `materialId` cuando `costos.bibliotecaMateriales` está presente. Esta es la única dependencia externa de utils.js — fue evaluada y aceptada porque centraliza la lógica de resolución de material (evitar duplicarla en utils sería peor). utils.js sigue sin importar `moduloService.js` ni React.
 
 **4. Módulos TEMP_ en el objeto `modulos` global**
 
@@ -1086,6 +1114,8 @@ Esta función fue creada para reemplazar tres implementaciones paralelas que exi
 
 7. **Zero dependencias circulares:** El grafo de importaciones es un árbol limpio.
 
+8. **Biblioteca de materiales real integrada al motor de costos:** `materialesService.js` + `resolverMaterial` permiten asignar materiales específicos (por `materialId`) a cualquier ítem del presupuesto, tanto desde el presupuesto como desde la Vista 3D, con recálculo automático del total.
+
 ---
 
 ### Deudas técnicas registradas (solo documentar, no resolver aún)
@@ -1093,7 +1123,7 @@ Esta función fue creada para reemplazar tres implementaciones paralelas que exi
 | Prioridad | Deuda | Ubicación | Impacto |
 |-----------|-------|-----------|---------|
 | ~~Media~~ ✅ | ~~`variables` shape inconsistente (Array vs Object)~~ **RESUELTO** | `normalizarVariables` en `moduloService.js` | Contrato canónico: Object. Array legacy y formatos desconocidos normalizados en el parser. |
-| Baja | App.js en crecimiento (848 líneas) | `App.js` | Mantenibilidad a largo plazo |
+| Baja | App.js en crecimiento (>900 líneas) | `App.js` | Mantenibilidad a largo plazo |
 | Baja | Estilos inline repetidos en componentes | Toda la carpeta components/ | Solo estética, no funcional |
 | Baja | Imágenes base64 en payload de módulos | `storage.js → guardarModulos` | Puede volverse lento con muchas imágenes grandes |
 

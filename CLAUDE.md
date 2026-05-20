@@ -91,7 +91,7 @@ Las variables custom del módulo (y de cada subcomponente) se pueden organizar e
 | `NavContext` | Navigation transitions only | Mutate domain data |
 | `PresupuestoContext` | Estado del editor activo (items, dims, adicionales, composicionOverride, inlineModulos) | Persist directly, business logic |
 | `services/` | Pure domain mutations + parser + motor paramétrico + optimizador | Call setState, dispatch |
-| `utils.js` | Pure calculations + motor de fórmulas (`evaluarExpresion`, `evaluarFormula`, `calcularModulo`, `generarVistaSVG`). Funciones soportadas: `min, max, round, ceil, floor, abs, clamp, mod`. Operadores: aritmética, comparación, lógicos, ternario | State, effects, UI, localStorage |
+| `utils.js` | Pure calculations + motor de fórmulas (`evaluarExpresion`, `evaluarFormula`, `calcularModulo`, `generarVistaSVG`). Funciones soportadas: `min, max, round, ceil, floor, abs, clamp, mod`. Operadores: aritmética, comparación, lógicos, ternario. Importa `resolverMaterial` de `materialesService.js` para resolución de material por `materialId`. | State, effects, UI, localStorage |
 | `storage.js` | I/O Supabase + I/O localStorage (cache) | Business logic |
 | `lib/supabase.js` | Cliente Supabase singleton | Lógica de negocio |
 | `components/[domain]/` | Visual + local interaction | Direct persistence |
@@ -148,6 +148,23 @@ calcularModulo(modulo, costos, item.parametrosValores)
   → costo, piezas y total se recalculan
 buildPiezas3D(modulo, costos, item.parametrosValores)
   → render se actualiza
+```
+
+**Flujo de asignación de material de costo desde Vista 3D:**
+```
+Vista 3D (selector "MATERIAL" en panel lateral del módulo seleccionado)
+  → elige un material de la biblioteca real (por id)
+  → handleAsignarMaterialCosto(materialId)
+  → setDimOverride: dimOverride[itemKey].materialId = materialId
+
+calcularModulo(modulo, costos, valoresParametros)
+  → costos.bibliotecaMateriales presente → llama resolverMaterial({ modulo, materiales })
+  → resolverMaterial resuelve: por materialId (exacto) → por tipo (default) → fallback vacío
+  → total del presupuesto se recalcula automáticamente
+
+App.js
+  → costos derivados incluyen bibliotecaMateriales: materiales
+  → Vista3DTab recibe setDimOverride como prop para poder escribir el override
 ```
 
 **Save queue:**
@@ -227,7 +244,7 @@ Estado expuesto: `vista`, `catalogoDeepLink`, `origenEdicion`, `presupuestoParaE
     parametrosValores?: { [paramId]: valor },  // sistema paramétrico
     ...
   }],
-  dimOverride:         { [item.id || item.codigo]: { ancho, alto, profundidad, material? } },
+  dimOverride:         { [item.id || item.codigo]: { ancho, alto, profundidad, material?, materialId? } },
   composicionOverride: { [itemKey]: {...} },              // override de composicionVisual por ítem
   inlineModulos:       { [codigo]: Modulo },              // ediciones inline solo del presupuesto
   adicionales:         [{ id, nombre, monto }],
@@ -305,6 +322,13 @@ Cubren el motor de fórmulas, parámetros, subcomponentes y armado 3D.
 | Alta | Public budget link | Flujo de aprobación del cliente vía link público |
 | Baja | Resumen mensual / m² calculator / export lista de compras | |
 | Opcional | Editor 3D inmersivo Nivel 2/3 | Medir, esconder/explotar, sección · gizmos drag, snap, history. Diferido hasta que haya uso real que lo justifique. |
+
+### Features completadas recientemente
+| Fecha | Feature | Detalle |
+|---|---|---|
+| 2026-05-20 | **Material de costo desde Vista 3D** | Panel lateral de Vista3DTab incluye selector de material de la biblioteca real (agrupado por tipo). Al elegir un material se guarda `materialId` en `dimOverride[itemKey]`. `calcularModulo` lo resuelve vía `resolverMaterial` cuando `costos.bibliotecaMateriales` está presente → el total del presupuesto se recalcula en vivo. Fallback: si no hay `materialId`, resuelve por tipo (comportamiento anterior). |
+| 2026-05-19 | **Biblioteca de materiales EGGER** | `materialesService.js` + `MaterialesManager.jsx` + `MaterialEditorDrawer.jsx`. Importación de `catalogo-egger.json`. Paginación, filtros, agrupación de variantes AGL/MDF con toggle. Integración con motor de costos vía `esDefault` y `materialId`. |
+| 2026-05-19 | **`modulo.variables` shape canónico** | `normalizarVariables` en `moduloService.js` — Object (pass-through), Array legacy (migra), desconocido (cuarentena). Contrato: siempre `Object { [nombre]: formula }`. |
 
 ### Deuda técnica registrada
 | Priority | Tarea | Detalle |
