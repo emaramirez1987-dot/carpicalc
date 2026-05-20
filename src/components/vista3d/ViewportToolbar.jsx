@@ -6,12 +6,12 @@
 
 import React from 'react';
 import { tok } from './theme.js';
-import { ToolbarBtn, ToolbarDropdown, IconBtn, TDivider } from './ui.jsx';
-import { BTN, DropItem, ColorToggle } from './tokens.js';
+import { ToolbarBtn, ToolbarColorToggle, ToolbarDropdown, DropItem, ColorToggle, IconBtn, TDivider } from './ui.jsx';
 import {
   IsoIcon, FrontIcon, SideIcon, TopIcon,
   GridIcon, LightIcon, RefreshIcon,
   MaximizeIcon, MinimizeIcon,
+  WallsIcon, ContourIcon,
 } from './icons.jsx';
 import { CAMARAS } from '../visor3d/CamaraPresets.js';
 
@@ -82,13 +82,14 @@ export function ViewportToolbar({
       {/* ── Scene toggles ──────────────────────────────────────────────── */}
 
       {/* Piso — toggle + color picker */}
-      <ColorToggle
+      <ToolbarColorToggle
         value={mostrarPiso} onToggle={() => setMostrarPiso(v => !v)}
         color={colorPiso} onColor={setColorPiso} label="Piso"
       />
 
       {/* Paredes — dropdown: back wall + left + right */}
       <ToolbarDropdown
+        icon={<WallsIcon size={tb.iconSize} />}
         label="Paredes"
         active={mostrarPared || mostrarParedIzq || mostrarParedDer}
       >
@@ -97,17 +98,17 @@ export function ViewportToolbar({
             value={mostrarPared} onToggle={() => setMostrarPared(v => !v)}
             color={colorPared} onColor={setColorPared} label="Trasera"
           />
-          <BTN active={mostrarParedIzq} onClick={() => setMostrarParedIzq(v => !v)}>
+          <DropItem active={mostrarParedIzq} onClick={() => setMostrarParedIzq(v => !v)}>
             Izquierda
-          </BTN>
-          <BTN active={mostrarParedDer} onClick={() => setMostrarParedDer(v => !v)}>
+          </DropItem>
+          <DropItem active={mostrarParedDer} onClick={() => setMostrarParedDer(v => !v)}>
             Derecha
-          </BTN>
+          </DropItem>
         </div>
       </ToolbarDropdown>
 
       {/* Mesada — toggle + color picker */}
-      <ColorToggle
+      <ToolbarColorToggle
         value={mostrarMesada} onToggle={() => setMostrarMesada(v => !v)}
         color={colorMesada} onColor={setColorMesada} label="Mesada"
       />
@@ -122,7 +123,7 @@ export function ViewportToolbar({
       />
 
       {/* Contornos — dropdown: toggle + color + stroke weight */}
-      <ToolbarDropdown label="Contornos" active={mostrarContornos}>
+      <ToolbarDropdown icon={<ContourIcon size={tb.iconSize} />} label="Contornos" active={mostrarContornos}>
         <DropItem
           active={mostrarContornos}
           onClick={() => setMostrarContornos(v => !v)}
@@ -166,7 +167,8 @@ export function ViewportToolbar({
 
       {/* ── Lighting dropdown ──────────────────────────────────────────── */}
       <ToolbarDropdown
-        label={<><LightIcon size={tb.iconSize} /> Luz</>}
+        icon={<LightIcon size={tb.iconSize} />}
+        label="Luz"
         active={false}
       >
         <div style={{

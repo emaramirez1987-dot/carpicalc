@@ -93,6 +93,22 @@ export const TrashIcon = ({ size = 14 }) => (
   </svg>
 );
 
+export const WallsIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none"
+    stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12V4L7 2L12 4V12" />
+    <path d="M2 12H12" />
+    <path d="M7 2V9" strokeWidth="0.8" opacity="0.55" />
+  </svg>
+);
+
+export const ContourIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none"
+    stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+    <rect x="2.5" y="2.5" width="9" height="9" strokeDasharray="2.5 1.5" />
+  </svg>
+);
+
 export const CaptureIcon = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 14 14" fill="none"
     stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
