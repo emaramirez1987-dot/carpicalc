@@ -22,6 +22,7 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import { generarPiezas, resolverHerrajes, resolverParametros } from './services/moduloService.js';
+import { resolverMaterial } from './services/materialesService.js';
 
 // ════════════════════════════════════════════════════════════════════════════
 // FORMATEO
@@ -286,9 +287,22 @@ export function resolverDim(base, offsetEsp, offsetMm, divisor, espesor) {
 export function calcularModulo(modulo, costos, valoresParametros = {}) {
   if (!modulo?.piezas || !costos?.materiales) return null;
 
-  const matDef = costos.materiales.find((m) => m.tipo === modulo.material);
-  const matFallback = !matDef ? costos.materiales[0] : null;
-  const mat = matDef || matFallback;
+  // Resolución del material para costo:
+  //  - Con biblioteca: resolverMaterial decide por modulo.materialId (id puntual)
+  //    → default por tipo → fallback-vacío.
+  //  - Sin biblioteca (boot/tests legacy): resolución por tipo sobre costos.materiales.
+  let mat, materialFallback;
+  const biblioteca = costos.bibliotecaMateriales;
+  if (Array.isArray(biblioteca) && biblioteca.length > 0) {
+    const r = resolverMaterial({ modulo, materiales: biblioteca });
+    mat = r.material;
+    materialFallback = r.source === "fallback-vacio";
+  } else {
+    const matDef = costos.materiales.find((m) => m.tipo === modulo.material);
+    const fb = !matDef ? costos.materiales[0] : null;
+    mat = matDef || fb;
+    materialFallback = !!fb;
+  }
   if (!mat) return null;
 
   const { ancho, profundidad, alto } = modulo.dimensiones || {};
@@ -392,8 +406,8 @@ export function calcularModulo(modulo, costos, valoresParametros = {}) {
     desglosePiezas,
     // Espesor del material usado
     espesor: esp,
-    // true si el material del módulo no existe en costos y se usó el primero como fallback
-    materialFallback: !!matFallback,
+    // true si no se pudo resolver el material y se usó un fallback (precioM2=0)
+    materialFallback,
     // Piezas cuya fórmula dio negativo y fue clamped a 0
     piezasNegativas,
   };
@@ -547,6 +561,7 @@ export function resolverModuloDesdePresupuesto(p, item, modulos) {
   return {
     ...base,
     material: over.material ?? base.material,
+    materialId: over.materialId ?? base.materialId,
     dimensiones: {
       ancho:       over.ancho       ?? base.dimensiones.ancho,
       profundidad: over.profundidad ?? base.dimensiones.profundidad,

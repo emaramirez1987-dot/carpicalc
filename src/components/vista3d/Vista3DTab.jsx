@@ -236,6 +236,7 @@ export function Vista3DTab({
   items = [],
   setItems,
   dimOverride = {},
+  setDimOverride,
   inlineModulos = {},  // eslint-disable-line no-unused-vars
   presupuestoActivoId,
   onCaptura,
@@ -364,9 +365,19 @@ export function Vista3DTab({
     return items.reduce((acc, it) => {
       const base = modulos[it.codigo];
       if (!base) return acc;
-      const dims = (dimOverride && dimOverride[it.id || it.codigo]) || base.dimensiones;
-      const mat  = (dimOverride && dimOverride[it.id || it.codigo]?.material) || base.material;
-      const calc = calcularModulo({ ...base, dimensiones: dims, material: mat }, costos, it.parametrosValores || {});
+      const ov = (dimOverride && dimOverride[it.id || it.codigo]) || {};
+      const dims = {
+        ancho:       ov.ancho       ?? base.dimensiones.ancho,
+        profundidad: ov.profundidad ?? base.dimensiones.profundidad,
+        alto:        ov.alto        ?? base.dimensiones.alto,
+      };
+      const modResuelto = {
+        ...base,
+        dimensiones: dims,
+        material:    ov.material   ?? base.material,
+        materialId:  ov.materialId ?? base.materialId,
+      };
+      const calc = calcularModulo(modResuelto, costos, it.parametrosValores || {});
       if (!calc) return acc;
       return acc + calc.total * (it.cantidad || 1);
     }, 0);
@@ -465,6 +476,42 @@ export function Vista3DTab({
   const texturaCodActual = selectedInst?.texturaCode || null;
   const materialesKeys  = Object.keys(materiales3D);
 
+  // ── Material de costo (biblioteca real) ──────────────────────────────────
+  // Asigna un materialId al override del ítem → calcularModulo lo resuelve
+  // por id y el total del presupuesto se recalcula solo.
+  const biblioteca = useMemo(() => costos?.bibliotecaMateriales || [], [costos]);
+  const materialIdActual = selectedInst?.itemKey
+    ? (dimOverride[selectedInst.itemKey]?.materialId || '')
+    : '';
+  const materialElegido = materialIdActual
+    ? biblioteca.find(m => m.id === materialIdActual)
+    : null;
+  const materialesPorTipo = useMemo(() => {
+    const g = {};
+    for (const m of biblioteca) {
+      const t = m.tipo || 'otro';
+      (g[t] || (g[t] = [])).push(m);
+    }
+    for (const t of Object.keys(g)) {
+      g[t].sort((a, b) => (a.nombre || a.codigo || '').localeCompare(b.nombre || b.codigo || ''));
+    }
+    return g;
+  }, [biblioteca]);
+
+  const handleAsignarMaterialCosto = (materialId) => {
+    if (!selectedInst?.itemKey || !setDimOverride) return;
+    const keyId = selectedInst.itemKey;
+    setDimOverride(prev => {
+      const next = { ...(prev[keyId] || {}) };
+      if (materialId) next.materialId = materialId;
+      else delete next.materialId;
+      const out = { ...prev };
+      if (Object.keys(next).length === 0) delete out[keyId];
+      else out[keyId] = next;
+      return out;
+    });
+  };
+
   const inner = (
     <div style={maximizado ? {
       position: 'fixed', inset: 0, zIndex: 200,
@@ -529,11 +576,45 @@ export function Vista3DTab({
                 );
               })()}
 
-              {/* Panel de material del módulo seleccionado */}
+              {/* Material de costo — biblioteca real, impacta el presupuesto */}
+              {selectedInst?.itemIdx != null && biblioteca.length > 0 && (
+                <div style={{ borderTop: `1px solid ${T.borderSub}`, padding: '8px 10px 12px' }}>
+                  <div style={{ padding: '0 0 6px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
+                    MATERIAL
+                  </div>
+                  <select
+                    value={materialIdActual}
+                    onChange={e => handleAsignarMaterialCosto(e.target.value || null)}
+                    style={{
+                      width: '100%', padding: '5px 6px', borderRadius: 6,
+                      border: `1px solid ${T.border}`, background: T.matBg,
+                      color: T.text, fontFamily: "'DM Mono',monospace", fontSize: 10,
+                      outline: 'none', cursor: 'pointer',
+                    }}>
+                    <option value="">— Default del módulo —</option>
+                    {Object.entries(materialesPorTipo).map(([tipo, lista]) => (
+                      <optgroup key={tipo} label={tipo}>
+                        {lista.map(m => (
+                          <option key={m.id} value={m.id}>
+                            {(m.codigo ? m.codigo + ' · ' : '') + (m.nombre || 'sin nombre')}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  {materialElegido && (
+                    <div style={{ marginTop: 5, fontSize: 9, fontFamily: "'DM Mono',monospace", color: '#D4AF37' }}>
+                      {fmtPeso(materialElegido.precioM2)}/m² · {materialElegido.espesor}mm
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Textura de render del módulo seleccionado */}
               {selectedCod && (
                 <div style={{ borderTop: `1px solid ${T.borderSub}` }}>
                   <div style={{ padding: '6px 12px 4px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
-                    MATERIAL
+                    TEXTURA 3D
                   </div>
                   {/* Escala de textura — controla cuántas veces se repite la imagen PNG en cada pieza */}
                   {texturaCodActual && (

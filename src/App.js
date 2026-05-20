@@ -222,6 +222,8 @@ function AppInterna() {
     return {
       ...costos,
       materiales: derivarCostosMateriales(materiales, costos.materiales || []),
+      // Biblioteca completa — calcularModulo la usa para resolver por materialId.
+      bibliotecaMateriales: materiales,
     };
   }, [costos, materiales]);
 
@@ -685,6 +687,7 @@ function AppInterna() {
                 items={items}
                 setItems={setItems}
                 dimOverride={dimOverride}
+                setDimOverride={setDimOverride}
                 inlineModulos={inlineModulos}
                 presupuestoActivoId={presupuestoActivoId}
                 onCaptura={(base64) => setImagenRef3D(base64)}
