@@ -2,33 +2,94 @@
 // MaterialCard — Tarjeta visual de material (solo display)
 // ════════════════════════════════════════════════════════════════════════════
 //
-// La edición se hace en MaterialEditorDrawer. Esta card es solo visual.
-// Memoizada: solo re-renderiza si cambia el material o su categoría asignada.
+// Recibe un grupo de variantes del mismo color. AGL y MDF del mismo código
+// EGGER comparten textura: se muestran en una sola card con un toggle de tipo.
+// Al alternar, el precio / espesor / categoría se actualizan a esa variante.
+// La edición se hace en MaterialEditorDrawer — esta card es solo visual.
 //
 // Layout:
 //   ┌─────────────────────┐
-//   │ ░ TEXTURA THUMB  ●  │  ← preview de textura (o placeholder) + dot categoría
-//   │                     │
+//   │ ░ TEXTURA THUMB  ●  │  ← preview de textura (compartida) + dot categoría
+//   │                  ⤢  │  ← lupa (hover) → lightbox
 //   ├─────────────────────┤
 //   │ W1100 ST9           │  ← código (acento)
 //   │ Blanco Alpino       │  ← nombre
-//   │ MDF · 18mm          │  ← tipo + espesor
-//   │ $131.729 /m²        │  ← precio
+//   │ [AGL][MDF]  18mm    │  ← toggle de variante (o "MDF · 18mm" si es única)
+//   │ $131.729 /m²        │  ← precio (de la variante activa)
 //   │             [✎] [×] │  ← acciones
 //   └─────────────────────┘
 // ════════════════════════════════════════════════════════════════════════════
 
-import React, { memo } from "react";
+import React, { memo, useState, useEffect, useCallback } from "react";
 import { fmtPeso } from "../../utils.js";
 
 const M = "'DM Mono',monospace";
+const TIPO_LABEL = { melamina: "AGL", mdf: "MDF" };
+
+function Lightbox({ src, alt, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "rgba(0,0,0,0.82)", backdropFilter: "blur(4px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        cursor: "zoom-out",
+      }}
+    >
+      <img
+        src={src} alt={alt}
+        onClick={e => e.stopPropagation()}
+        style={{
+          maxWidth: "88vw", maxHeight: "88vh",
+          objectFit: "contain", borderRadius: 8,
+          boxShadow: "0 20px 60px rgba(0,0,0,0.7)",
+          cursor: "default",
+        }}
+      />
+      <button
+        onClick={onClose}
+        title="Cerrar (Esc)"
+        style={{
+          position: "fixed", top: 18, right: 22,
+          width: 34, height: 34, borderRadius: "50%",
+          background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)",
+          color: "#fff", fontSize: 18, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          lineHeight: 1,
+        }}
+      >×</button>
+    </div>
+  );
+}
 
 function MaterialCardBase({
-  mat,
-  categoria,                  // {id,nombre,color} | null
-  onEditar,
-  onEliminar,
+  variantes,                  // Material[] — 1 o más (mismo color, distinto tipo)
+  categoriaPorId,             // Map<id, {id,nombre,color}>
+  onEditar,                   // (mat) => void
+  onEliminar,                 // (id) => void
 }) {
+  const [varianteIdx, setVarianteIdx]   = useState(0);
+  const [hoverImg, setHoverImg]         = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  const idx  = Math.min(varianteIdx, variantes.length - 1);
+  const mat  = variantes[idx];
+  const tieneVariantes = variantes.length > 1;
+
+  // AGL y MDF del mismo color comparten textura — se toma la que esté cargada
+  const textura   = variantes.find(v => v.textura)?.textura || null;
+  const categoria = mat.categoria ? categoriaPorId.get(mat.categoria) || null : null;
+
+  const openLightbox  = useCallback((e) => { e.stopPropagation(); setLightboxOpen(true); }, []);
+  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+
   return (
     <div style={{
       background: "var(--bg-surface)",
@@ -50,19 +111,38 @@ function MaterialCardBase({
     >
       {/* Preview textura (75% aspect, como la biblioteca legacy) */}
       <div
-        onClick={onEditar}
+        onClick={() => onEditar(mat)}
+        onMouseEnter={() => setHoverImg(true)}
+        onMouseLeave={() => setHoverImg(false)}
         style={{
           position: "relative", paddingTop: "75%", cursor: "pointer",
-          background: mat.textura ? "transparent" : "var(--bg-base)",
+          background: textura ? "transparent" : "var(--bg-base)",
         }}>
-        {mat.textura ? (
-          <img
-            src={mat.textura} alt={mat.codigo || mat.nombre}
-            style={{
-              position: "absolute", inset: 0,
-              width: "100%", height: "100%", objectFit: "cover", display: "block",
-            }}
-          />
+        {textura ? (
+          <>
+            <img
+              src={textura} alt={mat.codigo || mat.nombre}
+              style={{
+                position: "absolute", inset: 0,
+                width: "100%", height: "100%", objectFit: "cover", display: "block",
+              }}
+            />
+            {/* Botón lupa — aparece al hacer hover */}
+            <button
+              onClick={openLightbox}
+              title="Ver textura"
+              style={{
+                position: "absolute", bottom: 6, right: 6,
+                width: 24, height: 24, borderRadius: 5, padding: 0,
+                background: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.18)",
+                color: "rgba(255,255,255,0.90)", fontSize: 12, cursor: "zoom-in",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                opacity: hoverImg ? 1 : 0,
+                transition: "opacity 0.15s",
+                backdropFilter: "blur(2px)",
+              }}
+            >⤢</button>
+          </>
         ) : (
           <div style={{
             position: "absolute", inset: 0,
@@ -128,10 +208,36 @@ function MaterialCardBase({
           {mat.nombre || <em style={{ color: "var(--text-muted)", fontWeight: 400 }}>(sin nombre)</em>}
         </div>
 
-        {/* Meta */}
-        <div style={{ fontSize: 10, fontFamily: M, color: "var(--text-muted)" }}>
-          {mat.tipo} · {mat.espesor}mm
-        </div>
+        {/* Meta — toggle de variante si hay más de una */}
+        {tieneVariantes ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 1 }}>
+            <div style={{ display: "flex", gap: 2 }}>
+              {variantes.map((v, i) => (
+                <button
+                  key={v.id}
+                  onClick={() => setVarianteIdx(i)}
+                  title={v.tipo}
+                  style={{
+                    padding: "1px 6px", fontSize: 9, fontFamily: M, fontWeight: 700,
+                    borderRadius: 3, cursor: "pointer", lineHeight: 1.6,
+                    border: "1px solid " + (i === idx ? "var(--accent-border)" : "var(--border)"),
+                    background: i === idx ? "var(--accent-soft)" : "transparent",
+                    color: i === idx ? "var(--accent)" : "var(--text-muted)",
+                    transition: "all 0.12s",
+                  }}>
+                  {TIPO_LABEL[v.tipo] || v.tipo}
+                </button>
+              ))}
+            </div>
+            <span style={{ fontSize: 10, fontFamily: M, color: "var(--text-muted)" }}>
+              {mat.espesor}mm
+            </span>
+          </div>
+        ) : (
+          <div style={{ fontSize: 10, fontFamily: M, color: "var(--text-muted)" }}>
+            {mat.tipo} · {mat.espesor}mm
+          </div>
+        )}
 
         {/* Precio + acciones */}
         <div style={{
@@ -145,7 +251,7 @@ function MaterialCardBase({
           </span>
           <div style={{ display: "flex", gap: 4 }}>
             <button
-              onClick={onEditar}
+              onClick={() => onEditar(mat)}
               title="Editar"
               style={{
                 width: 22, height: 22, padding: 0, fontSize: 11,
@@ -156,7 +262,7 @@ function MaterialCardBase({
               ✎
             </button>
             <button
-              onClick={onEliminar}
+              onClick={() => onEliminar(mat.id)}
               title="Eliminar"
               style={{
                 width: 22, height: 22, padding: 0, fontSize: 13,
@@ -169,13 +275,19 @@ function MaterialCardBase({
           </div>
         </div>
       </div>
+
+      {lightboxOpen && textura && (
+        <Lightbox src={textura} alt={mat.codigo || mat.nombre} onClose={closeLightbox} />
+      )}
     </div>
   );
 }
 
-// Memo: solo re-render si cambia mat o categoría
+// Memo: solo re-render si cambian las variantes o el mapa de categorías
 const MaterialCard = memo(MaterialCardBase, (prev, next) => {
-  return prev.mat === next.mat && prev.categoria === next.categoria;
+  if (prev.categoriaPorId !== next.categoriaPorId) return false;
+  if (prev.variantes.length !== next.variantes.length) return false;
+  return prev.variantes.every((v, i) => v === next.variantes[i]);
 });
 
 export default MaterialCard;

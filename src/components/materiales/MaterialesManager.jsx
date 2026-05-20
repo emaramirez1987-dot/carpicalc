@@ -26,6 +26,7 @@ import {
   useMaterialesFilter,
   CATEGORIA_TODOS, CATEGORIA_SIN_ASIGNAR,
 } from "./useMaterialesFilter.js";
+import { agruparVariantes } from "./agruparVariantes.js";
 import { MATERIAL_VACIO } from "../../services/materialesService.js";
 
 const M = "'DM Mono',monospace";
@@ -58,8 +59,17 @@ export default function MaterialesManager({
   // Resetear páginas cuando cambia el filtro
   useEffect(() => { setPagina(0); setPaginasPorCat({}); }, [queryDeferred, categoriaActiva, orden]);
 
-  const totalPaginas = Math.ceil(enCategoriaActiva.length / POR_PAGINA);
-  const itemsPagina  = enCategoriaActiva.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA);
+  // Agrupar variantes (AGL/MDF del mismo color → una sola card)
+  const gruposFiltrados = useMemo(() => agruparVariantes(enCategoriaActiva), [enCategoriaActiva]);
+  const totalPaginas = Math.ceil(gruposFiltrados.length / POR_PAGINA);
+  const gruposPagina = gruposFiltrados.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA);
+
+  const agrupadosGrupos = useMemo(() => {
+    if (!agrupados) return null;
+    const m = new Map();
+    for (const [cid, items] of agrupados) m.set(cid, agruparVariantes(items));
+    return m;
+  }, [agrupados]);
 
   // Mapa categoriaId → categoria, para resolución rápida en cada card
   const categoriaPorId = useMemo(() => {
@@ -157,23 +167,23 @@ export default function MaterialesManager({
   };
 
   // ── Render de cards ─────────────────────────────────────────────────────
-  const renderCard = (mat) => (
+  const renderCard = (grupo) => (
     <MaterialCard
-      key={mat.id}
-      mat={mat}
-      categoria={mat.categoria ? categoriaPorId.get(mat.categoria) || null : null}
-      onEditar={() => abrirEditar(mat)}
-      onEliminar={() => eliminarDesdeCard(mat.id)}
+      key={grupo.key}
+      variantes={grupo.variantes}
+      categoriaPorId={categoriaPorId}
+      onEditar={abrirEditar}
+      onEliminar={eliminarDesdeCard}
     />
   );
 
-  const grid = (items) => (
+  const grid = (grupos) => (
     <div className="materiales-grid" style={{
       display: "grid",
       gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
       gap: 10,
     }}>
-      {items.map(renderCard)}
+      {grupos.map(renderCard)}
     </div>
   );
 
@@ -203,7 +213,7 @@ export default function MaterialesManager({
           onOrdenChange={setOrden}
           vista={vista}
           onVistaChange={setVistaUser}
-          resultadosCount={enCategoriaActiva.length}
+          resultadosCount={gruposFiltrados.length}
           onNuevo={abrirCrear}
         />
 
@@ -220,18 +230,18 @@ export default function MaterialesManager({
                   ? "No hay materiales cargados. Cliqueá + Nuevo material para empezar."
                   : "No hay materiales en esta categoría"}
             </div>
-          ) : vista === "agrupada" && agrupados && categoriaActiva !== CATEGORIA_TODOS ? (
+          ) : vista === "agrupada" && agrupadosGrupos && categoriaActiva !== CATEGORIA_TODOS ? (
             // Vista agrupada: paginación por categoría
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-              {[...agrupados.entries()].map(([cid, items]) => {
-                if (items.length === 0) return null;
+              {[...agrupadosGrupos.entries()].map(([cid, grupos]) => {
+                if (grupos.length === 0) return null;
                 const c = cid === CATEGORIA_SIN_ASIGNAR
                   ? { nombre: "Sin categoría", color: "var(--text-muted)" }
                   : categoriaPorId.get(cid);
                 if (!c) return null;
                 const pag = paginasPorCat[cid] || 0;
-                const totalPag = Math.ceil(items.length / POR_PAGINA);
-                const slice = items.slice(pag * POR_PAGINA, (pag + 1) * POR_PAGINA);
+                const totalPag = Math.ceil(grupos.length / POR_PAGINA);
+                const slice = grupos.slice(pag * POR_PAGINA, (pag + 1) * POR_PAGINA);
                 return (
                   <div key={cid}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -240,7 +250,7 @@ export default function MaterialesManager({
                         {c.nombre}
                       </span>
                       <span style={{ fontSize: 10, fontFamily: M, color: "var(--text-muted)" }}>
-                        ({items.length})
+                        ({grupos.length})
                       </span>
                       <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
                     </div>
@@ -257,7 +267,7 @@ export default function MaterialesManager({
           ) : (
             // Vista plana: paginada
             <>
-              <div style={{ flex: 1 }}>{grid(itemsPagina)}</div>
+              <div style={{ flex: 1 }}>{grid(gruposPagina)}</div>
               <PaginacionControls
                 pag={pagina}
                 total={totalPaginas}
