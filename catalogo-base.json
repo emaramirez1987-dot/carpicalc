@@ -1,0 +1,527 @@
+{
+  "version": 2,
+  "fecha": "2026-05-19T00:00:00.000Z",
+  "descripcion": "Catalogo base CarpiCalc - 12 modulos parametricos de muestra (bajos, altos, placares, living, baño, otros)",
+  "modulos": {
+    "BA001": {
+      "nombre": "Bajo mesada 1 puerta",
+      "descripcion": "Bajo de cocina estandar con una puerta abatible. Estante interno opcional.",
+      "categoria": "bajos",
+      "material": "melamina",
+      "tipoVisual": "bajo",
+      "dimensiones": { "ancho": 500, "alto": 720, "profundidad": 550 },
+      "variables": {},
+      "parametros": [
+        { "id": "tiene_estante", "nombre": "Estante interno", "tipo": "boolean", "def": true }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "melamina", "espesor": 18 },
+        { "id": "frente", "nombre": "Frente", "material": "mdf", "espesor": 18 }
+      ],
+      "constraints": [
+        { "expr": "ancho >= 300 && ancho <= 900", "msg": "El ancho recomendado es entre 300 y 900 mm" }
+      ],
+      "piezas": [
+        { "nombre": "Lateral Izq.",  "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",        "posFormulas": { "x": "0",             "y": "0",                 "z": "0" } },
+        { "nombre": "Lateral Der.",  "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",        "posFormulas": { "x": "ancho - esp",   "y": "0",                 "z": "0" } },
+        { "nombre": "Base",          "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",        "posFormulas": { "x": "esp",           "y": "0",                 "z": "0" } },
+        { "nombre": "Techo",         "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",        "posFormulas": { "x": "esp",           "y": "alto - esp",        "z": "0" } },
+        { "nombre": "Fondo",         "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",            "formula2": "ancho",              "posFormulas": { "x": "0",             "y": "0",                 "z": "0" } },
+        { "nombre": "Estante",       "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad - 20",   "posFormulas": { "x": "esp",           "y": "alto / 2",          "z": "0" },  "condition": "tiene_estante" },
+        { "nombre": "Puerta",        "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho - 4",          "posFormulas": { "x": "2",             "y": "2",                 "z": "profundidad" } }
+      ],
+      "herrajes": [
+        { "id": 1, "cantidad": 2 },
+        { "id": 3, "cantidad": 1 }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "BA002": {
+      "nombre": "Bajo mesada 2 puertas",
+      "descripcion": "Bajo de cocina con dos puertas abatientes. Pensado para anchos de 700-1000 mm.",
+      "categoria": "bajos",
+      "material": "melamina",
+      "tipoVisual": "bajo",
+      "dimensiones": { "ancho": 800, "alto": 720, "profundidad": 550 },
+      "variables": {},
+      "parametros": [
+        { "id": "tiene_estante", "nombre": "Estante interno", "tipo": "boolean", "def": true }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "melamina", "espesor": 18 },
+        { "id": "frente", "nombre": "Frente", "material": "mdf", "espesor": 18 }
+      ],
+      "constraints": [
+        { "expr": "ancho >= 600", "msg": "Con 2 puertas el ancho recomendado es 600 mm o mas" }
+      ],
+      "piezas": [
+        { "nombre": "Lateral Izq.",  "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",                  "formula2": "profundidad",      "posFormulas": { "x": "0",                       "y": "0",          "z": "0" } },
+        { "nombre": "Lateral Der.",  "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",                  "formula2": "profundidad",      "posFormulas": { "x": "ancho - esp",             "y": "0",          "z": "0" } },
+        { "nombre": "Base",          "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp",       "formula2": "profundidad",      "posFormulas": { "x": "esp",                     "y": "0",          "z": "0" } },
+        { "nombre": "Techo",         "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp",       "formula2": "profundidad",      "posFormulas": { "x": "esp",                     "y": "alto - esp", "z": "0" } },
+        { "nombre": "Fondo",         "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",                  "formula2": "ancho",            "posFormulas": { "x": "0",                       "y": "0",          "z": "0" } },
+        { "nombre": "Estante",       "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp",       "formula2": "profundidad - 20", "posFormulas": { "x": "esp",                     "y": "alto / 2",   "z": "0" },  "condition": "tiene_estante" },
+        { "nombre": "Puerta Izq.",   "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",              "formula2": "ancho / 2 - 3",    "posFormulas": { "x": "2",                       "y": "2",          "z": "profundidad" } },
+        { "nombre": "Puerta Der.",   "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",              "formula2": "ancho / 2 - 3",    "posFormulas": { "x": "ancho / 2 + 1",           "y": "2",          "z": "profundidad" } }
+      ],
+      "herrajes": [
+        { "id": 1, "cantidad": 4 },
+        { "id": 3, "cantidad": 2 }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "BA003": {
+      "nombre": "Bajo con cajones",
+      "descripcion": "Bajo con cantidad variable de cajones (2 a 5). Los cajones se distribuyen automaticamente.",
+      "categoria": "bajos",
+      "material": "melamina",
+      "tipoVisual": "bajo",
+      "dimensiones": { "ancho": 600, "alto": 720, "profundidad": 550 },
+      "variables": {
+        "alto_cajon": "(alto - 2 * esp) / cajones"
+      },
+      "parametros": [
+        { "id": "cajones", "nombre": "Cantidad de cajones", "tipo": "integer", "def": 3, "min": 2, "max": 5 }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "melamina", "espesor": 18 },
+        { "id": "frente", "nombre": "Frente", "material": "mdf", "espesor": 18 }
+      ],
+      "constraints": [
+        { "expr": "alto >= cajones * 100", "msg": "El alto debe ser al menos 100 mm por cajon" },
+        { "expr": "ancho >= 300", "msg": "El ancho minimo recomendado es 300 mm" }
+      ],
+      "piezas": [
+        { "nombre": "Lateral Izq.",      "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",                        "formula2": "profundidad",   "posFormulas": { "x": "0",             "y": "0",                                  "z": "0" } },
+        { "nombre": "Lateral Der.",      "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",                        "formula2": "profundidad",   "posFormulas": { "x": "ancho - esp",   "y": "0",                                  "z": "0" } },
+        { "nombre": "Base",              "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp",             "formula2": "profundidad",   "posFormulas": { "x": "esp",           "y": "0",                                  "z": "0" } },
+        { "nombre": "Techo",             "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp",             "formula2": "profundidad",   "posFormulas": { "x": "esp",           "y": "alto - esp",                         "z": "0" } },
+        { "nombre": "Fondo",             "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",                        "formula2": "ancho",         "posFormulas": { "x": "0",             "y": "0",                                  "z": "0" } },
+        { "nombre": "Frente cajon #{i}", "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto_cajon - 4",              "formula2": "ancho - 4",     "posFormulas": { "x": "2",             "y": "(i - 1) * alto_cajon + esp + 2",     "z": "profundidad" },  "repeat": { "var": "i", "from": 1, "to": "cajones" } }
+      ],
+      "herrajes": [
+        { "id": 2, "cantidad": "cajones * 2" },
+        { "id": 3, "cantidad": "cajones" }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "BA004": {
+      "nombre": "Bajo bacha (sin techo)",
+      "descripcion": "Bajo para mueble de cocina con bacha. Sin techo (lo cubre la mesada) y con larguero superior frontal.",
+      "categoria": "bajos",
+      "material": "melamina",
+      "tipoVisual": "bajo",
+      "dimensiones": { "ancho": 800, "alto": 720, "profundidad": 550 },
+      "variables": {},
+      "parametros": [
+        { "id": "puertas", "nombre": "Cantidad de puertas", "tipo": "integer", "def": 2, "min": 1, "max": 2 }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "melamina", "espesor": 18 },
+        { "id": "frente", "nombre": "Frente", "material": "mdf", "espesor": 18 }
+      ],
+      "constraints": [],
+      "piezas": [
+        { "nombre": "Lateral Izq.",     "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",        "formula2": "profundidad",      "posFormulas": { "x": "0",             "y": "0",          "z": "0" } },
+        { "nombre": "Lateral Der.",     "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",        "formula2": "profundidad",      "posFormulas": { "x": "ancho - esp",   "y": "0",          "z": "0" } },
+        { "nombre": "Base",             "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",  "posFormulas": { "x": "esp",           "y": "0",          "z": "0" } },
+        { "nombre": "Larguero frontal", "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "80",          "posFormulas": { "x": "esp",           "y": "alto - esp", "z": "profundidad - 80" } },
+        { "nombre": "Fondo",            "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",        "formula2": "ancho",            "posFormulas": { "x": "0",             "y": "0",          "z": "0" } },
+        { "nombre": "Puerta unica",     "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",    "formula2": "ancho - 4",        "posFormulas": { "x": "2",             "y": "2",          "z": "profundidad" }, "condition": "puertas == 1" },
+        { "nombre": "Puerta Izq.",      "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",    "formula2": "ancho / 2 - 3",    "posFormulas": { "x": "2",             "y": "2",          "z": "profundidad" }, "condition": "puertas == 2" },
+        { "nombre": "Puerta Der.",      "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",    "formula2": "ancho / 2 - 3",    "posFormulas": { "x": "ancho / 2 + 1", "y": "2",          "z": "profundidad" }, "condition": "puertas == 2" }
+      ],
+      "herrajes": [
+        { "id": 1, "cantidad": "puertas * 2" },
+        { "id": 3, "cantidad": "puertas" }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "AL001": {
+      "nombre": "Alto 1 puerta",
+      "descripcion": "Mueble alto de cocina con una puerta y cantidad variable de estantes.",
+      "categoria": "altos",
+      "material": "melamina",
+      "tipoVisual": "aereo",
+      "dimensiones": { "ancho": 500, "alto": 700, "profundidad": 320 },
+      "variables": {
+        "paso": "alto / (estantes + 1)"
+      },
+      "parametros": [
+        { "id": "estantes", "nombre": "Cantidad de estantes", "tipo": "integer", "def": 1, "min": 1, "max": 3 }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "melamina", "espesor": 18 },
+        { "id": "frente", "nombre": "Frente", "material": "mdf", "espesor": 18 }
+      ],
+      "constraints": [],
+      "piezas": [
+        { "nombre": "Lateral Izq.",   "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "0",           "y": "0",          "z": "0" } },
+        { "nombre": "Lateral Der.",   "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "ancho - esp", "y": "0",          "z": "0" } },
+        { "nombre": "Base",           "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",         "y": "0",          "z": "0" } },
+        { "nombre": "Techo",          "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",         "y": "alto - esp", "z": "0" } },
+        { "nombre": "Fondo",          "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",            "formula2": "ancho",            "posFormulas": { "x": "0",           "y": "0",          "z": "0" } },
+        { "nombre": "Estante #{i}",   "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad - 20", "posFormulas": { "x": "esp",         "y": "i * paso",   "z": "0" }, "repeat": { "var": "i", "from": 1, "to": "estantes" } },
+        { "nombre": "Puerta",         "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho - 4",        "posFormulas": { "x": "2",           "y": "2",          "z": "profundidad" } }
+      ],
+      "herrajes": [
+        { "id": 1, "cantidad": 2 },
+        { "id": 3, "cantidad": 1 }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "AL002": {
+      "nombre": "Alto 2 puertas",
+      "descripcion": "Mueble alto de cocina con dos puertas y estantes regulables.",
+      "categoria": "altos",
+      "material": "melamina",
+      "tipoVisual": "aereo",
+      "dimensiones": { "ancho": 800, "alto": 700, "profundidad": 320 },
+      "variables": {
+        "paso": "alto / (estantes + 1)"
+      },
+      "parametros": [
+        { "id": "estantes", "nombre": "Cantidad de estantes", "tipo": "integer", "def": 2, "min": 1, "max": 3 }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "melamina", "espesor": 18 },
+        { "id": "frente", "nombre": "Frente", "material": "mdf", "espesor": 18 }
+      ],
+      "constraints": [],
+      "piezas": [
+        { "nombre": "Lateral Izq.",   "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "0",                       "y": "0",          "z": "0" } },
+        { "nombre": "Lateral Der.",   "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "ancho - esp",             "y": "0",          "z": "0" } },
+        { "nombre": "Base",           "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",                     "y": "0",          "z": "0" } },
+        { "nombre": "Techo",          "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",                     "y": "alto - esp", "z": "0" } },
+        { "nombre": "Fondo",          "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",            "formula2": "ancho",            "posFormulas": { "x": "0",                       "y": "0",          "z": "0" } },
+        { "nombre": "Estante #{i}",   "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad - 20", "posFormulas": { "x": "esp",                     "y": "i * paso",   "z": "0" }, "repeat": { "var": "i", "from": 1, "to": "estantes" } },
+        { "nombre": "Puerta Izq.",    "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho / 2 - 3",    "posFormulas": { "x": "2",                       "y": "2",          "z": "profundidad" } },
+        { "nombre": "Puerta Der.",    "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho / 2 - 3",    "posFormulas": { "x": "ancho / 2 + 1",           "y": "2",          "z": "profundidad" } }
+      ],
+      "herrajes": [
+        { "id": 1, "cantidad": 4 },
+        { "id": 3, "cantidad": 2 }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "PL001": {
+      "nombre": "Placar 2 puertas batientes",
+      "descripcion": "Placar estandar con dos puertas batientes y un estante divisor central.",
+      "categoria": "placares",
+      "material": "melamina",
+      "tipoVisual": null,
+      "dimensiones": { "ancho": 1200, "alto": 2400, "profundidad": 600 },
+      "variables": {},
+      "parametros": [
+        { "id": "estantes_sup", "nombre": "Estantes parte superior", "tipo": "integer", "def": 2, "min": 0, "max": 4 }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "melamina", "espesor": 18 },
+        { "id": "frente", "nombre": "Frente", "material": "melamina", "espesor": 18 }
+      ],
+      "constraints": [
+        { "expr": "alto >= 1800", "msg": "El alto recomendado de placar es 1800 mm o mas" }
+      ],
+      "piezas": [
+        { "nombre": "Lateral Izq.",     "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",                  "formula2": "profundidad",      "posFormulas": { "x": "0",                       "y": "0",                "z": "0" } },
+        { "nombre": "Lateral Der.",     "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",                  "formula2": "profundidad",      "posFormulas": { "x": "ancho - esp",             "y": "0",                "z": "0" } },
+        { "nombre": "Base",             "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp",       "formula2": "profundidad",      "posFormulas": { "x": "esp",                     "y": "0",                "z": "0" } },
+        { "nombre": "Techo",            "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp",       "formula2": "profundidad",      "posFormulas": { "x": "esp",                     "y": "alto - esp",       "z": "0" } },
+        { "nombre": "Fondo",            "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",                  "formula2": "ancho",            "posFormulas": { "x": "0",                       "y": "0",                "z": "0" } },
+        { "nombre": "Divisor horizontal","cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal","formula1": "ancho - 2 * esp",       "formula2": "profundidad",      "posFormulas": { "x": "esp",                     "y": "alto * 0.55",      "z": "0" } },
+        { "nombre": "Estante sup #{i}", "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp",       "formula2": "profundidad - 20", "posFormulas": { "x": "esp",                     "y": "alto * 0.55 + i * ((alto - alto * 0.55) / (estantes_sup + 1))", "z": "0" }, "repeat": { "var": "i", "from": 1, "to": "estantes_sup" } },
+        { "nombre": "Puerta Izq.",      "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",              "formula2": "ancho / 2 - 3",    "posFormulas": { "x": "2",                       "y": "2",                "z": "profundidad" } },
+        { "nombre": "Puerta Der.",      "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",              "formula2": "ancho / 2 - 3",    "posFormulas": { "x": "ancho / 2 + 1",           "y": "2",                "z": "profundidad" } }
+      ],
+      "herrajes": [
+        { "id": 1, "cantidad": 6 },
+        { "id": 3, "cantidad": 2 }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "PL002": {
+      "nombre": "Placar 3 puertas con cajones",
+      "descripcion": "Placar amplio con 3 puertas batientes y cajones interiores en la zona derecha.",
+      "categoria": "placares",
+      "material": "melamina",
+      "tipoVisual": null,
+      "dimensiones": { "ancho": 1800, "alto": 2400, "profundidad": 600 },
+      "variables": {
+        "alto_zona_cajones": "alto * 0.45",
+        "alto_cajon_int":    "(alto_zona_cajones - 2 * esp) / max(cajones_int, 1)"
+      },
+      "parametros": [
+        { "id": "cajones_int", "nombre": "Cajones interiores", "tipo": "integer", "def": 2, "min": 0, "max": 4 },
+        { "id": "estantes_int","nombre": "Estantes zona izquierda", "tipo": "integer", "def": 3, "min": 1, "max": 5 }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo",        "material": "melamina", "espesor": 18 },
+        { "id": "frente", "nombre": "Frente puertas","material": "melamina", "espesor": 18 }
+      ],
+      "constraints": [
+        { "expr": "ancho >= 1500", "msg": "El placar 3 puertas requiere al menos 1500 mm" }
+      ],
+      "piezas": [
+        { "nombre": "Lateral Izq.",        "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "0",                       "y": "0",                                            "z": "0" } },
+        { "nombre": "Lateral Der.",        "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "ancho - esp",             "y": "0",                                            "z": "0" } },
+        { "nombre": "Divisor vertical",    "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto - 2 * esp",  "formula2": "profundidad",      "posFormulas": { "x": "ancho * 2 / 3",           "y": "esp",                                          "z": "0" } },
+        { "nombre": "Base",                "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",                     "y": "0",                                            "z": "0" } },
+        { "nombre": "Techo",               "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",                     "y": "alto - esp",                                   "z": "0" } },
+        { "nombre": "Fondo",               "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",            "formula2": "ancho",            "posFormulas": { "x": "0",                       "y": "0",                                            "z": "0" } },
+        { "nombre": "Estante izq #{i}",    "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho * 2 / 3 - 2 * esp", "formula2": "profundidad - 20", "posFormulas": { "x": "esp",            "y": "i * (alto / (estantes_int + 1))",              "z": "0" }, "repeat": { "var": "i", "from": 1, "to": "estantes_int" } },
+        { "nombre": "Frente cajon #{i}",   "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto_cajon_int - 4", "formula2": "ancho / 3 - 4", "posFormulas": { "x": "ancho * 2 / 3 + 2",       "y": "(i - 1) * alto_cajon_int + esp + 2",           "z": "profundidad" }, "repeat": { "var": "i", "from": 1, "to": "cajones_int" } },
+        { "nombre": "Puerta Izq.",         "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho / 3 - 3",    "posFormulas": { "x": "2",                       "y": "2",                                            "z": "profundidad" } },
+        { "nombre": "Puerta Centro",       "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho / 3 - 3",    "posFormulas": { "x": "ancho / 3 + 1",           "y": "2",                                            "z": "profundidad" } },
+        { "nombre": "Puerta Der. (sup)",   "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - alto_zona_cajones - 4", "formula2": "ancho / 3 - 3", "posFormulas": { "x": "ancho * 2 / 3 + 1", "y": "alto_zona_cajones + 2",                       "z": "profundidad" }, "condition": "cajones_int > 0" },
+        { "nombre": "Puerta Der.",         "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho / 3 - 3",    "posFormulas": { "x": "ancho * 2 / 3 + 1",       "y": "2",                                            "z": "profundidad" }, "condition": "cajones_int == 0" }
+      ],
+      "herrajes": [
+        { "id": 1, "cantidad": "cajones_int > 0 ? 8 : 6" },
+        { "id": 2, "cantidad": "cajones_int * 2" },
+        { "id": 3, "cantidad": "cajones_int + 3" }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "LV001": {
+      "nombre": "Biblioteca abierta",
+      "descripcion": "Modulo de biblioteca con estantes regulables y sin puertas.",
+      "categoria": "living",
+      "material": "melamina",
+      "tipoVisual": null,
+      "dimensiones": { "ancho": 800, "alto": 1800, "profundidad": 300 },
+      "variables": {
+        "paso": "alto / (estantes + 1)"
+      },
+      "parametros": [
+        { "id": "estantes", "nombre": "Cantidad de estantes", "tipo": "integer", "def": 4, "min": 2, "max": 6 }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "melamina", "espesor": 18 }
+      ],
+      "constraints": [],
+      "piezas": [
+        { "nombre": "Lateral Izq.", "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "0",           "y": "0",          "z": "0" } },
+        { "nombre": "Lateral Der.", "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "ancho - esp", "y": "0",          "z": "0" } },
+        { "nombre": "Base",         "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",         "y": "0",          "z": "0" } },
+        { "nombre": "Techo",        "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",         "y": "alto - esp", "z": "0" } },
+        { "nombre": "Fondo",        "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",            "formula2": "ancho",            "posFormulas": { "x": "0",           "y": "0",          "z": "0" } },
+        { "nombre": "Estante #{i}", "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad - 10", "posFormulas": { "x": "esp",         "y": "i * paso",   "z": "0" }, "repeat": { "var": "i", "from": 1, "to": "estantes" } }
+      ],
+      "herrajes": [
+        { "id": 4, "cantidad": "estantes * 4" }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "LV002": {
+      "nombre": "Bajo TV con puertas",
+      "descripcion": "Mueble bajo para TV con cantidad variable de puertas (0 a 2) y un estante interno.",
+      "categoria": "living",
+      "material": "melamina",
+      "tipoVisual": "bajo",
+      "dimensiones": { "ancho": 1400, "alto": 450, "profundidad": 400 },
+      "variables": {},
+      "parametros": [
+        { "id": "puertas", "nombre": "Cantidad de puertas", "tipo": "integer", "def": 2, "min": 0, "max": 2 }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "melamina", "espesor": 18 },
+        { "id": "frente", "nombre": "Frente", "material": "mdf",      "espesor": 18 }
+      ],
+      "constraints": [],
+      "piezas": [
+        { "nombre": "Lateral Izq.",  "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "0",                       "y": "0",          "z": "0" } },
+        { "nombre": "Lateral Der.",  "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "ancho - esp",             "y": "0",          "z": "0" } },
+        { "nombre": "Base",          "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",                     "y": "0",          "z": "0" } },
+        { "nombre": "Techo",         "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",                     "y": "alto - esp", "z": "0" } },
+        { "nombre": "Fondo",         "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",            "formula2": "ancho",            "posFormulas": { "x": "0",                       "y": "0",          "z": "0" } },
+        { "nombre": "Estante",       "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad - 20", "posFormulas": { "x": "esp",                     "y": "alto / 2",   "z": "0" } },
+        { "nombre": "Puerta unica",  "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho - 4",        "posFormulas": { "x": "2",                       "y": "2",          "z": "profundidad" }, "condition": "puertas == 1" },
+        { "nombre": "Puerta Izq.",   "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho / 2 - 3",    "posFormulas": { "x": "2",                       "y": "2",          "z": "profundidad" }, "condition": "puertas == 2" },
+        { "nombre": "Puerta Der.",   "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho / 2 - 3",    "posFormulas": { "x": "ancho / 2 + 1",           "y": "2",          "z": "profundidad" }, "condition": "puertas == 2" }
+      ],
+      "herrajes": [
+        { "id": 1, "cantidad": "puertas * 2" },
+        { "id": 3, "cantidad": "puertas" }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "BN001": {
+      "nombre": "Vanitory baño",
+      "descripcion": "Mueble bajo bacha de baño suspendido con 1 o 2 puertas.",
+      "categoria": "banio",
+      "material": "mdf",
+      "tipoVisual": "bajo",
+      "dimensiones": { "ancho": 600, "alto": 500, "profundidad": 450 },
+      "variables": {},
+      "parametros": [
+        { "id": "puertas", "nombre": "Cantidad de puertas", "tipo": "integer", "def": 2, "min": 1, "max": 2 }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "mdf", "espesor": 18 },
+        { "id": "frente", "nombre": "Frente", "material": "mdf", "espesor": 18 }
+      ],
+      "constraints": [],
+      "piezas": [
+        { "nombre": "Lateral Izq.",  "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",   "posFormulas": { "x": "0",                       "y": "0",          "z": "0" } },
+        { "nombre": "Lateral Der.",  "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",   "posFormulas": { "x": "ancho - esp",             "y": "0",          "z": "0" } },
+        { "nombre": "Base",          "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",   "posFormulas": { "x": "esp",                     "y": "0",          "z": "0" } },
+        { "nombre": "Larguero sup.", "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "60",            "posFormulas": { "x": "esp",                     "y": "alto - esp", "z": "profundidad - 60" } },
+        { "nombre": "Fondo",         "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",            "formula2": "ancho",         "posFormulas": { "x": "0",                       "y": "0",          "z": "0" } },
+        { "nombre": "Puerta unica",  "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho - 4",     "posFormulas": { "x": "2",                       "y": "2",          "z": "profundidad" }, "condition": "puertas == 1" },
+        { "nombre": "Puerta Izq.",   "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho / 2 - 3", "posFormulas": { "x": "2",                       "y": "2",          "z": "profundidad" }, "condition": "puertas == 2" },
+        { "nombre": "Puerta Der.",   "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho / 2 - 3", "posFormulas": { "x": "ancho / 2 + 1",           "y": "2",          "z": "profundidad" }, "condition": "puertas == 2" }
+      ],
+      "herrajes": [
+        { "id": 1, "cantidad": "puertas * 2" },
+        { "id": 3, "cantidad": "puertas" }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "OT001": {
+      "nombre": "Cajonera autoportante",
+      "descripcion": "Cajonera independiente con ruedas o patas. Cajones distribuidos automaticamente.",
+      "categoria": "otros",
+      "material": "melamina",
+      "tipoVisual": null,
+      "dimensiones": { "ancho": 450, "alto": 600, "profundidad": 500 },
+      "variables": {
+        "alto_cajon": "(alto - 2 * esp) / cajones"
+      },
+      "parametros": [
+        { "id": "cajones", "nombre": "Cantidad de cajones", "tipo": "integer", "def": 3, "min": 2, "max": 5 }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "melamina", "espesor": 18 },
+        { "id": "frente", "nombre": "Frente", "material": "mdf",      "espesor": 18 }
+      ],
+      "constraints": [
+        { "expr": "alto >= cajones * 100", "msg": "El alto debe ser al menos 100 mm por cajon" }
+      ],
+      "piezas": [
+        { "nombre": "Lateral Izq.",      "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",   "posFormulas": { "x": "0",           "y": "0",                                  "z": "0" } },
+        { "nombre": "Lateral Der.",      "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",   "posFormulas": { "x": "ancho - esp", "y": "0",                                  "z": "0" } },
+        { "nombre": "Base",              "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",   "posFormulas": { "x": "esp",         "y": "0",                                  "z": "0" } },
+        { "nombre": "Techo",             "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",   "posFormulas": { "x": "esp",         "y": "alto - esp",                         "z": "0" } },
+        { "nombre": "Fondo",             "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",            "formula2": "ancho",         "posFormulas": { "x": "0",           "y": "0",                                  "z": "0" } },
+        { "nombre": "Frente cajon #{i}", "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto_cajon - 4",  "formula2": "ancho - 4",     "posFormulas": { "x": "2",           "y": "(i - 1) * alto_cajon + esp + 2",     "z": "profundidad" }, "repeat": { "var": "i", "from": 1, "to": "cajones" } }
+      ],
+      "herrajes": [
+        { "id": 2, "cantidad": "cajones * 2" },
+        { "id": 3, "cantidad": "cajones" }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    },
+
+    "OT002": {
+      "nombre": "Zapatero",
+      "descripcion": "Modulo zapatero con estantes inclinables (representados como estantes horizontales).",
+      "categoria": "otros",
+      "material": "melamina",
+      "tipoVisual": null,
+      "dimensiones": { "ancho": 700, "alto": 1000, "profundidad": 280 },
+      "variables": {
+        "paso": "alto / (niveles + 1)"
+      },
+      "parametros": [
+        { "id": "niveles", "nombre": "Niveles para zapatos", "tipo": "integer", "def": 4, "min": 2, "max": 6 }
+      ],
+      "zonas": [
+        { "id": "cuerpo", "nombre": "Cuerpo", "material": "melamina", "espesor": 18 },
+        { "id": "frente", "nombre": "Puerta", "material": "mdf",      "espesor": 18 }
+      ],
+      "constraints": [],
+      "piezas": [
+        { "nombre": "Lateral Izq.",  "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "0",           "y": "0",          "z": "0" } },
+        { "nombre": "Lateral Der.",  "cantidad": 1, "zona": "cuerpo", "orientacion3d": "vertical",   "formula1": "alto",            "formula2": "profundidad",      "posFormulas": { "x": "ancho - esp", "y": "0",          "z": "0" } },
+        { "nombre": "Base",          "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",         "y": "0",          "z": "0" } },
+        { "nombre": "Techo",         "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad",      "posFormulas": { "x": "esp",         "y": "alto - esp", "z": "0" } },
+        { "nombre": "Fondo",         "cantidad": 1, "zona": "cuerpo", "orientacion3d": "frente",     "formula1": "alto",            "formula2": "ancho",            "posFormulas": { "x": "0",           "y": "0",          "z": "0" } },
+        { "nombre": "Nivel #{i}",    "cantidad": 1, "zona": "cuerpo", "orientacion3d": "horizontal", "formula1": "ancho - 2 * esp", "formula2": "profundidad - 30", "posFormulas": { "x": "esp",         "y": "i * paso",   "z": "0" }, "repeat": { "var": "i", "from": 1, "to": "niveles" } },
+        { "nombre": "Puerta",        "cantidad": 1, "zona": "frente", "orientacion3d": "frente",     "formula1": "alto - 4",        "formula2": "ancho - 4",        "posFormulas": { "x": "2",           "y": "2",          "z": "profundidad" } }
+      ],
+      "herrajes": [
+        { "id": 1, "cantidad": 2 },
+        { "id": 3, "cantidad": 1 }
+      ],
+      "moDeObra": { "tipo": "por_modulo", "horas": 0 },
+      "imagen": null,
+      "subComponentes": []
+    }
+  },
+  "costos": {
+    "materiales": [
+      { "id": 1, "nombre": "Melamina 18mm", "tipo": "melamina",      "espesor": 18, "precioM2": 4200, "placaLargo": 2750, "placaAncho": 1830 },
+      { "id": 2, "nombre": "MDF 18mm",      "tipo": "mdf",           "espesor": 18, "precioM2": 3800, "placaLargo": 2750, "placaAncho": 1830 },
+      { "id": 3, "nombre": "Madera maciza", "tipo": "madera_maciza", "espesor": 20, "precioM2": 9500, "placaLargo": 2440, "placaAncho": 1220 },
+      { "id": 4, "nombre": "Terciado 15mm", "tipo": "terciado",      "espesor": 15, "precioM2": 3200, "placaLargo": 2440, "placaAncho": 1220 }
+    ],
+    "manoDeObra": [
+      { "id": 1, "nombre": "Armado modulo estandar", "tipo": "por_modulo", "precio": 8000 },
+      { "id": 2, "nombre": "Instalacion en obra",    "tipo": "por_hora",   "precio": 3500 }
+    ],
+    "herrajes": [
+      { "id": 1, "nombre": "Bisagra cazoleta",          "precio": 450,  "unidad": "u" },
+      { "id": 2, "nombre": "Corredor telescopico 45cm", "precio": 1800, "unidad": "u" },
+      { "id": 3, "nombre": "Manija barra aluminio",     "precio": 900,  "unidad": "u" },
+      { "id": 4, "nombre": "Perno minifix",             "precio": 120,  "unidad": "u" }
+    ],
+    "tapacanto": [
+      { "id": 1, "nombre": "Tapacanto melamina 19mm", "precio": 180 },
+      { "id": 2, "nombre": "Tapacanto PVC 2mm",       "precio": 250 }
+    ],
+    "desperdicioPct": 20,
+    "gastosGenerales": 18,
+    "extrasFrecuentes": [
+      { "id": 1, "nombre": "Flete",                  "precio": 15000 },
+      { "id": 2, "nombre": "Instalacion / Montaje",  "precio": 25000 },
+      { "id": 3, "nombre": "Diseno y planos",        "precio": 20000 },
+      { "id": 4, "nombre": "Pintura y terminaciones","precio": 18000 }
+    ],
+    "gastosFijos": {
+      "items": [
+        { "id": 1, "nombre": "Alquiler",                  "monto": 80000 },
+        { "id": 2, "nombre": "Servicios (luz, gas, agua)","monto": 15000 },
+        { "id": 3, "nombre": "Monotributo / Impuestos",   "monto": 25000 },
+        { "id": 4, "nombre": "Seguros",                   "monto": 12000 }
+      ],
+      "horasProductivasMes": 160
+    }
+  },
+  "presupuestos": {},
+  "perfil": {}
+}
