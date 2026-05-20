@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { useThree, useFrame } from '@react-three/fiber';
 import Modulo3D from '../visor3d/Modulo3D.jsx';
 import { useAutoLayout3D } from './useAutoLayout3D.js';
+import { resolverVisualMaterial } from '../../services/materialesService.js';
 
 export const WALL_Z = -0.6; // posición de la pared trasera
 
@@ -64,7 +65,7 @@ function resolveCollision(proposedX, proposedZ, hw, hd, selfId, livePositions) {
 
 // ── ModuloEnEscena ────────────────────────────────────────────────────────────
 // Props >8 justificados: escena 3D con controles flotantes integrados
-function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, texturaDataUrl, texturaRepeat, onRotar90, onEliminarModulo, contornos }) {
+function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, visual, texturaRepeat, onRotar90, onEliminarModulo, contornos }) {
   const groupRef   = useRef();
   const isDragging = useRef(false);
   const dragStarted = useRef(false); // true cuando el mouse superó el threshold
@@ -225,7 +226,7 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
         explodeFactor={0}
         selectedPieza={null}
         onSelectPieza={null}
-        texturaDataUrl={texturaDataUrl}
+        visual={visual}
         texturaRepeat={texturaRepeat}
         parametrosValores={inst.parametrosValores}
         contornos={contornos}
@@ -399,7 +400,7 @@ export function Escena3DPrincipal({
   mostrarPiso, mostrarPared, mostrarMesada,
   colorPiso, colorPared, colorMesada,
   camTarget, onSelectModulo, selectedCod, onUpdatePosicion,
-  materiales3D, isDark = true,
+  biblioteca = [], dimOverride = {}, isDark = true,
   shadowIntensidad = 1, shadowAngle = 45,
   mostrarGrilla = true, divisionesGrilla = 50,
   onRotar90, onEliminarModulo,
@@ -482,8 +483,9 @@ export function Escena3DPrincipal({
       )}
 
       {layoutItems.map((inst) => {
-        const texturaCode   = inst.texturaCode;
-        const texturaDataUrl = texturaCode ? materiales3D?.[texturaCode]?.dataUrl : null;
+        // Resolución visual unificada — textura + PBR derivadas del material
+        // asignado al ítem (dimOverride.materialId → default por tipo → none).
+        const visual = resolverVisualMaterial({ inst, dimOverride, biblioteca, modulos });
         return (
           <ModuloEnEscena
             key={inst.instanceId}
@@ -498,7 +500,7 @@ export function Escena3DPrincipal({
             onRotar90={onRotar90}
             onEliminarModulo={onEliminarModulo}
             contornos={contornos}
-            texturaDataUrl={texturaDataUrl}
+            visual={visual}
             texturaRepeat={texturaRepeat}
           />
         );

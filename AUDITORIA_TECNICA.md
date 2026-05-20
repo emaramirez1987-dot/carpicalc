@@ -76,6 +76,9 @@ carpicalc/
     ├── services/
     │   ├── moduloService.js        → Lógica de módulos: parsear, generar piezas, fórmulas
     │   ├── moduloService.test.js   → Tests automáticos del servicio de módulos
+    │   ├── materialesService.js    → Biblioteca de materiales: normalizar, resolver costo
+    │   │                             (resolverMaterial) y visual (resolverVisualMaterial)
+    │   ├── materialesService.test.js → Tests del servicio de materiales
     │   ├── presupuestoService.js   → Lógica de presupuestos: crear, eliminar, migrar
     │   └── optimizerService.js     → Algoritmo de corte optimizado (bin-packing 2D)
     │
@@ -142,8 +145,8 @@ carpicalc/
         │
         ├── vista3d/                → VISTA 3D DEL PRESUPUESTO (multi-módulo)
         │   └── Vista3DTab.jsx      → Vista 3D de todos los módulos del presupuesto juntos
-        │                             con configurador paramétrico + selector de material de
-        │                             costo por ítem (impacta total del presupuesto en vivo)
+        │                             con configurador paramétrico + selector de material por
+        │                             ítem (fuente única: deriva costo + textura/PBR del 3D)
         │
         ├── vista-svg/              → Renderer SVG 2D (vista técnica de frente)
         │   └── index.js            → VistaModuloSVG — genera SVG reactivo sin canvas
@@ -642,29 +645,45 @@ withSave(async () => await guardarModulos(costos))
 
 ---
 
-### Flujo 6: Asignación de material de costo desde Vista 3D ✅ (2026-05-20)
+### Flujo 6: Material en Vista 3D — fuente única de costo + visual ✅ (2026-05-20)
+
+El material elegido es la única fuente de verdad. Un solo gesto del usuario
+actualiza el costo Y el render 3D (textura + color). El viejo sistema de
+"textura" separado (`texturaCode`) fue eliminado por completo.
 
 ```
-Vista 3D — panel lateral del módulo seleccionado:
-  → Muestra selector "MATERIAL" con todos los materiales de la biblioteca,
-    agrupados por tipo (optgroup), ordenados alfabéticamente.
+Vista 3D — panel del módulo seleccionado:
+  → Selector "MATERIAL" con la biblioteca real, agrupada por tipo.
 
-Usuario elige un material:
-  → handleAsignarMaterialCosto(materialId)
+Usuario elige un material (UN solo gesto):
+  → handleAsignarMaterial(materialId)
   → setDimOverride(prev → { ...prev, [itemKey]: { ...prev[itemKey], materialId } })
-  → Si elige "— Default del módulo —" → borra materialId del override
+  → "— Default del módulo —" → borra materialId del override
 
-calcularModulo (en utils.js):
-  → Detecta costos.bibliotecaMateriales (array presente y no vacío)
-  → Llama resolverMaterial({ modulo, materiales: biblioteca })
-  → resolverMaterial resuelve: por materialId → por tipo → fallback vacío
-  → Calcula costo con el precio real del material elegido
-  → El total del presupuesto se recalcula automáticamente
+  ├─ RAMA COSTO ──────────────────────────────────────────────────────────
+  │  calcularModulo(modulo, costos, valoresParametros)
+  │   → costos.bibliotecaMateriales presente → resolverMaterial({ modulo, materiales })
+  │   → resuelve: por materialId → por tipo (default) → fallback vacío
+  │   → total del presupuesto se recalcula
+  │
+  └─ RAMA VISUAL ─────────────────────────────────────────────────────────
+     Escena3DPrincipal — por cada instancia de la escena:
+      → resolverVisualMaterial({ inst, dimOverride, biblioteca, modulos })
+      → resuelve la entidad material (id → default por tipo → none)
+      → devuelve { textura, color, roughness, metalness }
+      → Modulo3D crea UNA textura THREE por módulo (dispose al cambiar)
+      → render 3D se actualiza con la textura + PBR del material
 
 App.js:
-  → costos derivados (useMemo) incluyen: bibliotecaMateriales: materiales
-  → Vista3DTab recibe setDimOverride como prop explícita
+  → costos derivados incluyen bibliotecaMateriales: materiales
+  → Vista3DTab pasa biblioteca + dimOverride a Escena3DPrincipal
 ```
+
+`resolverVisualMaterial` (en `materialesService.js`) es el único punto de
+resolución visual. La textura **no se persiste**: se deriva en runtime de
+`material.textura`. El campo `materialId` en `dimOverride` es lo único que
+viaja a Supabase. Sin `materialId`, ambas ramas caen al default por tipo —
+compatibilidad total con presupuestos viejos, sin migración.
 
 ---
 

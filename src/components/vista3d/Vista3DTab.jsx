@@ -240,7 +240,6 @@ export function Vista3DTab({
   inlineModulos = {},  // eslint-disable-line no-unused-vars
   presupuestoActivoId,
   onCaptura,
-  materiales3D = {},
 }) {
   const isDark = useIsDark();
   const glRef  = useRef(null);
@@ -465,20 +464,12 @@ export function Vista3DTab({
     }
     setSelectedCod(null);
   };
-  const handleAsignarTextura = (texturaCode) => {
-    if (!selectedCod) return;
-    setModulosEnEscena(prev => prev.map(m =>
-      m.instanceId === selectedCod ? { ...m, texturaCode: texturaCode || null } : m
-    ));
-  };
+  const selectedInst = modulosEnEscena.find(m => m.instanceId === selectedCod);
 
-  const selectedInst    = modulosEnEscena.find(m => m.instanceId === selectedCod);
-  const texturaCodActual = selectedInst?.texturaCode || null;
-  const materialesKeys  = Object.keys(materiales3D);
-
-  // ── Material de costo (biblioteca real) ──────────────────────────────────
-  // Asigna un materialId al override del ítem → calcularModulo lo resuelve
-  // por id y el total del presupuesto se recalcula solo.
+  // ── Material del ítem — fuente única de costo + visual ────────────────────
+  // Asigna materialId al override del ítem. De ahí se deriva TODO:
+  //  · costo  → calcularModulo resuelve por id (resolverMaterial)
+  //  · visual → Escena3DPrincipal resuelve textura + PBR (resolverVisualMaterial)
   const biblioteca = useMemo(() => costos?.bibliotecaMateriales || [], [costos]);
   const materialIdActual = selectedInst?.itemKey
     ? (dimOverride[selectedInst.itemKey]?.materialId || '')
@@ -498,7 +489,7 @@ export function Vista3DTab({
     return g;
   }, [biblioteca]);
 
-  const handleAsignarMaterialCosto = (materialId) => {
+  const handleAsignarMaterial = (materialId) => {
     if (!selectedInst?.itemKey || !setDimOverride) return;
     const keyId = selectedInst.itemKey;
     setDimOverride(prev => {
@@ -576,7 +567,8 @@ export function Vista3DTab({
                 );
               })()}
 
-              {/* Material de costo — biblioteca real, impacta el presupuesto */}
+              {/* Material del ítem — costo + textura en una sola elección.
+                  La galería visual reemplazará este selector más adelante. */}
               {selectedInst?.itemIdx != null && biblioteca.length > 0 && (
                 <div style={{ borderTop: `1px solid ${T.borderSub}`, padding: '8px 10px 12px' }}>
                   <div style={{ padding: '0 0 6px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
@@ -584,7 +576,7 @@ export function Vista3DTab({
                   </div>
                   <select
                     value={materialIdActual}
-                    onChange={e => handleAsignarMaterialCosto(e.target.value || null)}
+                    onChange={e => handleAsignarMaterial(e.target.value || null)}
                     style={{
                       width: '100%', padding: '5px 6px', borderRadius: 6,
                       border: `1px solid ${T.border}`, background: T.matBg,
@@ -605,20 +597,12 @@ export function Vista3DTab({
                   {materialElegido && (
                     <div style={{ marginTop: 5, fontSize: 9, fontFamily: "'DM Mono',monospace", color: '#D4AF37' }}>
                       {fmtPeso(materialElegido.precioM2)}/m² · {materialElegido.espesor}mm
+                      {materialElegido.textura ? ' · con textura' : ' · sin textura'}
                     </div>
                   )}
-                </div>
-              )}
-
-              {/* Textura de render del módulo seleccionado */}
-              {selectedCod && (
-                <div style={{ borderTop: `1px solid ${T.borderSub}` }}>
-                  <div style={{ padding: '6px 12px 4px', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.countText, letterSpacing: '0.07em' }}>
-                    TEXTURA 3D
-                  </div>
-                  {/* Escala de textura — controla cuántas veces se repite la imagen PNG en cada pieza */}
-                  {texturaCodActual && (
-                    <div style={{ padding: '0 12px 8px' }}>
+                  {/* Escala de textura — repetición del PNG sobre cada pieza */}
+                  {materialElegido?.textura && (
+                    <div style={{ marginTop: 8 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 9, fontFamily: "'DM Mono',monospace", color: T.text, marginBottom: 4 }}>
                         <span>Escala de textura</span>
                         <span style={{ color: '#D4AF37' }}>×{texturaRepeat.toFixed(1)}</span>
@@ -632,72 +616,6 @@ export function Vista3DTab({
                       </div>
                     </div>
                   )}
-                  <div style={{ padding: '0 10px 10px', maxHeight: 200, overflowY: 'auto' }}>
-                    {materialesKeys.length === 0 ? (
-                      <p style={{
-                        fontSize: 10, color: T.text, fontFamily: "'DM Mono',monospace",
-                        textAlign: 'center', margin: '14px 0', lineHeight: 1.6,
-                      }}>
-                        Cargá materiales en la pestaña<br />Render IA
-                      </p>
-                    ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
-                        {/* None option */}
-                        <button
-                          onClick={() => handleAsignarTextura(null)}
-                          style={{
-                            borderRadius: 6, cursor: 'pointer', overflow: 'hidden',
-                            background: !texturaCodActual ? 'rgba(212,175,55,0.12)' : T.matBg,
-                            border: !texturaCodActual ? '1.5px solid rgba(212,175,55,0.50)' : `1px solid ${T.matBord}`,
-                            padding: 0, display: 'flex', flexDirection: 'column',
-                          }}
-                        >
-                          <div style={{
-                            width: '100%', height: 36,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 16, color: T.textDim, background: T.dotBg,
-                          }}>—</div>
-                          <span style={{
-                            fontSize: 8, fontFamily: "'DM Mono',monospace",
-                            color: !texturaCodActual ? '#D4AF37' : T.text,
-                            padding: '3px 5px', letterSpacing: '0.04em',
-                            textAlign: 'left',
-                          }}>
-                            SIN TEXTURA
-                          </span>
-                        </button>
-
-                        {materialesKeys.map(cod => (
-                          <button
-                            key={cod}
-                            onClick={() => handleAsignarTextura(cod)}
-                            title={materiales3D[cod].nombre || cod}
-                            style={{
-                              borderRadius: 6, cursor: 'pointer', overflow: 'hidden',
-                              background: texturaCodActual === cod ? 'rgba(212,175,55,0.12)' : T.matBg,
-                              border: texturaCodActual === cod ? '1.5px solid rgba(212,175,55,0.50)' : `1px solid ${T.matBord}`,
-                              padding: 0, display: 'flex', flexDirection: 'column',
-                            }}
-                          >
-                            <div style={{
-                              width: '100%', height: 36,
-                              backgroundImage: `url(${materiales3D[cod].dataUrl})`,
-                              backgroundSize: 'cover', backgroundPosition: 'center',
-                            }} />
-                            <span style={{
-                              fontSize: 8, fontFamily: "'DM Mono',monospace",
-                              color: texturaCodActual === cod ? '#D4AF37' : T.text,
-                              padding: '3px 5px', letterSpacing: '0.04em',
-                              textAlign: 'left',
-                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            }}>
-                              {materiales3D[cod].nombre || cod}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
 
@@ -951,7 +869,8 @@ export function Vista3DTab({
               onSelectModulo={setSelectedCod}
               selectedCod={selectedCod}
               onUpdatePosicion={handleUpdatePosicion}
-              materiales3D={materiales3D}
+              biblioteca={biblioteca}
+              dimOverride={dimOverride}
               isDark={isDark}
               shadowIntensidad={shadowIntensidad}
               shadowAngle={shadowAngle}

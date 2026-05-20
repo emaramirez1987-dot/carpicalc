@@ -17,6 +17,9 @@ src/
 ├── services/
 │   ├── moduloService.js          # Pure domain: parser/normalizer + paramétrico + subcomponentes
 │   ├── moduloService.test.js
+│   ├── materialesService.js      # Biblioteca de materiales: normalizer, resolución de costo
+│   │                             # (resolverMaterial) y visual (resolverVisualMaterial)
+│   ├── materialesService.test.js
 │   ├── presupuestoService.js     # Pure mutations: crear/eliminar/cambiarEstado/migraciones
 │   └── optimizerService.js       # Optimización de corte por placa (Guillotine 2D)
 ├── components/
@@ -150,22 +153,35 @@ buildPiezas3D(modulo, costos, item.parametrosValores)
   → render se actualiza
 ```
 
-**Flujo de asignación de material de costo desde Vista 3D:**
+**Flujo del material en Vista 3D — fuente única de costo + visual:**
+
+El material elegido para un ítem es la **única fuente de verdad**: de `materialId`
+se deriva el costo Y todo lo visual (textura PNG + PBR). No existe un sistema de
+"textura" separado — el viejo `texturaCode` fue eliminado.
+
 ```
-Vista 3D (selector "MATERIAL" en panel lateral del módulo seleccionado)
-  → elige un material de la biblioteca real (por id)
-  → handleAsignarMaterialCosto(materialId)
+Vista 3D (selector MATERIAL en el panel del módulo seleccionado)
+  → handleAsignarMaterial(materialId)          ← UN solo gesto del usuario
   → setDimOverride: dimOverride[itemKey].materialId = materialId
 
-calcularModulo(modulo, costos, valoresParametros)
-  → costos.bibliotecaMateriales presente → llama resolverMaterial({ modulo, materiales })
-  → resolverMaterial resuelve: por materialId (exacto) → por tipo (default) → fallback vacío
-  → total del presupuesto se recalcula automáticamente
+          ┌────────────────────────────┴────────────────────────────┐
+          ▼ COSTO                                          VISUAL ▼
+calcularModulo(modulo, costos, valoresParametros)   Escena3DPrincipal (por instancia)
+  → costos.bibliotecaMateriales presente              → resolverVisualMaterial({ inst,
+  → resolverMaterial({ modulo, materiales })            dimOverride, biblioteca, modulos })
+  → id (exacto) → tipo (default) → fallback vacío      → id → default por tipo → none
+  → total del presupuesto se recalcula                 → { textura, color, roughness, metalness }
+                                                       → Modulo3D renderiza con esa textura+PBR
 
 App.js
   → costos derivados incluyen bibliotecaMateriales: materiales
-  → Vista3DTab recibe setDimOverride como prop para poder escribir el override
+  → Vista3DTab recibe setDimOverride; Escena3DPrincipal recibe biblioteca + dimOverride
 ```
+
+Resolución del material (idéntica para costo y visual): `dimOverride.materialId`
+→ `esDefault` por tipo del módulo → fallback. La textura **no se persiste** —
+se deriva en runtime de `material.textura`. `resolverVisualMaterial` vive en
+`materialesService.js` y es el único punto de resolución visual.
 
 **Save queue:**
 Todas las escrituras (módulos, costos, presupuestos, perfil) entran a `withSave` en App.js → encolan en `saveQueue` → `drain()` ejecuta de a una. Evita race conditions sin librerías externas.
@@ -326,6 +342,7 @@ Cubren el motor de fórmulas, parámetros, subcomponentes y armado 3D.
 ### Features completadas recientemente
 | Fecha | Feature | Detalle |
 |---|---|---|
+| 2026-05-20 | **Unificación material ↔ textura en Vista 3D** | El material es la única fuente de verdad: de `dimOverride.materialId` se deriva costo Y visual (textura PNG + PBR). Se eliminó `texturaCode` y el sistema de textura paralelo. Nueva función `resolverVisualMaterial` en `materialesService.js` (textura + color/roughness/metalness, con fallback por tipo). `MATERIAL_VACIO` ganó campos `color/roughness/metalness`. `Modulo3D` crea una sola textura THREE por módulo (se libera con `dispose`). `useMaterial3D.js` re-exporta `getMaterialProps` del service. App.js: eliminado el mapa legacy `materiales3D`. |
 | 2026-05-20 | **Material de costo desde Vista 3D** | Panel lateral de Vista3DTab incluye selector de material de la biblioteca real (agrupado por tipo). Al elegir un material se guarda `materialId` en `dimOverride[itemKey]`. `calcularModulo` lo resuelve vía `resolverMaterial` cuando `costos.bibliotecaMateriales` está presente → el total del presupuesto se recalcula en vivo. Fallback: si no hay `materialId`, resuelve por tipo (comportamiento anterior). |
 | 2026-05-19 | **Biblioteca de materiales EGGER** | `materialesService.js` + `MaterialesManager.jsx` + `MaterialEditorDrawer.jsx`. Importación de `catalogo-egger.json`. Paginación, filtros, agrupación de variantes AGL/MDF con toggle. Integración con motor de costos vía `esDefault` y `materialId`. |
 | 2026-05-19 | **`modulo.variables` shape canónico** | `normalizarVariables` en `moduloService.js` — Object (pass-through), Array legacy (migra), desconocido (cuarentena). Contrato: siempre `Object { [nombre]: formula }`. |

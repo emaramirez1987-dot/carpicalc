@@ -26,6 +26,11 @@ export const MATERIAL_VACIO = {
   nombre:              "",
   categoria:           null,        // categoriaId del workspace, o null
   textura:             null,        // dataURL PNG o null — preview/render visual
+  // Props visuales PBR para el render 3D — null = derivar del tipo (getMaterialProps).
+  // Permiten que el material sea fuente de verdad visual completa, no solo textura.
+  color:               null,        // hex string o null
+  roughness:           null,        // 0-1 o null
+  metalness:           null,        // 0-1 o null
   tipo:                "melamina",  // TIPO_MAT — categorización técnica (afecta corte y cálculo)
   esDefault:           false,       // único default por tipo → resolver lo prefiere
   espesor:             18,          // mm
@@ -82,6 +87,9 @@ export function normalizarMaterial(raw, opts = {}) {
     nombre:             raw.nombre ?? "",
     categoria,
     textura,
+    color:              raw.color ?? null,
+    roughness:          raw.roughness != null ? (parseFloat(raw.roughness) || 0) : null,
+    metalness:          raw.metalness != null ? (parseFloat(raw.metalness) || 0) : null,
     tipo:               raw.tipo ?? MATERIAL_VACIO.tipo,
     // esDefault solo se setea si vino explícito. Falsy por default — el backfill o el usuario lo elevan.
     esDefault:          raw.esDefault === true,
@@ -225,6 +233,76 @@ function resolverPorTipo(modulo, materiales) {
   const tipo = modulo.material;
   if (!tipo) return null;
   return materiales.find(m => m && m.tipo === tipo && m.esDefault === true) || null;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//   RESOLUCIÓN VISUAL DEL MATERIAL (textura + PBR) PARA EL RENDER 3D
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Punto único de resolución visual. La textura y las props PBR se DERIVAN del
+// material asignado — no se almacenan por separado. Reemplaza al viejo sistema
+// de `texturaCode` independiente de la Vista 3D.
+//
+// getMaterialProps(tipo): fallback PBR por tipo, usado cuando el material no
+// define props propias (o cuando no hay material — ej: piezas "manija" o
+// módulos sin biblioteca). Fuente única del mapa tipo→PBR.
+//
+// resolverVisualMaterial({ inst, dimOverride, biblioteca, modulos }):
+//   Resuelve la entidad material de una instancia de escena y devuelve todo lo
+//   visual de una vez. Mismo criterio que resolverMaterial:
+//     1. dimOverride[itemKey].materialId → buscar por id
+//     2. modulo.material (tipo) → material con esDefault === true
+//     3. none → sin material (el caller cae a getMaterialProps por tipo de pieza)
+//   Devuelve { material, source, textura, color, roughness, metalness }.
+// ════════════════════════════════════════════════════════════════════════════
+
+const VISUAL_FALLBACK_POR_TIPO = {
+  melamina:      { color: "#e8d8b0", roughness: 0.6,  metalness: 0.05 },
+  mdf:           { color: "#c8b080", roughness: 0.75, metalness: 0.0  },
+  madera_maciza: { color: "#a07040", roughness: 0.8,  metalness: 0.0  },
+  terciado:      { color: "#b89060", roughness: 0.75, metalness: 0.0  },
+  manija:        { color: "#909090", roughness: 0.2,  metalness: 0.85 },
+  default:       { color: "#d4c090", roughness: 0.65, metalness: 0.05 },
+};
+
+export function getMaterialProps(tipo) {
+  return VISUAL_FALLBACK_POR_TIPO[tipo] ?? VISUAL_FALLBACK_POR_TIPO.default;
+}
+
+export function resolverVisualMaterial({ inst, dimOverride = {}, biblioteca = [], modulos = {} } = {}) {
+  const vacio = { material: null, source: "none", textura: null, color: null, roughness: null, metalness: null };
+  if (!inst || typeof inst !== "object") return vacio;
+
+  let material = null;
+  let source = "none";
+
+  // 1. Override explícito por materialId (elegido en la galería de Vista 3D)
+  const ov = (inst.itemKey && dimOverride[inst.itemKey]) || {};
+  if (ov.materialId) {
+    material = biblioteca.find(m => m && m.id === ov.materialId) || null;
+    if (material) source = "id";
+  }
+
+  // 2. Default por tipo del módulo
+  if (!material) {
+    const tipo = modulos?.[inst.codigo]?.material;
+    if (tipo) {
+      material = biblioteca.find(m => m && m.tipo === tipo && m.esDefault === true) || null;
+      if (material) source = "default";
+    }
+  }
+
+  if (!material) return vacio;
+
+  const fb = getMaterialProps(material.tipo);
+  return {
+    material,
+    source,
+    textura:   material.textura || null,
+    color:     material.color     ?? fb.color,
+    roughness: material.roughness ?? fb.roughness,
+    metalness: material.metalness ?? fb.metalness,
+  };
 }
 
 // ────────────────────────────────────────────────────────────────────────────

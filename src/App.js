@@ -17,7 +17,6 @@ import {
   leerVersionCostos,
 } from "./storage.js";
 import {
-  materialesComoMapa3D,
   backfillEsDefault,
   aplicarDefaultExclusivo,
   autopromoverPorTipo,
@@ -205,12 +204,6 @@ function AppInterna() {
   // service ya está aislado para que el día de mañana migre a tabla propia.
   const [materiales,           setMateriales]           = useState([]);
   const [materialesCategorias, setMaterialesCategorias] = useState([]);
-
-  // Vista derivada para compatibilidad con Vista 3D / Render IA legacy.
-  // Mapa { [codigo]: { nombre, dataUrl } } — mismo shape que el viejo
-  // localStorage:carpicalc:materiales3d. Permite que Vista3DTab y
-  // Escena3DPrincipal sigan funcionando sin tocarlos hasta que migremos.
-  const materiales3D = useMemo(() => materialesComoMapa3D(materiales), [materiales]);
 
   // Puente al motor de costo: arma `costos.materiales` desde la biblioteca,
   // usando UN material por tipo (el default). Conserva entradas legacy de
@@ -691,7 +684,6 @@ function AppInterna() {
                 inlineModulos={inlineModulos}
                 presupuestoActivoId={presupuestoActivoId}
                 onCaptura={(base64) => setImagenRef3D(base64)}
-                materiales3D={materiales3D}
               />
               </Suspense>
             </div>
