@@ -12,7 +12,7 @@ import {
   FloorIcon, MesadaIcon,
   GridIcon, LightIcon, RefreshIcon,
   MaximizeIcon, MinimizeIcon,
-  WallsIcon, ContourIcon,
+  WallsIcon, ContourIcon, GizmoIcon,
 } from './icons.jsx';
 import { CAMARAS } from '../visor3d/CamaraPresets.js';
 
@@ -64,6 +64,7 @@ export function ViewportToolbar({
   mostrarContornos, setMostrarContornos,
   colorContornos,   setColorContornos,
   grosorContornos,  setGrosorContornos,
+  mostrarGizmo,     setMostrarGizmo,
   // Lighting
   shadowIntensidad, setShadowIntensidad,
   shadowAngle,      setShadowAngle,
@@ -204,6 +205,14 @@ export function ViewportToolbar({
             </>
           )}
         </ToolbarDropdown>
+
+        {/* Gizmo — toggle on/off (useful before capturing renders) */}
+        <ToolbarBtn
+          icon={<GizmoIcon size={tb.iconSize} />}
+          active={mostrarGizmo}
+          onClick={() => setMostrarGizmo(v => !v)}
+          title={mostrarGizmo ? 'Ocultar gizmo de ejes' : 'Mostrar gizmo de ejes'}
+        />
 
         <ToolbarDropdown icon={<LightIcon size={tb.iconSize} />} title="Iluminación" active={false}>
           <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 170 }}>

@@ -318,40 +318,47 @@ const GRID_DARK  = { c1: '#2a2d35', c2: '#232630' };
 const GRID_LIGHT = { c1: '#c4c5ce', c2: '#d0d1da' };
 
 // ── CursorTracker — coordenadas del cursor sobre el piso en tiempo real ───────
-// Componente R3F sin render visual. Escucha pointermove en el canvas,
-// raycasta contra el plano del piso (y=0) y llama onMove({ x, z }) o null.
-// Patrón latest-ref: el listener se registra una sola vez; onMove nunca
-// queda desactualizado aunque el padre re-renderice.
+// Componente R3F sin render visual. useFrame raycasta contra el plano del piso
+// (y=0) cada frame usando pointer de R3F (NDC precalculado) → más fiable que
+// DOM listeners que no ven el estado actualizado de OrbitControls.
+// Throttling: lastRef evita setState a 60fps. pointerleave limpia al salir.
 export function CursorTracker({ onMove }) {
-  const { camera, gl } = useThree();
-  const raycaster  = useMemo(() => new THREE.Raycaster(), []);
-  const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
-  const onMoveRef  = useRef(onMove);
+  const { gl } = useThree();
+  const myRaycaster = useMemo(() => new THREE.Raycaster(), []);
+  const floorPlane  = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
+  const lastRef     = useRef(null);
+  const onMoveRef   = useRef(onMove);
   useEffect(() => { onMoveRef.current = onMove; });
 
+  // Solo necesitamos escuchar pointerleave para limpiar las coords al salir
   useEffect(() => {
     const canvas = gl.domElement;
-    const onPtr = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const nx =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
-      const ny = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
-      raycaster.setFromCamera({ x: nx, y: ny }, camera);
-      const hit = new THREE.Vector3();
-      if (raycaster.ray.intersectPlane(floorPlane, hit)) {
-        onMoveRef.current({ x: hit.x, z: hit.z });
-      } else {
+    const onLeave = () => {
+      if (lastRef.current !== null) {
+        lastRef.current = null;
         onMoveRef.current(null);
       }
     };
-    const onLeave = () => onMoveRef.current(null);
-    canvas.addEventListener('pointermove', onPtr);
     canvas.addEventListener('pointerleave', onLeave);
-    return () => {
-      canvas.removeEventListener('pointermove', onPtr);
-      canvas.removeEventListener('pointerleave', onLeave);
-    };
-  }, [camera, gl, raycaster, floorPlane]);
+    return () => canvas.removeEventListener('pointerleave', onLeave);
+  }, [gl]);
 
+  useFrame(({ camera, pointer }) => {
+    // pointer ya viene en NDC (-1..1) calculado por R3F
+    myRaycaster.setFromCamera(pointer, camera);
+    const hit = new THREE.Vector3();
+    if (myRaycaster.ray.intersectPlane(floorPlane, hit)) {
+      const x = Math.round(hit.x * 100) / 100;
+      const z = Math.round(hit.z * 100) / 100;
+      if (!lastRef.current || lastRef.current.x !== x || lastRef.current.z !== z) {
+        lastRef.current = { x, z };
+        onMoveRef.current({ x, z });
+      }
+    } else if (lastRef.current !== null) {
+      lastRef.current = null;
+      onMoveRef.current(null);
+    }
+  });
   return null;
 }
 
@@ -462,6 +469,7 @@ export function Escena3DPrincipal({
   // Escenografía — objetos 3D de ambiente (capa de presentación, sin costo)
   escenografia = [], catalogoAmbiente = [],
   objetoSelId = null, onSelectObjeto, onMoverObjeto, onRotarObjeto, onEliminarObjeto,
+  mostrarGizmo = true,
 }) {
   const orbitRef       = useRef();
   const livePositions  = useRef({}); // { [instanceId]: { x, z, hw, hd } }
@@ -569,12 +577,14 @@ export function Escena3DPrincipal({
       )}
 
       {/* ── Gizmo de orientación — esquina superior derecha ─────────────────── */}
-      <GizmoHelper alignment="top-right" margin={[58, 58]}>
-        <GizmoViewport
-          axisColors={['#E05B5B', '#5BBE6F', '#4D8CFF']}
-          labelColor="rgba(220,225,240,0.9)"
-        />
-      </GizmoHelper>
+      {mostrarGizmo && (
+        <GizmoHelper alignment="top-right" margin={[58, 58]}>
+          <GizmoViewport
+            axisColors={['#E05B5B', '#5BBE6F', '#4D8CFF']}
+            labelColor="rgba(220,225,240,0.9)"
+          />
+        </GizmoHelper>
+      )}
 
       {/* ── Escenografía — objetos 3D de ambiente ──────────────────────────── */}
       {escenografia.map((inst) => {

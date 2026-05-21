@@ -50,6 +50,7 @@ export function Vista3DTab({
   const [mostrarParedDer, setMostrarParedDer] = useState(false);
   const [mostrarGrilla,   setMostrarGrilla]   = useState(true);
   const [mostrarContornos, setMostrarContornos] = useState(false);
+  const [mostrarGizmo,     setMostrarGizmo]     = useState(true);
 
   // ── Colors ────────────────────────────────────────────────────────────────
   const [colorPiso,      setColorPiso]      = useState(() => isDark ? '#1e2028' : '#e8e9ed');
@@ -512,6 +513,7 @@ export function Vista3DTab({
           mostrarContornos={mostrarContornos} setMostrarContornos={setMostrarContornos}
           colorContornos={colorContornos}   setColorContornos={setColorContornos}
           grosorContornos={grosorContornos} setGrosorContornos={setGrosorContornos}
+          mostrarGizmo={mostrarGizmo}       setMostrarGizmo={setMostrarGizmo}
           shadowIntensidad={shadowIntensidad} setShadowIntensidad={setShadowIntensidad}
           shadowAngle={shadowAngle}         setShadowAngle={setShadowAngle}
           onActualizar={() => setEscenaVersion(v => v + 1)}
@@ -639,16 +641,18 @@ export function Vista3DTab({
               onMoverObjeto={handleMoverObjeto}
               onRotarObjeto={handleRotarObjeto}
               onEliminarObjeto={handleEliminarObjeto}
+              mostrarGizmo={mostrarGizmo}
             />
             <CursorTracker onMove={setCursorCoords} />
           </Canvas>
 
-          {/* Coordenadas del cursor sobre el piso */}
+          {/* Coordenadas del cursor sobre el piso — bottom-left (no solapa el total) */}
           {cursorCoords && (
             <div style={{
-              position: 'absolute', bottom: 10, right: 14,
+              position: 'absolute', bottom: 10, left: 14,
               fontSize: 9, fontFamily: "'DM Mono',monospace",
               color: T.hint, pointerEvents: 'none', letterSpacing: '0.05em',
+              zIndex: 6,
             }}>
               X {cursorCoords.x >= 0 ? ' ' : ''}{(cursorCoords.x).toFixed(2)}
               {'  '}

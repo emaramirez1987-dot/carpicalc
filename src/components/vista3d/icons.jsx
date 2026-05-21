@@ -117,6 +117,16 @@ export const CaptureIcon = ({ size = 14 }) => (
   </svg>
 );
 
+// Gizmo — three axes (X/Y/Z) emanating from center
+export const GizmoIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none"
+    stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+    <path d="M7 9V3.5" />
+    <path d="M7 9L11.5 11.5" />
+    <path d="M7 9L2.5 11.5" />
+  </svg>
+);
+
 // Floor plane — isometric rhombus viewed from above
 export const FloorIcon = ({ size = 14 }) => (
   <svg width={size} height={Math.round(size * 10 / 14)} viewBox="0 0 14 10" fill="none"
