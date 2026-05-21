@@ -46,6 +46,9 @@ export function ToolbarBtn({ icon, label, active, onClick, title, variant = 'exc
   const tb = T.toolbar;
   const isExclusive = variant === 'exclusive';
 
+  // Both variants use the same box-style active treatment for visual consistency.
+  // exclusive = camera presets (mutually exclusive radio group)
+  // toggle    = independent scene toggles
   const style = isExclusive ? {
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
     padding: '7px 10px 6px',
@@ -57,9 +60,8 @@ export function ToolbarBtn({ icon, label, active, onClick, title, variant = 'exc
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
     padding: '7px 8px 6px',
     background:   active ? tb.activeBg   : 'transparent',
-    border:       'none',
-    borderBottom: active ? `2px solid ${tb.activeText}` : '2px solid transparent',
-    borderRadius: 0,
+    border:       active ? `1px solid ${tb.activeBorder}` : '1px solid transparent',
+    borderRadius: 7,
     color:        active ? tb.activeText  : tb.inactiveText,
   };
 
@@ -180,9 +182,8 @@ export function ToolbarDropdown({ icon, label, active, children }) {
           padding: '7px 10px 6px',
           width: '100%',
           background:   isActive ? tb.activeBg   : 'transparent',
-          border:       'none',
-          borderBottom: isActive ? `2px solid ${tb.activeText}` : '2px solid transparent',
-          borderRadius: 0,
+          border:       isActive ? `1px solid ${tb.activeBorder}` : '1px solid transparent',
+          borderRadius: 7,
           color:        isActive ? tb.activeText  : tb.inactiveText,
         }}
         onHoverIn={hoverIn}

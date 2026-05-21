@@ -23,53 +23,73 @@ export function tok() {
   const gold         = d ? '#D4AF37' : '#B8920A';
   const goldDim      = d ? '#9a7828' : '#9A7818';
   const goldBord     = d ? 'rgba(212,175,55,0.38)' : 'rgba(184,146,10,0.38)';
-  const btnBg        = d ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
-  const btnBord      = d ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
-  const btnText      = d ? '#7a7e8a'  : '#6A6662';
-  const btnHoverBg   = d ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)';
+  const btnBg        = d ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+  const btnBord      = d ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)';
+  // Inactive toolbar button labels.
+  // dark: #7a7e8a | light: #5A5654 → 5.8:1 on #F5F3F0 (WCAG AA ✓)
+  const btnText      = d ? '#7a7e8a'  : '#5A5654';
+  const btnHoverBg   = d ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)';
   const btnHoverText = d ? '#c8cad4'  : '#1A1916';
-  const rowHover     = d ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.025)';
-  const divider      = d ? 'rgba(255,255,255,0.06)'  : 'rgba(0,0,0,0.06)';
-  const border       = d ? 'rgba(255,255,255,0.06)'  : 'rgba(0,0,0,0.07)';
-  const borderSub    = d ? 'rgba(255,255,255,0.04)'  : 'rgba(0,0,0,0.04)';
-  const toolbarBg    = d ? 'rgba(9,11,16,0.97)'  : 'rgba(255,255,255,0.97)';
-  const toolbarShadow = d ? '0 1px 0 rgba(255,255,255,0.05)' : '0 1px 0 rgba(0,0,0,0.07)';
+  const rowHover     = d ? 'rgba(255,255,255,0.028)' : 'rgba(0,0,0,0.04)';
+  // light divider: 0.12 — clearly visible on #F5F3F0 panels
+  const divider      = d ? 'rgba(255,255,255,0.08)'  : 'rgba(0,0,0,0.12)';
+  // light border: 0.16 — visible card edges, bona-fide definition
+  const border       = d ? 'rgba(255,255,255,0.12)'  : 'rgba(0,0,0,0.16)';
+  const borderSub    = d ? 'rgba(255,255,255,0.05)'  : 'rgba(0,0,0,0.07)';
+  // Toolbar bg: light → #F3F1EE warm gray (not pure white); dark unchanged
+  const toolbarBg    = d ? 'rgba(9,11,16,0.97)'  : 'rgba(243,241,238,0.97)';
+  const toolbarShadow = d ? '0 1px 0 rgba(255,255,255,0.06)' : '0 1px 0 rgba(0,0,0,0.10)';
   const rmBg         = d ? 'rgba(200,60,60,0.08)' : 'rgba(200,60,60,0.07)';
   const rmBord       = d ? 'rgba(200,60,60,0.26)' : 'rgba(200,60,60,0.22)';
   const rmText       = d ? '#c06060' : '#b04040';
-  const sectionHd    = d ? '#4a4e5c' : '#9A9590';
-  const textDim      = d ? '#4a4e5c' : '#9A9590';
+  // Section header labels.
+  // dark: #7A7E8C on #0E1118 → 5.2:1 ✓ | light: #3D3A37 on #F5F3F0 → 7.2:1 (WCAG AAA ✓)
+  const sectionHd    = d ? '#7A7E8C' : '#3D3A37';
+  // Dim text (inputs, toolbar inline labels, secondary descriptions).
+  // Lighter than sectionHd — clearly secondary.
+  const textDim      = d ? '#606472' : '#6E6A66';
 
   return {
     // ── Flat tokens (backward compat — FASE 2 removes duplicates) ──────────────
-    outerBg:      d ? '#07090c'     : '#EEE9E2',
-    panelBg:      d ? '#0b0d12'     : '#FFFFFF',
-    panelShadow:  d ? '2px 0 20px rgba(0,0,0,0.45)' : '2px 0 20px rgba(0,0,0,0.06)',
-    cardShadow:   d ? '0 4px 32px rgba(0,0,0,0.52), 0 1px 3px rgba(0,0,0,0.28)' : '0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)',
+    outerBg:      d ? '#07090c'     : '#EEE9E2',      // desk / chrome — unchanged
+    // dark panel: #0E1118 (blue-dark, floats above workspace) | light: #F5F3F0 warm off-white
+    panelBg:      d ? '#0E1118'     : '#F5F3F0',
+    panelShadow:  d ? '2px 0 20px rgba(0,0,0,0.55)' : '2px 0 20px rgba(0,0,0,0.10)',
+    // Two-layer shadow: crisp near + soft far — technical, not "landing page"
+    cardShadow:   d ? '0 1px 4px rgba(0,0,0,0.45), 0 6px 28px rgba(0,0,0,0.35)'
+                    : '0 1px 3px rgba(0,0,0,0.14), 0 4px 20px rgba(0,0,0,0.09)',
+    // Workspace surface: a unified container behind panel cards.
+    // dark: #050709 (deeper than desk #07090c) | light: #CBC7C0 (clearly darker than desk)
+    workspaceBg:     d ? '#050709'                   : '#CBC7C0',
+    workspaceBorder: d ? 'rgba(255,255,255,0.12)'    : 'rgba(0,0,0,0.18)',
     border, borderSub,
     toolbarBg, toolbarShadow,
     text:         d ? '#b8bcc8'     : '#1A1916',
     textDim,
-    textMuted:    d ? '#3c404c'     : '#B0ABA5',
-    label:        d ? '#282b35'     : '#C4BFBA',
+    // Muted / supporting text. light: #6E6A66 (used to be sectionHd — now truly secondary)
+    textMuted:    d ? '#4c5060'     : '#6E6A66',
+    label:        d ? '#363a46'     : '#8A8682',
     sectionHd,
     btnBg, btnBord, btnText, btnHoverBg, btnHoverText,
-    swatchBord:   d ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.16)',
-    matBg:        d ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-    matBord:      d ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-    matText:      d ? '#7a7e8a'     : '#6A6662',
+    swatchBord:   d ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)',
+    matBg:        d ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+    matBord:      d ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)',
+    matText:      d ? '#7a7e8a'     : '#5A5654',
     divider,
-    countText:    d ? '#3c404c'     : '#B0ABA5',
-    emptyIcon:    d ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)',
-    emptyTitle:   d ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.16)',
-    emptySub:     d ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.09)',
-    hint:         d ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.25)',
-    canvasFallbk: d ? '#080a0d'     : '#EEE9E2',
-    inputBg:      d ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-    inputBord:    d ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)',
+    countText:    d ? '#4c5060'     : '#6E6A66',
+    // Empty states: visible but not prominent — enough to guide, not to dominate
+    emptyIcon:    d ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.18)',
+    emptyTitle:   d ? 'rgba(255,255,255,0.26)' : 'rgba(0,0,0,0.45)',
+    emptySub:     d ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.28)',
+    // Hint text (viewport bottom): clearly readable, clearly secondary
+    hint:         d ? 'rgba(255,255,255,0.26)' : 'rgba(0,0,0,0.45)',
+    // Viewport background: cool-gray creates thermal contrast vs warm panels
+    canvasFallbk: d ? '#080a0d'     : '#ECEEF1',
+    inputBg:      d ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+    inputBord:    d ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
     inputText:    d ? '#c4c8d4'     : '#1A1916',
     rowHover,
-    rowSelected:  d ? 'rgba(212,175,55,0.05)' : 'rgba(184,146,10,0.06)',
+    rowSelected:  d ? 'rgba(212,175,55,0.06)' : 'rgba(184,146,10,0.07)',
     gold, goldDim, goldBord,
     accent: gold,
     rmBg, rmBord, rmText,
@@ -83,7 +103,8 @@ export function tok() {
     toolbar: {
       bg:             toolbarBg,
       shadow:         toolbarShadow,
-      capsuleShadow:  d ? '0 2px 18px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06)' : '0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)',
+      capsuleShadow:  d ? '0 2px 20px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.08)'
+                        : '0 1px 3px rgba(0,0,0,0.14), 0 3px 16px rgba(0,0,0,0.08)',
       border,
       height:         52,     // px
       iconSize:       14,     // px
@@ -123,11 +144,11 @@ export function tok() {
       text:   d ? '#7ecf8a'                : '#4a9a60',
     },
 
-    // Empty states
+    // Empty states — synced with flat emptyIcon/emptyTitle/emptySub above
     empty: {
-      icon:  d ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)',
-      title: d ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.16)',
-      sub:   d ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.09)',
+      icon:  d ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.18)',
+      title: d ? 'rgba(255,255,255,0.26)' : 'rgba(0,0,0,0.45)',
+      sub:   d ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.28)',
     },
 
     // Section header text
@@ -137,7 +158,7 @@ export function tok() {
 
     // Canvas overlays (badges, hints on top of the R3F viewport)
     canvas: {
-      overlayBg: d ? 'rgba(8,10,13,0.85)' : 'rgba(255,255,255,0.90)',
+      overlayBg: d ? 'rgba(8,10,13,0.90)' : 'rgba(236,238,241,0.92)',
     },
 
     // Module type indicator swatches — semantic category colors.

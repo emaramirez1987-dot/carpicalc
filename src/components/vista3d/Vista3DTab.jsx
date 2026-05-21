@@ -287,35 +287,40 @@ export function Vista3DTab({
   };
 
   // ── Layout ────────────────────────────────────────────────────────────────
-  // Shared style for the desk surface (the background behind floating panels)
-  const deskStyle = {
-    display: 'flex', flexDirection: 'row',
-    background: T.outerBg,
-    gap: 14,
-    padding: '14px 20px',
-    boxSizing: 'border-box',
-    alignItems: 'stretch',
-    transition: 'background 0.35s ease',
-  };
-
   const inner = (
     <div style={maximizado ? {
-      ...deskStyle,
       position: 'fixed', inset: 0, zIndex: 200,
-      padding: '12px',
+      display: 'flex', padding: '8px',
+      background: T.outerBg,
+      boxSizing: 'border-box',
+      transition: 'background 0.35s ease',
     } : {
-      ...deskStyle,
+      display: 'flex', padding: '10px',
       height: 'calc(100vh - 120px)',
       margin: '0 -20px',
+      background: T.outerBg,
+      boxSizing: 'border-box',
+      transition: 'background 0.35s ease',
     }}>
+
+      {/* ── WORKSPACE SURFACE — unified container behind floating panels ── */}
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'row',
+        alignItems: 'stretch', gap: 12, padding: '12px',
+        background: T.workspaceBg,
+        border: `1px solid ${T.workspaceBorder}`,
+        borderRadius: 18,
+        boxSizing: 'border-box',
+        transition: 'background 0.35s ease',
+      }}>
 
       {/* ── LEFT: Scene Outliner ─────────────────────────────────────── */}
       <div style={{
-        width: 244, flexShrink: 0,
+        width: 218, flexShrink: 0,
         background: T.panelBg,
         boxShadow: T.cardShadow,
         border: `1px solid ${T.border}`,
-        borderRadius: 18,
+        borderRadius: 14,
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden', zIndex: 2,
         transition: 'background 0.35s ease',
@@ -334,7 +339,7 @@ export function Vista3DTab({
       </div>
 
       {/* ── CENTER: Toolbar + Canvas ─────────────────────────────────── */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12, position: 'relative' }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10, position: 'relative' }}>
 
         <ViewportToolbar
           camView={camView}
@@ -484,11 +489,11 @@ export function Vista3DTab({
 
       {/* ── RIGHT: Inspector ─────────────────────────────────────────── */}
       <div style={{
-        width: 236, flexShrink: 0,
+        width: 218, flexShrink: 0,
         background: T.panelBg,
         boxShadow: T.cardShadow,
         border: `1px solid ${T.border}`,
-        borderRadius: 18,
+        borderRadius: 14,
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden', zIndex: 2,
         transition: 'background 0.35s ease',
@@ -511,6 +516,9 @@ export function Vista3DTab({
           onTexturaRepeat={setTexturaRepeat}
           onDimChange={handleDimChange}
         />
+      </div>
+
+      {/* ── End workspace surface ─────────────────────────────────────── */}
       </div>
 
     </div>
