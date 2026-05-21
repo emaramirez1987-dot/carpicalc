@@ -237,9 +237,12 @@ Todas las escrituras (módulos, costos, presupuestos, perfil) entran a `withSave
 - Toda herramienta o panel nuevo de Vista 3D se agrega como **sección desplegable
   en la columna izquierda o derecha** — nunca como botón/overlay flotando sobre
   el visor 3D. El viewport central queda limpio.
-- Patrón: botón-header con chevron ▸/▾ que despliega el contenido dentro de la
-  columna (con `maxHeight` + scroll propio si hace falta). Ver la sección
-  "Ambiente" en `Vista3DTab.jsx` como referencia.
+- Patrón: usar `PanelSection` de `ui.jsx` para secciones dentro de los paneles
+  (acordeón con borde, chevron y prop `right` para valor inline). Para el
+  header de un bloque entero (nivel Ambiente / Inspector) usar el mismo estilo
+  de botón directamente en `Vista3DTab`. Ver Ambiente e Inspector en
+  `Vista3DTab.jsx` como referencia de nivel bloque, y `InspectorPanel.jsx`
+  como referencia de nivel sección.
 - Excepción: los overlays contextuales atados a un objeto seleccionado (mini
   toolbar flotante sobre el módulo/objeto en la escena) sí van en el viewport.
 
@@ -358,6 +361,7 @@ Cubren el motor de fórmulas, parámetros, subcomponentes y armado 3D.
 ### Features completadas recientemente
 | Fecha | Feature | Detalle |
 |---|---|---|
+| 2026-05-21 | **Inspector y Objeto — secciones colapsables** | `PanelSection` nuevo componente en `ui.jsx`: acordeón reutilizable para paneles laterales. Botón header con chevron ▸/▾, borde superior integrado (actúa como divisor), prop `right` para mostrar el valor actual (ej. `75%`, `120 cm`) visible incluso con la sección colapsada. Inspector/Objeto en `Vista3DTab` envuelto en botón desplegable idéntico al de Ambiente (◈ Inspector ▾); `flex` dinámico: colapsado → encoge al alto del botón. `InspectorPanel`: Dimensiones / Parámetros / Material como `PanelSection`, todas `defaultOpen=false`. `InspectorObjeto`: Escala / Altura / Rotación como `PanelSection`, todas `defaultOpen=false`. Quitar objeto siempre visible al fondo (acción destructiva). |
 | 2026-05-21 | **Escenografía Vista 3D — objetos 3D de ambiente (Fase 1)** | Capa de presentación separada del dominio: lámparas, sillones, plantas, etc. NO son módulos, NO tienen costo, NO tocan el motor paramétrico. Biblioteca curada (`data/objetos-ambiente.json` — 12 props, GLB on-demand). `ambienteService.js` (puro: parsea catálogo + crea instancias). `ObjetoAmbiente3D` carga el GLB con `useGLTF`/drei, auto-escala por bounding box a tamaño real (sin calibrar a mano), permite seleccionar/arrastrar/rotar/borrar. `GaleriaAmbiente` (panel galería). `ObjetoErrorBoundary` aísla GLB caídos. Persiste en `presupuesto.escenografia` (estado App.js, mismo camino que dimOverride). **Stand-ins:** los `modelUrl` apuntan a GLB públicos de Khronos — se reemplazan por los assets curados en Supabase Storage cambiando solo el JSON. Pendiente Fase 2: handle de escala, snap al piso, drag con `useDragEnPiso` unificado, thumbnails reales. |
 | 2026-05-21 | **`resolverModuloEfectivo` — capa única de resolución del módulo** | La resolución "módulo base + overrides" estaba reimplementada inline en 4 lugares (`App.getModUsado`, `Vista3D itemsConCosto`/`dimsActuales`, `Escena3D ModuloEnEscena`) y las copias divergieron — el costo respetaba los overrides pero el 3D no. Nueva función pura `resolverModuloEfectivo({codigo, modulos, inline, dimOverride, composicionOverride})` en `moduloService.js`: `inline` (reemplazo total) → base + dimOverride (dimensiones + material) + composicionOverride. **Sin defaults de UI** — los `?? 600/700/550` quedan en la capa visual. Los 4 call sites migrados al resolver. `ModuloEnEscena` y `useAutoLayout3D` lo consumen → editar dimensiones en el Inspector ahora actualiza el 3D Y el costo. 11 tests nuevos. |
 | 2026-05-21 | **Dimensiones editables desde Vista 3D → costo en vivo** | `DimInput` del InspectorPanel pasó a editable. `onDimChange` → `handleDimChange` → `setDimOverride` (estado App.js, persistido en localStorage + Supabase) → `getModUsado`/`resolverModuloEfectivo` aplican el override → `calcularModulo` recalcula. Feedback: label y borde en dorado cuando la dimensión difiere del default del catálogo. |
