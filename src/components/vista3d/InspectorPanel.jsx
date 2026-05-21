@@ -12,23 +12,19 @@ import { RotateIcon, TrashIcon } from './icons.jsx';
 import { MaterialGallery } from './MaterialGallery.jsx';
 import ConfiguradorParametrico from '../presupuesto/ConfiguradorParametrico.jsx';
 
-// ── Dimension input field ──────────────────────────────────────────────────────
-// readOnly for now — to enable editing:
-//   1. Remove the `readOnly` prop
-//   2. Change cursor to 'text'
-//   3. Add onChange={e => onDimChange(campo, Number(e.target.value))}
+// ── Dimension input field — one row: label left, input right ──────────────────
 function DimInput({ campo, label, value }) {
   const T = tok();
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px' }}>
       <span style={{
-        fontSize: 8, fontFamily: "'DM Mono',monospace",
+        fontSize: 9, fontFamily: "'DM Mono',monospace",
         color: T.section.text, letterSpacing: '0.08em',
-        textAlign: 'center',
+        textTransform: 'uppercase', flexShrink: 0, width: 52,
       }}>
         {label}
       </span>
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1 }}>
         <input
           type="number"
           data-campo={campo}
@@ -36,13 +32,13 @@ function DimInput({ campo, label, value }) {
           readOnly
           style={{
             width: '100%',
-            padding: '7px 22px 7px 8px',
+            padding: '6px 26px 6px 10px',
             background: T.inputBg,
             border: `1px solid ${T.inputBord}`,
             borderRadius: 6,
             color: T.inputText,
             fontFamily: "'DM Mono',monospace",
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 600,
             outline: 'none',
             cursor: 'default',
@@ -50,7 +46,7 @@ function DimInput({ campo, label, value }) {
           }}
         />
         <span style={{
-          position: 'absolute', right: 5,
+          position: 'absolute', right: 7,
           fontSize: 7, fontFamily: "'DM Mono',monospace",
           color: T.textDim, pointerEvents: 'none',
           letterSpacing: '0.04em',
@@ -155,10 +151,10 @@ export function InspectorPanel({
       {dims && (
         <div style={{ flexShrink: 0 }}>
           <SectionLabel>Dimensiones</SectionLabel>
-          <div style={{ display: 'flex', gap: 6, padding: '0 12px 12px' }}>
-            <DimInput campo="ancho"       label="A" value={dims.ancho} />
-            <DimInput campo="alto"        label="H" value={dims.alto} />
-            <DimInput campo="profundidad" label="P" value={dims.profundidad} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '4px 0 12px' }}>
+            <DimInput campo="ancho"       label="Ancho"  value={dims.ancho} />
+            <DimInput campo="alto"        label="Alto"   value={dims.alto} />
+            <DimInput campo="profundidad" label="Prof."  value={dims.profundidad} />
           </div>
         </div>
       )}
