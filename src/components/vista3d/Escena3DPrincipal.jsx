@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo, Suspense } from 'react';
-import { OrbitControls, Html } from '@react-three/drei';
+import { OrbitControls, Html, GizmoHelper, GizmoViewport } from '@react-three/drei';
 import * as THREE from 'three';
 import { useThree, useFrame } from '@react-three/fiber';
 import Modulo3D from '../visor3d/Modulo3D.jsx';
@@ -529,6 +529,14 @@ export function Escena3DPrincipal({
           color={colorMesada}
         />
       )}
+
+      {/* ── Gizmo de orientación — esquina superior derecha ─────────────────── */}
+      <GizmoHelper alignment="top-right" margin={[58, 58]}>
+        <GizmoViewport
+          axisColors={['#E05B5B', '#5BBE6F', '#4D8CFF']}
+          labelColor="rgba(220,225,240,0.9)"
+        />
+      </GizmoHelper>
 
       {/* ── Escenografía — objetos 3D de ambiente ──────────────────────────── */}
       {escenografia.map((inst) => {

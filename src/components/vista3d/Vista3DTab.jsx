@@ -75,6 +75,15 @@ export function Vista3DTab({
   // ── UI state ──────────────────────────────────────────────────────────────
   const [capturado,  setCapturado]  = useState(false);
   const [maximizado, setMaximizado] = useState(false);
+  // Hint desaparece tras la primera interacción. Se persiste en localStorage
+  // para no molestar al usuario en sesiones futuras.
+  const [mostrarHint, setMostrarHint] = useState(
+    () => localStorage.getItem('carpicalc:hint_3d_visto') !== '1'
+  );
+  const ocultarHint = () => {
+    setMostrarHint(false);
+    localStorage.setItem('carpicalc:hint_3d_visto', '1');
+  };
 
   // ── Scene version (forces Escena3DPrincipal remount on catalog changes) ───
   const [escenaVersion, setEscenaVersion] = useState(0);
@@ -540,6 +549,7 @@ export function Vista3DTab({
             gl={{ preserveDrawingBuffer: true }}
             onCreated={({ gl }) => { glRef.current = gl; }}
             onPointerMissed={() => { setSelectedCod(null); setObjetoSelId(null); }}
+            onPointerDown={mostrarHint ? ocultarHint : undefined}
             style={{ background: T.canvasFallbk, width: '100%', height: '100%' }}
           >
             <Escena3DPrincipal
@@ -587,14 +597,21 @@ export function Vista3DTab({
             />
           </Canvas>
 
-          {/* Hint overlay */}
-          <div style={{
-            position: 'absolute', bottom: 10, left: 14,
-            fontSize: 10, fontFamily: "'DM Mono',monospace",
-            color: T.hint, pointerEvents: 'none', letterSpacing: '0.03em',
-          }}>
-            Arrastrá para rotar · Scroll zoom · Click para seleccionar
-          </div>
+          {/* Hint overlay — se oculta tras la primera interacción */}
+          {mostrarHint && (
+            <div
+              onClick={ocultarHint}
+              onPointerDown={ocultarHint}
+              style={{
+                position: 'absolute', bottom: 10, left: 14,
+                fontSize: 10, fontFamily: "'DM Mono',monospace",
+                color: T.hint, pointerEvents: 'auto', letterSpacing: '0.03em',
+                cursor: 'default',
+              }}
+            >
+              Arrastrá para rotar · Scroll zoom · Click para seleccionar
+            </div>
+          )}
         </div>
       </div>
 
@@ -663,12 +680,23 @@ export function Vista3DTab({
               display: 'flex', alignItems: 'center', gap: 6,
               fontSize: 9, fontFamily: "'DM Mono',monospace",
               letterSpacing: '0.10em', textTransform: 'uppercase',
-              color: T.section.text,
+              color: T.section.text, minWidth: 0,
             }}>
-              <span style={{ fontSize: 12 }}>◈</span>
+              <span style={{ fontSize: 12, flexShrink: 0 }}>◈</span>
               {objetoSelInst ? 'Objeto' : 'Inspector'}
+              {/* Nombre del elemento seleccionado — visible cuando el panel está colapsado */}
+              {!inspectorAbierto && (objetoSelDef || selectedModulo) && (
+                <span style={{
+                  fontSize: 9, fontFamily: "'DM Mono',monospace",
+                  color: T.textDim, letterSpacing: '0.04em',
+                  textTransform: 'none', fontWeight: 400,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  — {(objetoSelDef || selectedModulo)?.nombre}
+                </span>
+              )}
             </span>
-            <span style={{ fontSize: 9, color: T.textDim }}>
+            <span style={{ fontSize: 9, color: T.textDim, flexShrink: 0 }}>
               {inspectorAbierto ? '▾' : '▸'}
             </span>
           </button>
