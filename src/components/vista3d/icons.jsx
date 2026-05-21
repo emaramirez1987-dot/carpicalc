@@ -116,3 +116,22 @@ export const CaptureIcon = ({ size = 14 }) => (
     <path d="M7 1V2M7 12v1M1 7H2M12 7h1" strokeWidth="0.9" opacity="0.5" />
   </svg>
 );
+
+// Floor plane — isometric rhombus viewed from above
+export const FloorIcon = ({ size = 14 }) => (
+  <svg width={size} height={Math.round(size * 10 / 14)} viewBox="0 0 14 10" fill="none"
+    stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round">
+    <path d="M7 1L13 4.5L7 8L1 4.5L7 1Z" />
+    <path d="M7 4.5V8" strokeWidth="0.8" opacity="0.45" />
+    <path d="M1 4.5L7 4.5L13 4.5" strokeWidth="0.8" opacity="0.45" />
+  </svg>
+);
+
+// Countertop — horizontal slab with front overhang
+export const MesadaIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none"
+    stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1.5" y="5.5" width="11" height="2.5" />
+    <path d="M3.5 8v3M10.5 8v3" />
+  </svg>
+);

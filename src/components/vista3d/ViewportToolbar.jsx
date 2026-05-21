@@ -9,6 +9,7 @@ import { tok } from './theme.js';
 import { ToolbarBtn, ToolbarColorToggle, ToolbarDropdown, DropItem, ColorToggle, IconBtn, TDivider } from './ui.jsx';
 import {
   IsoIcon, FrontIcon, SideIcon, TopIcon,
+  FloorIcon, MesadaIcon,
   GridIcon, LightIcon, RefreshIcon,
   MaximizeIcon, MinimizeIcon,
   WallsIcon, ContourIcon,
@@ -65,13 +66,12 @@ export function ViewportToolbar({
       transition: 'background 0.35s ease',
     }}>
 
-      {/* ── View presets — exclusive group ─────────────────────────────── */}
+      {/* ── View presets — exclusive group — icon only, title tooltip ────── */}
       {VIEW_PRESETS.map(({ key, Icon, label }) => (
         <ToolbarBtn
           key={key}
           variant="exclusive"
           icon={<Icon size={tb.iconSize} />}
-          label={label}
           active={camView === key}
           onClick={() => onCameraPreset(key)}
           title={CAMARAS[key]?.label || label}
@@ -80,18 +80,19 @@ export function ViewportToolbar({
 
       <TDivider />
 
-      {/* ── Scene toggles ──────────────────────────────────────────────── */}
+      {/* ── Scene toggles — icon only, title tooltip ───────────────────── */}
 
       {/* Piso — toggle + color picker */}
       <ToolbarColorToggle
+        icon={<FloorIcon size={tb.iconSize} />}
         value={mostrarPiso} onToggle={() => setMostrarPiso(v => !v)}
-        color={colorPiso} onColor={setColorPiso} label="Piso"
+        color={colorPiso} onColor={setColorPiso} title="Piso"
       />
 
       {/* Paredes — dropdown: back wall + left + right */}
       <ToolbarDropdown
         icon={<WallsIcon size={tb.iconSize} />}
-        label="Paredes"
+        title="Paredes"
         active={mostrarPared || mostrarParedIzq || mostrarParedDer}
       >
         <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -110,21 +111,22 @@ export function ViewportToolbar({
 
       {/* Mesada — toggle + color picker */}
       <ToolbarColorToggle
+        icon={<MesadaIcon size={tb.iconSize} />}
         value={mostrarMesada} onToggle={() => setMostrarMesada(v => !v)}
-        color={colorMesada} onColor={setColorMesada} label="Mesada"
+        color={colorMesada} onColor={setColorMesada} title="Mesada"
       />
 
       {/* Grilla — simple toggle */}
       <ToolbarBtn
         variant="toggle"
         icon={<GridIcon size={tb.iconSize} />}
-        label="Grilla"
         active={mostrarGrilla}
         onClick={() => setMostrarGrilla(v => !v)}
+        title="Grilla"
       />
 
       {/* Contornos — dropdown: toggle + color + stroke weight */}
-      <ToolbarDropdown icon={<ContourIcon size={tb.iconSize} />} label="Contornos" active={mostrarContornos}>
+      <ToolbarDropdown icon={<ContourIcon size={tb.iconSize} />} title="Contornos" active={mostrarContornos}>
         <DropItem
           active={mostrarContornos}
           onClick={() => setMostrarContornos(v => !v)}
@@ -169,7 +171,7 @@ export function ViewportToolbar({
       {/* ── Lighting dropdown ──────────────────────────────────────────── */}
       <ToolbarDropdown
         icon={<LightIcon size={tb.iconSize} />}
-        label="Luz"
+        title="Iluminación"
         active={false}
       >
         <div style={{
@@ -216,55 +218,61 @@ export function ViewportToolbar({
         style={{ alignSelf: 'center', marginLeft: 4 }}
       />
 
-      {/* ── Spacer ─────────────────────────────────────────────────────── */}
+      {/* ── Spacer — pushes right group to the edge ────────────────────── */}
       <div style={{ flex: 1 }} />
 
-      {/* ── Module count ───────────────────────────────────────────────── */}
-      {modulosCount > 0 && (
-        <span style={{
-          alignSelf: 'center', marginRight: 8,
-          fontSize: 9, fontFamily: "'DM Mono',monospace",
-          color: T.textMuted,
-        }}>
-          {modulosCount} módulo{modulosCount !== 1 ? 's' : ''}
-        </span>
-      )}
+      {/* ── Right group: count · Capturar · maximize ───────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        borderLeft: `1px solid ${tb.divider}`,
+        paddingLeft: 10, marginLeft: 4,
+      }}>
 
-      {/* ── Capturar ───────────────────────────────────────────────────── */}
-      {/* Special two-state button: idle (gold) → captured (success green). */}
-      {/* Uses T.success / T.toolbar tokens — no hardcoded colors. */}
-      <button
-        onClick={onCapturar}
-        disabled={modulosCount === 0}
-        style={{
-          alignSelf: 'center',
-          padding: '5px 14px',
-          borderRadius: 6,
-          cursor: modulosCount === 0 ? 'default' : 'pointer',
-          background: capturado ? T.success.bg     : tb.activeBg,
-          border:     capturado ? `1px solid ${T.success.border}` : `1px solid ${tb.activeBorder}`,
-          color:      capturado ? T.success.text   : tb.activeText,
-          fontSize: 11,
-          fontFamily: "'DM Mono',monospace",
-          fontWeight: 700,
-          letterSpacing: '0.04em',
-          opacity: modulosCount === 0 ? 0.30 : 1,
-          transition: 'all 0.2s',
-          outline: 'none',
-          lineHeight: 1,
-        }}
-      >
-        {capturado ? '✓ Capturado' : '◈ Capturar'}
-      </button>
+        {/* Module count — only when scene has content */}
+        {modulosCount > 0 && (
+          <span style={{
+            fontSize: 9, fontFamily: "'DM Mono',monospace",
+            color: T.textMuted, letterSpacing: '0.05em',
+          }}>
+            {modulosCount}
+          </span>
+        )}
 
-      {/* ── Maximize / restore ─────────────────────────────────────────── */}
-      <IconBtn
-        icon={maximizado ? <MinimizeIcon size={tb.iconSize} /> : <MaximizeIcon size={tb.iconSize} />}
-        onClick={onMaximizar}
-        title={maximizado ? 'Restaurar' : 'Pantalla completa'}
-        active={maximizado}
-        style={{ alignSelf: 'center', marginLeft: 6 }}
-      />
+        {/* Capturar — primary action, always visible, disabled when empty */}
+        {/* Two-state: idle (gold outline) → captured (success green). */}
+        <button
+          onClick={onCapturar}
+          disabled={modulosCount === 0}
+          title={capturado ? 'Vista capturada — hacer clic para recapturar' : 'Capturar vista 3D'}
+          style={{
+            padding: '5px 16px',
+            borderRadius: 8,
+            cursor: modulosCount === 0 ? 'default' : 'pointer',
+            background: capturado ? T.success.bg     : tb.activeBg,
+            border:     capturado ? `1px solid ${T.success.border}` : `1px solid ${tb.activeBorder}`,
+            color:      capturado ? T.success.text   : tb.activeText,
+            fontSize: 11,
+            fontFamily: "'DM Mono',monospace",
+            fontWeight: 600,
+            letterSpacing: '0.05em',
+            opacity: modulosCount === 0 ? 0.28 : 1,
+            transition: 'all 0.2s',
+            outline: 'none',
+            lineHeight: 1,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {capturado ? '✓ Capturado' : '◈ Capturar'}
+        </button>
+
+        {/* Maximize / restore — always on the far right edge */}
+        <IconBtn
+          icon={maximizado ? <MinimizeIcon size={tb.iconSize} /> : <MaximizeIcon size={tb.iconSize} />}
+          onClick={onMaximizar}
+          title={maximizado ? 'Restaurar' : 'Pantalla completa'}
+          active={maximizado}
+        />
+      </div>
     </div>
   );
 }

@@ -92,37 +92,41 @@ export function ToolbarBtn({ icon, label, active, onClick, title, variant = 'exc
 // Full-height toggle with adjacent color-picker swatch.
 // Toggle action and color selection are independent click targets.
 //
-// The ToolbarBtn stretches to full toolbar height.
-// The color swatch is a sibling, center-aligned, opens a hidden <input type=color>.
-export function ToolbarColorToggle({ value, onToggle, color, onColor, label }) {
+// icon      ReactNode — shown inside the toggle button (required for icon-only mode)
+// title     string — tooltip shown on hover for both the button and the swatch
+// label     string — fallback for title if title not provided (legacy compat)
+export function ToolbarColorToggle({ icon, value, onToggle, color, onColor, label, title }) {
   const inputRef = useRef();
   const T = tok();
+  const tip = title || label || '';
 
   return (
     <div style={{ display: 'flex', alignItems: 'stretch' }}>
       <ToolbarBtn
         variant="toggle"
-        label={label}
+        icon={icon}
         active={value}
         onClick={onToggle}
+        title={tip}
       />
-      {/* Color swatch — sits right of the toggle, vertically centered */}
+      {/* Color swatch — sits right of toggle, vertically centered. Square, clearly a picker. */}
       <div
         onClick={() => inputRef.current?.click()}
-        title={`Color de ${label}`}
+        title={`Color: ${tip}`}
         style={{
-          width: 9, height: 9,
-          borderRadius: '50%',
+          width: 11, height: 11,
+          borderRadius: 3,
           background: color,
-          border: `1px solid ${T.swatchBord}`,
+          border: `1.5px solid ${T.swatchBord}`,
           cursor: 'pointer',
           alignSelf: 'center',
           flexShrink: 0,
-          marginLeft: -2,
+          marginLeft: -1,
           marginRight: 5,
           transition: 'transform 0.12s',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.20)',
         }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.5)'; }}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.45)'; }}
         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
       />
       <input
@@ -142,9 +146,10 @@ export function ToolbarColorToggle({ value, onToggle, color, onColor, label }) {
 // Manages open/close + outside-click + panel positioning only.
 //
 // icon      ReactNode from icons.jsx
-// label     string — short label shown below icon
+// label     string — optional short label shown below icon (omit for icon-only mode)
+// title     string — tooltip shown on hover (falls back to label)
 // active    boolean — trigger shows active state independently of open state
-export function ToolbarDropdown({ icon, label, active, children }) {
+export function ToolbarDropdown({ icon, label, title, active, children }) {
   const [open, setOpen] = useState(false);
   const ref = useRef();
   const T  = tok();
@@ -176,6 +181,7 @@ export function ToolbarDropdown({ icon, label, active, children }) {
     <div ref={ref} style={{ position: 'relative', display: 'flex', alignSelf: 'stretch' }}>
       <BaseButton
         onClick={() => setOpen(v => !v)}
+        title={title || label}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           gap: 3,
@@ -194,10 +200,12 @@ export function ToolbarDropdown({ icon, label, active, children }) {
           {icon}
           <span style={{ fontSize: 6, opacity: 0.55, lineHeight: 1, marginTop: 1 }}>▾</span>
         </span>
-        {/* Label below */}
-        <span style={{ fontSize: 7, fontFamily: "'DM Mono', monospace", letterSpacing: '0.06em' }}>
-          {label}
-        </span>
+        {/* Label below — only rendered if label prop is provided */}
+        {label && (
+          <span style={{ fontSize: 7, fontFamily: "'DM Mono', monospace", letterSpacing: '0.06em' }}>
+            {label}
+          </span>
+        )}
       </BaseButton>
 
       {open && (

@@ -59,8 +59,9 @@ export function tok() {
     cardShadow:   d ? '0 1px 4px rgba(0,0,0,0.45), 0 6px 28px rgba(0,0,0,0.35)'
                     : '0 1px 3px rgba(0,0,0,0.14), 0 4px 20px rgba(0,0,0,0.09)',
     // Workspace surface: a unified container behind panel cards.
-    // dark: #050709 (deeper than desk #07090c) | light: #CBC7C0 (clearly darker than desk)
-    workspaceBg:     d ? '#050709'                   : '#CBC7C0',
+    // dark: #050709 (deeper than desk #07090c)
+    // light: warm ash, semi-transparent so desk #EEE9E2 bleeds through — ceniza, not blue
+    workspaceBg:     d ? '#050709'                   : 'rgba(150,145,138,0.78)',
     workspaceBorder: d ? 'rgba(255,255,255,0.12)'    : 'rgba(0,0,0,0.18)',
     border, borderSub,
     toolbarBg, toolbarShadow,
@@ -83,8 +84,8 @@ export function tok() {
     emptySub:     d ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.28)',
     // Hint text (viewport bottom): clearly readable, clearly secondary
     hint:         d ? 'rgba(255,255,255,0.26)' : 'rgba(0,0,0,0.45)',
-    // Viewport background: cool-gray creates thermal contrast vs warm panels
-    canvasFallbk: d ? '#080a0d'     : '#ECEEF1',
+    // Viewport background: warm-neutral, no blue cast. Thermal contrast via darkness, not hue.
+    canvasFallbk: d ? '#080a0d'     : '#E6E4E0',
     inputBg:      d ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
     inputBord:    d ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
     inputText:    d ? '#c4c8d4'     : '#1A1916',
@@ -107,7 +108,7 @@ export function tok() {
                         : '0 1px 3px rgba(0,0,0,0.14), 0 3px 16px rgba(0,0,0,0.08)',
       border,
       height:         52,     // px
-      iconSize:       14,     // px
+      iconSize:       16,     // px — icon-only buttons need more visual weight
       activeBg:       d ? 'rgba(212,175,55,0.18)' : 'rgba(184,146,10,0.12)',
       activeBorder:   goldBord,
       activeText:     gold,
