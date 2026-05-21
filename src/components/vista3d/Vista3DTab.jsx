@@ -12,6 +12,7 @@ import { calcularModulo, fmtPeso } from '../../utils.js';
 import { resolverModuloEfectivo } from '../../services/moduloService.js';
 import { cargarCatalogoAmbiente, crearInstanciaAmbiente } from '../../services/ambienteService.js';
 import { GaleriaAmbiente } from './ambiente/GaleriaAmbiente.jsx';
+import { InspectorObjeto } from './ambiente/InspectorObjeto.jsx';
 
 // ── Vista3DTab ─────────────────────────────────────────────────────────────────
 export function Vista3DTab({
@@ -179,6 +180,16 @@ export function Vista3DTab({
     return inlineModulos?.[selectedInst.itemKey] ?? modulos?.[selectedInst.codigo] ?? null;
   }, [selectedInst, modulos, inlineModulos]);
 
+  // Objeto de escenografía seleccionado + su definición de catálogo.
+  const objetoSelInst = useMemo(
+    () => escenografia.find(o => o.instanceId === objetoSelId) || null,
+    [escenografia, objetoSelId],
+  );
+  const objetoSelDef = useMemo(
+    () => (objetoSelInst ? catalogoAmbiente.find(o => o.id === objetoSelInst.objetoId) || null : null),
+    [objetoSelInst, catalogoAmbiente],
+  );
+
   const dimsActuales = useMemo(() => {
     if (!selectedInst?.itemKey || !selectedModulo) return null;
     const mod = resolverModuloEfectivo({
@@ -305,6 +316,15 @@ export function Vista3DTab({
     setEscenografia(prev => prev.map(o =>
       o.instanceId === instanceId
         ? { ...o, transform: { ...o.transform, rotation: { y: (o.transform.rotation?.y || 0) + deltaY } } }
+        : o
+    ));
+  };
+
+  const handleEscalarObjeto = (instanceId, scale) => {
+    if (!setEscenografia) return;
+    setEscenografia(prev => prev.map(o =>
+      o.instanceId === instanceId
+        ? { ...o, transform: { ...o.transform, scale } }
         : o
     ));
   };
@@ -611,30 +631,42 @@ export function Vista3DTab({
           </div>
         )}
 
-        {/* Inspector */}
+        {/* Inspector — objeto de ambiente si hay uno seleccionado, si no el módulo */}
         <div style={{
           flex: 1, minHeight: 0,
           display: 'flex', flexDirection: 'column',
           borderTop: `1px solid ${T.divider}`,
         }}>
-          <SectionLabel style={{ padding: '12px 14px 6px' }}>Inspector</SectionLabel>
+          <SectionLabel style={{ padding: '12px 14px 6px' }}>
+            {objetoSelInst ? 'Objeto' : 'Inspector'}
+          </SectionLabel>
           <PanelDivider />
-          <InspectorPanel
-            selectedInst={selectedInst}
-            modulo={selectedModulo}
-            dims={dimsActuales}
-            items={items}
-            costos={costos}
-            biblioteca={biblioteca}
-            materialIdActual={materialIdActual}
-            onAsignarMaterial={handleAsignarMaterial}
-            onRotar={() => selectedCod && handleRotar90(selectedCod)}
-            onEliminar={() => selectedCod && handleEliminarModulo(selectedCod)}
-            onSetParametros={handleSetParametros}
-            texturaRepeat={texturaRepeat}
-            onTexturaRepeat={setTexturaRepeat}
-            onDimChange={handleDimChange}
-          />
+          {objetoSelInst ? (
+            <InspectorObjeto
+              objeto={objetoSelDef}
+              inst={objetoSelInst}
+              onEscalar={handleEscalarObjeto}
+              onRotar={handleRotarObjeto}
+              onEliminar={handleEliminarObjeto}
+            />
+          ) : (
+            <InspectorPanel
+              selectedInst={selectedInst}
+              modulo={selectedModulo}
+              dims={dimsActuales}
+              items={items}
+              costos={costos}
+              biblioteca={biblioteca}
+              materialIdActual={materialIdActual}
+              onAsignarMaterial={handleAsignarMaterial}
+              onRotar={() => selectedCod && handleRotar90(selectedCod)}
+              onEliminar={() => selectedCod && handleEliminarModulo(selectedCod)}
+              onSetParametros={handleSetParametros}
+              texturaRepeat={texturaRepeat}
+              onTexturaRepeat={setTexturaRepeat}
+              onDimChange={handleDimChange}
+            />
+          )}
         </div>
       </div>
 
