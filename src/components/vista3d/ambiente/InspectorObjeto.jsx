@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { tok } from '../theme.js';
-import { SectionLabel, PanelDivider } from '../ui.jsx';
+import { PanelSection } from '../ui.jsx';
 
 const ROT_STEP = Math.PI / 12; // 15°
 const ESC_MIN = 0.25;
@@ -55,7 +55,7 @@ export function InspectorObjeto({ objeto, inst, onEscalar, onAltura, onRotar, on
     }}>
 
       {/* Header */}
-      <div style={{ padding: '12px 14px 12px', flexShrink: 0 }}>
+      <div style={{ padding: '12px 14px 10px', flexShrink: 0 }}>
         <div style={{
           fontSize: 9, fontFamily: "'DM Mono',monospace",
           color: T.textDim, letterSpacing: '0.08em', marginBottom: 4,
@@ -71,22 +71,8 @@ export function InspectorObjeto({ objeto, inst, onEscalar, onAltura, onRotar, on
         </div>
       </div>
 
-      <PanelDivider />
-
       {/* Escala */}
-      <div style={{ flexShrink: 0 }}>
-        <div style={{
-          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-          padding: '0 14px',
-        }}>
-          <SectionLabel>Escala</SectionLabel>
-          <span style={{
-            fontSize: 11, fontWeight: 700,
-            fontFamily: "'DM Mono',monospace", color: T.accent,
-          }}>
-            {Math.round(scale * 100)}%
-          </span>
-        </div>
+      <PanelSection label="Escala" right={`${Math.round(scale * 100)}%`} defaultOpen={false}>
         <div style={{ padding: '4px 14px 12px' }}>
           <input
             type="range"
@@ -108,24 +94,10 @@ export function InspectorObjeto({ objeto, inst, onEscalar, onAltura, onRotar, on
             Restablecer 100%
           </button>
         </div>
-      </div>
-
-      <PanelDivider />
+      </PanelSection>
 
       {/* Altura */}
-      <div style={{ flexShrink: 0 }}>
-        <div style={{
-          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-          padding: '0 14px',
-        }}>
-          <SectionLabel>Altura</SectionLabel>
-          <span style={{
-            fontSize: 11, fontWeight: 700,
-            fontFamily: "'DM Mono',monospace", color: T.accent,
-          }}>
-            {Math.round(altura * 100)} cm
-          </span>
-        </div>
+      <PanelSection label="Altura" right={`${Math.round(altura * 100)} cm`} defaultOpen={false}>
         <div style={{ padding: '4px 14px 12px' }}>
           <input
             type="range"
@@ -147,25 +119,24 @@ export function InspectorObjeto({ objeto, inst, onEscalar, onAltura, onRotar, on
             Apoyar en el piso
           </button>
         </div>
-      </div>
-
-      <PanelDivider />
+      </PanelSection>
 
       {/* Rotación */}
-      <div style={{ flexShrink: 0 }}>
-        <SectionLabel>Rotación</SectionLabel>
+      <PanelSection label="Rotación" defaultOpen={false}>
         <div style={{ display: 'flex', gap: 6, padding: '4px 14px 12px' }}>
           <button style={btn()} onClick={() => onRotar(inst.instanceId, -ROT_STEP)}>↺ 15°</button>
           <button style={btn()} onClick={() => onRotar(inst.instanceId, ROT_STEP)}>15° ↻</button>
         </div>
-      </div>
+      </PanelSection>
 
-      <PanelDivider />
-
-      {/* Eliminar */}
-      <div style={{ flexShrink: 0, padding: '10px 14px 14px' }}>
+      {/* Eliminar — acción destructiva, siempre visible */}
+      <div style={{
+        flexShrink: 0, padding: '10px 14px 14px', marginTop: 'auto',
+        borderTop: `1px solid ${T.divider}`,
+      }}>
         <button
           style={btn({
+            flex: 'none', width: '100%',
             background: T.rmBg, border: `1px solid ${T.rmBord}`, color: T.rmText,
           })}
           onClick={() => onEliminar(inst.instanceId)}

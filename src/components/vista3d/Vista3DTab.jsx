@@ -7,7 +7,7 @@ import { SceneOutliner } from './SceneOutliner.jsx';
 import { InspectorPanel } from './InspectorPanel.jsx';
 import { ViewportToolbar } from './ViewportToolbar.jsx';
 import { useIsDark, tok } from './tokens.js';
-import { SectionLabel, PanelDivider } from './ui.jsx';
+// SectionLabel / PanelDivider no longer needed here — Inspector uses PanelSection from ui.jsx
 import { calcularModulo, fmtPeso } from '../../utils.js';
 import { resolverModuloEfectivo } from '../../services/moduloService.js';
 import { cargarCatalogoAmbiente, crearInstanciaAmbiente } from '../../services/ambienteService.js';
@@ -39,7 +39,8 @@ export function Vista3DTab({
   // ── Escenografía — objetos 3D de ambiente ─────────────────────────────────
   const catalogoAmbiente = useMemo(() => cargarCatalogoAmbiente(), []);
   const [objetoSelId,    setObjetoSelId]    = useState(null);
-  const [galeriaAbierta, setGaleriaAbierta] = useState(false);
+  const [galeriaAbierta,    setGaleriaAbierta]    = useState(false);
+  const [inspectorAbierto, setInspectorAbierto] = useState(true);
 
   // ── Display toggles ───────────────────────────────────────────────────────
   const [mostrarPiso,     setMostrarPiso]     = useState(true);
@@ -643,40 +644,68 @@ export function Vista3DTab({
 
         {/* Inspector — objeto de ambiente si hay uno seleccionado, si no el módulo */}
         <div style={{
-          flex: 1, minHeight: 0,
+          flex: inspectorAbierto ? 1 : '0 0 auto',
+          minHeight: 0,
           display: 'flex', flexDirection: 'column',
           borderTop: `1px solid ${T.divider}`,
         }}>
-          <SectionLabel style={{ padding: '12px 14px 6px' }}>
-            {objetoSelInst ? 'Objeto' : 'Inspector'}
-          </SectionLabel>
-          <PanelDivider />
-          {objetoSelInst ? (
-            <InspectorObjeto
-              objeto={objetoSelDef}
-              inst={objetoSelInst}
-              onEscalar={handleEscalarObjeto}
-              onAltura={handleAlturaObjeto}
-              onRotar={handleRotarObjeto}
-              onEliminar={handleEliminarObjeto}
-            />
-          ) : (
-            <InspectorPanel
-              selectedInst={selectedInst}
-              modulo={selectedModulo}
-              dims={dimsActuales}
-              items={items}
-              costos={costos}
-              biblioteca={biblioteca}
-              materialIdActual={materialIdActual}
-              onAsignarMaterial={handleAsignarMaterial}
-              onRotar={() => selectedCod && handleRotar90(selectedCod)}
-              onEliminar={() => selectedCod && handleEliminarModulo(selectedCod)}
-              onSetParametros={handleSetParametros}
-              texturaRepeat={texturaRepeat}
-              onTexturaRepeat={setTexturaRepeat}
-              onDimChange={handleDimChange}
-            />
+          <button
+            onClick={() => setInspectorAbierto(v => !v)}
+            style={{
+              flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '11px 14px',
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            <span style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 9, fontFamily: "'DM Mono',monospace",
+              letterSpacing: '0.10em', textTransform: 'uppercase',
+              color: T.section.text,
+            }}>
+              <span style={{ fontSize: 12 }}>◈</span>
+              {objetoSelInst ? 'Objeto' : 'Inspector'}
+            </span>
+            <span style={{ fontSize: 9, color: T.textDim }}>
+              {inspectorAbierto ? '▾' : '▸'}
+            </span>
+          </button>
+          {inspectorAbierto && (
+            <div style={{
+              flex: 1, minHeight: 0,
+              display: 'flex', flexDirection: 'column',
+              borderTop: `1px solid ${T.divider}`,
+            }}>
+              {objetoSelInst ? (
+                <InspectorObjeto
+                  objeto={objetoSelDef}
+                  inst={objetoSelInst}
+                  onEscalar={handleEscalarObjeto}
+                  onAltura={handleAlturaObjeto}
+                  onRotar={handleRotarObjeto}
+                  onEliminar={handleEliminarObjeto}
+                />
+              ) : (
+                <InspectorPanel
+                  selectedInst={selectedInst}
+                  modulo={selectedModulo}
+                  dims={dimsActuales}
+                  items={items}
+                  costos={costos}
+                  biblioteca={biblioteca}
+                  materialIdActual={materialIdActual}
+                  onAsignarMaterial={handleAsignarMaterial}
+                  onRotar={() => selectedCod && handleRotar90(selectedCod)}
+                  onEliminar={() => selectedCod && handleEliminarModulo(selectedCod)}
+                  onSetParametros={handleSetParametros}
+                  texturaRepeat={texturaRepeat}
+                  onTexturaRepeat={setTexturaRepeat}
+                  onDimChange={handleDimChange}
+                />
+              )}
+            </div>
           )}
         </div>
       </div>

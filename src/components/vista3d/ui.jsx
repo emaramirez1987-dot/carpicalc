@@ -396,3 +396,55 @@ export function PanelDivider({ style }) {
   const T = tok();
   return <div style={{ height: 1, background: T.divider, ...style }} />;
 }
+
+// ── PanelSection ───────────────────────────────────────────────────────────────
+// Collapsible accordion section for side panels.
+// The button header has a built-in top border (acts as divider between sections).
+//
+// label        string   — section name (uppercase monospace)
+// icon         string   — optional leading character/symbol
+// right        string   — optional value shown right of label (e.g. "75%", "600 cm")
+// defaultOpen  boolean  — initial open state (default: true)
+export function PanelSection({ label, icon, right, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const T = tok();
+  return (
+    <div style={{ flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '9px 14px',
+          background: 'transparent', border: 'none',
+          borderTop: `1px solid ${T.divider}`,
+          cursor: 'pointer', width: '100%', boxSizing: 'border-box',
+        }}
+      >
+        <span style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 9, fontFamily: "'DM Mono',monospace",
+          letterSpacing: '0.10em', textTransform: 'uppercase',
+          color: T.section.text,
+        }}>
+          {icon && <span style={{ fontSize: 11, lineHeight: 1 }}>{icon}</span>}
+          {label}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {right && (
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              fontFamily: "'DM Mono',monospace",
+              color: T.accent, lineHeight: 1,
+            }}>
+              {right}
+            </span>
+          )}
+          <span style={{ fontSize: 9, color: T.textDim, lineHeight: 1 }}>
+            {open ? '▾' : '▸'}
+          </span>
+        </span>
+      </button>
+      {open && children}
+    </div>
+  );
+}

@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { tok } from './theme.js';
-import { SectionLabel, PanelDivider } from './ui.jsx';
+import { PanelSection } from './ui.jsx';
 import { MaterialGallery } from './MaterialGallery.jsx';
 import ConfiguradorParametrico from '../presupuesto/ConfiguradorParametrico.jsx';
 
@@ -123,7 +123,7 @@ export function InspectorPanel({
     }}>
 
       {/* ── Header: module code + name ────────────────────────────────── */}
-      <div style={{ padding: '12px 14px 12px', flexShrink: 0 }}>
+      <div style={{ padding: '12px 14px 10px', flexShrink: 0 }}>
         <div style={{
           fontSize: 9, fontFamily: "'DM Mono',monospace",
           color: T.textDim, letterSpacing: '0.08em',
@@ -140,42 +140,34 @@ export function InspectorPanel({
         </div>
       </div>
 
-      <PanelDivider />
-
       {/* ── DIMENSIONES ───────────────────────────────────────────────── */}
       {dims && (
-        <div style={{ flexShrink: 0 }}>
-          <SectionLabel>Dimensiones</SectionLabel>
+        <PanelSection label="Dimensiones" defaultOpen={false}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '4px 0 12px' }}>
             <DimInput campo="ancho"       label="Ancho"  value={dims.ancho}       onChange={onDimChange} modified={dims.ancho       !== baseDims.ancho} />
             <DimInput campo="alto"        label="Alto"   value={dims.alto}        onChange={onDimChange} modified={dims.alto        !== baseDims.alto} />
             <DimInput campo="profundidad" label="Prof."  value={dims.profundidad} onChange={onDimChange} modified={dims.profundidad !== baseDims.profundidad} />
           </div>
-        </div>
+        </PanelSection>
       )}
 
       {/* ── PARÁMETROS ────────────────────────────────────────────────── */}
       {tieneParams && itemIdx != null && (
-        <>
-          <PanelDivider />
-          <div style={{ flexShrink: 0 }}>
-            <SectionLabel>Parámetros</SectionLabel>
-            <div style={{ padding: '0 12px 12px' }}>
-              <ConfiguradorParametrico
-                modulo={modulo}
-                valores={items[itemIdx]?.parametrosValores || {}}
-                onChange={(v) => onSetParametros(itemIdx, v)}
-                costos={costos}
-              />
-            </div>
+        <PanelSection label="Parámetros" defaultOpen={false}>
+          <div style={{ padding: '0 12px 12px' }}>
+            <ConfiguradorParametrico
+              modulo={modulo}
+              valores={items[itemIdx]?.parametrosValores || {}}
+              onChange={(v) => onSetParametros(itemIdx, v)}
+              costos={costos}
+            />
           </div>
-        </>
+        </PanelSection>
       )}
 
       {/* ── MATERIAL ──────────────────────────────────────────────────── */}
       {biblioteca.length > 0 && itemIdx != null && (
-        <>
-          <PanelDivider />
+        <PanelSection label="Material" defaultOpen={false}>
           <MaterialGallery
             biblioteca={biblioteca}
             materialIdActual={materialIdActual}
@@ -183,7 +175,7 @@ export function InspectorPanel({
             texturaRepeat={texturaRepeat}
             onTexturaRepeat={onTexturaRepeat}
           />
-        </>
+        </PanelSection>
       )}
 
       {/* Bottom padding */}
