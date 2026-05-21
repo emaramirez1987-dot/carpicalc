@@ -240,16 +240,24 @@ export function Vista3DTab({
 
   const handleEliminarModulo = (instanceId) => {
     const inst = modulosEnEscena.find(m => m.instanceId === instanceId);
+
+    // Siempre quitar la instancia de la escena 3D
+    setModulosEnEscena(prev => prev.filter(m => m.instanceId !== instanceId));
+
+    // Si está vinculado a un ítem del presupuesto: decrementar cantidad,
+    // o eliminar el ítem si cantidad llega a 0
     if (inst?.itemKey && setItems) {
-      setItems(prev => prev.map(it => {
-        const key = it.id || it.codigo;
-        if (key !== inst.itemKey) return it;
-        const nuevaCantidad = (it.cantidad || 1) - 1;
-        return nuevaCantidad > 0 ? { ...it, cantidad: nuevaCantidad } : it;
-      }));
-    } else {
-      setModulosEnEscena(prev => prev.filter(m => m.instanceId !== instanceId));
+      setItems(prev => prev
+        .map(it => {
+          const key = it.id || it.codigo;
+          if (key !== inst.itemKey) return it;
+          const nuevaCantidad = (it.cantidad || 1) - 1;
+          return nuevaCantidad > 0 ? { ...it, cantidad: nuevaCantidad } : null;
+        })
+        .filter(Boolean)
+      );
     }
+
     setSelectedCod(null);
   };
 
