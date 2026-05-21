@@ -335,13 +335,52 @@ Cubren el motor de fórmulas, parámetros, subcomponentes y armado 3D.
 ### Features pendientes
 | Priority | Feature | Notes |
 |---|---|---|
+| **Alta** | **Edición de dimensiones desde Vista 3D → impacto en costos** | Ver plan detallado abajo. Handler `handleDimChange` ya existe en Vista3DTab. 3 pasos: (1) activar DimInput editable, (2) aplicar dimOverride en calcularModulo, (3) feedback visual en badge total. |
 | Alta | Public budget link | Flujo de aprobación del cliente vía link público |
 | Baja | Resumen mensual / m² calculator / export lista de compras | |
 | Opcional | Editor 3D inmersivo Nivel 2/3 | Medir, esconder/explotar, sección · gizmos drag, snap, history. Diferido hasta que haya uso real que lo justifique. |
 
+### Plan: Dimensiones desde Vista 3D con impacto en costos
+
+**Estado actual:** `handleDimChange` en `Vista3DTab.jsx` ya escribe `dimOverride[itemKey].ancho|alto|profundidad` correctamente. `DimInput` en `InspectorPanel` tiene `readOnly` y el handler no está conectado.
+
+**Paso 1 — Activar inputs (trivial)**
+- En `InspectorPanel.jsx`: quitar `readOnly` de `DimInput`, agregar `onChange={(e) => onDimChange(campo, e.target.value)}`
+- Conectar `onDimChange` desde `Vista3DTab` al `InspectorPanel` (ya está en la firma como prop preparado)
+
+**Paso 2 — Aplicar dimOverride en cálculo de costos (clave)**
+- En App.js, donde se llama `calcularModulo(modulo, costos, valoresParametros)` para armar los costos del presupuesto, agregar la aplicación del override dimensional:
+  ```js
+  const overrideDims = dimOverride[itemKey] || {};
+  const moduloConOverride = (overrideDims.ancho || overrideDims.alto || overrideDims.profundidad)
+    ? { ...modulo, dimensiones: {
+        ...modulo.dimensiones,
+        ...(overrideDims.ancho       && { ancho:       overrideDims.ancho }),
+        ...(overrideDims.alto        && { alto:        overrideDims.alto }),
+        ...(overrideDims.profundidad && { profundidad: overrideDims.profundidad }),
+      }}
+    : modulo;
+  calcularModulo(moduloConOverride, costos, valoresParametros);
+  ```
+- El `materialId` que también vive en `dimOverride` ya es manejado por `resolverMaterial` — no tocarlo.
+- `dimOverride` llega a App.js vía el presupuesto activo (`presupuesto.dimOverride`). Verificar que `setDimOverride` en Vista3DTab persista en el presupuesto activo (hoy solo vive en estado local de Vista3DTab — **esto requiere elevar el estado o conectar al guardado del presupuesto**).
+
+**Paso 3 — Feedback visual**
+- El badge "Total presupuesto" en el canvas ya se recalcula cuando cambia el total → se actualiza automáticamente.
+- El 3D visual ya usa `dimOverride` para dimensionar la malla → se actualiza automáticamente.
+- Agregar indicador visual en DimInput cuando el valor difiere del default del módulo (ej. color de borde diferente).
+
+**Punto crítico — Persistencia del dimOverride:**
+Hoy `dimOverride` en Vista3DTab es estado LOCAL del componente. Para que los overrides de dimensión (y de material) sobrevivan al cambio de pestaña y se guarden en Supabase, el estado debe estar en el presupuesto activo. El `materialId` ya se guarda por este camino (`setDimOverride` viene de `App.js`). Confirmar si `dimOverride` ya se persiste en el presupuesto o si todavía es efímero.
+
 ### Features completadas recientemente
 | Fecha | Feature | Detalle |
 |---|---|---|
+| 2026-05-21 | **Vista 3D — rediseño UI completo** | Estética CAD/profesional: paleta warm-ash, toolbar con grupos VISTAS/ENTORNO + TGroup (label + row centrado), Piso/Mesada/Grilla como ToolbarDropdown con ColorToggle integrado, separador entre grupos, acciones derechas (Refresh · Capturar · Maximize). Nuevos íconos: `FloorIcon`, `MesadaIcon`. `ToolbarDropdown` sin `alignSelf:stretch`. Header App.js: tabs con `flex:1 + space-evenly`, Taller siempre visible. |
+| 2026-05-21 | **InspectorPanel — rediseño** | DimInput como fila horizontal (label izquierda, input derecha). Botones Rotar/Eliminar sacados del panel (ya están como overlay en el visor 3D). Header limpio: solo código + nombre del módulo. |
+| 2026-05-21 | **ConfiguradorParametrico — rediseño filas** | Eliminado título "⚙ Configuración paramétrica". Grilla 2 columnas → filas únicas: label izquierda (uppercase 9px), control derecha (130px fijo). Tipos boolean/choice con `<select>` compacto; formula muestra `= valor` alineado derecha. |
+| 2026-05-21 | **Fix: quitar módulo desde Vista 3D** | `handleEliminarModulo` tenía dos bugs: (1) nunca sacaba la instancia de `modulosEnEscena` cuando había `itemKey`, (2) cuando `cantidad` llegaba a 0 devolvía `it` sin cambios. Corregido: siempre filtra la instancia del visor + filtra el ítem del presupuesto cuando cantidad = 0. |
+| 2026-05-21 | **Color de grilla configurable** | Botón Grilla en toolbar convertido a `ToolbarDropdown` con `ColorToggle` (mismo patrón que Piso/Mesada). Estado `colorGrilla` en Vista3DTab, sincronizado con tema. `GrillaFloor` acepta `colorGrilla` prop y lo usa en `THREE.GridHelper`. |
 | 2026-05-20 | **Unificación material ↔ textura en Vista 3D** | El material es la única fuente de verdad: de `dimOverride.materialId` se deriva costo Y visual (textura PNG + PBR). Se eliminó `texturaCode` y el sistema de textura paralelo. Nueva función `resolverVisualMaterial` en `materialesService.js` (textura + color/roughness/metalness, con fallback por tipo). `MATERIAL_VACIO` ganó campos `color/roughness/metalness`. `Modulo3D` crea una sola textura THREE por módulo (se libera con `dispose`). `useMaterial3D.js` re-exporta `getMaterialProps` del service. App.js: eliminado el mapa legacy `materiales3D`. |
 | 2026-05-20 | **Material de costo desde Vista 3D** | Panel lateral de Vista3DTab incluye selector de material de la biblioteca real (agrupado por tipo). Al elegir un material se guarda `materialId` en `dimOverride[itemKey]`. `calcularModulo` lo resuelve vía `resolverMaterial` cuando `costos.bibliotecaMateriales` está presente → el total del presupuesto se recalcula en vivo. Fallback: si no hay `materialId`, resuelve por tipo (comportamiento anterior). |
 | 2026-05-19 | **Biblioteca de materiales EGGER** | `materialesService.js` + `MaterialesManager.jsx` + `MaterialEditorDrawer.jsx`. Importación de `catalogo-egger.json`. Paginación, filtros, agrupación de variantes AGL/MDF con toggle. Integración con motor de costos vía `esDefault` y `materialId`. |
