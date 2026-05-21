@@ -107,7 +107,7 @@ export function tok() {
       capsuleShadow:  d ? '0 2px 20px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.08)'
                         : '0 1px 3px rgba(0,0,0,0.14), 0 3px 16px rgba(0,0,0,0.08)',
       border,
-      height:         52,     // px
+      height:         58,     // px — extra room for group labels above buttons
       iconSize:       16,     // px — icon-only buttons need more visual weight
       activeBg:       d ? 'rgba(212,175,55,0.18)' : 'rgba(184,146,10,0.12)',
       activeBorder:   goldBord,
