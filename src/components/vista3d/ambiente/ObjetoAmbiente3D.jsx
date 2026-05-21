@@ -34,7 +34,7 @@ export function ObjetoAmbiente3D({
   const arrastrando = useRef(false);
   const huboDrag    = useRef(false);
   const origenMouse = useRef({ x: 0, y: 0 });
-  const { camera, gl } = useThree();
+  const { camera, gl, scene: escena3D } = useThree();
 
   const { scene } = useGLTF(objeto.modelUrl);
 
@@ -58,7 +58,6 @@ export function ObjetoAmbiente3D({
 
   const t = inst.transform || {};
   const pos = t.position || { x: 0, y: 0, z: 0 };
-  const baseY = (pos.y || 0) + (objeto.alturaBase || 0);
   const escalaFinal = fitScale * (t.scale ?? 1);
 
   // Dimensiones visibles (para recuadro de selección y posición del overlay).
@@ -83,14 +82,23 @@ export function ObjetoAmbiente3D({
         if (Math.hypot(dx, dy) < 5) return; // umbral click vs drag
         huboDrag.current = true;
       }
+      if (!grupoRef.current) return;
       const rect = canvas.getBoundingClientRect();
       const nx =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
       const ny = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
       raycaster.setFromCamera({ x: nx, y: ny }, camera);
-      const hit = new THREE.Vector3();
-      if (raycaster.ray.intersectPlane(planoPiso, hit) && grupoRef.current) {
-        grupoRef.current.position.x = hit.x;
-        grupoRef.current.position.z = hit.z;
+      // Snap a superficies válidas (piso, mesada) — marcadas con userData.snapTarget.
+      // El objeto arrastrado no tiene el flag → no se snapea a sí mismo.
+      const hits = raycaster.intersectObjects(escena3D.children, true);
+      const hit = hits.find(h => h.object?.userData?.snapTarget);
+      if (hit) {
+        grupoRef.current.position.copy(hit.point);
+      } else {
+        // Fallback: plano del piso
+        const p = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(planoPiso, p)) {
+          grupoRef.current.position.set(p.x, 0, p.z);
+        }
       }
     };
 
@@ -101,7 +109,7 @@ export function ObjetoAmbiente3D({
       canvas.style.cursor = 'auto';
       if (huboDrag.current && grupoRef.current) {
         const p = grupoRef.current.position;
-        latest.current.onMover(latest.current.instanceId, { x: p.x, z: p.z });
+        latest.current.onMover(latest.current.instanceId, { x: p.x, y: p.y, z: p.z });
       }
       huboDrag.current = false;
     };
@@ -112,12 +120,12 @@ export function ObjetoAmbiente3D({
       canvas.removeEventListener('pointermove', onMove);
       canvas.removeEventListener('pointerup',   onUp);
     };
-  }, [camera, gl, raycaster, planoPiso, orbitRef]);
+  }, [camera, gl, escena3D, raycaster, planoPiso, orbitRef]);
 
   return (
     <group
       ref={grupoRef}
-      position={[pos.x || 0, baseY, pos.z || 0]}
+      position={[pos.x || 0, pos.y || 0, pos.z || 0]}
       rotation={[0, t.rotation?.y || 0, 0]}
       onPointerDown={(e) => {
         if (e.button !== 0) return;

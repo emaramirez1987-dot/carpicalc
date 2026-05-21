@@ -333,7 +333,8 @@ function GrillaFloor({ colorPiso, isDark, mostrarGrilla, divisiones, colorGrilla
     <>
       {/* Piso ligeramente por debajo de y=0 para evitar que tape las aristas
           inferiores de los módulos (los Edges quedaban cortados por z-fighting). */}
-      <mesh position={[0, -0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh position={[0, -0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow
+        userData={{ snapTarget: true }}>
         <planeGeometry args={[10, 10]} />
         <meshStandardMaterial color={colorPiso} roughness={0.92} metalness={0.01} />
       </mesh>
@@ -399,7 +400,7 @@ function Mesada({ livePositions, modulosEnEscena, color }) {
   });
 
   return (
-    <mesh ref={meshRef}>
+    <mesh ref={meshRef} userData={{ snapTarget: true }}>
       <boxGeometry args={[1, MESADA_THICKNESS, MESADA_DEPTH]} />
       <meshStandardMaterial color={color} roughness={0.3} metalness={0.05} />
     </mesh>

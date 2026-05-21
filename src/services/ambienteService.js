@@ -71,7 +71,7 @@ export function agruparPorCategoria(catalogo) {
  * Crea una instancia nueva de un objeto para colocar en la escena.
  * Transform estructurado (sin arrays mágicos) — persiste en presupuesto.escenografia.
  * @param {string} objetoId
- * @param {{x:number,z:number}=} pos  Posición en el piso (metros)
+ * @param {{x:number,y:number,z:number}=} pos  Posición inicial (metros)
  * @returns {Object}
  */
 export function crearInstanciaAmbiente(objetoId, pos = {}) {
@@ -79,7 +79,7 @@ export function crearInstanciaAmbiente(objetoId, pos = {}) {
     instanceId: crypto.randomUUID(),
     objetoId,
     transform: {
-      position: { x: pos.x || 0, y: 0, z: pos.z || 0 },
+      position: { x: pos.x || 0, y: pos.y || 0, z: pos.z || 0 },
       rotation: { y: 0 },
       scale: 1,
     },

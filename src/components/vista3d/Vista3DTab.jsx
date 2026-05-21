@@ -294,19 +294,29 @@ export function Vista3DTab({
   // ── Escenografía — handlers ───────────────────────────────────────────────
   const handleAgregarObjeto = (objetoId) => {
     if (!setEscenografia) return;
+    const def = catalogoAmbiente.find(o => o.id === objetoId);
     // Offset escalonado para que objetos nuevos no se apilen exactamente.
     const x = (escenografia.length % 5) * 0.5 - 1;
-    const nueva = crearInstanciaAmbiente(objetoId, { x, z: 1.2 });
+    const nueva = crearInstanciaAmbiente(objetoId, { x, z: 1.2, y: def?.alturaBase || 0 });
     setEscenografia(prev => [...prev, nueva]);
     setObjetoSelId(nueva.instanceId);
     setSelectedCod(null);
   };
 
-  const handleMoverObjeto = (instanceId, { x, z }) => {
+  const handleMoverObjeto = (instanceId, { x, y, z }) => {
     if (!setEscenografia) return;
     setEscenografia(prev => prev.map(o =>
       o.instanceId === instanceId
-        ? { ...o, transform: { ...o.transform, position: { ...o.transform.position, x, z } } }
+        ? { ...o, transform: { ...o.transform, position: { x, y, z } } }
+        : o
+    ));
+  };
+
+  const handleAlturaObjeto = (instanceId, y) => {
+    if (!setEscenografia) return;
+    setEscenografia(prev => prev.map(o =>
+      o.instanceId === instanceId
+        ? { ...o, transform: { ...o.transform, position: { ...o.transform.position, y } } }
         : o
     ));
   };
@@ -646,6 +656,7 @@ export function Vista3DTab({
               objeto={objetoSelDef}
               inst={objetoSelInst}
               onEscalar={handleEscalarObjeto}
+              onAltura={handleAlturaObjeto}
               onRotar={handleRotarObjeto}
               onEliminar={handleEliminarObjeto}
             />

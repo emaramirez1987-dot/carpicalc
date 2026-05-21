@@ -10,6 +10,7 @@ import { SectionLabel, PanelDivider } from '../ui.jsx';
 const ROT_STEP = Math.PI / 12; // 15°
 const ESC_MIN = 0.25;
 const ESC_MAX = 3;
+const ALT_MAX = 2.5; // metros — rango del slider de altura
 
 function EmptyObjeto() {
   const T = tok();
@@ -30,12 +31,13 @@ function EmptyObjeto() {
   );
 }
 
-export function InspectorObjeto({ objeto, inst, onEscalar, onRotar, onEliminar }) {
+export function InspectorObjeto({ objeto, inst, onEscalar, onAltura, onRotar, onEliminar }) {
   const T = tok();
 
   if (!objeto || !inst) return <EmptyObjeto />;
 
   const scale = inst.transform?.scale ?? 1;
+  const altura = inst.transform?.position?.y ?? 0;
 
   const btn = (extra) => ({
     flex: 1, padding: '7px 0',
@@ -104,6 +106,45 @@ export function InspectorObjeto({ objeto, inst, onEscalar, onRotar, onEliminar }
             }}
           >
             Restablecer 100%
+          </button>
+        </div>
+      </div>
+
+      <PanelDivider />
+
+      {/* Altura */}
+      <div style={{ flexShrink: 0 }}>
+        <div style={{
+          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          padding: '0 14px',
+        }}>
+          <SectionLabel>Altura</SectionLabel>
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            fontFamily: "'DM Mono',monospace", color: T.accent,
+          }}>
+            {Math.round(altura * 100)} cm
+          </span>
+        </div>
+        <div style={{ padding: '4px 14px 12px' }}>
+          <input
+            type="range"
+            min={0} max={ALT_MAX} step={0.05}
+            value={Math.min(altura, ALT_MAX)}
+            onChange={(e) => onAltura(inst.instanceId, Number(e.target.value))}
+            style={{ width: '100%', accentColor: T.accent, cursor: 'pointer' }}
+          />
+          <button
+            onClick={() => onAltura(inst.instanceId, 0)}
+            style={{
+              marginTop: 6, padding: '4px 8px',
+              fontSize: 8, fontFamily: "'DM Mono',monospace",
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              background: 'transparent', border: `1px solid ${T.inputBord}`,
+              borderRadius: 5, color: T.textDim, cursor: 'pointer',
+            }}
+          >
+            Apoyar en el piso
           </button>
         </div>
       </div>
