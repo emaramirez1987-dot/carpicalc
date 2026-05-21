@@ -52,15 +52,16 @@ export function ViewportToolbar({
   return (
     <div style={{
       display: 'flex', alignItems: 'stretch', gap: 0,
-      padding: '0 10px',
+      padding: '0 12px',
       background: tb.bg,
-      boxShadow: tb.shadow,
-      borderBottom: `1px solid ${tb.border}`,
+      boxShadow: tb.capsuleShadow,
+      border: `1px solid ${tb.border}`,
+      borderRadius: 14,
       minHeight: tb.height,
       flexShrink: 0,
       zIndex: 10,
-      backdropFilter: 'blur(10px)',
-      WebkitBackdropFilter: 'blur(10px)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
       transition: 'background 0.35s ease',
     }}>
 

@@ -45,6 +45,7 @@ export function tok() {
     outerBg:      d ? '#07090c'     : '#EEE9E2',
     panelBg:      d ? '#0b0d12'     : '#FFFFFF',
     panelShadow:  d ? '2px 0 20px rgba(0,0,0,0.45)' : '2px 0 20px rgba(0,0,0,0.06)',
+    cardShadow:   d ? '0 4px 32px rgba(0,0,0,0.52), 0 1px 3px rgba(0,0,0,0.28)' : '0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)',
     border, borderSub,
     toolbarBg, toolbarShadow,
     text:         d ? '#b8bcc8'     : '#1A1916',
@@ -82,6 +83,7 @@ export function tok() {
     toolbar: {
       bg:             toolbarBg,
       shadow:         toolbarShadow,
+      capsuleShadow:  d ? '0 2px 18px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06)' : '0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)',
       border,
       height:         52,     // px
       iconSize:       14,     // px

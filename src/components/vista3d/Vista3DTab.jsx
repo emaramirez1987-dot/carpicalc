@@ -287,25 +287,35 @@ export function Vista3DTab({
   };
 
   // ── Layout ────────────────────────────────────────────────────────────────
+  // Shared style for the desk surface (the background behind floating panels)
+  const deskStyle = {
+    display: 'flex', flexDirection: 'row',
+    background: T.outerBg,
+    gap: 14,
+    padding: '14px 20px',
+    boxSizing: 'border-box',
+    alignItems: 'stretch',
+    transition: 'background 0.35s ease',
+  };
+
   const inner = (
     <div style={maximizado ? {
+      ...deskStyle,
       position: 'fixed', inset: 0, zIndex: 200,
-      display: 'flex', flexDirection: 'row',
-      background: T.outerBg,
+      padding: '12px',
     } : {
-      display: 'flex', flexDirection: 'row',
+      ...deskStyle,
       height: 'calc(100vh - 120px)',
       margin: '0 -20px',
-      background: T.outerBg,
-      transition: 'background 0.35s ease',
     }}>
 
       {/* ── LEFT: Scene Outliner ─────────────────────────────────────── */}
       <div style={{
-        width: 220, flexShrink: 0,
+        width: 244, flexShrink: 0,
         background: T.panelBg,
-        boxShadow: T.panelShadow,
-        borderRight: `1px solid ${T.border}`,
+        boxShadow: T.cardShadow,
+        border: `1px solid ${T.border}`,
+        borderRadius: 18,
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden', zIndex: 2,
         transition: 'background 0.35s ease',
@@ -324,7 +334,7 @@ export function Vista3DTab({
       </div>
 
       {/* ── CENTER: Toolbar + Canvas ─────────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12, position: 'relative' }}>
 
         <ViewportToolbar
           camView={camView}
@@ -349,8 +359,12 @@ export function Vista3DTab({
           modulosCount={modulosEnEscena.length}
         />
 
-        {/* Canvas area */}
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        {/* Canvas area — viewport card */}
+        <div style={{
+          flex: 1, position: 'relative', overflow: 'hidden',
+          borderRadius: 20,
+          boxShadow: T.cardShadow,
+        }}>
 
           {/* Empty state */}
           {modulosEnEscena.length === 0 && (
@@ -470,9 +484,11 @@ export function Vista3DTab({
 
       {/* ── RIGHT: Inspector ─────────────────────────────────────────── */}
       <div style={{
-        width: 210, flexShrink: 0,
+        width: 236, flexShrink: 0,
         background: T.panelBg,
-        borderLeft: `1px solid ${T.border}`,
+        boxShadow: T.cardShadow,
+        border: `1px solid ${T.border}`,
+        borderRadius: 18,
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden', zIndex: 2,
         transition: 'background 0.35s ease',
