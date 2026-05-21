@@ -14,6 +14,7 @@ import {
   parsearModulo,
   parsearPresupuesto,
   resolverContextoModulo,
+  resolverModuloEfectivo,
   resolverParametros,
   generarPiezas,
   evaluarConstraints,
@@ -754,5 +755,106 @@ describe("evaluarConstraints (Fase 3)", () => {
     const r = evaluarConstraints(m, { cajones: 5 });
     expect(r[0].ok).toBe(false);
     expect(r[0].msg).toBe("Alto insuficiente");
+  });
+});
+
+// ── resolverModuloEfectivo ──────────────────────────────────────────────────
+
+describe("resolverModuloEfectivo", () => {
+  const modBase = {
+    nombre: "Bajo 2 puertas",
+    dimensiones: { ancho: 600, alto: 700, profundidad: 550 },
+    material: "melamina",
+    tipoVisual: "bajo",
+    piezas: [{ nombre: "lateral" }],
+  };
+  const modulos = { MC001: modBase };
+
+  test("devuelve null si no hay base ni inline", () => {
+    expect(resolverModuloEfectivo({ codigo: "NOPE", modulos })).toBeNull();
+    expect(resolverModuloEfectivo({ codigo: "MC001", modulos: {} })).toBeNull();
+  });
+
+  test("sin overrides devuelve las dimensiones y material de la base", () => {
+    const r = resolverModuloEfectivo({ codigo: "MC001", modulos });
+    expect(r.dimensiones).toEqual({ ancho: 600, alto: 700, profundidad: 550 });
+    expect(r.material).toBe("melamina");
+    expect(r.nombre).toBe("Bajo 2 puertas");
+  });
+
+  test("dimOverride.ancho cambia solo el ancho", () => {
+    const r = resolverModuloEfectivo({
+      codigo: "MC001", modulos, dimOverride: { ancho: 900 },
+    });
+    expect(r.dimensiones).toEqual({ ancho: 900, alto: 700, profundidad: 550 });
+  });
+
+  test("dimOverride parcial: solo alto", () => {
+    const r = resolverModuloEfectivo({
+      codigo: "MC001", modulos, dimOverride: { alto: 1200 },
+    });
+    expect(r.dimensiones).toEqual({ ancho: 600, alto: 1200, profundidad: 550 });
+  });
+
+  test("dimOverride con valor 0 se aplica (consistente con ??)", () => {
+    const r = resolverModuloEfectivo({
+      codigo: "MC001", modulos, dimOverride: { profundidad: 0 },
+    });
+    expect(r.dimensiones.profundidad).toBe(0);
+  });
+
+  test("dimOverride.materialId queda en el módulo efectivo", () => {
+    const r = resolverModuloEfectivo({
+      codigo: "MC001", modulos, dimOverride: { materialId: "EGGER-H1234" },
+    });
+    expect(r.materialId).toBe("EGGER-H1234");
+  });
+
+  test("dimOverride.material reemplaza el material de la base", () => {
+    const r = resolverModuloEfectivo({
+      codigo: "MC001", modulos, dimOverride: { material: "mdf" },
+    });
+    expect(r.material).toBe("mdf");
+  });
+
+  test("inline reemplaza la base por completo", () => {
+    const inline = {
+      nombre: "Editado inline",
+      dimensiones: { ancho: 800, alto: 750, profundidad: 600 },
+      material: "guayubira",
+      piezas: [{ nombre: "frente" }, { nombre: "fondo" }],
+    };
+    const r = resolverModuloEfectivo({ codigo: "MC001", modulos, inline });
+    expect(r.nombre).toBe("Editado inline");
+    expect(r.piezas).toHaveLength(2);
+    expect(r.dimensiones).toEqual({ ancho: 800, alto: 750, profundidad: 600 });
+  });
+
+  test("dimOverride se aplica ENCIMA del módulo inline", () => {
+    const inline = {
+      nombre: "Editado inline",
+      dimensiones: { ancho: 800, alto: 750, profundidad: 600 },
+      material: "guayubira",
+      piezas: [],
+    };
+    const r = resolverModuloEfectivo({
+      codigo: "MC001", modulos, inline, dimOverride: { ancho: 1000, materialId: "X1" },
+    });
+    expect(r.dimensiones.ancho).toBe(1000);
+    expect(r.dimensiones.alto).toBe(750);
+    expect(r.materialId).toBe("X1");
+  });
+
+  test("composicionOverride.vistaConfig sobrescribe la vistaConfig", () => {
+    const r = resolverModuloEfectivo({
+      codigo: "MC001", modulos,
+      composicionOverride: { vistaConfig: { foo: "bar" } },
+    });
+    expect(r.vistaConfig).toEqual({ foo: "bar" });
+  });
+
+  test("no muta el módulo base del catálogo", () => {
+    resolverModuloEfectivo({ codigo: "MC001", modulos, dimOverride: { ancho: 9999 } });
+    expect(modBase.dimensiones.ancho).toBe(600);
   });
 });

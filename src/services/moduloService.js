@@ -321,6 +321,56 @@ export function resolverContextoModulo(modulo, costos, valoresParametros = {}) {
   return { baseVars, modVars, espesor, materialDef, piezaVars };
 }
 
+// ── resolverModuloEfectivo ────────────────────────────────────────────────
+// Capa única de resolución del "módulo efectivo" de una instancia/ítem.
+//
+// Un mismo módulo del catálogo se cotiza y se renderiza distinto según los
+// overrides del presupuesto. Esta resolución estaba reimplementada inline en
+// 4 lugares (App.getModUsado, Vista3D itemsConCosto/dimsActuales, Escena3D
+// ModuloEnEscena) y las copias divergieron: el costo respetaba el material
+// elegido pero el 3D nunca veía los cambios de dimensión. Centralizando acá,
+// es imposible que vuelvan a divergir.
+//
+// Resolución: `inline` (reemplazo TOTAL del módulo) reemplaza a la base del
+// catálogo; sobre la base se aplican `dimOverride` (dimensiones + material)
+// y `composicionOverride` (vistaConfig). El override más específico gana.
+//
+// PURO: recibe data, devuelve data. NO aplica defaults de UI (ej. ancho ?? 600)
+// — eso es responsabilidad de la capa visual, no del dominio. Si una dimensión
+// no existe, el módulo efectivo tampoco la tiene.
+//
+// El caller hace el "keying": pasa `inline`/`dimOverride`/`composicionOverride`
+// ya seleccionados para esa instancia. Esto mantiene la función pura y agnóstica
+// de dónde viven los overrides (presupuesto vs. instancia de escena manual).
+//
+// @param {Object}  args
+// @param {string}  args.codigo               Código del módulo en el catálogo
+// @param {Object}  args.modulos              Catálogo { [codigo]: Modulo }
+// @param {Object=} args.inline               Módulo inline (reemplazo total) o null
+// @param {Object=} args.dimOverride          { ancho?, alto?, profundidad?, material?, materialId? }
+// @param {Object=} args.composicionOverride  { vistaConfig? }
+// @returns {Object|null} Módulo efectivo, o null si no hay base
+export function resolverModuloEfectivo({ codigo, modulos, inline, dimOverride, composicionOverride } = {}) {
+  const base = inline || modulos?.[codigo];
+  if (!base) return null;
+
+  const ov   = dimOverride || {};
+  const comp = composicionOverride;
+
+  return {
+    ...base,
+    dimensiones: {
+      ...(base.dimensiones || {}),
+      ...(ov.ancho       != null && { ancho:       ov.ancho }),
+      ...(ov.alto        != null && { alto:        ov.alto }),
+      ...(ov.profundidad != null && { profundidad: ov.profundidad }),
+    },
+    material:   ov.material   ?? base.material,
+    materialId: ov.materialId ?? base.materialId,
+    ...(comp?.vistaConfig != null && { vistaConfig: comp.vistaConfig }),
+  };
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // Generador paramétrico (Fase 3)
 // ════════════════════════════════════════════════════════════════════════════

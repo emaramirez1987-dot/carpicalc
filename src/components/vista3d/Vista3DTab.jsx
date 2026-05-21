@@ -9,6 +9,7 @@ import { ViewportToolbar } from './ViewportToolbar.jsx';
 import { useIsDark, tok } from './tokens.js';
 import { SectionLabel, PanelDivider } from './ui.jsx';
 import { calcularModulo, fmtPeso } from '../../utils.js';
+import { resolverModuloEfectivo } from '../../services/moduloService.js';
 
 // ── Vista3DTab ─────────────────────────────────────────────────────────────────
 export function Vista3DTab({
@@ -136,25 +137,23 @@ export function Vista3DTab({
   const itemsConCosto = useMemo(() => {
     return items.map(it => {
       const keyId  = it.id || it.codigo;
-      const inline = inlineModulos?.[keyId];
-      const base   = modulos?.[it.codigo];
-      const mod    = inline ?? base;
-      if (!mod) return { ...it, costoUnitario: 0, costoTotal: 0, modulo: null, dims: null };
-      const ov   = dimOverride[keyId] || {};
+      const base   = inlineModulos?.[keyId] ?? modulos?.[it.codigo];
+      if (!base) return { ...it, costoUnitario: 0, costoTotal: 0, modulo: null, dims: null };
+      const modResuelto = resolverModuloEfectivo({
+        codigo: it.codigo,
+        modulos,
+        inline: inlineModulos?.[keyId],
+        dimOverride: dimOverride[keyId],
+      });
+      const d = modResuelto.dimensiones || {};
       const dims = {
-        ancho:       ov.ancho       ?? mod.dimensiones?.ancho       ?? 600,
-        alto:        ov.alto        ?? mod.dimensiones?.alto        ?? 700,
-        profundidad: ov.profundidad ?? mod.dimensiones?.profundidad ?? 550,
-      };
-      const modResuelto = {
-        ...mod,
-        dimensiones: dims,
-        material:    ov.material   ?? mod.material,
-        materialId:  ov.materialId ?? mod.materialId,
+        ancho:       d.ancho       ?? 600,
+        alto:        d.alto        ?? 700,
+        profundidad: d.profundidad ?? 550,
       };
       const calc = calcularModulo(modResuelto, costos, it.parametrosValores || {});
       const costoUnitario = calc?.total || 0;
-      return { ...it, costoUnitario, costoTotal: costoUnitario * (it.cantidad || 1), modulo: mod, dims };
+      return { ...it, costoUnitario, costoTotal: costoUnitario * (it.cantidad || 1), modulo: base, dims };
     });
   }, [items, modulos, inlineModulos, costos, dimOverride]);
 
@@ -173,13 +172,20 @@ export function Vista3DTab({
 
   const dimsActuales = useMemo(() => {
     if (!selectedInst?.itemKey || !selectedModulo) return null;
-    const ov = dimOverride[selectedInst.itemKey] || {};
+    const mod = resolverModuloEfectivo({
+      codigo: selectedInst.codigo,
+      modulos,
+      inline: inlineModulos?.[selectedInst.itemKey],
+      dimOverride: dimOverride[selectedInst.itemKey],
+    });
+    const d = mod?.dimensiones || {};
+    // Defaults de UI (capa visual) — el resolver no los aplica.
     return {
-      ancho:       ov.ancho       ?? selectedModulo.dimensiones?.ancho       ?? 600,
-      alto:        ov.alto        ?? selectedModulo.dimensiones?.alto        ?? 700,
-      profundidad: ov.profundidad ?? selectedModulo.dimensiones?.profundidad ?? 550,
+      ancho:       d.ancho       ?? 600,
+      alto:        d.alto        ?? 700,
+      profundidad: d.profundidad ?? 550,
     };
-  }, [selectedInst, selectedModulo, dimOverride]);
+  }, [selectedInst, selectedModulo, modulos, inlineModulos, dimOverride]);
 
   const materialIdActual = selectedInst?.itemKey
     ? (dimOverride[selectedInst.itemKey]?.materialId || '')
@@ -459,6 +465,7 @@ export function Vista3DTab({
                   : m
               ))}
               modulos={modulos}
+              inlineModulos={inlineModulos}
               costos={costos}
               mostrarPiso={mostrarPiso}
               mostrarPared={mostrarPared}

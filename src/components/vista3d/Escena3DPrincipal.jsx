@@ -5,6 +5,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import Modulo3D from '../visor3d/Modulo3D.jsx';
 import { useAutoLayout3D } from './useAutoLayout3D.js';
 import { resolverVisualMaterial } from '../../services/materialesService.js';
+import { resolverModuloEfectivo } from '../../services/moduloService.js';
 
 export const WALL_Z = -0.6; // posición de la pared trasera
 
@@ -65,7 +66,7 @@ function resolveCollision(proposedX, proposedZ, hw, hd, selfId, livePositions) {
 
 // ── ModuloEnEscena ────────────────────────────────────────────────────────────
 // Props >8 justificados: escena 3D con controles flotantes integrados
-function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, visual, texturaRepeat, onRotar90, onEliminarModulo, contornos }) {
+function ModuloEnEscena({ inst, modulos, inlineModulos, dimOverride, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, visual, texturaRepeat, onRotar90, onEliminarModulo, contornos }) {
   const groupRef   = useRef();
   const isDragging = useRef(false);
   const dragStarted = useRef(false); // true cuando el mouse superó el threshold
@@ -74,11 +75,17 @@ function ModuloEnEscena({ inst, modulos, costos, isSelected, onSelect, onUpdateP
   const { camera, gl } = useThree();
 
   const [x, y, z] = inst.worldPos;
-  const modBase    = modulos?.[inst.codigo];
-  const mod = useMemo(() => {
-    if (!modBase || !inst.dimsOverride) return modBase;
-    return { ...modBase, dimensiones: { ...modBase.dimensiones, ...inst.dimsOverride } };
-  }, [modBase, inst.dimsOverride]);
+
+  // Módulo efectivo — resolución unificada (services/moduloService).
+  // Keying de la instancia: ítems del presupuesto → dimOverride[itemKey];
+  // módulos manuales de escena → inst.dimsOverride (compat — se elimina en
+  // commit 2 al unificar todo en una sola tabla de overrides).
+  const ovInst     = inst.itemKey ? dimOverride?.[inst.itemKey]   : inst.dimsOverride;
+  const inlineInst = inst.itemKey ? inlineModulos?.[inst.itemKey] : null;
+  const mod = useMemo(
+    () => resolverModuloEfectivo({ codigo: inst.codigo, modulos, inline: inlineInst, dimOverride: ovInst }),
+    [inst.codigo, modulos, inlineInst, ovInst],
+  );
 
   const halfWidth = useMemo(
     () => (mod?.dimensiones?.ancho       || 600) / 2 / 1000,
@@ -398,7 +405,7 @@ function Mesada({ livePositions, modulosEnEscena, modulos, color }) {
 
 // ── Escena3DPrincipal ─────────────────────────────────────────────────────────
 export function Escena3DPrincipal({
-  modulosEnEscena, modulos, costos,
+  modulosEnEscena, modulos, inlineModulos = {}, costos,
   mostrarPiso, mostrarPared, mostrarMesada,
   colorPiso, colorPared, colorMesada,
   camTarget, onSelectModulo, selectedCod, onUpdatePosicion,
@@ -413,7 +420,7 @@ export function Escena3DPrincipal({
 }) {
   const orbitRef       = useRef();
   const livePositions  = useRef({}); // { [instanceId]: { x, z, hw, hd } }
-  const layoutItems    = useAutoLayout3D(modulosEnEscena, modulos);
+  const layoutItems    = useAutoLayout3D(modulosEnEscena, modulos, inlineModulos, dimOverride);
   // shadowAngle: azimuth en grados (0=frente, 90=derecha, 180=atrás, 270=izquierda)
   const shadowRad      = (shadowAngle * Math.PI) / 180;
   const shadowLightPos = [Math.sin(shadowRad) * 7, 7, Math.cos(shadowRad) * 7];
@@ -494,6 +501,8 @@ export function Escena3DPrincipal({
             key={inst.instanceId}
             inst={inst}
             modulos={modulos}
+            inlineModulos={inlineModulos}
+            dimOverride={dimOverride}
             costos={costos}
             isSelected={selectedCod === inst.instanceId}
             onSelect={() => onSelectModulo?.(selectedCod === inst.instanceId ? null : inst.instanceId)}

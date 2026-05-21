@@ -221,6 +221,11 @@ Todas las escrituras (módulos, costos, presupuestos, perfil) entran a `withSave
 - Cualquier código que necesite resolver fórmulas o variables de un módulo DEBE usar `resolverContextoModulo(modulo, costos, valoresParametros?)` de `services/moduloService.js`
 - Reimplementar la lógica inline está PROHIBIDO. Razón: tres archivos lo hacían y cada copia tenía bugs distintos al cambiar dimensiones.
 
+**Resolución del módulo efectivo (overrides del presupuesto):**
+- Cualquier código que necesite el módulo "efectivo" de un ítem/instancia (base + inline + dimOverride + composicionOverride) DEBE usar `resolverModuloEfectivo({codigo, modulos, inline, dimOverride, composicionOverride})` de `services/moduloService.js`
+- Reimplementar la resolución inline está PROHIBIDO. Razón: estaba duplicada en 4 lugares y el 3D divergió del costo (no veía los cambios de dimensión).
+- El resolver NO aplica defaults de UI (`?? 600`) — eso es de la capa visual.
+
 **CSS / Design:**
 - Design tokens defined in `GlobalStyles` in `components/ui/index.jsx`
 - Font: Playfair Display (headings) · Bricolage Grotesque (body) · DM Mono (numbers/labels)
@@ -335,47 +340,15 @@ Cubren el motor de fórmulas, parámetros, subcomponentes y armado 3D.
 ### Features pendientes
 | Priority | Feature | Notes |
 |---|---|---|
-| **Alta** | **Edición de dimensiones desde Vista 3D → impacto en costos** | Ver plan detallado abajo. Handler `handleDimChange` ya existe en Vista3DTab. 3 pasos: (1) activar DimInput editable, (2) aplicar dimOverride en calcularModulo, (3) feedback visual en badge total. |
 | Alta | Public budget link | Flujo de aprobación del cliente vía link público |
 | Baja | Resumen mensual / m² calculator / export lista de compras | |
 | Opcional | Editor 3D inmersivo Nivel 2/3 | Medir, esconder/explotar, sección · gizmos drag, snap, history. Diferido hasta que haya uso real que lo justifique. |
 
-### Plan: Dimensiones desde Vista 3D con impacto en costos
-
-**Estado actual:** `handleDimChange` en `Vista3DTab.jsx` ya escribe `dimOverride[itemKey].ancho|alto|profundidad` correctamente. `DimInput` en `InspectorPanel` tiene `readOnly` y el handler no está conectado.
-
-**Paso 1 — Activar inputs (trivial)**
-- En `InspectorPanel.jsx`: quitar `readOnly` de `DimInput`, agregar `onChange={(e) => onDimChange(campo, e.target.value)}`
-- Conectar `onDimChange` desde `Vista3DTab` al `InspectorPanel` (ya está en la firma como prop preparado)
-
-**Paso 2 — Aplicar dimOverride en cálculo de costos (clave)**
-- En App.js, donde se llama `calcularModulo(modulo, costos, valoresParametros)` para armar los costos del presupuesto, agregar la aplicación del override dimensional:
-  ```js
-  const overrideDims = dimOverride[itemKey] || {};
-  const moduloConOverride = (overrideDims.ancho || overrideDims.alto || overrideDims.profundidad)
-    ? { ...modulo, dimensiones: {
-        ...modulo.dimensiones,
-        ...(overrideDims.ancho       && { ancho:       overrideDims.ancho }),
-        ...(overrideDims.alto        && { alto:        overrideDims.alto }),
-        ...(overrideDims.profundidad && { profundidad: overrideDims.profundidad }),
-      }}
-    : modulo;
-  calcularModulo(moduloConOverride, costos, valoresParametros);
-  ```
-- El `materialId` que también vive en `dimOverride` ya es manejado por `resolverMaterial` — no tocarlo.
-- `dimOverride` llega a App.js vía el presupuesto activo (`presupuesto.dimOverride`). Verificar que `setDimOverride` en Vista3DTab persista en el presupuesto activo (hoy solo vive en estado local de Vista3DTab — **esto requiere elevar el estado o conectar al guardado del presupuesto**).
-
-**Paso 3 — Feedback visual**
-- El badge "Total presupuesto" en el canvas ya se recalcula cuando cambia el total → se actualiza automáticamente.
-- El 3D visual ya usa `dimOverride` para dimensionar la malla → se actualiza automáticamente.
-- Agregar indicador visual en DimInput cuando el valor difiere del default del módulo (ej. color de borde diferente).
-
-**Punto crítico — Persistencia del dimOverride:**
-Hoy `dimOverride` en Vista3DTab es estado LOCAL del componente. Para que los overrides de dimensión (y de material) sobrevivan al cambio de pestaña y se guarden en Supabase, el estado debe estar en el presupuesto activo. El `materialId` ya se guarda por este camino (`setDimOverride` viene de `App.js`). Confirmar si `dimOverride` ya se persiste en el presupuesto o si todavía es efímero.
-
 ### Features completadas recientemente
 | Fecha | Feature | Detalle |
 |---|---|---|
+| 2026-05-21 | **`resolverModuloEfectivo` — capa única de resolución del módulo** | La resolución "módulo base + overrides" estaba reimplementada inline en 4 lugares (`App.getModUsado`, `Vista3D itemsConCosto`/`dimsActuales`, `Escena3D ModuloEnEscena`) y las copias divergieron — el costo respetaba los overrides pero el 3D no. Nueva función pura `resolverModuloEfectivo({codigo, modulos, inline, dimOverride, composicionOverride})` en `moduloService.js`: `inline` (reemplazo total) → base + dimOverride (dimensiones + material) + composicionOverride. **Sin defaults de UI** — los `?? 600/700/550` quedan en la capa visual. Los 4 call sites migrados al resolver. `ModuloEnEscena` y `useAutoLayout3D` lo consumen → editar dimensiones en el Inspector ahora actualiza el 3D Y el costo. 11 tests nuevos. |
+| 2026-05-21 | **Dimensiones editables desde Vista 3D → costo en vivo** | `DimInput` del InspectorPanel pasó a editable. `onDimChange` → `handleDimChange` → `setDimOverride` (estado App.js, persistido en localStorage + Supabase) → `getModUsado`/`resolverModuloEfectivo` aplican el override → `calcularModulo` recalcula. Feedback: label y borde en dorado cuando la dimensión difiere del default del catálogo. |
 | 2026-05-21 | **Vista 3D — rediseño UI completo** | Estética CAD/profesional: paleta warm-ash, toolbar con grupos VISTAS/ENTORNO + TGroup (label + row centrado), Piso/Mesada/Grilla como ToolbarDropdown con ColorToggle integrado, separador entre grupos, acciones derechas (Refresh · Capturar · Maximize). Nuevos íconos: `FloorIcon`, `MesadaIcon`. `ToolbarDropdown` sin `alignSelf:stretch`. Header App.js: tabs con `flex:1 + space-evenly`, Taller siempre visible. |
 | 2026-05-21 | **InspectorPanel — rediseño** | DimInput como fila horizontal (label izquierda, input derecha). Botones Rotar/Eliminar sacados del panel (ya están como overlay en el visor 3D). Header limpio: solo código + nombre del módulo. |
 | 2026-05-21 | **ConfiguradorParametrico — rediseño filas** | Eliminado título "⚙ Configuración paramétrica". Grilla 2 columnas → filas únicas: label izquierda (uppercase 9px), control derecha (130px fijo). Tipos boolean/choice con `<select>` compacto; formula muestra `= valor` alineado derecha. |
@@ -389,6 +362,7 @@ Hoy `dimOverride` en Vista3DTab es estado LOCAL del componente. Para que los ove
 ### Deuda técnica registrada
 | Priority | Tarea | Detalle |
 |---|---|---|
+| Media | `inst.dimsOverride` — segunda fuente de overrides en escena 3D | Los módulos agregados manualmente a la escena (sin `itemKey`) guardan su override de dimensiones en `inst.dimsOverride` (propiedad de la instancia en `modulosEnEscena`), no en `dimOverride`. `resolverModuloEfectivo` ya unifica la resolución, pero el *keying* todavía tiene una rama compat `inst.itemKey ? dimOverride[itemKey] : inst.dimsOverride` en `ModuloEnEscena` y `useAutoLayout3D`. **Commit 2 (opción B):** mover los overrides de módulos manuales a una tabla única keyed por `instanceId` → eliminar `inst.dimsOverride` y la rama compat. Barato ahora que el seam (`resolverModuloEfectivo`) ya existe. Baja urgencia: los módulos manuales son efímeros (no persisten en Supabase). |
 | ~~Alta~~ ✅ | ~~`modulo.variables` shape inconsistente~~ **RESUELTO** | `normalizarVariables` en `moduloService.js` unifica Object (pass-through), Array legacy (convierte) y formato desconocido (cuarentena: `variables: {}` + flag `_variablesFormatoDesconocido` + UI banner). `guardarModulos` limpia runtime metadata antes de persistir. Contrato canónico: `Object { [nombre]: formula }`. |
 | Alta | `catalogoDeepLink` / `origenEdicion` se setean fuera del reducer | El reducer de NavContext los LIMPIA pero no tiene acción que los SETEE. App.js los lee del estado y los pasa por props a CatalogoModulos — sin embargo, no hay un dispatch claro que los inicialice. Investigar: o son legacy, o se setean por mutación directa del state inicial / efecto. |
 | Media | App.js en crecimiento (848 líneas) | Mantenibilidad a largo plazo. Mover handlers de dominio a hooks/services, sacar Header y lógica de auth a sus carpetas. |

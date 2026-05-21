@@ -35,6 +35,7 @@ import {
   migrarTempEnPresupuestos,
   migrarDimOverridePresupuestos,
 } from "./services/presupuestoService.js";
+import { resolverModuloEfectivo } from "./services/moduloService.js";
 
 // Lazy: el resto se descarga en chunks separados al primer click de su tab.
 // Code splitting reduce el bundle inicial de ~441 kB a ~150-200 kB.
@@ -375,28 +376,20 @@ function AppInterna() {
   // ya no se usan: la biblioteca 3D de Render IA fue reemplazada por
   // MaterialesManager unificado. La migración legacy se hace en cargarDatos.)
 
-  // ── getModUsado — resuelve módulo con overrides del presupuesto activo ─────
-  // Prioridad: inlineModulos (fuente única completa) → base + dimOverride + composicionOverride
+  // ── getModUsado — resuelve el módulo efectivo del presupuesto activo ──────
+  // Capa única: resolverModuloEfectivo (services). inline → base + dimOverride
+  // + composicionOverride. No reimplementar la resolución inline acá.
   const getModUsado = useCallback((item) => {
     if (!modulos || !item) return null;
     const cod   = typeof item === "string" ? item : item.codigo;
     const keyId = typeof item === "string" ? item : item.id || item.codigo;
-    const inline = inlineModulos[keyId];
-    if (inline) return inline;
-    const base  = modulos[cod];
-    if (!base) return null;
-    const over  = dimOverride[keyId] || {};
-    const comp  = composicionOverride[keyId];
-    return {
-      ...base,
-      material: over.material ?? base.material,
-      dimensiones: {
-        ancho:       over.ancho       ?? base.dimensiones.ancho,
-        profundidad: over.profundidad ?? base.dimensiones.profundidad,
-        alto:        over.alto        ?? base.dimensiones.alto,
-      },
-      vistaConfig: comp?.vistaConfig ?? base.vistaConfig,
-    };
+    return resolverModuloEfectivo({
+      codigo: cod,
+      modulos,
+      inline: inlineModulos[keyId],
+      dimOverride: dimOverride[keyId],
+      composicionOverride: composicionOverride[keyId],
+    });
   }, [modulos, dimOverride, composicionOverride, inlineModulos]);
 
   // ── Total del presupuesto activo ──────────────────────────────────────────

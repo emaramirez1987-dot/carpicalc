@@ -9,6 +9,11 @@
 //   Torres → floor-based, y = h/2
 //
 // If inst.posicion is defined and non-zero, that manual position is used as-is.
+//
+// Dimensions come from resolverModuloEfectivo — the auto-layout spacing
+// reflects dimension overrides (widen a module → the next one shifts over).
+
+import { resolverModuloEfectivo } from '../../services/moduloService.js';
 
 const AEREO_BASE_Y = 1.5; // standard Argentine kitchen upper cabinet height from floor
 
@@ -18,7 +23,16 @@ function isManualPos(posicion) {
   return x !== 0 || y !== 0 || z !== 0;
 }
 
-export function useAutoLayout3D(modulosEnEscena, modulos) {
+// Módulo efectivo de una instancia de escena.
+// Keying: ítems del presupuesto → dimOverride[itemKey]; módulos manuales →
+// inst.dimsOverride (compat — se elimina en commit 2 al unificar overrides).
+function modEfectivoDeInst(inst, modulos, inlineModulos, dimOverride) {
+  const ov     = inst.itemKey ? dimOverride?.[inst.itemKey]   : inst.dimsOverride;
+  const inline = inst.itemKey ? inlineModulos?.[inst.itemKey] : null;
+  return resolverModuloEfectivo({ codigo: inst.codigo, modulos, inline, dimOverride: ov });
+}
+
+export function useAutoLayout3D(modulosEnEscena, modulos, inlineModulos = {}, dimOverride = {}) {
   const result = [];
   let xCursorBajo = 0;
   let xCursorTorre = 0;
@@ -29,7 +43,7 @@ export function useAutoLayout3D(modulosEnEscena, modulos) {
   const torres = [];
 
   for (const inst of modulosEnEscena) {
-    const mod = modulos?.[inst.codigo];
+    const mod = modEfectivoDeInst(inst, modulos, inlineModulos, dimOverride);
     const tipo = mod?.tipoVisual || '';
     if (tipo === 'aereo') aereos.push(inst);
     else if (tipo === 'torre') torres.push(inst);
@@ -38,7 +52,7 @@ export function useAutoLayout3D(modulosEnEscena, modulos) {
 
   // Bajo mesada — left to right on the floor
   for (const inst of bajos) {
-    const mod = modulos?.[inst.codigo];
+    const mod = modEfectivoDeInst(inst, modulos, inlineModulos, dimOverride);
     const dims = mod?.dimensiones || { ancho: 600, alto: 700, profundidad: 550 };
     const w = (dims.ancho || 600) / 1000;
     const h = (dims.alto  || 700) / 1000;
@@ -52,7 +66,7 @@ export function useAutoLayout3D(modulosEnEscena, modulos) {
   // Aéreos — aligned with bajos (same X start), 1500mm from floor
   let xCursorAereo = 0; // mirrors xCursorBajo starting point (bajos start at 0)
   for (const inst of aereos) {
-    const mod = modulos?.[inst.codigo];
+    const mod = modEfectivoDeInst(inst, modulos, inlineModulos, dimOverride);
     const dims = mod?.dimensiones || { ancho: 600, alto: 400, profundidad: 300 };
     const w = (dims.ancho || 600) / 1000;
     const h = (dims.alto  || 400) / 1000;
@@ -66,7 +80,7 @@ export function useAutoLayout3D(modulosEnEscena, modulos) {
   // Torres — after bajos, full height
   xCursorTorre = xCursorBajo;
   for (const inst of torres) {
-    const mod = modulos?.[inst.codigo];
+    const mod = modEfectivoDeInst(inst, modulos, inlineModulos, dimOverride);
     const dims = mod?.dimensiones || { ancho: 600, alto: 2100, profundidad: 550 };
     const w = (dims.ancho || 600) / 1000;
     const h = (dims.alto  || 2100) / 1000;
