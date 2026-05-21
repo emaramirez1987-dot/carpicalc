@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { tok } from './theme.js';
-import { ToolbarBtn, ToolbarColorToggle, ToolbarDropdown, DropItem, ColorToggle, IconBtn, TDivider } from './ui.jsx';
+import { ToolbarBtn, ToolbarDropdown, DropItem, ColorToggle, IconBtn } from './ui.jsx';
 import {
   IsoIcon, FrontIcon, SideIcon, TopIcon,
   FloorIcon, MesadaIcon,
@@ -26,22 +26,24 @@ const VIEW_PRESETS = [
 
 // ── TGroup — labeled section wrapper (internal) ────────────────────────────────
 // Renders a category label above a row of toolbar controls.
+// alignItems: center — buttons take their natural height only, not full toolbar height.
+// This prevents the active-state background from filling the entire column.
 function TGroup({ label, children }) {
   const T = tok();
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignSelf: 'stretch' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignSelf: 'stretch', padding: '0 2px' }}>
       {/* Category label */}
       <div style={{
         fontSize: 7, fontFamily: "'DM Mono', monospace",
         color: T.textMuted, letterSpacing: '0.12em',
         textTransform: 'uppercase', textAlign: 'center',
-        paddingTop: 7, paddingBottom: 1, lineHeight: 1,
+        paddingTop: 7, paddingBottom: 0, lineHeight: 1,
         userSelect: 'none',
       }}>
         {label}
       </div>
-      {/* Controls row */}
-      <div style={{ display: 'flex', alignItems: 'stretch', flex: 1 }}>
+      {/* Controls row — center-aligned so buttons are their natural height */}
+      <div style={{ display: 'flex', alignItems: 'center', flex: 1, gap: 1 }}>
         {children}
       </div>
     </div>
@@ -114,16 +116,31 @@ export function ViewportToolbar({
         ))}
       </TGroup>
 
-      <TDivider />
+      {/* Group separator — wider gap + more visible line */}
+      <div style={{
+        width: 1, alignSelf: 'stretch',
+        background: tb.divider,
+        margin: '8px 10px',
+        flexShrink: 0,
+        opacity: 1.5,
+      }} />
 
       {/* ── ENTORNO — scene surfaces, grid, lighting ────────────────────── */}
       <TGroup label="Entorno">
 
-        <ToolbarColorToggle
+        {/* Piso — dropdown with toggle + color (mirrors Paredes pattern) */}
+        <ToolbarDropdown
           icon={<FloorIcon size={tb.iconSize} />}
-          value={mostrarPiso} onToggle={() => setMostrarPiso(v => !v)}
-          color={colorPiso} onColor={setColorPiso} title="Piso"
-        />
+          title="Piso"
+          active={mostrarPiso}
+        >
+          <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <ColorToggle
+              value={mostrarPiso} onToggle={() => setMostrarPiso(v => !v)}
+              color={colorPiso} onColor={setColorPiso} label="Piso"
+            />
+          </div>
+        </ToolbarDropdown>
 
         <ToolbarDropdown
           icon={<WallsIcon size={tb.iconSize} />}
@@ -140,11 +157,19 @@ export function ViewportToolbar({
           </div>
         </ToolbarDropdown>
 
-        <ToolbarColorToggle
+        {/* Mesada — dropdown with toggle + color */}
+        <ToolbarDropdown
           icon={<MesadaIcon size={tb.iconSize} />}
-          value={mostrarMesada} onToggle={() => setMostrarMesada(v => !v)}
-          color={colorMesada} onColor={setColorMesada} title="Mesada"
-        />
+          title="Mesada"
+          active={mostrarMesada}
+        >
+          <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <ColorToggle
+              value={mostrarMesada} onToggle={() => setMostrarMesada(v => !v)}
+              color={colorMesada} onColor={setColorMesada} label="Mesada"
+            />
+          </div>
+        </ToolbarDropdown>
 
         <ToolbarBtn
           variant="toggle"

@@ -178,7 +178,7 @@ export function ToolbarDropdown({ icon, label, title, active, children }) {
   };
 
   return (
-    <div ref={ref} style={{ position: 'relative', display: 'flex', alignSelf: 'stretch' }}>
+    <div ref={ref} style={{ position: 'relative', display: 'flex' }}>
       <BaseButton
         onClick={() => setOpen(v => !v)}
         title={title || label}

@@ -57,8 +57,8 @@ function Header({ tabs, saveEst, tema, toggleTema }) {
       className="no-print rsp-header-inner"
       style={{
         position: "sticky", top: 0, zIndex: 100,
-        display: "flex", alignItems: "center", gap: 24,
-        padding: "0 28px",
+        display: "flex", alignItems: "center",
+        padding: "0 20px",
         background: "var(--bg-nav)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
@@ -68,42 +68,42 @@ function Header({ tabs, saveEst, tema, toggleTema }) {
       }}
     >
       {/* Brand */}
-      <div className="rsp-brand" style={{ padding: "12px 0", flexShrink: 0, display: "flex", alignItems: "center", gap: 9 }}>
-        <LogoIsotipo size={36} />
+      <div className="rsp-brand" style={{ padding: "12px 0", flexShrink: 0, display: "flex", alignItems: "center", gap: 8, marginRight: 16 }}>
+        <LogoIsotipo size={28} />
         <div className="rsp-brand-text">
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 900, color: "var(--accent)", lineHeight: 1, letterSpacing: "-0.02em" }}>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 900, color: "var(--accent)", lineHeight: 1, letterSpacing: "-0.02em" }}>
             CarpiCálc
           </div>
-          <div style={{ fontSize: 8, letterSpacing: "0.26em", textTransform: "uppercase", marginTop: 3, color: "var(--text-muted)", fontWeight: 400, fontFamily: "'DM Mono',monospace" }}>
+          <div style={{ fontSize: 7, letterSpacing: "0.26em", textTransform: "uppercase", marginTop: 3, color: "var(--text-muted)", fontWeight: 400, fontFamily: "'DM Mono',monospace" }}>
             Diseño & Costos
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="rsp-nav" style={{ display: "flex", flex: 1, overflowX: "auto", scrollbarWidth: "none" }}>
+      {/* Nav — flex:1 con space-evenly para repartir tabs en todo el ancho disponible */}
+      <nav className="rsp-nav" style={{ display: "flex", flex: 1, justifyContent: "space-evenly", alignItems: "stretch", minWidth: 0 }}>
         {tabs.map((t, idx) => {
           const active = nav.vista === t.id;
           const isSeparatorBefore = idx === tabs.findIndex(x => x.id === "catalogo");
           return (
             <React.Fragment key={t.id}>
               {isSeparatorBefore && (
-                <div style={{ width: 1, background: "var(--border)", margin: "12px 4px", flexShrink: 0, alignSelf: "stretch" }} />
+                <div style={{ width: 1, background: "var(--border)", margin: "8px 0", flexShrink: 0, alignSelf: "stretch" }} />
               )}
               <button
                 data-vista={t.id}
                 onClick={() => dispatch({ type: "CAMBIAR_VISTA", payload: { vista: t.id } })}
                 style={{
-                  position: "relative",
                   background: "transparent", border: "none",
                   borderBottom: `2px solid ${active ? "var(--accent)" : "transparent"}`,
                   color: active ? "var(--accent)" : "var(--text-secondary)",
-                  padding: "14px 14px",
+                  padding: "13px 8px",
                   cursor: "pointer",
-                  fontSize: 11, fontWeight: active ? 700 : 400,
-                  letterSpacing: "0.10em", textTransform: "uppercase",
+                  fontSize: 10, fontWeight: active ? 700 : 400,
+                  letterSpacing: "0.08em", textTransform: "uppercase",
                   fontFamily: "'DM Mono',monospace",
-                  transition: "all 0.2s", flexShrink: 0, whiteSpace: "nowrap",
+                  transition: "all 0.2s", whiteSpace: "nowrap",
+                  flex: 1, textAlign: "center",
                 }}
                 onMouseEnter={e => { if (!active) { e.currentTarget.style.color = "var(--text-primary)"; e.currentTarget.style.borderBottomColor = "var(--accent-border)"; }}}
                 onMouseLeave={e => { if (!active) { e.currentTarget.style.color = "var(--text-secondary)"; e.currentTarget.style.borderBottomColor = "transparent"; }}}
@@ -115,14 +115,14 @@ function Header({ tabs, saveEst, tema, toggleTema }) {
         })}
       </nav>
 
-      {/* Controles */}
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+      {/* Controles — siempre visible a la derecha */}
+      <div style={{ marginLeft: 12, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
         <SaveIndicator estado={saveEst} />
         <button
           onClick={toggleTema}
           style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "6px 14px", borderRadius: 999, fontSize: 11,
+            display: "inline-flex", alignItems: "center", gap: 5,
+            padding: "5px 12px", borderRadius: 999, fontSize: 10,
             fontFamily: "'DM Mono',monospace", fontWeight: 700,
             cursor: "pointer", transition: "all 0.2s",
             border: "1px solid var(--accent-border)",
