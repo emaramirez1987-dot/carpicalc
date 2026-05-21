@@ -1,14 +1,13 @@
 // InspectorPanel.jsx — Right panel: selected module properties
 // Shows when a scene instance is selected. Contains:
-//   • Module name + code + action buttons (rotate, delete)
+//   • Module name + code (read-only; rotate/delete live as overlays in the 3D viewport)
 //   • DIMENSIONES — A/H/P readOnly inputs (path prepared for editing)
 //   • PARÁMETROS — ConfiguradorParametrico (if module has params)
 //   • MATERIAL — MaterialGallery
 
 import React from 'react';
 import { tok } from './theme.js';
-import { SectionLabel, PanelDivider, IconBtn } from './ui.jsx';
-import { RotateIcon, TrashIcon } from './icons.jsx';
+import { SectionLabel, PanelDivider } from './ui.jsx';
 import { MaterialGallery } from './MaterialGallery.jsx';
 import ConfiguradorParametrico from '../presupuesto/ConfiguradorParametrico.jsx';
 
@@ -89,7 +88,10 @@ export function InspectorPanel({
   biblioteca,
   materialIdActual,
   onAsignarMaterial,
+  // onRotar / onEliminar — handled as overlays in the 3D viewport, not shown here
+  // eslint-disable-next-line no-unused-vars
   onRotar,
+  // eslint-disable-next-line no-unused-vars
   onEliminar,
   onSetParametros,
   texturaRepeat,
@@ -113,35 +115,21 @@ export function InspectorPanel({
       height: '100%', overflowY: 'auto', overflowX: 'hidden',
     }}>
 
-      {/* ── Header: module name + actions ─────────────────────────────── */}
-      <div style={{ padding: '12px 14px 10px', flexShrink: 0 }}>
+      {/* ── Header: module code + name ────────────────────────────────── */}
+      <div style={{ padding: '12px 14px 12px', flexShrink: 0 }}>
         <div style={{
           fontSize: 9, fontFamily: "'DM Mono',monospace",
           color: T.textDim, letterSpacing: '0.08em',
-          marginBottom: 3,
+          marginBottom: 4,
         }}>
           {modulo.codigo || selectedInst.codigo}
         </div>
         <div style={{
           fontSize: 13, fontWeight: 700,
           fontFamily: "'Bricolage Grotesque', sans-serif",
-          color: T.text, lineHeight: 1.2, marginBottom: 10,
+          color: T.text, lineHeight: 1.2,
         }}>
           {modulo.nombre}
-        </div>
-
-        <div style={{ display: 'flex', gap: 6 }}>
-          <IconBtn
-            icon={<RotateIcon size={14} />}
-            onClick={onRotar}
-            title="Rotar 90°"
-          />
-          <IconBtn
-            icon={<TrashIcon size={14} />}
-            onClick={onEliminar}
-            title="Quitar de la escena"
-            danger
-          />
         </div>
       </div>
 

@@ -15,9 +15,9 @@ import {
 } from '../../services/moduloService.js';
 import { evaluarExpresion } from '../../utils.js';
 
-const lbl = {
-  fontSize: 10, fontFamily: "'DM Mono',monospace", color: "var(--text-secondary)",
-  textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3,
+const rowLabel = {
+  flex: 1, fontSize: 9, fontFamily: "'DM Mono',monospace", color: "var(--text-secondary)",
+  textTransform: "uppercase", letterSpacing: "0.06em", lineHeight: 1.3,
 };
 const inputBase = {
   fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "5px 7px",
@@ -104,57 +104,51 @@ function ConfiguradorParametrico({ modulo, valores, onChange, costos }) {
   return (
     <div style={{
       borderTop: "1px dashed var(--border)", paddingTop: 10, marginTop: 10,
-      display: "flex", flexDirection: "column", gap: 8,
+      display: "flex", flexDirection: "column", gap: 5,
     }}>
-      <div style={{
-        fontSize: 10, fontFamily: "'DM Mono',monospace", fontWeight: 700,
-        textTransform: "uppercase", letterSpacing: "0.10em",
-        color: "var(--accent)",
-      }}>
-        ⚙ Configuración paramétrica
-      </div>
 
-      {/* Grilla de parámetros (2 columnas) */}
-      {params.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          {params.map((p) => {
-            const val = valores?.[p.id] ?? p.def;
-            const computado = p.tipo === "formula"
-              ? evaluarExpresion(p.expr || "", valoresResueltos)
-              : null;
+      {/* Filas de parámetros: label izquierda, control derecha */}
+      {params.length > 0 && params.map((p) => {
+        const val = valores?.[p.id] ?? p.def;
+        const computado = p.tipo === "formula"
+          ? evaluarExpresion(p.expr || "", valoresResueltos)
+          : null;
 
-            return (
-              <div key={p.id}>
-                <div style={lbl}>
-                  {p.nombre || p.id}
-                  {p.unidad && <span style={{ color: "var(--text-muted)", marginLeft: 4 }}>({p.unidad})</span>}
-                  {p.tipo === "formula" && <span style={{ color: "var(--text-muted)", marginLeft: 6, textTransform: "none", letterSpacing: 0 }}>= {computado ?? "?"}</span>}
-                </div>
-
-                {p.tipo === "boolean" ? (
-                  <select value={val ? "true" : "false"}
-                    onChange={e => setValor(p.id, e.target.value === "true")}
-                    style={inputBase}>
-                    <option value="false">No</option>
-                    <option value="true">Sí</option>
-                  </select>
-                ) : p.tipo === "choice" ? (
-                  <select value={val ?? ""}
-                    onChange={e => setValor(p.id, e.target.value)}
-                    style={inputBase}>
-                    {(p.opciones || []).map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                ) : p.tipo === "formula" ? (
-                  <input value={p.expr || ""} disabled
-                    style={{ ...inputBase, color: "var(--text-muted)", background: "var(--bg-subtle)" }} />
-                ) : (
-                  <NumberStepper p={p} val={val} onChange={(n) => setValor(p.id, n)} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+        return (
+          <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={rowLabel}>
+              {p.nombre || p.id}
+              {p.unidad && <span style={{ color: "var(--text-muted)", marginLeft: 4 }}>({p.unidad})</span>}
+            </span>
+            <div style={{ flexShrink: 0, width: 130 }}>
+              {p.tipo === "boolean" ? (
+                <select value={val ? "true" : "false"}
+                  onChange={e => setValor(p.id, e.target.value === "true")}
+                  style={{ ...inputBase, padding: "4px 6px", fontSize: 11 }}>
+                  <option value="false">No</option>
+                  <option value="true">Sí</option>
+                </select>
+              ) : p.tipo === "choice" ? (
+                <select value={val ?? ""}
+                  onChange={e => setValor(p.id, e.target.value)}
+                  style={{ ...inputBase, padding: "4px 6px", fontSize: 11 }}>
+                  {(p.opciones || []).map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              ) : p.tipo === "formula" ? (
+                <span style={{
+                  display: "block", textAlign: "right",
+                  fontSize: 11, fontFamily: "'DM Mono',monospace",
+                  color: "var(--text-muted)", letterSpacing: "0.02em",
+                }}>
+                  = {computado ?? "?"}
+                </span>
+              ) : (
+                <NumberStepper p={p} val={val} onChange={(n) => setValor(p.id, n)} />
+              )}
+            </div>
+          </div>
+        );
+      })}
 
       {/* Warnings de constraints */}
       {fallidas.length > 0 && (
