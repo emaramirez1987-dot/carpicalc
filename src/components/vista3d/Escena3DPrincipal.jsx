@@ -309,14 +309,16 @@ const GRID_DARK  = { c1: '#2a2d35', c2: '#232630' };
 const GRID_LIGHT = { c1: '#c4c5ce', c2: '#d0d1da' };
 
 // ── GrillaFloor — piso receptor de sombras + grilla superpuesta ───────────────
-function GrillaFloor({ colorPiso, isDark, mostrarGrilla, divisiones }) {
+function GrillaFloor({ colorPiso, isDark, mostrarGrilla, divisiones, colorGrilla }) {
   const grid = useMemo(() => {
-    const { c1, c2 } = isDark ? GRID_DARK : GRID_LIGHT;
+    const fallback = isDark ? GRID_DARK : GRID_LIGHT;
+    const c1 = colorGrilla || fallback.c1;
+    const c2 = colorGrilla || fallback.c2;
     const g = new THREE.GridHelper(10, divisiones, c1, c2);
     g.position.y = 0.002; // sobre el plano para evitar z-fighting
     return g;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDark, divisiones]);
+  }, [isDark, divisiones, colorGrilla]);
 
   return (
     <>
@@ -402,7 +404,7 @@ export function Escena3DPrincipal({
   camTarget, onSelectModulo, selectedCod, onUpdatePosicion,
   biblioteca = [], dimOverride = {}, isDark = true,
   shadowIntensidad = 1, shadowAngle = 45,
-  mostrarGrilla = true, divisionesGrilla = 50,
+  mostrarGrilla = true, divisionesGrilla = 50, colorGrilla,
   onRotar90, onEliminarModulo,
   mostrarParedIzq = false, mostrarParedDer = false,
   contornos = null,
@@ -441,6 +443,7 @@ export function Escena3DPrincipal({
           isDark={isDark}
           mostrarGrilla={mostrarGrilla}
           divisiones={divisionesGrilla}
+          colorGrilla={colorGrilla}
         />
       )}
 

@@ -43,6 +43,7 @@ export function Vista3DTab({
   const [colorPiso,      setColorPiso]      = useState(() => isDark ? '#1e2028' : '#e8e9ed');
   const [colorPared,     setColorPared]     = useState(() => isDark ? '#1c1f28' : '#e0e1e5');
   const [colorMesada,    setColorMesada]    = useState('#c8b89a');
+  const [colorGrilla,    setColorGrilla]    = useState(() => isDark ? '#2a2d35' : '#c4c5ce');
   const [colorContornos, setColorContornos] = useState('#000000');
 
   // ── Light / grid config ───────────────────────────────────────────────────
@@ -95,6 +96,7 @@ export function Vista3DTab({
   useEffect(() => {
     setColorPiso(isDark ? '#1e2028' : '#e8e9ed');
     setColorPared(isDark ? '#1c1f28' : '#e0e1e5');
+    setColorGrilla(isDark ? '#2a2d35' : '#c4c5ce');
   }, [isDark]);
 
   // ── Reset scene on budget change ──────────────────────────────────────────
@@ -361,6 +363,7 @@ export function Vista3DTab({
           mostrarMesada={mostrarMesada}     setMostrarMesada={setMostrarMesada}
           colorMesada={colorMesada}         setColorMesada={setColorMesada}
           mostrarGrilla={mostrarGrilla}     setMostrarGrilla={setMostrarGrilla}
+          colorGrilla={colorGrilla}         setColorGrilla={setColorGrilla}
           mostrarContornos={mostrarContornos} setMostrarContornos={setMostrarContornos}
           colorContornos={colorContornos}   setColorContornos={setColorContornos}
           grosorContornos={grosorContornos} setGrosorContornos={setGrosorContornos}
@@ -473,6 +476,7 @@ export function Vista3DTab({
               shadowIntensidad={shadowIntensidad}
               shadowAngle={shadowAngle}
               mostrarGrilla={mostrarGrilla}
+              colorGrilla={colorGrilla}
               contornos={contornosConfig}
               camLookAt={sceneCenter}
               texturaRepeat={texturaRepeat}

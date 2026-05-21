@@ -60,7 +60,7 @@ export function ViewportToolbar({
   mostrarParedIzq, setMostrarParedIzq,
   mostrarParedDer, setMostrarParedDer,
   mostrarMesada,   setMostrarMesada,  colorMesada,   setColorMesada,
-  mostrarGrilla,   setMostrarGrilla,
+  mostrarGrilla,   setMostrarGrilla,  colorGrilla,   setColorGrilla,
   mostrarContornos, setMostrarContornos,
   colorContornos,   setColorContornos,
   grosorContornos,  setGrosorContornos,
@@ -171,13 +171,19 @@ export function ViewportToolbar({
           </div>
         </ToolbarDropdown>
 
-        <ToolbarBtn
-          variant="toggle"
+        {/* Grilla — dropdown con toggle + color */}
+        <ToolbarDropdown
           icon={<GridIcon size={tb.iconSize} />}
-          active={mostrarGrilla}
-          onClick={() => setMostrarGrilla(v => !v)}
           title="Grilla"
-        />
+          active={mostrarGrilla}
+        >
+          <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <ColorToggle
+              value={mostrarGrilla} onToggle={() => setMostrarGrilla(v => !v)}
+              color={colorGrilla} onColor={setColorGrilla} label="Grilla"
+            />
+          </div>
+        </ToolbarDropdown>
 
         <ToolbarDropdown icon={<ContourIcon size={tb.iconSize} />} title="Contornos" active={mostrarContornos}>
           <DropItem active={mostrarContornos} onClick={() => setMostrarContornos(v => !v)}>
