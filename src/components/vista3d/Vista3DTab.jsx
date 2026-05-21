@@ -564,43 +564,10 @@ export function Vista3DTab({
           }}>
             Arrastrá para rotar · Scroll zoom · Click para seleccionar
           </div>
-
-          {/* Botón abrir galería de ambiente */}
-          {!galeriaAbierta && (
-            <button
-              onClick={() => setGaleriaAbierta(true)}
-              title="Objetos de ambiente"
-              style={{
-                position: 'absolute', top: 10, left: 10, zIndex: 6,
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '7px 11px', borderRadius: 8,
-                background: T.canvas.overlayBg,
-                border: `1px solid ${T.border}`,
-                color: T.text, cursor: 'pointer',
-                fontSize: 10, fontFamily: "'DM Mono',monospace",
-                letterSpacing: '0.04em',
-                backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-                boxShadow: T.cardShadow,
-              }}
-            >
-              <span style={{ fontSize: 13, lineHeight: 1 }}>◫</span> Ambiente
-            </button>
-          )}
-
-          {/* Galería de ambiente — overlay */}
-          {galeriaAbierta && (
-            <div style={{ position: 'absolute', top: 10, left: 10, bottom: 10, zIndex: 7 }}>
-              <GaleriaAmbiente
-                catalogo={catalogoAmbiente}
-                onAgregar={handleAgregarObjeto}
-                onCerrar={() => setGaleriaAbierta(false)}
-              />
-            </div>
-          )}
         </div>
       </div>
 
-      {/* ── RIGHT: Inspector ─────────────────────────────────────────── */}
+      {/* ── RIGHT: Ambiente + Inspector ──────────────────────────────── */}
       <div style={{
         width: 218, flexShrink: 0,
         background: T.panelBg,
@@ -611,24 +578,64 @@ export function Vista3DTab({
         overflow: 'hidden', zIndex: 2,
         transition: 'background 0.35s ease',
       }}>
-        <SectionLabel style={{ padding: '12px 14px 6px' }}>Inspector</SectionLabel>
-        <PanelDivider />
-        <InspectorPanel
-          selectedInst={selectedInst}
-          modulo={selectedModulo}
-          dims={dimsActuales}
-          items={items}
-          costos={costos}
-          biblioteca={biblioteca}
-          materialIdActual={materialIdActual}
-          onAsignarMaterial={handleAsignarMaterial}
-          onRotar={() => selectedCod && handleRotar90(selectedCod)}
-          onEliminar={() => selectedCod && handleEliminarModulo(selectedCod)}
-          onSetParametros={handleSetParametros}
-          texturaRepeat={texturaRepeat}
-          onTexturaRepeat={setTexturaRepeat}
-          onDimChange={handleDimChange}
-        />
+
+        {/* Sección Ambiente — desplegable, arriba del Inspector */}
+        <button
+          onClick={() => setGaleriaAbierta(v => !v)}
+          style={{
+            flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '11px 14px',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            width: '100%',
+          }}
+        >
+          <span style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            fontSize: 9, fontFamily: "'DM Mono',monospace",
+            letterSpacing: '0.10em', textTransform: 'uppercase',
+            color: T.section.text,
+          }}>
+            <span style={{ fontSize: 12 }}>◫</span> Ambiente
+          </span>
+          <span style={{ fontSize: 9, color: T.textDim }}>
+            {galeriaAbierta ? '▾' : '▸'}
+          </span>
+        </button>
+        {galeriaAbierta && (
+          <div style={{
+            flexShrink: 0, maxHeight: 300, overflowY: 'auto', overflowX: 'hidden',
+            borderTop: `1px solid ${T.divider}`,
+          }}>
+            <GaleriaAmbiente catalogo={catalogoAmbiente} onAgregar={handleAgregarObjeto} />
+          </div>
+        )}
+
+        {/* Inspector */}
+        <div style={{
+          flex: 1, minHeight: 0,
+          display: 'flex', flexDirection: 'column',
+          borderTop: `1px solid ${T.divider}`,
+        }}>
+          <SectionLabel style={{ padding: '12px 14px 6px' }}>Inspector</SectionLabel>
+          <PanelDivider />
+          <InspectorPanel
+            selectedInst={selectedInst}
+            modulo={selectedModulo}
+            dims={dimsActuales}
+            items={items}
+            costos={costos}
+            biblioteca={biblioteca}
+            materialIdActual={materialIdActual}
+            onAsignarMaterial={handleAsignarMaterial}
+            onRotar={() => selectedCod && handleRotar90(selectedCod)}
+            onEliminar={() => selectedCod && handleEliminarModulo(selectedCod)}
+            onSetParametros={handleSetParametros}
+            texturaRepeat={texturaRepeat}
+            onTexturaRepeat={setTexturaRepeat}
+            onDimChange={handleDimChange}
+          />
+        </div>
       </div>
 
       {/* ── End workspace surface ─────────────────────────────────────── */}

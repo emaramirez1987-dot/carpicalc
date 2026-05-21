@@ -119,7 +119,7 @@ export function InspectorPanel({
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100%', overflowY: 'auto', overflowX: 'hidden',
+      flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
     }}>
 
       {/* ── Header: module code + name ────────────────────────────────── */}

@@ -233,6 +233,16 @@ Todas las escrituras (módulos, costos, presupuestos, perfil) entran a `withSave
 - Always define CSS vars in both `[data-theme="dark"]` and `[data-theme="light"]`
 - `--bg-nav` required for header; `anim-shake` required for login error
 
+**Vista 3D — UI de herramientas (convención):**
+- Toda herramienta o panel nuevo de Vista 3D se agrega como **sección desplegable
+  en la columna izquierda o derecha** — nunca como botón/overlay flotando sobre
+  el visor 3D. El viewport central queda limpio.
+- Patrón: botón-header con chevron ▸/▾ que despliega el contenido dentro de la
+  columna (con `maxHeight` + scroll propio si hace falta). Ver la sección
+  "Ambiente" en `Vista3DTab.jsx` como referencia.
+- Excepción: los overlays contextuales atados a un objeto seleccionado (mini
+  toolbar flotante sobre el módulo/objeto en la escena) sí van en el viewport.
+
 ## NavContext Actions Reference
 
 Las 10 acciones reales del reducer (`src/state/NavContext.jsx`):
