@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { Canvas } from '@react-three/fiber';
 import { CAMARAS } from '../visor3d/CamaraPresets.js';
-import { Escena3DPrincipal } from './Escena3DPrincipal.jsx';
+import { Escena3DPrincipal, CursorTracker } from './Escena3DPrincipal.jsx';
 import { SceneOutliner } from './SceneOutliner.jsx';
 import { InspectorPanel } from './InspectorPanel.jsx';
 import { ViewportToolbar } from './ViewportToolbar.jsx';
@@ -73,7 +73,8 @@ export function Vista3DTab({
   const [texturaRepeat, setTexturaRepeat] = useState(1);
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  const [capturado,  setCapturado]  = useState(false);
+  const [capturado,     setCapturado]     = useState(false);
+  const [cursorCoords,  setCursorCoords]  = useState(null); // { x, z } en metros
   const [maximizado, setMaximizado] = useState(false);
   // Hint desaparece tras la primera interacción. Se persiste en localStorage
   // para no molestar al usuario en sesiones futuras.
@@ -639,7 +640,21 @@ export function Vista3DTab({
               onRotarObjeto={handleRotarObjeto}
               onEliminarObjeto={handleEliminarObjeto}
             />
+            <CursorTracker onMove={setCursorCoords} />
           </Canvas>
+
+          {/* Coordenadas del cursor sobre el piso */}
+          {cursorCoords && (
+            <div style={{
+              position: 'absolute', bottom: 10, right: 14,
+              fontSize: 9, fontFamily: "'DM Mono',monospace",
+              color: T.hint, pointerEvents: 'none', letterSpacing: '0.05em',
+            }}>
+              X {cursorCoords.x >= 0 ? ' ' : ''}{(cursorCoords.x).toFixed(2)}
+              {'  '}
+              Z {cursorCoords.z >= 0 ? ' ' : ''}{(cursorCoords.z).toFixed(2)}
+            </div>
+          )}
 
           {/* Hint overlay — se oculta tras la primera interacción */}
           {mostrarHint && (

@@ -317,6 +317,44 @@ const FLOAT_BTN = {
 const GRID_DARK  = { c1: '#2a2d35', c2: '#232630' };
 const GRID_LIGHT = { c1: '#c4c5ce', c2: '#d0d1da' };
 
+// ── CursorTracker — coordenadas del cursor sobre el piso en tiempo real ───────
+// Componente R3F sin render visual. Escucha pointermove en el canvas,
+// raycasta contra el plano del piso (y=0) y llama onMove({ x, z }) o null.
+// Patrón latest-ref: el listener se registra una sola vez; onMove nunca
+// queda desactualizado aunque el padre re-renderice.
+export function CursorTracker({ onMove }) {
+  const { camera, gl } = useThree();
+  const raycaster  = useMemo(() => new THREE.Raycaster(), []);
+  const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
+  const onMoveRef  = useRef(onMove);
+  useEffect(() => { onMoveRef.current = onMove; });
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const onPtr = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const nx =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+      const ny = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+      raycaster.setFromCamera({ x: nx, y: ny }, camera);
+      const hit = new THREE.Vector3();
+      if (raycaster.ray.intersectPlane(floorPlane, hit)) {
+        onMoveRef.current({ x: hit.x, z: hit.z });
+      } else {
+        onMoveRef.current(null);
+      }
+    };
+    const onLeave = () => onMoveRef.current(null);
+    canvas.addEventListener('pointermove', onPtr);
+    canvas.addEventListener('pointerleave', onLeave);
+    return () => {
+      canvas.removeEventListener('pointermove', onPtr);
+      canvas.removeEventListener('pointerleave', onLeave);
+    };
+  }, [camera, gl, raycaster, floorPlane]);
+
+  return null;
+}
+
 // ── GrillaFloor — piso receptor de sombras + grilla superpuesta ───────────────
 function GrillaFloor({ colorPiso, isDark, mostrarGrilla, divisiones, colorGrilla }) {
   const grid = useMemo(() => {
