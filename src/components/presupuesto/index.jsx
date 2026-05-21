@@ -82,6 +82,7 @@ function Presupuesto({
     dimOverride, setDimOverride,
     composicionOverride, setComposicionOverride,
     inlineModulos, setInlineModulos,
+    escenografia,
     adicionales, setAdicionales,
     costosDirectos, setCostosDirectos,
     presupuestoActivoId, setPresupuestoActivoId,
@@ -503,7 +504,7 @@ function Presupuesto({
           if (esNuevo) {
             onGuardarPresupuesto(nombreTrabajo || "Sin nombre", clienteActivo, "");
           } else {
-            onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: newItems, dimOverride: newDim, composicionOverride: newComp, inlineModulos: newInline, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
+            onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: newItems, dimOverride: newDim, composicionOverride: newComp, inlineModulos: newInline, escenografia: [...escenografia], adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
           }
           setDialogoGuardar(false);
           limpiarEditor();
@@ -529,7 +530,7 @@ function Presupuesto({
               {presupuestoActivoId ? (
                 <>
                   <button onClick={() => {
-                    onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, composicionOverride: { ...composicionOverride }, inlineModulos: { ...inlineModulos }, adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
+                    onActualizarPresupuesto && onActualizarPresupuesto(presupuestoActivoId, { nombre: nombreTrabajo, cliente: clienteActivo, items: [...items], dimOverride: { ...dimOverride }, composicionOverride: { ...composicionOverride }, inlineModulos: { ...inlineModulos }, escenografia: [...escenografia], adicionales: [...adicionales], costosDirectos: [...costosDirectos], total: totalGeneral, costosVersionAl: Date.now() });
                     setDialogoGuardar(false);
                     limpiarEditor();
                   }} style={{ ...btnBase, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>

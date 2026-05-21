@@ -1,0 +1,122 @@
+[
+  {
+    "id": "lampara-colgante",
+    "nombre": "Lámpara colgante",
+    "categoria": "Iluminación",
+    "tipo": "lighting",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Lantern/glTF-Binary/Lantern.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 0.4,
+    "alturaBase": 1.7
+  },
+  {
+    "id": "lampara-pie",
+    "nombre": "Lámpara de pie",
+    "categoria": "Iluminación",
+    "tipo": "lighting",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Lantern/glTF-Binary/Lantern.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 1.6,
+    "alturaBase": 0
+  },
+  {
+    "id": "banqueta-barra",
+    "nombre": "Banqueta de barra",
+    "categoria": "Asientos",
+    "tipo": "decor",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 0.75,
+    "alturaBase": 0
+  },
+  {
+    "id": "silla-comedor",
+    "nombre": "Silla de comedor",
+    "categoria": "Asientos",
+    "tipo": "decor",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 0.9,
+    "alturaBase": 0
+  },
+  {
+    "id": "sillon-individual",
+    "nombre": "Sillón individual",
+    "categoria": "Asientos",
+    "tipo": "decor",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 0.85,
+    "alturaBase": 0
+  },
+  {
+    "id": "planta-grande",
+    "nombre": "Planta en maceta grande",
+    "categoria": "Vegetación",
+    "tipo": "decor",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BarramundiFish/glTF-Binary/BarramundiFish.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 1.4,
+    "alturaBase": 0
+  },
+  {
+    "id": "planta-chica",
+    "nombre": "Planta chica de mesada",
+    "categoria": "Vegetación",
+    "tipo": "decor",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BarramundiFish/glTF-Binary/BarramundiFish.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 0.35,
+    "alturaBase": 0
+  },
+  {
+    "id": "heladera",
+    "nombre": "Heladera",
+    "categoria": "Electrodomésticos",
+    "tipo": "decor",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BoomBox/glTF-Binary/BoomBox.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 1.8,
+    "alturaBase": 0
+  },
+  {
+    "id": "electrodomestico-mesada",
+    "nombre": "Cafetera de mesada",
+    "categoria": "Electrodomésticos",
+    "tipo": "decor",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BoomBox/glTF-Binary/BoomBox.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 0.35,
+    "alturaBase": 0
+  },
+  {
+    "id": "cluster-mesada",
+    "nombre": "Decoración de mesada",
+    "categoria": "Decoración",
+    "tipo": "decor",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Avocado/glTF-Binary/Avocado.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 0.3,
+    "alturaBase": 0
+  },
+  {
+    "id": "alfombra",
+    "nombre": "Alfombra",
+    "categoria": "Textiles",
+    "tipo": "floor",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WaterBottle/glTF-Binary/WaterBottle.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 2.0,
+    "alturaBase": 0
+  },
+  {
+    "id": "cuadro-pared",
+    "nombre": "Cuadro de pared",
+    "categoria": "Decoración",
+    "tipo": "wall",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WaterBottle/glTF-Binary/WaterBottle.glb",
+    "thumbnailUrl": null,
+    "tamanoBase": 0.7,
+    "alturaBase": 1.4
+  }
+]

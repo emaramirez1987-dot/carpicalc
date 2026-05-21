@@ -1,10 +1,12 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo, Suspense } from 'react';
 import { OrbitControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useThree, useFrame } from '@react-three/fiber';
 import Modulo3D from '../visor3d/Modulo3D.jsx';
 import { useAutoLayout3D } from './useAutoLayout3D.js';
 import { resolverVisualMaterial } from '../../services/materialesService.js';
+import { ObjetoAmbiente3D } from './ambiente/ObjetoAmbiente3D.jsx';
+import { ObjetoErrorBoundary } from './ambiente/ObjetoErrorBoundary.jsx';
 
 export const WALL_Z = -0.6; // posición de la pared trasera
 
@@ -418,6 +420,9 @@ export function Escena3DPrincipal({
   contornos = null,
   camLookAt = null,
   texturaRepeat = 2,
+  // Escenografía — objetos 3D de ambiente (capa de presentación, sin costo)
+  escenografia = [], catalogoAmbiente = [],
+  objetoSelId = null, onSelectObjeto, onMoverObjeto, onRotarObjeto, onEliminarObjeto,
 }) {
   const orbitRef       = useRef();
   const livePositions  = useRef({}); // { [instanceId]: { x, z, hw, hd } }
@@ -523,6 +528,28 @@ export function Escena3DPrincipal({
           color={colorMesada}
         />
       )}
+
+      {/* ── Escenografía — objetos 3D de ambiente ──────────────────────────── */}
+      {escenografia.map((inst) => {
+        const objeto = catalogoAmbiente.find(o => o.id === inst.objetoId);
+        if (!objeto) return null;
+        return (
+          <Suspense key={inst.instanceId} fallback={null}>
+            <ObjetoErrorBoundary>
+              <ObjetoAmbiente3D
+                inst={inst}
+                objeto={objeto}
+                isSelected={objetoSelId === inst.instanceId}
+                onSelect={() => onSelectObjeto?.(inst.instanceId)}
+                onMover={onMoverObjeto}
+                onRotar={onRotarObjeto}
+                onEliminar={onEliminarObjeto}
+                orbitRef={orbitRef}
+              />
+            </ObjetoErrorBoundary>
+          </Suspense>
+        );
+      })}
     </>
   );
 }

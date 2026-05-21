@@ -195,6 +195,7 @@ export function parsearPresupuesto(raw) {
     adicionales:   Array.isArray(raw.adicionales)    ? raw.adicionales    : [],
     costosDirectos:Array.isArray(raw.costosDirectos) ? raw.costosDirectos : [],
     cobros:        Array.isArray(raw.cobros)         ? raw.cobros         : [],
+    escenografia:  Array.isArray(raw.escenografia)   ? raw.escenografia   : [],
   };
 }
 

@@ -10,6 +10,8 @@ import { useIsDark, tok } from './tokens.js';
 import { SectionLabel, PanelDivider } from './ui.jsx';
 import { calcularModulo, fmtPeso } from '../../utils.js';
 import { resolverModuloEfectivo } from '../../services/moduloService.js';
+import { cargarCatalogoAmbiente, crearInstanciaAmbiente } from '../../services/ambienteService.js';
+import { GaleriaAmbiente } from './ambiente/GaleriaAmbiente.jsx';
 
 // ── Vista3DTab ─────────────────────────────────────────────────────────────────
 export function Vista3DTab({
@@ -20,6 +22,8 @@ export function Vista3DTab({
   dimOverride = {},
   setDimOverride,
   inlineModulos = {},
+  escenografia = [],
+  setEscenografia,
   presupuestoActivoId,
   onCaptura,
 }) {
@@ -30,6 +34,11 @@ export function Vista3DTab({
   // ── Scene state ───────────────────────────────────────────────────────────
   const [modulosEnEscena, setModulosEnEscena] = useState([]);
   const [selectedCod,     setSelectedCod]     = useState(null);
+
+  // ── Escenografía — objetos 3D de ambiente ─────────────────────────────────
+  const catalogoAmbiente = useMemo(() => cargarCatalogoAmbiente(), []);
+  const [objetoSelId,    setObjetoSelId]    = useState(null);
+  const [galeriaAbierta, setGaleriaAbierta] = useState(false);
 
   // ── Display toggles ───────────────────────────────────────────────────────
   const [mostrarPiso,     setMostrarPiso]     = useState(true);
@@ -271,6 +280,51 @@ export function Vista3DTab({
 
   const handleLimpiarEscena = () => { setModulosEnEscena([]); setSelectedCod(null); };
 
+  // ── Escenografía — handlers ───────────────────────────────────────────────
+  const handleAgregarObjeto = (objetoId) => {
+    if (!setEscenografia) return;
+    // Offset escalonado para que objetos nuevos no se apilen exactamente.
+    const x = (escenografia.length % 5) * 0.5 - 1;
+    const nueva = crearInstanciaAmbiente(objetoId, { x, z: 1.2 });
+    setEscenografia(prev => [...prev, nueva]);
+    setObjetoSelId(nueva.instanceId);
+    setSelectedCod(null);
+  };
+
+  const handleMoverObjeto = (instanceId, { x, z }) => {
+    if (!setEscenografia) return;
+    setEscenografia(prev => prev.map(o =>
+      o.instanceId === instanceId
+        ? { ...o, transform: { ...o.transform, position: { ...o.transform.position, x, z } } }
+        : o
+    ));
+  };
+
+  const handleRotarObjeto = (instanceId, deltaY) => {
+    if (!setEscenografia) return;
+    setEscenografia(prev => prev.map(o =>
+      o.instanceId === instanceId
+        ? { ...o, transform: { ...o.transform, rotation: { y: (o.transform.rotation?.y || 0) + deltaY } } }
+        : o
+    ));
+  };
+
+  const handleEliminarObjeto = (instanceId) => {
+    if (!setEscenografia) return;
+    setEscenografia(prev => prev.filter(o => o.instanceId !== instanceId));
+    setObjetoSelId(prev => (prev === instanceId ? null : prev));
+  };
+
+  // Selección exclusiva — un objeto de ambiente O un módulo, nunca ambos.
+  const handleSelectObjeto = (instanceId) => {
+    setObjetoSelId(instanceId);
+    setSelectedCod(null);
+  };
+  const handleSelectModulo = (cod) => {
+    setSelectedCod(cod);
+    setObjetoSelId(null);
+  };
+
   const handleSetParametros = (itemIdx, valores) => {
     if (!setItems || itemIdx == null) return;
     setItems(items.map((it, i) => i === itemIdx ? { ...it, parametrosValores: valores } : it));
@@ -454,7 +508,7 @@ export function Vista3DTab({
             camera={{ position: CAMARAS.iso.pos, fov: 45, near: 0.01, far: 100 }}
             gl={{ preserveDrawingBuffer: true }}
             onCreated={({ gl }) => { glRef.current = gl; }}
-            onPointerMissed={() => setSelectedCod(null)}
+            onPointerMissed={() => { setSelectedCod(null); setObjetoSelId(null); }}
             style={{ background: T.canvasFallbk, width: '100%', height: '100%' }}
           >
             <Escena3DPrincipal
@@ -474,7 +528,7 @@ export function Vista3DTab({
               colorPared={colorPared}
               colorMesada={colorMesada}
               camTarget={camTarget}
-              onSelectModulo={setSelectedCod}
+              onSelectModulo={handleSelectModulo}
               selectedCod={selectedCod}
               onUpdatePosicion={handleUpdatePosicion}
               biblioteca={biblioteca}
@@ -492,6 +546,13 @@ export function Vista3DTab({
               mostrarParedDer={mostrarParedDer}
               onRotar90={handleRotar90}
               onEliminarModulo={handleEliminarModulo}
+              escenografia={escenografia}
+              catalogoAmbiente={catalogoAmbiente}
+              objetoSelId={objetoSelId}
+              onSelectObjeto={handleSelectObjeto}
+              onMoverObjeto={handleMoverObjeto}
+              onRotarObjeto={handleRotarObjeto}
+              onEliminarObjeto={handleEliminarObjeto}
             />
           </Canvas>
 
@@ -503,6 +564,39 @@ export function Vista3DTab({
           }}>
             Arrastrá para rotar · Scroll zoom · Click para seleccionar
           </div>
+
+          {/* Botón abrir galería de ambiente */}
+          {!galeriaAbierta && (
+            <button
+              onClick={() => setGaleriaAbierta(true)}
+              title="Objetos de ambiente"
+              style={{
+                position: 'absolute', top: 10, left: 10, zIndex: 6,
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 11px', borderRadius: 8,
+                background: T.canvas.overlayBg,
+                border: `1px solid ${T.border}`,
+                color: T.text, cursor: 'pointer',
+                fontSize: 10, fontFamily: "'DM Mono',monospace",
+                letterSpacing: '0.04em',
+                backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+                boxShadow: T.cardShadow,
+              }}
+            >
+              <span style={{ fontSize: 13, lineHeight: 1 }}>◫</span> Ambiente
+            </button>
+          )}
+
+          {/* Galería de ambiente — overlay */}
+          {galeriaAbierta && (
+            <div style={{ position: 'absolute', top: 10, left: 10, bottom: 10, zIndex: 7 }}>
+              <GaleriaAmbiente
+                catalogo={catalogoAmbiente}
+                onAgregar={handleAgregarObjeto}
+                onCerrar={() => setGaleriaAbierta(false)}
+              />
+            </div>
+          )}
         </div>
       </div>
 

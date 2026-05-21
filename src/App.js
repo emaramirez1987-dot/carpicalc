@@ -188,6 +188,9 @@ function AppInterna() {
   const [dimOverride,        setDimOverride]        = useState({});
   const [composicionOverride, setComposicionOverride] = useState({});
   const [inlineModulos,      setInlineModulos]      = useState({});
+  // escenografia — objetos 3D de ambiente de la escena Vista 3D (presentación,
+  // no productivo: sin costo, sin parametría). Persiste con el presupuesto.
+  const [escenografia,       setEscenografia]       = useState([]);
   const [adicionales,        setAdicionales]        = useState([]);
   const [costosDirectos,     setCostosDirectos]     = useState([]);
   const [costosVersion,      setCostosVersion]      = useState(leerVersionCostos);
@@ -266,12 +269,13 @@ function AppInterna() {
       try {
         const borrador = localStorage.getItem("carpicalc:borrador");
         if (borrador) {
-          const { items: bItems, dimOverride: bDim, composicionOverride: bComp, inlineModulos: bInline, presupuestoActivoId: bPresId } = JSON.parse(borrador);
+          const { items: bItems, dimOverride: bDim, composicionOverride: bComp, inlineModulos: bInline, escenografia: bEsc, presupuestoActivoId: bPresId } = JSON.parse(borrador);
           if (bItems?.length > 0) {
             setItems(bItems);
             setDimOverride(bDim || {});
             setComposicionOverride(bComp || {});
             setInlineModulos(bInline || {});
+            setEscenografia(Array.isArray(bEsc) ? bEsc : []);
             if (bPresId) setPresupuestoActivoId(bPresId);
             setBorradorRecuperado(true);
           }
@@ -289,7 +293,7 @@ function AppInterna() {
     if (items.length > 0) {
       try {
         localStorage.setItem("carpicalc:borrador", JSON.stringify({
-          items, dimOverride, composicionOverride, inlineModulos,
+          items, dimOverride, composicionOverride, inlineModulos, escenografia,
           ...(presupuestoActivoId ? { presupuestoActivoId } : {}),
         }));
         setLastBorradorSave(Date.now());
@@ -299,7 +303,7 @@ function AppInterna() {
       localStorage.removeItem("carpicalc:borrador");
       setLastBorradorSave(null);
     }
-  }, [items, dimOverride, composicionOverride, inlineModulos, presupuestoActivoId]);
+  }, [items, dimOverride, composicionOverride, inlineModulos, escenografia, presupuestoActivoId]);
 
   // ── Aviso antes de cerrar con datos sin guardar ───────────────────────────
   useEffect(() => {
@@ -408,7 +412,7 @@ function AppInterna() {
   const handleGuardarPresupuesto = (nombre, cliente, nota, presupuestoCompleto) => {
     const { id, presupuestos: nuevo } = crearPresupuesto({
       presupuestos, nombre, cliente, nota,
-      items, dimOverride, composicionOverride, inlineModulos, adicionales, costosDirectos,
+      items, dimOverride, composicionOverride, inlineModulos, escenografia, adicionales, costosDirectos,
       total: totalGeneral,
       costosVersionAl: leerVersionCostos() || Date.now(),
       presupuestoCompleto,
@@ -438,6 +442,7 @@ function AppInterna() {
     setDimOverride(migratedDim);
     setComposicionOverride(p.composicionOverride && typeof p.composicionOverride === "object" ? { ...p.composicionOverride } : {});
     setInlineModulos(p.inlineModulos && typeof p.inlineModulos === "object" ? { ...p.inlineModulos } : {});
+    setEscenografia(Array.isArray(p.escenografia) ? [...p.escenografia] : []);
     setAdicionales(Array.isArray(p.adicionales) ? [...p.adicionales] : []);
     setCostosDirectos(Array.isArray(p.costosDirectos) ? [...p.costosDirectos] : []);
     if (id) setPresupuestoActivoId(id);
@@ -507,10 +512,11 @@ function AppInterna() {
     dimOverride, setDimOverride,
     composicionOverride, setComposicionOverride,
     inlineModulos, setInlineModulos,
+    escenografia, setEscenografia,
     adicionales, setAdicionales,
     costosDirectos, setCostosDirectos,
     presupuestoActivoId, setPresupuestoActivoId,
-  }), [items, dimOverride, composicionOverride, inlineModulos, adicionales, costosDirectos, presupuestoActivoId]);
+  }), [items, dimOverride, composicionOverride, inlineModulos, escenografia, adicionales, costosDirectos, presupuestoActivoId]);
 
   if (cargando)
     return (
@@ -675,6 +681,8 @@ function AppInterna() {
                 dimOverride={dimOverride}
                 setDimOverride={setDimOverride}
                 inlineModulos={inlineModulos}
+                escenografia={escenografia}
+                setEscenografia={setEscenografia}
                 presupuestoActivoId={presupuestoActivoId}
                 onCaptura={(base64) => setImagenRef3D(base64)}
               />
