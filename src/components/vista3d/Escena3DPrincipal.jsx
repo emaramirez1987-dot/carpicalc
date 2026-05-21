@@ -5,7 +5,6 @@ import { useThree, useFrame } from '@react-three/fiber';
 import Modulo3D from '../visor3d/Modulo3D.jsx';
 import { useAutoLayout3D } from './useAutoLayout3D.js';
 import { resolverVisualMaterial } from '../../services/materialesService.js';
-import { resolverModuloEfectivo } from '../../services/moduloService.js';
 
 export const WALL_Z = -0.6; // posición de la pared trasera
 
@@ -65,8 +64,10 @@ function resolveCollision(proposedX, proposedZ, hw, hd, selfId, livePositions) {
 }
 
 // ── ModuloEnEscena ────────────────────────────────────────────────────────────
-// Props >8 justificados: escena 3D con controles flotantes integrados
-function ModuloEnEscena({ inst, modulos, inlineModulos, dimOverride, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, visual, texturaRepeat, onRotar90, onEliminarModulo, contornos }) {
+// Props >8 justificados: escena 3D con controles flotantes integrados.
+// Consumidor puro: el módulo efectivo ya viene resuelto en inst.moduloEfectivo
+// (useAutoLayout3D) — este componente no resuelve overrides.
+function ModuloEnEscena({ inst, costos, isSelected, onSelect, onUpdatePosicion, orbitRef, livePositions, visual, texturaRepeat, onRotar90, onEliminarModulo, contornos }) {
   const groupRef   = useRef();
   const isDragging = useRef(false);
   const dragStarted = useRef(false); // true cuando el mouse superó el threshold
@@ -76,15 +77,14 @@ function ModuloEnEscena({ inst, modulos, inlineModulos, dimOverride, costos, isS
 
   const [x, y, z] = inst.worldPos;
 
-  // Módulo efectivo — resolución unificada (services/moduloService).
-  // Keying de la instancia: ítems del presupuesto → dimOverride[itemKey];
-  // módulos manuales de escena → inst.dimsOverride (compat — se elimina en
-  // commit 2 al unificar todo en una sola tabla de overrides).
-  const ovInst     = inst.itemKey ? dimOverride?.[inst.itemKey]   : inst.dimsOverride;
-  const inlineInst = inst.itemKey ? inlineModulos?.[inst.itemKey] : null;
+  // Módulo efectivo ya resuelto por useAutoLayout3D. Se "congela" con un
+  // useMemo keyed en los valores que afectan el render 3D — así Modulo3D no
+  // reconstruye la geometría salvo que cambien dimensiones/material/piezas.
+  const me = inst.moduloEfectivo;
   const mod = useMemo(
-    () => resolverModuloEfectivo({ codigo: inst.codigo, modulos, inline: inlineInst, dimOverride: ovInst }),
-    [inst.codigo, modulos, inlineInst, ovInst],
+    () => me,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [me?.codigo, me?.dimensiones?.ancho, me?.dimensiones?.alto, me?.dimensiones?.profundidad, me?.material, me?.materialId, me?.piezas],
   );
 
   const halfWidth = useMemo(
@@ -344,20 +344,21 @@ const MESADA_THICKNESS = 0.04;
 const MESADA_DEPTH     = 0.62;
 
 // ── Mesada — sigue las posiciones vivas de los módulos bajos ──────────────────
-// Las dimensiones (hw/hd) se leen DIRECTAMENTE de `modulos[inst.codigo]` en
-// lugar de `livePositions.current[id].hw/hd`. Esto evita un bug donde la mesada
-// quedaba con el ancho viejo aunque el módulo se hubiera editado en el catálogo:
-// el cache de livePositions se escribe en el useFrame de ModuloEnEscena cuya
-// closure podía retener el halfWidth viejo durante un tiempo, especialmente si
-// el tab estaba oculto (display:none) al momento del save.
-function Mesada({ livePositions, modulosEnEscena, modulos, color }) {
+// Las dimensiones (hw/hd) se leen del MÓDULO EFECTIVO (inst.moduloEfectivo, ya
+// resuelto por useAutoLayout3D), no de `livePositions.current[id].hw/hd`. Esto
+// evita un bug donde la mesada quedaba con el ancho viejo: el cache de
+// livePositions se escribe en el useFrame de ModuloEnEscena cuya closure
+// podía retener el halfWidth viejo, especialmente con el tab oculto al guardar.
+// Al usar el módulo efectivo, la mesada también respeta los cambios de
+// dimensión hechos desde el Inspector 3D.
+function Mesada({ livePositions, modulosEnEscena, color }) {
   const meshRef = useRef();
 
   useFrame(() => {
     if (!meshRef.current) return;
 
     const bajos = modulosEnEscena.filter(inst =>
-      !['aereo', 'torre'].includes(modulos?.[inst.codigo]?.tipoVisual || '')
+      !['aereo', 'torre'].includes(inst.moduloEfectivo?.tipoVisual || '')
     );
 
     if (bajos.length === 0) { meshRef.current.visible = false; return; }
@@ -365,7 +366,7 @@ function Mesada({ livePositions, modulosEnEscena, modulos, color }) {
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxH = 0;
     for (const inst of bajos) {
       const live = livePositions.current[inst.instanceId];
-      const m = modulos?.[inst.codigo];
+      const m = inst.moduloEfectivo;
       if (!m) continue;
       const ancho = (m.dimensiones?.ancho       || 600) / 1000;
       const prof  = (m.dimensiones?.profundidad || 550) / 1000;
@@ -500,9 +501,6 @@ export function Escena3DPrincipal({
           <ModuloEnEscena
             key={inst.instanceId}
             inst={inst}
-            modulos={modulos}
-            inlineModulos={inlineModulos}
-            dimOverride={dimOverride}
             costos={costos}
             isSelected={selectedCod === inst.instanceId}
             onSelect={() => onSelectModulo?.(selectedCod === inst.instanceId ? null : inst.instanceId)}
@@ -522,7 +520,6 @@ export function Escena3DPrincipal({
         <Mesada
           livePositions={livePositions}
           modulosEnEscena={layoutItems}
-          modulos={modulos}
           color={colorMesada}
         />
       )}
