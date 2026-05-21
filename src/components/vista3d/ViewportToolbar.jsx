@@ -238,32 +238,22 @@ export function ViewportToolbar({
           </span>
         )}
 
-        {/* Capturar — primary action, always visible, disabled when empty */}
-        {/* Two-state: idle (gold outline) → captured (success green). */}
-        <button
-          onClick={onCapturar}
-          disabled={modulosCount === 0}
-          title={capturado ? 'Vista capturada — hacer clic para recapturar' : 'Capturar vista 3D'}
+        {/* Capturar — gold camera icon, same size as maximize button */}
+        {/* Two-state: idle (gold) → captured (success green). */}
+        <IconBtn
+          icon={capturado
+            ? <svg width={tb.iconSize} height={tb.iconSize} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M2 5.5C2 4.7 2.7 4 3.5 4H4l1-1.5h6L12 4h.5C13.3 4 14 4.7 14 5.5v6c0 .8-.7 1.5-1.5 1.5h-9C2.7 13 2 12.3 2 11.5v-6Z"/><circle cx="8" cy="8.5" r="2"/><path d="M6 6l1 1" strokeWidth="1" opacity="0.6"/></svg>
+            : <svg width={tb.iconSize} height={tb.iconSize} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M2 5.5C2 4.7 2.7 4 3.5 4H4l1-1.5h6L12 4h.5C13.3 4 14 4.7 14 5.5v6c0 .8-.7 1.5-1.5 1.5h-9C2.7 13 2 12.3 2 11.5v-6Z"/><circle cx="8" cy="8.5" r="2"/></svg>
+          }
+          onClick={modulosCount === 0 ? undefined : onCapturar}
+          title={capturado ? 'Vista capturada — clic para recapturar' : 'Capturar vista 3D'}
           style={{
-            padding: '5px 16px',
-            borderRadius: 8,
-            cursor: modulosCount === 0 ? 'default' : 'pointer',
-            background: capturado ? T.success.bg     : tb.activeBg,
-            border:     capturado ? `1px solid ${T.success.border}` : `1px solid ${tb.activeBorder}`,
-            color:      capturado ? T.success.text   : tb.activeText,
-            fontSize: 11,
-            fontFamily: "'DM Mono',monospace",
-            fontWeight: 600,
-            letterSpacing: '0.05em',
             opacity: modulosCount === 0 ? 0.28 : 1,
-            transition: 'all 0.2s',
-            outline: 'none',
-            lineHeight: 1,
-            whiteSpace: 'nowrap',
+            background: capturado ? T.success.bg                    : tb.activeBg,
+            border:     capturado ? `1px solid ${T.success.border}` : `1px solid ${tb.activeBorder}`,
+            color:      capturado ? T.success.text                  : tb.activeText,
           }}
-        >
-          {capturado ? '✓ Capturado' : '◈ Capturar'}
-        </button>
+        />
 
         {/* Maximize / restore — always on the far right edge */}
         <IconBtn
