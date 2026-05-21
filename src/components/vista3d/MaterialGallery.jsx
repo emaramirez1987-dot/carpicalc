@@ -23,7 +23,7 @@ function MaterialCard({ selected, onClick, thumbnail, bgColor, nombre, precio })
           ? `1.5px solid ${T.toolbar.activeBorder}`
           : `1px solid ${T.matBord}`,
         borderRadius: 7,
-        padding: '5px 5px 6px',
+        padding: '4px 4px 5px',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
@@ -202,8 +202,8 @@ export function MaterialGallery({ biblioteca, materialIdActual, onAsignar, textu
             {!collapsed[tipo] && (
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 6,
+                gridTemplateColumns: '1fr 1fr 1fr',
+                gap: 5,
                 marginTop: 4,
               }}>
                 {lista.map(m => (
