@@ -1,7 +1,7 @@
 // InspectorPanel.jsx — Right panel: selected module properties
 // Shows when a scene instance is selected. Contains:
 //   • Module name + code (read-only; rotate/delete live as overlays in the 3D viewport)
-//   • DIMENSIONES — A/H/P readOnly inputs (path prepared for editing)
+//   • DIMENSIONES — editable inputs → onDimChange → dimOverride → costs recalc in vivo
 //   • PARÁMETROS — ConfiguradorParametrico (if module has params)
 //   • MATERIAL — MaterialGallery
 
@@ -11,15 +11,19 @@ import { SectionLabel, PanelDivider } from './ui.jsx';
 import { MaterialGallery } from './MaterialGallery.jsx';
 import ConfiguradorParametrico from '../presupuesto/ConfiguradorParametrico.jsx';
 
-// ── Dimension input field — one row: label left, input right ──────────────────
-function DimInput({ campo, label, value }) {
+// ── Dimension input field — one row: label left, editable input right ─────────
+// onChange(campo, valor) → handleDimChange → dimOverride → costs recalc in vivo
+// modified: true when value differs from module default (gold border indicator)
+function DimInput({ campo, label, value, onChange, modified }) {
   const T = tok();
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px' }}>
       <span style={{
         fontSize: 9, fontFamily: "'DM Mono',monospace",
-        color: T.section.text, letterSpacing: '0.08em',
+        color: modified ? T.accent : T.section.text,
+        letterSpacing: '0.08em',
         textTransform: 'uppercase', flexShrink: 0, width: 52,
+        transition: 'color 0.15s',
       }}>
         {label}
       </span>
@@ -28,20 +32,22 @@ function DimInput({ campo, label, value }) {
           type="number"
           data-campo={campo}
           value={value}
-          readOnly
+          min={1}
+          onChange={(e) => onChange && onChange(campo, e.target.value)}
           style={{
             width: '100%',
             padding: '6px 26px 6px 10px',
             background: T.inputBg,
-            border: `1px solid ${T.inputBord}`,
+            border: `1px solid ${modified ? T.accent : T.inputBord}`,
             borderRadius: 6,
-            color: T.inputText,
+            color: modified ? T.accent : T.inputText,
             fontFamily: "'DM Mono',monospace",
             fontSize: 12,
             fontWeight: 600,
             outline: 'none',
-            cursor: 'default',
+            cursor: 'text',
             boxSizing: 'border-box',
+            transition: 'border-color 0.15s, color 0.15s',
           }}
         />
         <span style={{
@@ -96,8 +102,6 @@ export function InspectorPanel({
   onSetParametros,
   texturaRepeat,
   onTexturaRepeat,
-  // onDimChange — received for future wiring, not yet connected to inputs
-  // eslint-disable-next-line no-unused-vars
   onDimChange,
 }) {
   const T = tok();
@@ -108,6 +112,9 @@ export function InspectorPanel({
 
   const tieneParams = (modulo.parametros?.length || 0) > 0;
   const itemIdx = selectedInst.itemIdx;
+
+  // Base dimensions from module catalog — used to detect overrides (gold indicator)
+  const baseDims = modulo.dimensiones || {};
 
   return (
     <div style={{
@@ -140,9 +147,9 @@ export function InspectorPanel({
         <div style={{ flexShrink: 0 }}>
           <SectionLabel>Dimensiones</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '4px 0 12px' }}>
-            <DimInput campo="ancho"       label="Ancho"  value={dims.ancho} />
-            <DimInput campo="alto"        label="Alto"   value={dims.alto} />
-            <DimInput campo="profundidad" label="Prof."  value={dims.profundidad} />
+            <DimInput campo="ancho"       label="Ancho"  value={dims.ancho}       onChange={onDimChange} modified={dims.ancho       !== baseDims.ancho} />
+            <DimInput campo="alto"        label="Alto"   value={dims.alto}        onChange={onDimChange} modified={dims.alto        !== baseDims.alto} />
+            <DimInput campo="profundidad" label="Prof."  value={dims.profundidad} onChange={onDimChange} modified={dims.profundidad !== baseDims.profundidad} />
           </div>
         </div>
       )}
