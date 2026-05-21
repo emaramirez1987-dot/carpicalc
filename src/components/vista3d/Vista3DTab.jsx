@@ -396,6 +396,50 @@ export function Vista3DTab({
     });
   };
 
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  // Escape — deseleccionar todo
+  // Delete / Backspace — eliminar elemento seleccionado
+  // R — rotar 90° el elemento seleccionado
+  //
+  // Patrón "latest ref": el listener se registra UNA sola vez (deps=[]) y
+  // lee los valores frescos desde el ref, evitando closures viejas sin
+  // necesitar eslint-disable ni re-registrar en cada render.
+  // Guard: no actuar si el foco está en un input/textarea/select.
+  const shortcutRef = useRef({});
+  shortcutRef.current = {
+    selectedCod, objetoSelId,
+    handleEliminarModulo, handleEliminarObjeto,
+    handleRotar90, handleRotarObjeto,
+    setSelectedCod, setObjetoSelId,
+  };
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = e.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      const { selectedCod: sc, objetoSelId: os,
+              handleEliminarModulo: elimMod, handleEliminarObjeto: elimObj,
+              handleRotar90: rot90, handleRotarObjeto: rotObj,
+              setSelectedCod: setSC, setObjetoSelId: setOS } = shortcutRef.current;
+
+      if (e.key === 'Escape') {
+        setSC(null); setOS(null);
+        return;
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (sc)      elimMod(sc);
+        else if (os) elimObj(os);
+        return;
+      }
+      if (e.key === 'r' || e.key === 'R') {
+        if (sc)      rot90(sc);
+        else if (os) rotObj(os, Math.PI / 2);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []); // [] intencional — el ref siempre tiene los valores frescos
+
   // ── Layout ────────────────────────────────────────────────────────────────
   const inner = (
     <div style={maximizado ? {
